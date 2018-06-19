@@ -1,0 +1,25 @@
+{
+  "kind": "PersistentVolumeClaim",
+  "apiVersion": "v1",
+  "metadata": {
+    "name": "zdb-system-pvc",
+    "namespace": "zdb-system",
+    "labels": {
+      "billingType": "hourly"
+    },
+    "annotations": {
+      "volume.beta.kubernetes.io/storage-class": "ibmc-file-silver",
+      "volume.beta.kubernetes.io/storage-provisioner": "ibm.io/ibmc-file"
+    }
+  },
+  "spec": {
+    "accessModes": [
+      "ReadWriteMany"
+    ],
+    "resources": {
+      "requests": {
+        "storage": "20Gi"
+      }
+    }
+  }
+}

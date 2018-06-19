@@ -1,0 +1,72 @@
+{
+  "image": {
+    "tag": "4.0.9"
+  },
+  "cluster": {
+    "enabled": true,
+    "slaveCount": "1"
+  },
+  "metrics": {
+    "enabled": "true",
+    "podLabels": {},
+    "podAnnotations": {}
+  },
+  "networkPolicy": {
+    "enabled": "false",
+    "allowExternal": "false"
+  },
+  "usePassword": true,
+  "master": {
+    "port": 6379,
+    "args": [],
+    "extraFlags": [],
+    "disableCommands": "FLUSHDB, FLUSHALL",
+    "podLabels": {"billingType": "hourly"},
+    "podAnnotations": {},
+    "service": {
+      "type": "LoadBalancer",
+      "annotations": {}
+    },
+    "persistence": {
+      "enabled": true,
+      "storageClass": "ibmc-file-silver",
+      "accessModes": [
+        "ReadWriteOnce"
+      ],
+      "path": "/bitnami/redis",
+      "size": "20Gi"
+    },
+	"resources": {
+      "requests": {
+        "cpu": "100m",
+        "memory": "256Mi"
+      },
+      "limits": {
+        "cpu": "200m",
+        "memory": "400Mi"
+      }
+    },
+    "securityContext": {
+      "enabled": true,
+      "fsGroup": "1001",
+      "runAsUser": "0"
+    }  
+  },
+  "slave": {
+    "service": {
+      "type": "LoadBalancer",
+      "annotations": {}
+    },
+	"resources": {
+      "requests": {
+        "cpu": "100m",
+        "memory": "256Mi"
+      },
+      "limits": {
+        "cpu": "200m",
+        "memory": "400Mi"
+      }
+    },    
+    "affinity": {}
+  }
+}
