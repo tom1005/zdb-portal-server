@@ -1,0 +1,505 @@
+package com.zdb.mariadb;
+
+import java.sql.Statement;
+import java.util.List;
+import java.util.Map;
+
+import javax.inject.Inject;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.zdb.core.domain.ServiceOverview;
+import com.zdb.core.domain.ZDBMariaDBAccount;
+import com.zdb.core.domain.ZDBType;
+import com.zdb.core.repository.ZDBMariaDBAccountRepository;
+import com.zdb.core.util.K8SUtil;
+
+import io.fabric8.kubernetes.api.model.Container;
+import io.fabric8.kubernetes.api.model.EnvVar;
+import io.fabric8.kubernetes.api.model.Secret;
+import io.fabric8.kubernetes.api.model.extensions.Deployment;
+import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
+import lombok.Getter;
+
+/**
+ * 
+ * A class to control mariadb variables
+ * 
+ * @author nojinho@bluedigm.com
+ *
+ */
+
+public class MariaDBAccount {
+	private static final Logger logger = LoggerFactory.getLogger(MariaDBAccount.class);
+
+	@Inject
+	protected ZDBMariaDBAccountRepository accountRepository;
+
+	@Getter
+	private String id;
+	@Getter
+	private String password;
+	@Getter
+	private ZDBMariaDBAccount account;
+
+	public MariaDBAccount(final String releaseName, final String id) {
+		this.id = id;
+
+		this.account = accountRepository.findByReleaseNameAndUserId(releaseName, id);
+		if (this.account != null) {
+			this.password = this.account.getUserPassword();
+		}
+	}
+
+	public MariaDBAccount(final String id, final String password, final ZDBMariaDBAccount account) {
+		this.id = id;
+		this.password = password;
+		this.account = account;
+	}
+
+	public MariaDBAccount(final ZDBMariaDBAccount account) {
+		this.id = account.getUserId();
+		this.password = account.getUserPassword();
+		this.account = account;
+	}
+
+	/**
+	 * create new MariaDB account
+	 * 
+	 * @param id
+	 * @param password
+	 * @param accessIp
+	 * @param create
+	 * @param read
+	 * @param update
+	 * @param delete
+	 * @param grant
+	 * 
+	 * @return ZDBMariaDBAccount
+	 */
+	public ZDBMariaDBAccount addAccount(final String id, final String password, final String accessIp, final boolean create, final boolean read, final boolean update, final boolean delete, final boolean grant) {
+		ZDBMariaDBAccount account = new ZDBMariaDBAccount();
+
+		// TODO: set all fields.
+
+		return account;
+	}
+
+	/**
+	 * Update a MariaDB account
+	 * 
+	 * @param id
+	 * @param password
+	 * @param accessIp
+	 * @param create
+	 * @param read
+	 * @param update
+	 * @param delete
+	 * @param grant
+	 * 
+	 * @return ZDBMariaDBAccount
+	 */
+	public ZDBMariaDBAccount updateAccount(final String id, final String password, final String accessIp, final boolean create, final boolean read, final boolean update, final boolean delete, final boolean grant) {
+		ZDBMariaDBAccount account = new ZDBMariaDBAccount();
+
+		account.setAccessIp(accessIp);
+		account.setUserPassword(password);
+		account.setCreate(create);
+		account.setRead(read);
+		account.setUpdate(update);
+		account.setDelete(delete);
+		account.setGrant(grant);
+
+		accountRepository.save(account);
+
+		return account;
+	}
+	
+	public static void main(String[] a) {
+		//maria-test079-mariadb-master
+		
+		ZDBMariaDBAccount acc = new ZDBMariaDBAccount();
+		acc.setAccessIp("%");
+		acc.setCreate(true);
+		acc.setDelete(true);
+		acc.setUpdate(true);
+		acc.setRead(true);
+		acc.setUserId("zdbadmin2");
+		acc.setGrant(true);
+		
+		ZDBMariaDBAccount bacc = new ZDBMariaDBAccount();
+		bacc.setAccessIp("%");
+		bacc.setCreate(true);
+		bacc.setDelete(true);
+		bacc.setUpdate(true);
+		bacc.setRead(true);
+		bacc.setUserId("zdbadmin2");
+		bacc.setGrant(true);
+		;
+		updateAccount(null, "zdb-maria","maria-test007", bacc, acc);
+	}
+
+	/**
+	 * Update a MariaDB account
+	 * 
+	 * @param id
+	 * @param password
+	 * @param accessIp
+	 * @param create
+	 * @param read
+	 * @param update
+	 * @param delete
+	 * @param grant
+	 * 
+	 * @return ZDBMariaDBAccount
+	 */
+	public static ZDBMariaDBAccount updateAccount(final ZDBMariaDBAccountRepository repo, final String namespace, 
+			final String releaseName, final ZDBMariaDBAccount accountBefore, final ZDBMariaDBAccount account) {
+		MariaDBConnection connection = null;
+
+		try {
+			String database = getMariaDBDatabase(namespace, releaseName);
+			connection = MariaDBConnection.getRootMariaDBConnection(namespace, releaseName);
+			Statement statement = connection.getStatement();
+
+			if (!accountBefore.equalsPrivileges(account)) {
+				updateMariaDBPrivileges(statement, database, namespace, releaseName, account);
+			}
+
+			if (!accountBefore.getUserPassword().equals(account.getUserPassword())) {
+				updateMariaDBPassword(statement, account);
+			}
+
+			account.setId(accountBefore.getId());
+			repo.save(account);
+		} catch (Exception e) {
+			logger.error("Exception.", e);
+		} finally {
+			if (connection != null) {
+				connection.close();
+			}
+		}
+
+		return account;
+	}
+	
+	public static ZDBMariaDBAccount updateAdminPassword(final ZDBMariaDBAccountRepository repo, final String namespace, final String releaseName, final String pwd) {
+		MariaDBConnection connection = null;
+		ZDBMariaDBAccount account = null;
+		try {
+			String userId = "admin";
+			connection = MariaDBConnection.getRootMariaDBConnection(namespace, releaseName);
+			Statement statement = connection.getStatement();
+
+			account = repo.findByReleaseNameAndUserId(releaseName, userId);
+			if(account == null) {
+				account = new ZDBMariaDBAccount();
+			}
+			account.setAccessIp("%");
+			account.setUserId(userId);
+			account.setUserPassword(pwd);
+			
+			updateMariaDBPassword(statement, account);
+
+			repo.save(account);
+		} catch (Exception e) {
+			logger.error("Exception.", e);
+		} finally {
+			if (connection != null) {
+				connection.close();
+			}
+		}
+
+		return account;
+	}
+
+	private static void updateMariaDBPassword(final Statement statement, final ZDBMariaDBAccount account) {
+		try {
+			String query = " SET PASSWORD FOR '" + account.getUserId() + "'@'" + account.getAccessIp() + "' = PASSWORD('" + account.getUserPassword() + "')";
+			logger.debug("query: {}", query);
+
+			statement.executeUpdate(query);
+		} catch (Exception e) {
+			logger.error("Exception.", e);
+		} finally {
+		}
+	}
+
+	private static void revokeMariaDBAllPrivileges(final Statement statement, final String database, final ZDBMariaDBAccount account) {
+		try {
+			String privilegeTypes = buildPrivilegeType(account);
+			if (privilegeTypes.isEmpty()) {
+				throw new Exception("invalid mariadb privileges.");
+			}
+
+			logger.debug("privilegeTypes: {}", privilegeTypes);
+			String query = "REVOKE ALL PRIVILEGES ON `" + database + "`.* FROM '" + account.getUserId() + "'@'" + account.getAccessIp() + "'";
+			logger.debug("query: {}", query);
+
+			statement.executeUpdate(query);
+		} catch (Exception e) {
+			logger.error("Exception.", e);
+		} finally {
+		}
+	}
+
+	private static void grantMariaDBPrivileges(final Statement statement, final String database, final ZDBMariaDBAccount account) {
+		try {
+			String privilegeTypes = buildPrivilegeType(account);
+			if (privilegeTypes.isEmpty()) {
+				throw new Exception("invalid mariadb privileges.");
+			}
+
+			logger.debug("privilegeTypes: {}", privilegeTypes);
+			String query = "GRANT " + privilegeTypes + " ON `" + database + "`.* TO '" + account.getUserId() + "'@'" + account.getAccessIp() + "'";
+			logger.debug("query: {}", query);
+
+			statement.executeUpdate(query);
+		} catch (Exception e) {
+			logger.error("Exception.", e);
+		} finally {
+		}
+	}
+
+	private static ZDBMariaDBAccount updateMariaDBPrivileges(final Statement statement, final String database, final String namespace, final String releaseName, final ZDBMariaDBAccount account) {
+		revokeMariaDBAllPrivileges(statement, database, account);
+		grantMariaDBPrivileges(statement, database, account);
+
+		return account;
+	}
+
+	/**
+	 * delete an account
+	 * 
+	 * @param id
+	 */
+	public void deleteAccount(final String id) {
+		accountRepository.delete(id);
+	}
+
+	public static void deleteAccounts(final ZDBMariaDBAccountRepository repo, final String namespace, final String serviceName) {
+		logger.debug("delete accounts. releaseName: {}", serviceName);
+		repo.deleteByReleaseName(serviceName);
+	}
+
+	public ZDBMariaDBAccount getAccount(final String id) {
+		return accountRepository.getOne(id);
+	}
+
+	private static String getSecret(final String namespace, final String releaseName, final String key) {
+		Secret secret = null;
+		try {
+			secret = K8SUtil.getSecret(namespace, releaseName);
+			if (secret != null) {
+				Map<String, String> data = secret.getData();
+
+				if (!data.isEmpty()) {
+					if (logger.isDebugEnabled()) {
+						logger.debug("secret: {}", data.get(key));
+					}
+
+					return data.get(key);
+				}
+			}
+		} catch (Exception e) {
+			logger.error("Exception.", e);
+			return null;
+		}
+
+		return null;
+	}
+
+	private static String getAdminPassword(final String namespace, final String releaseName) {
+		return getSecret(namespace, releaseName, "mariadb-password");
+	}
+
+	public static String getRootPassword(final String namespace, final String releaseName) {
+		return getSecret(namespace, releaseName, "mariadb-root-password");
+	}
+
+	private static String getAdminId(final String namespace, final String deploymentName) throws Exception {
+		return getMariaDBEnv(namespace, deploymentName, "MARIADB_USER");
+	}
+
+	public static MariaDBAccount getAdminAccount(final String namespace, final String releaseName) throws Exception {
+		MariaDBAccount account = null;
+		String adminId = getAdminId(namespace, releaseName);
+		String adminPassword = getAdminPassword(namespace, releaseName);
+
+		if (logger.isDebugEnabled()) {
+			logger.debug("adminId: {}", adminId);
+			logger.debug("adminPassword: {}", adminPassword);
+		}
+
+		if (adminId != null && adminPassword != null) {
+			account = new MariaDBAccount(adminId, adminPassword);
+		}
+
+		return account;
+	}
+
+	public ZDBMariaDBAccount save() {
+		return this.accountRepository.save(this.account);
+	}
+
+	/**
+	 * @param namespace
+	 * @param deploymentName
+	 * @param envKey
+	 * @return
+	 */
+	private static String getMariaDBEnv(final String namespace, final String releaseName, final String envKey) throws Exception {
+//		ServiceOverview serviceOverview = K8SUtil.getServiceWithName(namespace, ZDBType.MariaDB.name(), releaseName);
+		List<StatefulSet> statefulSets = K8SUtil.getStatefulSets(namespace, releaseName);
+		for(StatefulSet sfs : statefulSets) {
+			String component = sfs.getMetadata().getLabels().get("component");
+			String app = sfs.getMetadata().getLabels().get("app");
+			
+			if(ZDBType.MariaDB.name().equalsIgnoreCase(app) && "master".equals(component)) {
+				List<Container> containers = sfs.getSpec().getTemplate().getSpec().getContainers();
+
+				for (Container container : containers) {
+					if (container.getName().equals("mariadb")) {
+						List<EnvVar> envs = container.getEnv();
+						for (EnvVar env : envs) {
+							if (env.getName().equals(envKey)) {
+								return env.getValue();
+							}
+						}
+					}
+				}
+			}
+		}
+
+		return null;
+	}
+
+	public static String getMariaDBDatabase(String namespace, String releaseName) throws Exception {
+		return getMariaDBEnv(namespace, releaseName, "MARIADB_DATABASE");
+	}
+
+	private static String buildPrivilegeType(final ZDBMariaDBAccount account) {
+		StringBuilder sb = new StringBuilder();
+
+		if (account.isCreate()) {
+			sb.append("INSERT");
+		}
+
+		if (account.isRead()) {
+			if (sb.length() > 0) {
+				sb.append(", ");
+			}
+
+			sb.append("SELECT");
+		}
+
+		if (account.isUpdate()) {
+			if (sb.length() > 0) {
+				sb.append(", ");
+			}
+
+			sb.append("UPDATE");
+		}
+
+		if (account.isDelete()) {
+			if (sb.length() > 0) {
+				sb.append(", ");
+			}
+
+			sb.append("DELETE");
+		}
+
+		return sb.toString();
+	}
+
+	/**
+	 * @param repo
+	 * @param namespace
+	 * @param releaseName
+	 * @param account
+	 * @return
+	 */
+	public static ZDBMariaDBAccount createAccount(final ZDBMariaDBAccountRepository repo, final String namespace, final String releaseName, final ZDBMariaDBAccount account) throws Exception {
+		MariaDBConnection connection = null;
+		String database = getMariaDBDatabase(namespace, releaseName);
+		ZDBMariaDBAccount existAccount = repo.findByReleaseNameAndUserId(releaseName, account.getUserId());
+		
+		if(existAccount != null) {
+			account.setId(existAccount.getId());
+		}
+		repo.save(account);
+
+		try {
+			connection = MariaDBConnection.getRootMariaDBConnection(namespace, releaseName, database);
+			if( connection != null) {
+				Statement statement = connection.getStatement();
+	
+				String privilegeTypes = buildPrivilegeType(account);
+				if (privilegeTypes.isEmpty()) {
+					throw new Exception("invalid mariadb privileges.");
+				}
+	
+				logger.debug("privilegeTypes: {}", privilegeTypes);
+				String query = "GRANT " + privilegeTypes + " ON `" + database + "`.* TO '" + account.getUserId() + "'@'" + account.getAccessIp() + "' IDENTIFIED BY '" + account.getUserPassword() + "'";
+				logger.debug("query: {}", query);
+	
+				statement.executeUpdate(query);
+			} else {
+				throw new Exception("cannot create connection.");
+			}
+		} catch (Exception e) {
+			logger.error("Exception.", e);
+		} finally {
+			if (connection != null) {
+				connection.close();
+			}
+		}
+
+		return account;
+	}
+
+	public static ZDBMariaDBAccount createAdminAccount(final ZDBMariaDBAccountRepository repo, final String namespace, final String releaseName, final String id, final String password) {
+		ZDBMariaDBAccount account = new ZDBMariaDBAccount(null, releaseName, id, password, "%", true, true, true, true, true);
+		repo.save(account);
+
+		return account;
+	}
+
+	public static ZDBMariaDBAccount getAccount(final ZDBMariaDBAccountRepository repo, final String namespace, final String releaseName, final String id) {
+		ZDBMariaDBAccount account = repo.findByReleaseNameAndUserId(releaseName, id);
+		return account;
+	}
+
+	public static List<ZDBMariaDBAccount> getAccounts(final ZDBMariaDBAccountRepository repo, final String namespace, final String releaseName) {
+		List<ZDBMariaDBAccount> accounts = repo.findAllByReleaseName(releaseName);
+		return accounts;
+	}
+
+	public static void deleteAccount(final ZDBMariaDBAccountRepository repo, final String namespace, final String releaseName, final String id) throws Exception {
+		MariaDBConnection connection = null;
+		ZDBMariaDBAccount account = repo.findByReleaseNameAndUserId(releaseName, id);
+
+		if(account != null) {
+			try {
+				connection = MariaDBConnection.getRootMariaDBConnection(namespace, releaseName);
+				Statement statement = connection.getStatement();
+				
+				String query = "DROP USER IF EXISTS'" + id + "'@'" + account.getAccessIp() + "'";
+				logger.debug("query: {}", query);
+				
+				statement.executeUpdate(query);
+			} catch (Exception e) {
+				logger.error("Exception.", e);
+				throw e;
+			} finally {
+				if (connection != null) {
+					connection.close();
+				}
+			}
+			repo.deleteByReleaseNameAndUserId(releaseName, id);
+		} else {
+			throw new Exception("등록되지 않은 사용자 입니다. [" +id+"]");
+		}
+	}
+}

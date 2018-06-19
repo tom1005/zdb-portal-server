@@ -1,0 +1,121 @@
+info:
+  app:
+    name: zdb.rest.api
+    version: 1.0.0-SNAPSHOT
+    description: zdb rest api
+
+spring:
+  profiles:
+    active: local
+
+#  datasource:
+#    url: jdbc:h2:mem:example-app;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+#    platform: h2
+#    username: sa
+#    password:
+#    driverClassName: org.h2.Driver
+#  jpa:
+#    database-platform: org.hibernate.dialect.H2Dialect
+#    hibernate:
+#      ddl-auto: update
+#    properties:
+#      hibernate:
+#        show_sql: false
+#        use_sql_comments: true
+#        format_sql: true
+
+
+
+
+###
+#   H2 Settings
+###
+#  h2:
+#    console:
+#      enabled: true
+#      path: /console
+#      settings:
+#        trace: false
+#        web-allow-others: false                 
+
+#spring.jpa.properties.hibernate.generate_statistics=true
+#logging.level.org.hibernate.stat=debug
+## Show all queries
+#spring.jpa.show-sql=true
+#spring.jpa.properties.hibernate.format_sql=true
+#logging.level.org.hibernate.type=trace
+#spring.h2.console.enabled=true
+
+management:
+ security:
+  enabled: false
+
+---
+spring:
+  profiles:
+    active: local
+  pid:
+    file: '${user.home}/zdb.rest.api.pid'
+  datasource:
+    url: jdbc:mariadb://169.56.71.109:3306/zdb
+#    url: jdbc:mariadb://169.56.76.142:3306/zdb
+    platform: h2
+    username: zdb
+    password: 24cmdshvek!
+    driverClassName: org.mariadb.jdbc.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        show_sql: false
+        use_sql_comments: true
+        format_sql: true
+logging:
+  config: classpath:logback-local.xml
+k8s:
+  region: seo01
+  cluster: zdb-dev
+  privatelb: 10.178.191.134
+  publiclb: 169.56.70.222
+  masterUrl: "https://169.56.69.242:30134"    
+  daemonUrl: "http://localhost:8090" 
+  
+chart:
+  mariadb:
+    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/mariadb/charts/mariadb-4.2.0.tgz"
+  redis:
+    url: "http://169.56.71.107/redis-3.3.2.tgz"
+---
+spring.profiles: prod  
+logging:
+  config: classpath:logback-prod.xml
+  datasource:
+    url: jdbc:mariadb://172.21.216.17:3306/zdb
+    platform: h2
+    username: zdb
+    password: zdbadmin
+    driverClassName: org.mariadb.jdbc.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        show_sql: false
+        use_sql_comments: true
+        format_sql: true  
+k8s:
+  region: seo01
+  cluster: zdb-dev
+  privatelb: 10.178.191.134
+  publiclb: 169.56.70.222
+  masterUrl: ${MASTER_URL}
+  daemonUrl: ${DAEMON_URL}
+  
+chart:
+  mariadb:
+    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/mariadb/charts/mariadb-4.2.0.tgz"
+  redis:
+    url: "http://169.56.71.107/redis-3.3.2.tgz"

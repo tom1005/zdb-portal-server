@@ -1,0 +1,15 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  generation: 1
+  name: zdb-api-ingress
+  namespace: zdb
+spec:
+  rules:
+  - host: api.zdb-dev.jp-tok.containers.mybluemix.net
+    http:
+      paths:
+      - backend:
+          serviceName: zdb-api-loadbalancer
+          servicePort: 8080
+        path: /

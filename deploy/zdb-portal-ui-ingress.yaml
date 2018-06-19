@@ -1,0 +1,27 @@
+{
+  "kind": "Ingress",
+  "apiVersion": "extensions/v1beta1",
+  "metadata": {
+    "name": "zdb-portal-ui-ingress",
+    "namespace": "zdb-system"
+
+  },
+  "spec": {
+    "rules": [
+      {
+        "host": "console.zdb-dev.jp-tok.containers.mybluemix.net",
+        "http": {
+          "paths": [
+            {
+              "path": "/",
+              "backend": {
+                "serviceName": "zdb-portal-ui-loadbalancer",
+                "servicePort": 8080
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

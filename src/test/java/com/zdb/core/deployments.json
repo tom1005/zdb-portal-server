@@ -1,0 +1,513 @@
+{
+  "code": 0,
+  "txId": "",
+  "timestamp": 1525913318673,
+  "result": {
+    "deployments": [
+      {
+        "apiVersion": "extensions/v1beta1",
+        "kind": "Deployment",
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "1"
+          },
+          "creationTimestamp": "2018-05-09T13:47:06Z",
+          "finalizers": [],
+          "generation": 1,
+          "labels": {
+            "app": "mariadb-test-mariadb",
+            "chart": "mariadb-2.1.6",
+            "heritage": "Tiller",
+            "release": "mariadb-test"
+          },
+          "name": "mariadb-test-mariadb",
+          "namespace": "zdb-maria",
+          "ownerReferences": [],
+          "resourceVersion": "609482",
+          "selfLink": "/apis/extensions/v1beta1/namespaces/zdb-maria/deployments/mariadb-test-mariadb",
+          "uid": "76329877-538f-11e8-8690-daf654bc1ef2",
+          "additionalProperties": {}
+        },
+        "spec": {
+          "replicas": 1,
+          "selector": {
+            "matchExpressions": [],
+            "matchLabels": {
+              "app": "mariadb-test-mariadb",
+              "release": "mariadb-test"
+            },
+            "additionalProperties": {}
+          },
+          "strategy": {
+            "rollingUpdate": {
+              "maxSurge": {
+                "IntVal": 1,
+                "additionalProperties": {}
+              },
+              "maxUnavailable": {
+                "IntVal": 1,
+                "additionalProperties": {}
+              },
+              "additionalProperties": {}
+            },
+            "type": "RollingUpdate",
+            "additionalProperties": {}
+          },
+          "template": {
+            "metadata": {
+              "finalizers": [],
+              "labels": {
+                "app": "mariadb-test-mariadb",
+                "release": "mariadb-test"
+              },
+              "ownerReferences": [],
+              "additionalProperties": {}
+            },
+            "spec": {
+              "containers": [
+                {
+                  "args": [],
+                  "command": [],
+                  "env": [
+                    {
+                      "name": "MARIADB_ROOT_PASSWORD",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "key": "mariadb-root-password",
+                          "name": "mariadb-test-mariadb",
+                          "additionalProperties": {}
+                        },
+                        "additionalProperties": {}
+                      },
+                      "additionalProperties": {}
+                    },
+                    {
+                      "name": "MARIADB_PASSWORD",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "key": "mariadb-password",
+                          "name": "mariadb-test-mariadb",
+                          "additionalProperties": {}
+                        },
+                        "additionalProperties": {}
+                      },
+                      "additionalProperties": {}
+                    },
+                    {
+                      "name": "MARIADB_USER",
+                      "value": "zdbadmin",
+                      "additionalProperties": {}
+                    },
+                    {
+                      "name": "MARIADB_DATABASE",
+                      "value": "zdb-gdi",
+                      "additionalProperties": {}
+                    }
+                  ],
+                  "envFrom": [],
+                  "image": "bitnami/mariadb:10.1.31-r2",
+                  "imagePullPolicy": "IfNotPresent",
+                  "livenessProbe": {
+                    "exec": {
+                      "command": [
+                        "mysqladmin",
+                        "ping"
+                      ],
+                      "additionalProperties": {}
+                    },
+                    "failureThreshold": 3,
+                    "initialDelaySeconds": 30,
+                    "periodSeconds": 10,
+                    "successThreshold": 1,
+                    "timeoutSeconds": 5,
+                    "additionalProperties": {}
+                  },
+                  "name": "mariadb",
+                  "ports": [
+                    {
+                      "containerPort": 3306,
+                      "name": "mysql",
+                      "protocol": "TCP",
+                      "additionalProperties": {}
+                    }
+                  ],
+                  "readinessProbe": {
+                    "exec": {
+                      "command": [
+                        "mysqladmin",
+                        "ping"
+                      ],
+                      "additionalProperties": {}
+                    },
+                    "failureThreshold": 3,
+                    "initialDelaySeconds": 5,
+                    "periodSeconds": 10,
+                    "successThreshold": 1,
+                    "timeoutSeconds": 1,
+                    "additionalProperties": {}
+                  },
+                  "resources": {
+                    "requests": {
+                      "cpu": {
+                        "amount": "200m",
+                        "additionalProperties": {}
+                      },
+                      "memory": {
+                        "amount": "512Mi",
+                        "additionalProperties": {}
+                      }
+                    },
+                    "additionalProperties": {}
+                  },
+                  "terminationMessagePath": "/dev/termination-log",
+                  "terminationMessagePolicy": "File",
+                  "volumeMounts": [
+                    {
+                      "mountPath": "/bitnami/mariadb",
+                      "name": "data",
+                      "additionalProperties": {}
+                    }
+                  ],
+                  "additionalProperties": {}
+                }
+              ],
+              "dnsPolicy": "ClusterFirst",
+              "hostAliases": [],
+              "imagePullSecrets": [],
+              "initContainers": [
+                {
+                  "args": [],
+                  "command": [
+                    "sh",
+                    "-c",
+                    "mkdir -p /bitnami/mariadb/conf \u0026\u0026 cp /bitnami/mariadb_config/my.cnf /bitnami/mariadb/conf/my_custom.cnf \u0026\u0026 chown 1001:1001 -R /bitnami/mariadb"
+                  ],
+                  "env": [],
+                  "envFrom": [],
+                  "image": "busybox",
+                  "imagePullPolicy": "IfNotPresent",
+                  "name": "copy-custom-config",
+                  "ports": [],
+                  "resources": {
+                    "additionalProperties": {}
+                  },
+                  "terminationMessagePath": "/dev/termination-log",
+                  "terminationMessagePolicy": "File",
+                  "volumeMounts": [
+                    {
+                      "mountPath": "/bitnami/mariadb_config",
+                      "name": "config",
+                      "additionalProperties": {}
+                    },
+                    {
+                      "mountPath": "/bitnami/mariadb",
+                      "name": "data",
+                      "additionalProperties": {}
+                    }
+                  ],
+                  "additionalProperties": {}
+                }
+              ],
+              "restartPolicy": "Always",
+              "schedulerName": "default-scheduler",
+              "securityContext": {
+                "supplementalGroups": [],
+                "additionalProperties": {}
+              },
+              "terminationGracePeriodSeconds": 30,
+              "tolerations": [],
+              "volumes": [
+                {
+                  "configMap": {
+                    "defaultMode": 420,
+                    "items": [],
+                    "name": "mariadb-test-mariadb",
+                    "additionalProperties": {}
+                  },
+                  "name": "config",
+                  "additionalProperties": {}
+                },
+                {
+                  "name": "data",
+                  "persistentVolumeClaim": {
+                    "claimName": "mariadb-test-data-pvc",
+                    "additionalProperties": {}
+                  },
+                  "additionalProperties": {}
+                }
+              ],
+              "additionalProperties": {}
+            },
+            "additionalProperties": {}
+          },
+          "additionalProperties": {}
+        },
+        "status": {
+          "availableReplicas": 1,
+          "conditions": [
+            {
+              "lastTransitionTime": "2018-05-09T13:47:06Z",
+              "lastUpdateTime": "2018-05-09T13:47:06Z",
+              "message": "Deployment has minimum availability.",
+              "reason": "MinimumReplicasAvailable",
+              "status": "True",
+              "type": "Available",
+              "additionalProperties": {}
+            }
+          ],
+          "observedGeneration": 1,
+          "readyReplicas": 1,
+          "replicas": 1,
+          "updatedReplicas": 1,
+          "additionalProperties": {}
+        },
+        "additionalProperties": {}
+      },
+      {
+        "apiVersion": "extensions/v1beta1",
+        "kind": "Deployment",
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "2"
+          },
+          "creationTimestamp": "2018-05-09T06:51:00Z",
+          "finalizers": [],
+          "generation": 2,
+          "labels": {
+            "app": "mariadb444-test-mariadb",
+            "chart": "mariadb-2.1.6",
+            "heritage": "Tiller",
+            "release": "mariadb444-test"
+          },
+          "name": "mariadb444-test-mariadb",
+          "namespace": "zdb-maria",
+          "ownerReferences": [],
+          "resourceVersion": "602742",
+          "selfLink": "/apis/extensions/v1beta1/namespaces/zdb-maria/deployments/mariadb444-test-mariadb",
+          "uid": "559cde9e-5355-11e8-8690-daf654bc1ef2",
+          "additionalProperties": {}
+        },
+        "spec": {
+          "replicas": 1,
+          "selector": {
+            "matchExpressions": [],
+            "matchLabels": {
+              "app": "mariadb444-test-mariadb",
+              "release": "mariadb444-test"
+            },
+            "additionalProperties": {}
+          },
+          "strategy": {
+            "rollingUpdate": {
+              "maxSurge": {
+                "IntVal": 1,
+                "additionalProperties": {}
+              },
+              "maxUnavailable": {
+                "IntVal": 1,
+                "additionalProperties": {}
+              },
+              "additionalProperties": {}
+            },
+            "type": "RollingUpdate",
+            "additionalProperties": {}
+          },
+          "template": {
+            "metadata": {
+              "finalizers": [],
+              "labels": {
+                "app": "mariadb444-test-mariadb",
+                "release": "mariadb444-test"
+              },
+              "ownerReferences": [],
+              "additionalProperties": {}
+            },
+            "spec": {
+              "containers": [
+                {
+                  "args": [],
+                  "command": [],
+                  "env": [
+                    {
+                      "name": "MARIADB_ROOT_PASSWORD",
+                      "valueFrom": {
+                        "secretKeyRef": {
+                          "key": "mariadb-root-password",
+                          "name": "mariadb444-test-mariadb",
+                          "additionalProperties": {}
+                        },
+                        "additionalProperties": {}
+                      },
+                      "additionalProperties": {}
+                    },
+                    {
+                      "name": "MARIADB_USER",
+                      "additionalProperties": {}
+                    },
+                    {
+                      "name": "MARIADB_DATABASE",
+                      "additionalProperties": {}
+                    }
+                  ],
+                  "envFrom": [],
+                  "image": "bitnami/mariadb:10.1.31-r2",
+                  "imagePullPolicy": "IfNotPresent",
+                  "livenessProbe": {
+                    "exec": {
+                      "command": [
+                        "mysqladmin",
+                        "ping"
+                      ],
+                      "additionalProperties": {}
+                    },
+                    "failureThreshold": 3,
+                    "initialDelaySeconds": 30,
+                    "periodSeconds": 10,
+                    "successThreshold": 1,
+                    "timeoutSeconds": 5,
+                    "additionalProperties": {}
+                  },
+                  "name": "mariadb",
+                  "ports": [
+                    {
+                      "containerPort": 3306,
+                      "name": "mysql",
+                      "protocol": "TCP",
+                      "additionalProperties": {}
+                    }
+                  ],
+                  "readinessProbe": {
+                    "exec": {
+                      "command": [
+                        "mysqladmin",
+                        "ping"
+                      ],
+                      "additionalProperties": {}
+                    },
+                    "failureThreshold": 3,
+                    "initialDelaySeconds": 5,
+                    "periodSeconds": 10,
+                    "successThreshold": 1,
+                    "timeoutSeconds": 1,
+                    "additionalProperties": {}
+                  },
+                  "resources": {
+                    "requests": {
+                      "cpu": {
+                        "amount": "200m",
+                        "additionalProperties": {}
+                      },
+                      "memory": {
+                        "amount": "256Mi",
+                        "additionalProperties": {}
+                      }
+                    },
+                    "additionalProperties": {}
+                  },
+                  "terminationMessagePath": "/dev/termination-log",
+                  "terminationMessagePolicy": "File",
+                  "volumeMounts": [
+                    {
+                      "mountPath": "/bitnami/mariadb",
+                      "name": "data",
+                      "additionalProperties": {}
+                    }
+                  ],
+                  "additionalProperties": {}
+                }
+              ],
+              "dnsPolicy": "ClusterFirst",
+              "hostAliases": [],
+              "imagePullSecrets": [],
+              "initContainers": [
+                {
+                  "args": [],
+                  "command": [
+                    "sh",
+                    "-c",
+                    "mkdir -p /bitnami/mariadb/conf \u0026\u0026 cp /bitnami/mariadb_config/my.cnf /bitnami/mariadb/conf/my_custom.cnf \u0026\u0026 chown 1001:1001 -R /bitnami/mariadb"
+                  ],
+                  "env": [],
+                  "envFrom": [],
+                  "image": "busybox",
+                  "imagePullPolicy": "IfNotPresent",
+                  "name": "copy-custom-config",
+                  "ports": [],
+                  "resources": {
+                    "additionalProperties": {}
+                  },
+                  "terminationMessagePath": "/dev/termination-log",
+                  "terminationMessagePolicy": "File",
+                  "volumeMounts": [
+                    {
+                      "mountPath": "/bitnami/mariadb_config",
+                      "name": "config",
+                      "additionalProperties": {}
+                    },
+                    {
+                      "mountPath": "/bitnami/mariadb",
+                      "name": "data",
+                      "additionalProperties": {}
+                    }
+                  ],
+                  "additionalProperties": {}
+                }
+              ],
+              "restartPolicy": "Always",
+              "schedulerName": "default-scheduler",
+              "securityContext": {
+                "supplementalGroups": [],
+                "additionalProperties": {}
+              },
+              "terminationGracePeriodSeconds": 30,
+              "tolerations": [],
+              "volumes": [
+                {
+                  "configMap": {
+                    "defaultMode": 420,
+                    "items": [],
+                    "name": "mariadb444-test-mariadb",
+                    "additionalProperties": {}
+                  },
+                  "name": "config",
+                  "additionalProperties": {}
+                },
+                {
+                  "name": "data",
+                  "persistentVolumeClaim": {
+                    "claimName": "mariadb444-test-data-pvc",
+                    "additionalProperties": {}
+                  },
+                  "additionalProperties": {}
+                }
+              ],
+              "additionalProperties": {}
+            },
+            "additionalProperties": {}
+          },
+          "additionalProperties": {}
+        },
+        "status": {
+          "availableReplicas": 1,
+          "conditions": [
+            {
+              "lastTransitionTime": "2018-05-09T06:51:00Z",
+              "lastUpdateTime": "2018-05-09T06:51:00Z",
+              "message": "Deployment has minimum availability.",
+              "reason": "MinimumReplicasAvailable",
+              "status": "True",
+              "type": "Available",
+              "additionalProperties": {}
+            }
+          ],
+          "observedGeneration": 2,
+          "readyReplicas": 1,
+          "replicas": 1,
+          "updatedReplicas": 1,
+          "additionalProperties": {}
+        },
+        "additionalProperties": {}
+      }
+    ]
+  }
+}

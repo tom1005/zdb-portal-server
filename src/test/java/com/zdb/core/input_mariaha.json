@@ -1,0 +1,46 @@
+{
+  "rootUser": {
+    "password": ""
+  },
+  "db": {
+    "user": "zdbadmin",
+    "password": "zdbadmin#$",
+    "name": "account"
+  },
+  "master": {
+    "persistence": {
+      "enabled": true,
+      "storageClass": "ibmc-file-silver",
+      "accessModes": [
+        "ReadWriteOnce"
+      ],
+      "size": "8Gi"
+    },
+	"resources": {
+      "requests": {
+        "cpu": "100m",
+        "memory": "256Mi"
+      }
+    }
+  },
+  "slave": {
+    "replicas": 1,
+    "persistence": {
+      "enabled": true,
+      "storageClass": "ibmc-file-silver",
+      "accessModes": [
+        "ReadWriteOnce"
+      ],
+      "size": "10Gi"
+    },
+	"resources": {
+      "requests": {
+        "cpu": "100m",
+        "memory": "256Mi"
+      }
+    }
+  },
+  "metrics": {
+    "enabled": true
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "image": {
+    "tag": "${redis.version}"
+  },
+  "cluster": {
+    "enabled": true,
+    "slaveCount": "${slave.replicas}"
+  },
+  "metrics": {
+    "enabled": "${metrics.enabled}",
+    "podLabels": "${metrics.podLabels}",
+    "podAnnotations": "${metrics.podAnnotations}"
+  },
+  "networkPolicy": {
+    "enabled": "${networkPolicy.enabled}",
+    "allowExternal": "${networkPolicy.allowExternal}"
+  },
+  "usePassword": true,
+  "master": {
+    "port": 6379,
+    "args": [],
+    "extraFlags": [],
+    "disableCommands": "${master.disableCommands}",
+    "podLabels": {"billingType": "hourly"},
+    "podAnnotations": {},
+    "service": {
+      "type": "LoadBalancer",
+      "annotations": "${master.service.annotations}"
+    },
+    "persistence": {
+      "enabled": true,
+      "storageClass": "${master.persistence.storageClass}",
+      "accessModes": [
+        "ReadWriteOnce"
+      ],
+      "path": "/bitnami/redis",
+      "size": "${master.persistence.size}"
+    },
+	"resources": {
+      "requests": {
+        "cpu": "${master.resources.requests.cpu}",
+        "memory": "${master.resources.requests.memory}"
+      },
+      "limits": {
+        "cpu": "${master.resources.limits.cpu}",
+        "memory": "${master.resources.limits.memory}"
+      }
+    },
+    "securityContext": {
+      "enabled": true,
+      "fsGroup": "1001",
+      "runAsUser": "0"
+    }  
+  },
+  "slave": {
+    "service": {
+      "type": "LoadBalancer",
+      "annotations": "${slave.service.annotations}"
+    },
+	"resources": {
+      "requests": {
+        "cpu": "${slave.resources.requests.cpu}",
+        "memory": "${slave.resources.requests.memory}"
+      },
+      "limits": {
+        "cpu": "${slave.resources.limits.cpu}",
+        "memory": "${slave.resources.limits.memory}"
+      }
+    },    
+    "affinity": {}
+  }
+}
