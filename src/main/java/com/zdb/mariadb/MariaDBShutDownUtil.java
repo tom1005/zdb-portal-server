@@ -134,7 +134,8 @@ public class MariaDBShutDownUtil {
 				Thread.sleep(2000);
 			}
 			
-			for (String name : podNameList) {
+			for (Pod pod : pods) {
+				String name = pod.getMetadata().getName();
 				PodResource<Pod, DoneablePod> podResource = client.inNamespace(namespace).pods().withName(name);
 				if (podResource != null) {
 					Log.info(name +" deleting.");

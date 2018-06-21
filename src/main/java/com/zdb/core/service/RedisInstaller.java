@@ -89,26 +89,6 @@ public class RedisInstaller implements ZDBInstaller {
 		ReleaseManager releaseManager = null; 
 		
 		try{ 
-			if(!K8SUtil.isNamespaceExist(service.getNamespace())) {
-				// namespace 생성
-				CountDownLatch closeLatch = new CountDownLatch(1);
-				ZDBEventWatcher<Namespace> watcher = new ZDBEventWatcher<Namespace>(
-						KubernetesOperations.CREATE_NAMESPACE_OPERATION, 
-						closeLatch, 
-						exchange);
-				
-				Watch namespaceWatch = K8SUtil.kubernetesClient().namespaces().watch(watcher);
-				
-				try {
-					K8SUtil.doCreateNamespace(service.getNamespace());
-					closeLatch.await(30, TimeUnit.SECONDS);
-				} catch (DuplicateException e) {
-					log.info(service.getNamespace()+ " 이미 사용중 입니다.");
-				} finally {
-					namespaceWatch.close();
-				}
-			}
-			
 			// chart 정보 로딩
 			final URI uri = URI.create(chartUrl);
 			final URL url = uri.toURL();
@@ -395,7 +375,8 @@ public class RedisInstaller implements ZDBInstaller {
 					releaseMeta.setManifest(release.getManifest());
 					releaseMeta.setPublicEnabled(isPublicEnabled);
 					releaseMeta.setPurpose(service.getPurpose());   // SESSION or DATA
-
+					releaseMeta.setUpdateTime(new Date(System.currentTimeMillis()));
+					
 					log.info(new Gson().toJson(releaseMeta));
 					
 					Gson gson = new GsonBuilder().setPrettyPrinting().create();
@@ -541,6 +522,7 @@ public class RedisInstaller implements ZDBInstaller {
 				releaseMeta.setDescription(release.getInfo().getDescription());
 				releaseMeta.setManifest(release.getManifest());
 				releaseMeta.setStatus("DELETED");
+				releaseMeta.setUpdateTime(new Date(System.currentTimeMillis()));
 
 				log.info(new Gson().toJson(releaseMeta));
 

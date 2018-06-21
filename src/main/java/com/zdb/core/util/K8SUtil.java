@@ -1038,25 +1038,74 @@ public class K8SUtil {
 	 * @return
 	 * @throws Exception
 	 */
-	public static String getPodLog(String namespace, String podName) throws Exception {
+	public static String[] getPodLog(String namespace, String podName) throws Exception {
 		DefaultKubernetesClient client;
-		String podLog = null;
-
+//		String podLog = null;
+		String[] lines = null;
+		
 		try {
 			client = kubernetesClient();
 
 			if (client != null) {
-				PrettyLoggable<String, LogWatch> tailingLines = client.pods().inNamespace(namespace).withName(podName).tailingLines(100);
-				podLog = tailingLines.getLog();
+				String app = client.pods().inNamespace(namespace).withName(podName).get().getMetadata().getLabels().get("app");
+				
+				PrettyLoggable<String, LogWatch> tailingLines = null;
+				//Loggable<String, LogWatch> tailingLines = null;
+				
+				if ("redis".equals(app)) {
+					tailingLines = client.pods().inNamespace(namespace).withName(podName).tailingLines(1000);
+				} else if ("mariadb".equals(app)) {
+					tailingLines = client.pods().inNamespace(namespace).withName(podName).inContainer("mariadb").tailingLines(1000);
+				}
+				
+				lines = tailingLines.getLog().split("\n");				
+ 
+//				podLog = unescape(podLog);
+//				String unescapeString = unescapeJava(tailingLines.getLog());
+//				podLog = unescapeString.replace("\\n",System.getProperty("line.separator"));	
+//				podLog = podLog.replaceAll("(\r\n|\r|\n|\n\r)", System.getProperty("line.separator"));				
+//				System.out.println("****" + podLog);
 			}
-			return podLog;
+			return lines;
 		} catch (KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 		}
 
-		return "";
+		return null;
 	}
 
+    public static String unescape(String string) {
+        StringBuilder builder = new StringBuilder();
+        builder.ensureCapacity(string.length());
+        int lastPos = 0, pos = 0;
+        char ch;
+        while (lastPos < string.length()) {
+            pos = string.indexOf("%", lastPos);
+            if (pos == lastPos) {
+                if (string.charAt(pos + 1) == 'u') {
+                    ch = (char) Integer.parseInt(string
+                            .substring(pos + 2, pos + 6), 16);
+                    builder.append(ch);
+                    lastPos = pos + 6;
+                } else {
+                    ch = (char) Integer.parseInt(string
+                            .substring(pos + 1, pos + 3), 16);
+                    builder.append(ch);
+                    lastPos = pos + 3;
+                }
+            } else {
+                if (pos == -1) {
+                    builder.append(string.substring(lastPos));
+                    lastPos = string.length();
+                } else {
+                    builder.append(string.substring(lastPos, pos));
+                    lastPos = pos;
+                }
+            }
+        }
+        return builder.toString();
+    }
+	
 	/**
 	 * @param namespace
 	 * @param serviceType

@@ -21,8 +21,6 @@ import javax.persistence.TypedQuery;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Expression;
-import javax.persistence.criteria.Join;
-import javax.persistence.criteria.JoinType;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 
@@ -54,6 +52,7 @@ import com.zdb.core.domain.ZDBStatus;
 import com.zdb.core.domain.ZDBType;
 import com.zdb.core.repository.DiskUsageRepository;
 import com.zdb.core.repository.EventRepository;
+import com.zdb.core.repository.MetadataRepository;
 import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepository;
@@ -93,10 +92,13 @@ import lombok.extern.slf4j.Slf4j;
 public abstract class AbstractServiceImpl implements ZDBRestService {
 
 	@Autowired
-	protected ZDBRepository metaRepository;
+	protected ZDBRepository zdbRepository;
 	
 	@Autowired
 	protected EventRepository eventRepository;
+	
+	@Autowired
+	protected MetadataRepository metaDataRepository;
 	
 	@Autowired
 	protected ZDBReleaseRepository releaseRepository;
@@ -216,7 +218,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			event.setEndTIme(new Date(System.currentTimeMillis()));
 			
 			log.warn(toPrettyJson(event));
-			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 			
 			return requestCheck;
 		} else {
@@ -228,7 +230,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			exchange.setProperty(Exchange.SERVICE_NAME, service.getServiceName());
 			exchange.setProperty(Exchange.SERVICE_TYPE, service.getServiceType());
 			exchange.setProperty(Exchange.CHART_URL, chartUrl);
-			exchange.setProperty(Exchange.META_REPOSITORY, metaRepository);
+			exchange.setProperty(Exchange.META_REPOSITORY, zdbRepository);
 			exchange.setProperty(Exchange.OPERTAION, EventType.Deployment);
 
 			deploymentRequest(exchange);
@@ -237,7 +239,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			event.setEndTIme(new Date(System.currentTimeMillis()));
 
 			log.info(toPrettyJson(event));
-			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 
 			try {
 				final CountDownLatch latch = new CountDownLatch(1);
@@ -290,7 +292,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			event.setEndTIme(new Date(System.currentTimeMillis()));
 			
 			log.warn(toPrettyJson(event));
-			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 			
 			return requestCheck;
 		} else {
@@ -301,7 +303,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			exchange.setProperty(Exchange.SERVICE_NAME, serviceName);
 			exchange.setProperty(Exchange.SERVICE_TYPE, serviceType);
 			exchange.setProperty(Exchange.CHART_URL, chartUrl);
-			exchange.setProperty(Exchange.META_REPOSITORY, metaRepository);
+			exchange.setProperty(Exchange.META_REPOSITORY, zdbRepository);
 			exchange.setProperty(Exchange.OPERTAION, EventType.Delete);
 			
 		    unInstallRequest(exchange);
@@ -310,7 +312,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			event.setEndTIme(new Date(System.currentTimeMillis()));
 			
 			log.info(toPrettyJson(event));
-			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 			
 			return new Result(txId, IResult.OK, "[" + serviceName + "] 삭제 요청 성공.");
 		}
@@ -481,7 +483,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	 * @return
 	 */
 	public RequestEvent getRequestEvent(EventType eventType, String serviceName) {
-		Iterable<RequestEvent> findAll = metaRepository.findAll();
+		Iterable<RequestEvent> findAll = zdbRepository.findAll();
 
 		for (RequestEvent event : findAll) {
 			if (event.getEventType() == eventType.name() && event.getServiceName().equals(serviceName)) {
@@ -588,7 +590,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	@Override
 	public Result getPodLog(String namespace, String podName) throws Exception {
 		try {
-			String podLog = K8SUtil.getPodLog(namespace, podName);
+			String[] podLog = K8SUtil.getPodLog(namespace, podName);
 			
 			if (!StringUtils.isEmpty(podLog)) {
 				return new Result("", Result.OK).putValue(IResult.POD_LOG, podLog);
@@ -686,6 +688,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 
 			// 옵션 목록을 where절에 추가
 			query.where(predicates.toArray(new Predicate[] {}));
+			
+			query.orderBy(builder.desc(root.get("lastTimestamp")));
 
 			// 쿼리를 select문 추가
 			query.select(root);
@@ -706,9 +710,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	@Override
 	public Result getNamespaces() throws Exception {
 		try {
-			long s = System.currentTimeMillis();
-			List<Namespace> namespaces = K8SUtil.getNamespaces();
-			System.out.println("getNamespaces : " + (System.currentTimeMillis() - s));
+			List<Namespace> namespaces = k8sService.getNamespaces();
 			if (namespaces != null) {
 				return new Result("", Result.OK).putValue(IResult.NAMESPACES, namespaces);
 			}
@@ -727,29 +729,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		return new Result("", Result.OK).putValue(IResult.NAMESPACES, "");
 	}
 	
-//	@Override
-//	public Result getNamespace(final String namespace) throws Exception {
-//		try {
-//			Namespace ns = K8SUtil.getNamespace(namespace);
-//			
-//			if (namespace != null) {
-//				return new Result("", Result.OK).putValue(IResult.NAMESAPCE, ns);
-//			}
-//		} catch (KubernetesClientException e) {
-//			log.error(e.getMessage(), e);
-//			if (e.getMessage().indexOf("Unauthorized") > -1) {
-//				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
-//			} else {
-//				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
-//			}
-//		} catch (Exception e) {
-//			log.error(e.getMessage(), e);
-//			return new Result("", Result.ERROR, e.getMessage(), e);
-//		}
-//
-//		return new Result("", Result.OK).putValue(IResult.NAMESAPCE, "");
-//	}
-	
 	@Override
 	public Result getAllServices() throws Exception {
 		return getServicesWithNamespace(null, false);
@@ -761,10 +740,14 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			long s = System.currentTimeMillis();
 			List<ServiceOverview> overviews = getServiceInNamespace(namespace, detail);
 			
+			System.out.println("ServiceOverview : " + namespace +" > "+(System.currentTimeMillis() - s));
+			
 			if (overviews != null) {
 				for (ServiceOverview overview : overviews) {
 					setServiceOverViewStatusMessage(overview.getServiceName(), overview);
+					System.out.println("setServiceOverViewStatusMessage : " + overview.getServiceName() +" > "+(System.currentTimeMillis() - s));
 				}
+				System.out.println("getServicesWithNamespace : " + namespace +" > "+(System.currentTimeMillis() - s));
 				return new Result("", Result.OK).putValue(IResult.SERVICEOVERVIEWS, overviews);
 			}
 		} catch (KubernetesClientException e) {
@@ -878,13 +861,13 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			}
 			long createTime = releaseMetaData.getCreateTime().getTime();
 			
-			// 15분이내 생성된 서버 
-			if((System.currentTimeMillis() - createTime) < 150 * 60* 1000) {
+			// 15분이내 생성된 서버 1529453558000
+			if((System.currentTimeMillis() - createTime) < 150 * 60 * 1000) {
 				// kind, name, reason
 //				'PersistentVolumeClaim', 'data-zdb-116-mariadb-master-0', '2018-06-01T09:56:59Z', '2018-06-01T09:56:59Z', 'Successfully provisioned volume pvc-f941d085-6581-11e8-bddb-ea6741069087', 'ProvisioningSucceeded'
 //				'Pod', 'zdb-116-mariadb-master-0', '2018-06-01T09:58:53Z', '2018-06-01T09:58:53Z', 'MountVolume.SetUp succeeded for volume \"pvc-f941d085-6581-11e8-bddb-ea6741069087\" ', 'SuccessfulMountVolume'
 //				'Pod', 'zdb-116-mariadb-master-0', '2018-06-01T09:58:59Z', '2018-06-01T09:58:59Z', 'Started container', 'Startedq
-				List<EventMetaData> pvcStatus = eventRepository.findByKindAndNameAndReason(serviceName, "PersistentVolumeClaim", "ProvisioningSucceeded");
+				List<EventMetaData> pvcStatus = eventRepository.findByKindAndNameAndReason("PersistentVolumeClaim", "%"+serviceName+"%", "ProvisioningSucceeded");
 				
 				// Storage status : 생성중, 생성완료, mount
 				// Container status: start, ready 
@@ -906,7 +889,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		        String isReadySlave = "unknown";
 				
 				// pvc 상태 
-				List<PersistentVolumeClaim> pvcList = K8SUtil.getPersistentVolumeClaims(overview.getServiceName(), serviceName);
+				List<PersistentVolumeClaim> pvcList = k8sService.getPersistentVolumeClaims(overview.getNamespace(), serviceName);
 				for (PersistentVolumeClaim persistentVolumeClaim : pvcList) {
 					String pvcName = persistentVolumeClaim.getMetadata().getName();
 					String role = "";
@@ -934,7 +917,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 						}
 					}
 					
-					List<EventMetaData> podVolumeStatus = eventRepository.findByKindAndNameAndReason(serviceName, "Pod", "SuccessfulMountVolume");
+					List<EventMetaData> podVolumeStatus = eventRepository.findByKindAndNameAndReason("Pod", "%"+serviceName+"%",  "SuccessfulMountVolume");
 					
 					if (!podVolumeStatus.isEmpty()) {
 						for (EventMetaData eventMetaData : podVolumeStatus) {
@@ -949,7 +932,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 					}
 				}
 				
-				List<EventMetaData> podContainerStatus = eventRepository.findByKindAndNameAndReason(serviceName, "Pod", "Started");
+				List<EventMetaData> podContainerStatus = eventRepository.findByKindAndNameAndReason("Pod", "%"+serviceName+"%",  "Started");
 				if (!podContainerStatus.isEmpty()) {
 					for (EventMetaData eventMetaData : podContainerStatus) {
 						try {
@@ -994,12 +977,12 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				
 				if (overview.isClusterEnabled()) {
 					if(pvcList.size() == 1) {
-						statusMessage = String.format("Storage[master:%s], Container[master:%s, slave:%s], isReady[master:%s, slave:%s]", storageMasger, containerMasger, containerSlave, isReadyMaster, isReadySlave);
+						statusMessage = String.format("Storage[master:%s]\nContainer[master:%s, slave:%s]\nIsReady[master:%s, slave:%s]", storageMasger, containerMasger, containerSlave, isReadyMaster, isReadySlave);
 					} else {
-						statusMessage = String.format("Storage[master:%s, slave:%s], Container[master:%s, slave:%s], isReady[master:%s, slave:%s]", storageMasger, storageSlave, containerMasger, containerSlave, isReadyMaster, isReadySlave);
+						statusMessage = String.format("Storage[master:%s, slave:%s]\nContainer[master:%s, slave:%s]\nIsReady[master:%s, slave:%s]", storageMasger, storageSlave, containerMasger, containerSlave, isReadyMaster, isReadySlave);
 					}
 				} else {
-					statusMessage = String.format("Storage[master:%s], Container[master:%s], isReady[master:%s]", storageMasger, containerMasger, isReadyMaster);
+					statusMessage = String.format("Storage[master:%s]\nContainer[master:%s]\nIsReady[master:%s]", storageMasger, containerMasger, isReadyMaster);
 				}
 				overview.setStatusMessage(statusMessage);
 			}
@@ -1194,7 +1177,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				event.setStatusMessage("서비스 삭제 실패");
 				event.setStatus(IResult.ERROR);
 				event.setEndTIme(new Date(System.currentTimeMillis()));
-				ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
+				ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 
 				return new Result(txId, IResult.ERROR, msg);
 			}
@@ -1233,7 +1216,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 
 			return Result.RESULT_FAIL(txId, e);
 		} finally {
-			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}
 	}	
 	
@@ -1313,7 +1296,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				event.setStatusMessage("POD 삭제 실패");
 				event.setStatus(IResult.ERROR);
 				event.setEndTIme(new Date(System.currentTimeMillis()));
-				ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
+				ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 
 				return new Result(txId, IResult.ERROR, msg);				
 			}
@@ -1341,7 +1324,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 
 			return Result.RESULT_FAIL(txId, e);
 		} finally {
-			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}
 	}		
 	
@@ -1411,7 +1394,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 
 			return Result.RESULT_FAIL(txId, e);
 		} finally {
-			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}
 	}			
 
@@ -1438,14 +1421,16 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			releaseList = releaseRepository.findByNamespace(namespace);
 		}
 		
-		List<Namespace> namespaces = K8SUtil.getNamespaces();
-		
+		s = System.currentTimeMillis();
+		List<Namespace> namespaces = k8sService.getNamespaces();
+		System.out.println("getNamespaces : "+(System.currentTimeMillis() - s));
 		List<String> nsNameList = new ArrayList<>();
 		for (Namespace ns : namespaces) {
 			nsNameList.add(ns.getMetadata().getName());
 		}
 		
 		for (ReleaseMetaData release : releaseList) {
+			s = System.currentTimeMillis();
 			if ("DELETED".equals(release.getStatus()) || "DELETING".equals(release.getStatus())) {
 				continue;
 			}
@@ -1465,8 +1450,10 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			so.setVersion(version);
 			
 			so.setDeploymentStatus(release.getStatus());
-
+			System.out.println("setDeploymentStatus : "+(System.currentTimeMillis() - s));
+			
 			setServiceOverview(so, detail);
+			System.out.println("setServiceOverview : "+(System.currentTimeMillis() - s));
 			serviceList.add(so);
 		}
 		return serviceList;

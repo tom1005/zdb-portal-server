@@ -213,6 +213,21 @@ public class MariaDBAccount {
 
 		return account;
 	}
+	
+	public static void updateAdminPrivileges(String namespace, String releaseName, String userId) {
+		MariaDBConnection connection = null;
+		try {
+			connection = MariaDBConnection.getRootMariaDBConnection(namespace, releaseName);
+			Statement statement = connection.getStatement();
+			String query = "GRANT all ON *.* TO '" + userId + "'@'%'";
+			logger.debug("query: {}", query);
+
+			statement.executeUpdate(query);
+		} catch (Exception e) {
+			logger.error("Exception.", e);
+		} finally {
+		}
+	}
 
 	private static void updateMariaDBPassword(final Statement statement, final ZDBMariaDBAccount account) {
 		try {

@@ -95,14 +95,13 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 			if (labels != null) {
 				releaseName = labels.get("release");
 				app = labels.get("app");
-
-//				log.info(String.format("%s|%s|%s|%s", action, metaObj.getMetadata().getNamespace(), metaObj.getMetadata().getName(), metaObj.getClass().getSimpleName()) + "|" + resource);
 			} else {
-//				log.debug(">> labels release is empy. " + metaToJon);
-				return;
+				if(!metaObj.getKind().equals("Namespace")) {
+					return;
+				}
 			}
 
-			if (releaseName != null && releaseName.trim().length() > 0) {
+//			if (releaseName != null && releaseName.trim().length() > 0) {
 //				log.error("1*********** {}, {}, {}" ,metaObj.getMetadata().getNamespace(), metaObj.getMetadata().getName(), metaObj.getKind());
 				MetaData m = ((MetadataRepository) metaRepo).findNamespaceAndNameAndKind(metaObj.getMetadata().getNamespace(), metaObj.getMetadata().getName(), metaObj.getKind());
 				if (m == null) {
@@ -124,7 +123,8 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 				m.setAction(action.name());
 
 				((MetadataRepository) metaRepo).save(m);
-			}
+				
+//			}
 		}
 		
 		if (resource instanceof PersistentVolumeClaim) {

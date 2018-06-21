@@ -105,7 +105,7 @@ public class DiskUsageChecker {
 					}
 
 					List<Container> containers = client.inNamespace(namespace).pods().withName(pod.getMetadata().getName()).get().getSpec().getContainers();
-					if (containers.size() == 1) {
+					if (containers.size() > 0) {
 						containerName = containers.get(0).getName();
 					}
 					final CountDownLatch latch = new CountDownLatch(1);

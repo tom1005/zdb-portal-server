@@ -181,7 +181,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				event.setStatusMessage("Update Scale 오류");
 				event.setEndTIme(new Date(System.currentTimeMillis()));
 
-				ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
+				ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 
 				return new Result(txId, IResult.ERROR, msg);
 			}
@@ -228,7 +228,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			
 			valuesBuilder.setRaw(inputJson);
 
-			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 
 			log.info(service.getServiceName() + " update start.");
 
@@ -236,18 +236,24 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			final Release release = releaseFuture.get().getRelease();
 			
 			if (release != null) {
-				ReleaseMetaData releaseMeta = new ReleaseMetaData();
+				ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(service.getServiceName());
+				if(releaseMeta == null) {
+					releaseMeta = new ReleaseMetaData();
+				}
 				releaseMeta.setAction("UPDATE");
 				releaseMeta.setApp(release.getChart().getMetadata().getName());
 				releaseMeta.setAppVersion(release.getChart().getMetadata().getAppVersion());
 				releaseMeta.setChartVersion(release.getChart().getMetadata().getVersion());
-				releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds()));
+				releaseMeta.setChartName(release.getChart().getMetadata().getName());
+				releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds() * 1000L));
 				releaseMeta.setNamespace(service.getNamespace());
 				releaseMeta.setReleaseName(service.getServiceName());
 				releaseMeta.setStatus(release.getInfo().getStatus().getCode().name());
 				releaseMeta.setDescription(release.getInfo().getDescription());
 				releaseMeta.setInputValues(valuesBuilder.getRaw());
 				releaseMeta.setNotes(release.getInfo().getStatus().getNotes());
+				releaseMeta.setManifest(release.getManifest());
+				releaseMeta.setUpdateTime(new Date(System.currentTimeMillis()));
 
 				log.info(new Gson().toJson(releaseMeta));
 				
@@ -261,7 +267,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			event.setStatus(IResult.RUNNING);
 			event.setEndTIme(new Date(System.currentTimeMillis()));
 
-			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
@@ -285,7 +291,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 			return Result.RESULT_FAIL(txId, e);
 		} finally {
-			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 
 			if (releaseManager != null) {
 				try {

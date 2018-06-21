@@ -86,7 +86,7 @@ chart:
   mariadb:
     url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/mariadb/charts/mariadb-4.2.0.tgz"
   redis:
-    url: "http://169.56.71.107/redis-3.3.2.tgz"
+    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/redis/charts/redis-3.3.2.tgz"
 ---
 spring.profiles: prod  
 logging:
@@ -118,4 +118,5 @@ chart:
   mariadb:
     url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/mariadb/charts/mariadb-4.2.0.tgz"
   redis:
-    url: "http://169.56.71.107/redis-3.3.2.tgz"
+    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/redis/charts/redis-3.3.2.tgz"
+    

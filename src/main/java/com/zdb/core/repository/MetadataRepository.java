@@ -42,4 +42,7 @@ public interface MetadataRepository extends CrudRepository<MetaData, String> {
 	@Query(value="select * from zdb.meta_data where namespace=:namespace and kind=:kind and action!='DELETED'  order by update_time desc", nativeQuery=true)
 	List<MetaData> findNamespaceAndKind(@Param("namespace") String namespace, @Param("kind") String kind);
 	
+	@Query(value="select * from zdb.meta_data where kind='Namespace' and action != 'DELETED'  order by update_time desc", nativeQuery=true)
+	List<MetaData> findNamespaceAll();
+	
 }

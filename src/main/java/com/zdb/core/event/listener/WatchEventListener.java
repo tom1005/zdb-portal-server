@@ -123,7 +123,7 @@ public class WatchEventListener {
 					public void run() {
 						Watch namesapcesWatcher;
 						try {
-							namesapcesWatcher = K8SUtil.kubernetesClient().inAnyNamespace().namespaces().watch(new MetaDataWatcher<Namespace>(metaRepo));
+							namesapcesWatcher = K8SUtil.kubernetesClient().namespaces().watch(new MetaDataWatcher<Namespace>(metaRepo));
 							watchList.add(namesapcesWatcher);
 						} catch (Exception e) {
 							e.printStackTrace();

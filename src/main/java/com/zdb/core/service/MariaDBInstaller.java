@@ -37,8 +37,6 @@ import com.zdb.core.domain.ServiceSpec;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBType;
-import com.zdb.core.event.ZDBEventWatcher;
-import com.zdb.core.exception.DuplicateException;
 import com.zdb.core.repository.DiskUsageRepository;
 import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBMariaDBAccountRepository;
@@ -56,11 +54,11 @@ import hapi.services.tiller.Tiller.InstallReleaseRequest;
 import hapi.services.tiller.Tiller.InstallReleaseResponse;
 import hapi.services.tiller.Tiller.UninstallReleaseRequest;
 import hapi.services.tiller.Tiller.UninstallReleaseResponse;
-import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
+import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
-import io.fabric8.kubernetes.client.Watch;
+import io.fabric8.kubernetes.client.internal.readiness.Readiness;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -81,6 +79,9 @@ public class MariaDBInstaller implements ZDBInstaller {
 
 	@Autowired
 	private TagRepository tagRepository;
+	
+	@Autowired
+	private K8SService k8sService;
 
 	@Autowired
 	private DiskUsageRepository diskUsageRepository;
@@ -101,26 +102,6 @@ public class MariaDBInstaller implements ZDBInstaller {
 		ReleaseManager releaseManager = null;
 		
 		try{ 
-			if(!K8SUtil.isNamespaceExist(service.getNamespace())) {
-				// namespace 생성
-				CountDownLatch closeLatch = new CountDownLatch(1);
-				ZDBEventWatcher<Namespace> watcher = new ZDBEventWatcher<Namespace>(
-						KubernetesOperations.CREATE_NAMESPACE_OPERATION, 
-						closeLatch, 
-						exchange);
-				
-				Watch namespaceWatch = K8SUtil.kubernetesClient().namespaces().watch(watcher);
-				
-				try {
-					K8SUtil.doCreateNamespace(service.getNamespace());
-					closeLatch.await(30, TimeUnit.SECONDS);
-				} catch (DuplicateException e) {
-					log.info(service.getNamespace()+ " 이미 사용중 입니다.");
-				} finally {
-					namespaceWatch.close();
-				}
-			}
-			
 //			chartUrl = "file:///Users/a06919/git/charts/stable/mariadb/mariadb-4.2.0.tgz";
 			/////////////////////////
 			// chart 정로 로딩
@@ -268,6 +249,7 @@ public class MariaDBInstaller implements ZDBInstaller {
 					releaseMeta.setDbname(mariadbDatabase);
 					releaseMeta.setManifest(release.getManifest());
 					releaseMeta.setUpdateTime(new Date(System.currentTimeMillis()));
+					releaseMeta.setPublicEnabled(isPublicEnabled);
 
 					log.info(new Gson().toJson(releaseMeta));
 
@@ -283,11 +265,48 @@ public class MariaDBInstaller implements ZDBInstaller {
 						log.error("cannot insert admin account into DB.");
 					}
 
-//					ZDBMariaDBConfig config = MariaDBConfiguration.craeteDefaultConfig(configRepository, service.getNamespace(), service.getServiceName());
-//
-//					if (config == null) {
-//						log.error("cannot insert default config into DB.");
-//					}
+					// admin 권한 변경 
+					
+					Thread.sleep(5000);
+					
+					final CountDownLatch lacth = new CountDownLatch(1);
+
+					new Thread(new Runnable() {
+
+						@Override
+						public void run() {
+							long s = System.currentTimeMillis();
+							
+							try {
+								while((System.currentTimeMillis() - s) < 10 * 60 * 1000) {
+									Thread.sleep(3000);
+									List<Pod> pods = k8sService.getPods(service.getNamespace(), service.getServiceName());
+									boolean isAllReady = true;
+									for(Pod pod : pods) {
+										boolean isReady = Readiness.isReady(pod);
+										log.info(">>>>>>>> {} : {}", pod.getMetadata().getName(), isReady);
+										isAllReady = isAllReady && isReady;
+									}
+									
+									if(isAllReady) {
+										lacth.countDown();
+										System.out.println("------------------------------------------------- service create success! ------------------------------------------------- ");
+										break;
+									}
+								}
+							} catch (Exception e) {
+								log.error(e.getMessage(), e);
+							}
+
+						}
+					}).start();
+					
+					lacth.await(600, TimeUnit.SECONDS);
+					
+					if(lacth.getCount() == 0) {
+						MariaDBAccount.updateAdminPrivileges(service.getNamespace(), service.getServiceName(), account.getUserId());
+					}
+					
 				} else {
 					event.setStatus(IResult.ERROR);
 					event.setResultMessage("DB 생성 오류");
@@ -476,6 +495,7 @@ public class MariaDBInstaller implements ZDBInstaller {
 				releaseMeta.setDescription(release.getInfo().getDescription());
 				releaseMeta.setManifest(release.getManifest());
 				releaseMeta.setStatus("DELETED");
+				releaseMeta.setUpdateTime(new Date(System.currentTimeMillis()));
 
 				log.info(new Gson().toJson(releaseMeta));
 

@@ -2,6 +2,7 @@ package com.zdb.core.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
@@ -12,6 +13,7 @@ import com.zdb.core.domain.MetaData;
 import com.zdb.core.repository.MetadataRepository;
 
 import io.fabric8.kubernetes.api.model.ConfigMap;
+import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Secret;
@@ -251,5 +253,26 @@ public class K8SService {
 		return list;
 	}
 
+	public List<Namespace> getNamespaces() throws Exception {
+		List<Namespace> list = new ArrayList<>();
+		
+		List<MetaData> metaList = metadataRepository.findNamespaceAll();
+		
+		for (MetaData metaData : metaList) {
+			String meta = metaData.getMetadata();
+			Namespace pvc = new Gson().fromJson(meta, Namespace.class);
+
+			Map<String, String> labels = pvc.getMetadata().getLabels();
+			if (labels != null) {
+				String name = labels.get("name");
+				if ("zdb".equals(name)) {
+					list.add(pvc);
+				}
+			}
+		}
+		
+		return list;
+	
+	}
 	
 }
