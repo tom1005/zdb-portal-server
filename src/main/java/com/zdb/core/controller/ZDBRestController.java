@@ -360,24 +360,42 @@ public class ZDBRestController {
 	}
 
 	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/restart", method = RequestMethod.GET)
-	public ResponseEntity<String> restartService(@PathVariable("serviceType") final String serviceType, @PathVariable("namespace") final String namespace, @PathVariable("serviceName") final String serviceName) {
+	public ResponseEntity<String> restartService(@PathVariable("serviceType") final String serviceType, @PathVariable("namespace") final String namespace,
+			@PathVariable("serviceName") final String serviceName) {
 
 		String txId = txId();
-
 		ZDBType dbType = ZDBType.getType(serviceType);
 
 		try {
 			com.zdb.core.domain.Result result = null;
 
-			result = mariadbService.restartService(txId, dbType, namespace, serviceName);
-
+			switch (dbType) {
+			case MariaDB:
+				result = mariadbService.restartService(txId, dbType, namespace, serviceName);
+				break;
+			case Redis:
+				result = redisService.restartService(txId, dbType, namespace, serviceName);
+				break;
+			case PostgreSQL:
+				// TODO
+				break;
+			case RabbitMQ:
+				// TODO
+				break;
+			case MongoDB:
+				// TODO
+				break;
+			default:
+				log.error("Not support.");
+				result.setMessage("Not support service type.");
+				break;
+			}
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			com.zdb.core.domain.Result result = new Result(txId, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
-
 	}
 
 	private String txId() {
@@ -925,13 +943,13 @@ public class ZDBRestController {
 		    
 		    switch (dbType) {
 		    case MariaDB: 
-		    	result = mariadbService.setNewPassword(txId, namespace, serviceType, serviceName, "mariadb-password", newPassword);
+		    	result = mariadbService.setNewPassword(txId, namespace, serviceType, serviceName, newPassword);
 		    	if(result.isOK()) {
 		    		((MariaDBServiceImpl) mariadbService).updateAdminPassword(txId, namespace, serviceName, newPassword);
 		    	}
 		    	break;
 		    case Redis:
-		    	result = redisService.setNewPassword(txId, namespace, serviceType, serviceName, secretType, newPassword);
+		    	result = redisService.setNewPassword(txId, namespace, serviceType, serviceName, newPassword);
 		    	break;
 		    default:
 		    	log.error("Not support.");
@@ -1163,4 +1181,49 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
+	
+	@RequestMapping(value = "/nodes", method = RequestMethod.GET)
+	public ResponseEntity<String> getNodes() throws Exception {
+		try {
+			Result result = redisService.getNodes();
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+
+			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}	
+	
+	@RequestMapping(value = "/nodeCount", method = RequestMethod.GET)
+	public ResponseEntity<String> getNodeCount() throws Exception {
+		try {
+			Result result = redisService.getNodeCount();
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+
+			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}	
+	
+	/**
+	 * Retrieve All Abnormal Persistent Volume Claims
+	 * 
+	 * @return ResponseEntity<List<Service>>
+	 */
+	@RequestMapping(value = "/{namespace}/pvcs/unused", method = RequestMethod.GET)
+	public ResponseEntity<String> getUnusedPersistentVolumeClaims(@PathVariable("namespace") final String namespace) {
+		try {
+			Result result = redisService.getUnusedPersistentVolumeClaims(namespace);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+
+			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
 }

@@ -1078,6 +1078,22 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		return null;
 	}
 	
+	@Override
+	public Result restartService(String txId, ZDBType dbType, String namespace, String serviceName) {
+		Result result = null;
+
+		try {
+			// shutdown and pod delete (restart)
+			MariaDBShutDownUtil.getInstance().doShutdownAndDeleteAllPods(namespace, serviceName);
+			result = new Result(txId, IResult.OK, "Restart request. [" + serviceName + "]");
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(txId, IResult.ERROR, "Restart request fail. [" + serviceName + "]");
+		}
+
+		return result;
+	}
+	
 	/* (non-Javadoc)
 	 * @see com.zdb.core.service.AbstractServiceImpl#reStartPod(java.lang.String, java.lang.String, java.lang.String, java.lang.String)
 	 */

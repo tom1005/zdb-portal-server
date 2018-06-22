@@ -19,7 +19,7 @@ public class UpdateNamespace {
 			//new PersistentVolumeClaimBuilder().editOrNewMetadata().withName("").s
 			
 			 
-			Namespace ns = new NamespaceBuilder().withNewMetadata().withName("lwk").addToLabels("name", "zdb").endMetadata().build();
+			Namespace ns = new NamespaceBuilder().withNewMetadata().withName("pns2").addToLabels("name", "zdb").endMetadata().build();
 			client.namespaces().createOrReplace(ns);
 
 		} catch (Exception e) {

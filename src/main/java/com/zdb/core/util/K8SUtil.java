@@ -40,6 +40,8 @@ import io.fabric8.kubernetes.api.model.Event;
 import io.fabric8.kubernetes.api.model.LoadBalancerIngress;
 import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.NamespaceBuilder;
+import io.fabric8.kubernetes.api.model.Node;
+import io.fabric8.kubernetes.api.model.NodeList;
 import io.fabric8.kubernetes.api.model.ObjectReference;
 import io.fabric8.kubernetes.api.model.PersistentVolume;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
@@ -1389,7 +1391,7 @@ public class K8SUtil {
 	 * @return java.util.List<String>
 	 * @throws FileNotFoundException
 	 */
-	public static String getRedisHostIP(String namespace, String serviceName, String location) throws Exception {
+	public static String getRedisHostIP(String namespace, String serviceName) throws Exception {
 		List<io.fabric8.kubernetes.api.model.Service> services = kubernetesClient().inNamespace(namespace).services().withLabel("release", serviceName).list().getItems();
  
         String ip = new String();
@@ -1401,31 +1403,17 @@ public class K8SUtil {
 	          if ("master".equals(role)) {
 	        	  String loadbalancerType = service.getMetadata().getAnnotations().get("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type");
 	        	  
-	        	  if ("internal".equals(location)) {
-		        	  if ("private".equals(loadbalancerType)) {
-		        		  ip = service.getSpec().getClusterIP();
-			        	  break;
-		        	  }
-
-//	        		  if ("ClusterIP".equals(service.getSpec().getType())) {
-//			        	  if ("private".equals(service.getMetadata().getAnnotations().get("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type"))) {
-//				              ip = service.getSpec().getClusterIP();
-//			        	  }
-//			              break;
-//			          }
-	        	  } else if ("external".equals(location)) {
+	      		  if ("local".equals(profile)) {
 		        	  if ("public".equals(loadbalancerType)) {
 		        		  ip = service.getStatus().getLoadBalancer().getIngress().get(0).getIp();
 			        	  break;  
 		        	  }
-
-//	        		  if ("LoadBalancer".equals(service.getSpec().getType())) {
-//			        	  if (service.getStatus().getLoadBalancer().getIngress().size() > 0) {
-//			        		  ip = service.getStatus().getLoadBalancer().getIngress().get(0).getIp();
-//			        	  }
-//			        	  break;
-//			          }	        		  
-	        	  }
+	    		  } else if (profile == null || "prod".equals(profile)) {	        	  
+		        	  if ("private".equals(loadbalancerType)) {
+		        		  ip = service.getSpec().getClusterIP();
+			        	  break;
+		        	  }
+	    		  }	
 	          } 
 	        } catch (Exception e) {
 	        	log.error(e.getMessage(), e);
@@ -1474,5 +1462,42 @@ public class K8SUtil {
 		
 		return bufferSize;
 	}
+		
+	public static NodeList getNodes() throws Exception {
+		DefaultKubernetesClient client;
+
+		try {
+			client = kubernetesClient();
+
+			if (client != null) {
+				return client.nodes().list();
+			}			
+		} catch (FileNotFoundException e) {
+			log.error(e.getMessage(), e);
+		} catch (KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+		}
+
+		return null;
+	}	
+
+	public static int getNodeCount() throws Exception {
+		DefaultKubernetesClient client;
+
+		try {
+			client = kubernetesClient();
+
+			if (client != null) {
+				return client.nodes().list().getItems().size();
+			}			
+		} catch (FileNotFoundException e) {
+			log.error(e.getMessage(), e);
+		} catch (KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+		}
+
+		return 0;
+	}	
+	
 	
 }

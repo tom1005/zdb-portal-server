@@ -3,11 +3,11 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>zdb</groupId>
+	<groupId>com.skcc.cloudz.zdb</groupId>
 	<artifactId>${artifact.id}</artifactId>
 	<version>1.0.0</version>
 
-	<name>zdb.rest.api</name>
+	<name>zdb-portal-server</name>
 	<url>http://maven.apache.org</url>
 
 	<parent>
@@ -109,7 +109,7 @@
 		<profile>
 			<id>ui</id>
 			<properties>
-				<artifact.id>zdb.rest.api.ui</artifact.id>
+				<artifact.id>zdb-portal-server-for-ui</artifact.id>
 			</properties>
 			<build>
 
@@ -144,7 +144,7 @@
 		<profile>
 			<id>prod</id>
 			<properties>
-				<artifact.id>zdb.rest.api</artifact.id>
+				<artifact.id>zdb-portal-server</artifact.id>
 			</properties>
 			<build>
 

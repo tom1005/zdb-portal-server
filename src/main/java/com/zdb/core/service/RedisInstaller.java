@@ -7,12 +7,9 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 import org.microbean.helm.ReleaseManager;
 import org.microbean.helm.Tiller;
@@ -30,37 +27,29 @@ import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.KubernetesConstants;
 import com.zdb.core.domain.KubernetesOperations;
 import com.zdb.core.domain.PodSpec;
-import com.zdb.core.domain.RedisConfig;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
-import com.zdb.core.domain.ServiceOverview;
 import com.zdb.core.domain.ServiceSpec;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBType;
-import com.zdb.core.event.ZDBEventWatcher;
-import com.zdb.core.exception.DuplicateException;
+import com.zdb.core.repository.DiskUsageRepository;
+import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
 import com.zdb.core.util.K8SUtil;
-import com.zdb.mariadb.MariaDBAccount;
-import com.zdb.mariadb.MariaDBConfiguration;
 
 import hapi.chart.ChartOuterClass.Chart;
 import hapi.release.ReleaseOuterClass.Release;
 import hapi.services.tiller.Tiller.InstallReleaseRequest;
 import hapi.services.tiller.Tiller.InstallReleaseResponse;
-import hapi.services.tiller.Tiller.ListReleasesRequest;
-import hapi.services.tiller.Tiller.ListReleasesResponse;
 import hapi.services.tiller.Tiller.UninstallReleaseRequest;
 import hapi.services.tiller.Tiller.UninstallReleaseResponse;
-import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
-import io.fabric8.kubernetes.client.Watch;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -72,20 +61,22 @@ public class RedisInstaller implements ZDBInstaller {
 	@Autowired
 	private ZDBRepository metaRepository;
 	
+	@Autowired
+	private TagRepository tagRepository;
+	
+	@Autowired
+	private DiskUsageRepository diskUsageRepository;
+	
 	/**
 	 * @param exchange
 	 */
 	@Override
 	public void doInstall(Exchange exchange) {
-		String txId = exchange.getProperty(Exchange.TXID, String.class);
 		String chartUrl = exchange.getProperty(Exchange.CHART_URL, String.class);
 		
 		ZDBEntity service = exchange.getProperty(Exchange.ZDBENTITY, ZDBEntity.class);
 		ZDBRepository metaRepository = exchange.getProperty(Exchange.META_REPOSITORY, ZDBRepository.class);
 
-		System.out.println("ZDBEntiry ..................");
-		System.out.println(service.toString());
-		
 		ReleaseManager releaseManager = null; 
 		
 		try{ 
@@ -244,7 +235,7 @@ public class RedisInstaller implements ZDBInstaller {
 				extraFlags.add("--masterauth $(REDIS_PASSWORD)");
 				
 				boolean cacheModeEnabled = false;
-				
+								
 				if ("DATA".equals(service.getPurpose())) {
 					cacheModeEnabled = false;
 				} else if ("SESSION".equals(service.getPurpose())) {
@@ -305,7 +296,7 @@ public class RedisInstaller implements ZDBInstaller {
 					customRedisConfig.append("save ").append("\"\"").append("\n");
 				} else {
 					customRedisConfig.append("appendonly yes").append("\n");
-					customRedisConfig.append("save 900 1 300 10 60 10000");
+					customRedisConfig.append("save 900 1 300 10 60 10000").append("\n");
 				}
 
 				customRedisConfig.append("maxmemory ").append(assignedMemory * 75 / 100).append("mb").append("\n");		// 할당메모리의 75%
@@ -343,6 +334,19 @@ public class RedisInstaller implements ZDBInstaller {
 				values.put("master", master);				
 				values.put("slave" , slave);				
 				
+
+				String deployType = service.getDeployType() == null ? "NEW" : service.getDeployType().toUpperCase();
+				
+				if ("NEW".equals(deployType)) {
+					 
+				} else if ("RECOVERY".equals(deployType)) {
+					Map<String, Object> persistence = new HashMap<String, Object>();
+
+					persistence.put("existingClaim" , service.getPersistenceExistingClaim());
+					values.put("persistence" , persistence);	
+				}
+				
+
 				DumperOptions options = new DumperOptions();
 				options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
 				options.setPrettyFlow(true);				
@@ -352,19 +356,23 @@ public class RedisInstaller implements ZDBInstaller {
 
 				valuesBuilder.setRaw(valueYaml);
 				
-				log.info("###############################################################");
-				log.info("# Input Valeus(YAML) : " + valueYaml);				
-				log.info("###############################################################");
+				log.debug("###############################################################");
+				log.debug("# Input Valeus(YAML) : " + valueYaml);				
+				log.debug("###############################################################");
 
 				final Future<InstallReleaseResponse> releaseFuture = releaseManager.install(requestBuilder, chart);
 				final Release release = releaseFuture.get().getRelease();
 				 
 				if (release != null) {
-					ReleaseMetaData releaseMeta = new ReleaseMetaData();
+					ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(service.getServiceName());
+					if(releaseMeta == null) {
+						releaseMeta = new ReleaseMetaData();
+					}
 					releaseMeta.setAction("CREATE");
 					releaseMeta.setApp(release.getChart().getMetadata().getName());
 					releaseMeta.setAppVersion(release.getChart().getMetadata().getAppVersion());
 					releaseMeta.setChartVersion(release.getChart().getMetadata().getVersion());
+					releaseMeta.setChartName(release.getChart().getMetadata().getName());
 					releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds()*1000L));
 					releaseMeta.setNamespace(service.getNamespace());
 					releaseMeta.setReleaseName(service.getServiceName());
@@ -381,10 +389,10 @@ public class RedisInstaller implements ZDBInstaller {
 					
 					Gson gson = new GsonBuilder().setPrettyPrinting().create();
 					
-					log.info("###############################################################");
-					log.info("# Rendered Manifest : " + release.getManifest());
-					log.info("# " + gson.toJson(releaseMeta.getNotes()));
-					log.info("###############################################################");
+					log.debug("###############################################################");
+					log.debug("# Rendered Manifest : " + release.getManifest());
+					log.debug("# " + gson.toJson(releaseMeta.getNotes()));
+					log.debug("###############################################################");
 					
 					releaseRepository.save(releaseMeta);
 					
@@ -432,14 +440,17 @@ public class RedisInstaller implements ZDBInstaller {
 		ZDBEntity service = exchange.getProperty(Exchange.ZDBENTITY, ZDBEntity.class);
 		String txId = exchange.getProperty(Exchange.TXID, String.class);
 		
-		RequestEvent requestEvent = new RequestEvent();
+		RequestEvent requestEvent = metaRepository.findByTxId(txId);
 		
-		requestEvent.setTxId(txId);
-		requestEvent.setNamespace(service.getNamespace());
-		requestEvent.setServiceName(service.getServiceName());
-		requestEvent.setServiceType(service.getServiceType());		
-		requestEvent.setStartTime(new Date(System.currentTimeMillis()));
-		requestEvent.setEventType(EventType.Deployment.name());
+		if (requestEvent == null) {
+			requestEvent = new RequestEvent();
+			requestEvent.setTxId(txId);
+			requestEvent.setNamespace(service.getNamespace());
+			requestEvent.setServiceName(service.getServiceName());
+			requestEvent.setServiceType(service.getServiceType());
+			requestEvent.setStartTime(new Date(System.currentTimeMillis()));
+			requestEvent.setEventType(EventType.Deployment.name());
+		}
 		
 		return requestEvent;
 	}
@@ -449,7 +460,6 @@ public class RedisInstaller implements ZDBInstaller {
 	 */
 	@Override
 	public void doUnInstall(Exchange exchange) {
-
 		String txId = exchange.getProperty(Exchange.TXID, String.class);
 		String serviceName = exchange.getProperty(Exchange.SERVICE_NAME, String.class);
 		String namespace = exchange.getProperty(Exchange.NAMESPACE, String.class);
@@ -469,8 +479,7 @@ public class RedisInstaller implements ZDBInstaller {
 
 		ReleaseManager releaseManager = null;
 		try {
-			DefaultKubernetesClient client = (DefaultKubernetesClient) K8SUtil.kubernetesClient()
-					.inNamespace(namespace);
+			DefaultKubernetesClient client = (DefaultKubernetesClient) K8SUtil.kubernetesClient().inNamespace(namespace);
 
 			final Tiller tiller = new Tiller(client);
 			releaseManager = new ReleaseManager(tiller);
@@ -503,6 +512,13 @@ public class RedisInstaller implements ZDBInstaller {
 			uninstallRequestBuilder.setName(serviceName); // set releaseName
 			uninstallRequestBuilder.setPurge(true); // --purge
 
+			ReleaseMetaData findByReleaseName = releaseRepository.findByReleaseName(serviceName);
+			if (findByReleaseName != null) {
+				findByReleaseName.setStatus("DELETING");
+				findByReleaseName.setUpdateTime(new Date(System.currentTimeMillis()));
+				releaseRepository.save(findByReleaseName);
+			}			
+			
 			Result result = new Result(txId, IResult.OK, "Delete Service instance. [" + serviceName + "]");
 			final Future<UninstallReleaseResponse> releaseFuture = releaseManager.uninstall(uninstallRequestBuilder.build());
 			
@@ -515,6 +531,7 @@ public class RedisInstaller implements ZDBInstaller {
 				releaseMeta.setApp(release.getChart().getMetadata().getName());
 				releaseMeta.setAppVersion(release.getChart().getMetadata().getAppVersion());
 				releaseMeta.setChartVersion(release.getChart().getMetadata().getVersion());
+				releaseMeta.setChartName(release.getChart().getMetadata().getName());
 				releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds()));
 				releaseMeta.setNamespace(namespace);
 				releaseMeta.setReleaseName(serviceName);
@@ -526,7 +543,7 @@ public class RedisInstaller implements ZDBInstaller {
 
 				log.info(new Gson().toJson(releaseMeta));
 
-				ReleaseMetaData findByReleaseName = releaseRepository.findByReleaseName(serviceName);
+				findByReleaseName = releaseRepository.findByReleaseName(serviceName);
 				if (findByReleaseName != null) {
 					findByReleaseName.setStatus(release.getInfo().getStatus().getCode().name());
 					findByReleaseName.setUpdateTime(new Date(System.currentTimeMillis()));
@@ -543,6 +560,11 @@ public class RedisInstaller implements ZDBInstaller {
 					}
 				}
 
+				// disk usage 정보 삭제처리 
+				diskUsageRepository.deleteByNamespaceAndReleaseName(namespace, serviceName);
+				
+				// tag 정보 삭제 
+				tagRepository.deleteByNamespaceAndReleaseName(namespace, serviceName);
 			} else {
 				String msg = "설치된 서비스가 존재하지 않습니다.";
 				event.setResultMessage(msg);
@@ -558,7 +580,6 @@ public class RedisInstaller implements ZDBInstaller {
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 
-			event = getRequestEvent(exchange);
 			event.setStatus(IResult.ERROR);
 			event.setEndTIme(new Date(System.currentTimeMillis()));
 
@@ -573,8 +594,6 @@ public class RedisInstaller implements ZDBInstaller {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			getRequestEvent(exchange);
-			
 			event.setResultMessage(e.getMessage());
 			event.setStatus(IResult.ERROR);
 			event.setEndTIme(new Date(System.currentTimeMillis()));

@@ -1,9 +1,12 @@
 package com.zdb.redis;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.Base64;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 
 import com.zdb.core.util.K8SUtil;
 
@@ -27,9 +30,9 @@ public class RedisConnection {
 	 * @return
 	 * @throws Exception
 	 */
-	public static Jedis getRedisConnection(final String namespace, final String serviceName, final String location) throws Exception, JedisException {
+	public static Jedis getRedisConnection(final String namespace, final String serviceName) throws Exception, JedisException {
 		try {
-			String redisHost = K8SUtil.getRedisHostIP(namespace, serviceName, location);
+			String redisHost = K8SUtil.getRedisHostIP(namespace, serviceName);
 			Integer redisPort = K8SUtil.getServicePort(namespace, serviceName);
 			if (redisHost != null) {
 				String password = RedisSecret.getSecret(namespace, serviceName);

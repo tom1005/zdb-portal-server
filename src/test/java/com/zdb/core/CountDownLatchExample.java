@@ -1,16 +1,19 @@
 package com.zdb.core;
 
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import com.zdb.core.util.K8SUtil;
 
 import io.fabric8.kubernetes.api.model.Event;
+import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watch;
 import io.fabric8.kubernetes.client.Watcher;
+import io.fabric8.kubernetes.client.internal.readiness.Readiness;
 
 public class CountDownLatchExample {
 	static final int max = 10;
@@ -120,7 +123,39 @@ public class CountDownLatchExample {
 	 * @param args
 	 */
 	public static void main(String[] args) throws Exception {
-		// testSingle();
-		testCountDownLatch();
+		final CountDownLatch lacth = new CountDownLatch(1);
+
+		new Thread(new Runnable() {
+
+			@Override
+			public void run() {
+				long s = System.currentTimeMillis();
+				
+				try {
+					while((System.currentTimeMillis() - s) < 10 * 60 * 1000) {
+						Thread.sleep(3000);
+						List<Pod> pods = K8SUtil.getPods("zdb-maria", "zdb-maria-pns666");
+						boolean isAllReady = true;
+						for(Pod pod : pods) {
+							boolean isReady = Readiness.isReady(pod);
+							System.out.println(">>>"+pod.getMetadata().getName()+" > "+isReady);
+			
+							isAllReady = isAllReady && isReady;
+						}
+						
+						if(isAllReady) {
+							lacth.countDown();
+							System.out.println("------------------------------------------------- pod status ok ------------------------------------------------- ");
+							break;
+						}
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+
+			}
+		}).start();
+		
+		lacth.await(600, TimeUnit.SECONDS);
 	}
 }

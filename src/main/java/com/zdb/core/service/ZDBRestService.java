@@ -153,7 +153,7 @@ public interface ZDBRestService {
 
 	Result getServiceCheckAlive(String namespace, String serviceType, String serviceName) throws Exception;
 
-	Result setNewPassword(String txId, String namespace, String serviceType, String serviceName, String secretType, String newPassword) throws Exception;
+	Result setNewPassword(String txId, String namespace, String serviceType, String serviceName, String newPassword) throws Exception;
 
 	Result createTag(Tag tag) throws Exception;
 
@@ -164,4 +164,11 @@ public interface ZDBRestService {
 	Result getTagsWithNamespace(String namespace) throws Exception;
 
 	Result getTags() throws Exception;
+
+	Result getNodes() throws Exception;
+
+	Result getNodeCount() throws Exception;
+
+	Result getUnusedPersistentVolumeClaims(String namespace) throws Exception;
+
 }

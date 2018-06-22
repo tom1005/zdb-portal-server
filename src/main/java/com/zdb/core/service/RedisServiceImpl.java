@@ -5,10 +5,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
@@ -24,7 +22,6 @@ import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
 import com.google.gson.Gson;
-import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.zdb.core.domain.Connection;
 import com.zdb.core.domain.ConnectionInfo;
 import com.zdb.core.domain.EventType;
@@ -35,7 +32,6 @@ import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
-import com.zdb.core.domain.ServiceOverview;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBRedisConfig;
 import com.zdb.core.domain.ZDBType;
@@ -45,17 +41,11 @@ import com.zdb.core.repository.ZDBRepositoryUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.redis.RedisConfiguration;
 import com.zdb.redis.RedisConnection;
-import com.zdb.redis.RedisSecret;
 
 import hapi.chart.ChartOuterClass.Chart;
 import hapi.release.ReleaseOuterClass.Release;
-import hapi.services.tiller.Tiller.ListReleasesRequest;
-import hapi.services.tiller.Tiller.ListReleasesResponse;
-import hapi.services.tiller.Tiller.UninstallReleaseRequest;
-import hapi.services.tiller.Tiller.UninstallReleaseResponse;
 import hapi.services.tiller.Tiller.UpdateReleaseRequest;
 import hapi.services.tiller.Tiller.UpdateReleaseResponse;
-import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.ServicePort;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
@@ -75,7 +65,6 @@ import redis.clients.jedis.exceptions.JedisException;
 @Slf4j
 @Configuration
 public class RedisServiceImpl extends AbstractServiceImpl {
-
 	@Value("${chart.redis.url}")
 	public void setChartUrl(String url) {
 		chartUrl = url;
@@ -93,7 +82,6 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 		try {
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
 			if (client != null) {
-
 				final URI uri = URI.create(chartUrl);
 				final URL url = uri.toURL();
 				Chart.Builder chart = null;
@@ -105,10 +93,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 				String deploymentName = serviceName + "-" + chartName;
 
 				log.debug("deploymentName: {}", deploymentName);
-				Deployment deployment = client.inNamespace(namespace).extensions().deployments()
-						.withName(deploymentName).get();
-
-//				Deployment deployment = client.inNamespace(namespace).extensions().deployments().withName(serviceName).get();
+				Deployment deployment = client.inNamespace(namespace).extensions().deployments().withName(deploymentName).get();
 
 				if (deployment != null) {
 					return new Result("", Result.OK).putValue(IResult.DEPLOYMENT, deployment);
@@ -160,7 +145,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 
 		event.setTxId(txId);
 		event.setServiceName(service.getServiceName());
-		event.setServiceType(service.getServiceType());
+		event.setServiceType(ZDBType.Redis.getName());
 		event.setNamespace(service.getNamespace());
 		event.setEventType(EventType.Update.name());
 		event.setOpertaion(KubernetesOperations.SCALE_REPLICATION_CONTROLLER_OPERATION);
@@ -276,7 +261,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 			Yaml yaml = new Yaml(options);
 			String valueYaml = yaml.dump(values);
 
-			log.info("****** YAML Values : " + valueYaml);
+			log.debug("****** YAML Values : " + valueYaml);
 
 			valuesBuilder.setRaw(valueYaml);
 
@@ -288,19 +273,25 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 			final Release release = releaseFuture.get().getRelease();
 
 			if (release != null) {
-				ReleaseMetaData releaseMeta = new ReleaseMetaData();
+				ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(service.getServiceName());
+				if(releaseMeta == null) {
+					releaseMeta = new ReleaseMetaData();
+				}
 				releaseMeta.setAction("UPDATE");
 				releaseMeta.setApp(release.getChart().getMetadata().getName());
 				releaseMeta.setAppVersion(release.getChart().getMetadata().getAppVersion());
 				releaseMeta.setChartVersion(release.getChart().getMetadata().getVersion());
+				releaseMeta.setChartName(release.getChart().getMetadata().getName());
 				releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds()));
 				releaseMeta.setNamespace(service.getNamespace());
 				releaseMeta.setReleaseName(service.getServiceName());
 				releaseMeta.setStatus(release.getInfo().getStatus().getCode().name());
-				//releaseMeta.setDescription(release.getInfo().getDescription());
-				// releaseMeta.setInputValues(valuesBuilder.getRaw());
+				releaseMeta.setDescription(release.getInfo().getDescription());
+			    releaseMeta.setInputValues(valuesBuilder.getRaw());
+			    releaseMeta.setNotes(release.getInfo().getStatus().getNotes());
+			    releaseMeta.setManifest(release.getManifest());
 				releaseMeta.setInputValues(valueYaml);
-				//releaseMeta.setNotes(release.getInfo().getStatus().getNotes());
+				releaseMeta.setUpdateTime(new Date(System.currentTimeMillis()));
 
 				log.info(new Gson().toJson(releaseMeta));
 
@@ -308,8 +299,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 			}
 
 			log.info(service.getServiceName() + " update success!");
-			result = new Result(txId, IResult.RUNNING, "Update request. [" + service.getServiceName() + "]")
-					.putValue(IResult.UPDATE, release);
+			result = new Result(txId, IResult.RUNNING, "Update request. [" + service.getServiceName() + "]").putValue(IResult.UPDATE, release);
 
 			event.setResultMessage(service.getServiceName() + " update success.");
 			event.setStatus(IResult.RUNNING);
@@ -509,7 +499,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 
 		event.setTxId(txId);
 		event.setServiceName(service.getServiceName());
-		event.setServiceType(service.getServiceType());
+		event.setServiceType(ZDBType.Redis.getName());
 		event.setNamespace(service.getNamespace());
 		event.setEventType(EventType.Update.name());
 		event.setOpertaion(KubernetesOperations.SCALE_REPLICATION_CONTROLLER_OPERATION);
@@ -844,8 +834,9 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 			} catch (Exception e) {
 				String clusterIP = service.getSpec().getClusterIP();
 				connection.setIpAddress(clusterIP);
-				// info.setDomain(clusterIP);
-				connection.setConnectionType("private");
+				if(connection.getConnectionType() == null) {
+					connection.setConnectionType("private");
+				}
 
 				List<ServicePort> ports = service.getSpec().getPorts();
 				for (ServicePort serivicePort : ports) {
@@ -861,20 +852,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 
 		info.setConnectionList(connectionList);
 
-		// ReleaseMetaData findByReleaseName =
-		// releaseRepository.findByReleaseName(serviceName);
-		// if( findByReleaseName != null) {
-		// info.setDbName(findByReleaseName.getDbname());
-		// }
-		//
-		// if(info.getDbName() == null || info.getDbName().length() == 0) {
-		// String mariaDBDatabase = MariaDBAccount.getMariaDBDatabase(namespace,
-		// serviceName);
-		// info.setDbName(mariaDBDatabase);
-		// }
-
 		return new Result("", Result.OK).putValue(IResult.CONNECTION_INFO, info);
-
 	}
 
 	@Override
@@ -898,7 +876,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 		Jedis redisConnection = null;
 
 		try {
-			redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "external"); 
+			redisConnection = RedisConnection.getRedisConnection(namespace, serviceName); 
 
 			if (redisConnection == null) {
 				throw new Exception("Cannot connect redis. Namespace: " + namespace + ", ServiceName: " + serviceName);
@@ -959,7 +937,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 			event.setServiceType(K8SUtil.getChartName(namespace, serviceName));
 			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 
-			redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "external");
+			redisConnection = RedisConnection.getRedisConnection(namespace, serviceName);
 			if (redisConnection == null) {
 				throw new Exception("Cannot connect Redis. Namespace: " + namespace + ", Service Name: " + serviceName);
 			}
@@ -1014,7 +992,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 		Jedis redisConnection = null;
 		
 		try {
-			redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "external");
+			redisConnection = RedisConnection.getRedisConnection(namespace, serviceName);
 
 			if ("PONG".equals(redisConnection.ping())) {
 				return new Result("", Result.OK).putValue(IResult.SERVICE_STATUS, "healthy");
@@ -1040,17 +1018,6 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 	 * @throws Exception
 	 */
 	public Result updateConfig(String txId, final String namespace, final String serviceName, Map<String, String> config) throws Exception {
-		// 서비스 요청 정보 기록
-		RequestEvent event = new RequestEvent();
-
-		event.setTxId(txId);
-		event.setNamespace(namespace);
-		event.setServiceName(serviceName);
-		event.setServiceType(ZDBType.Redis.getName());
-		event.setEventType(EventType.Update.name());
-		event.setOpertaion(KubernetesOperations.UPDATE_CONFIGMAP_OPERATION);
-		event.setStartTime(new Date(System.currentTimeMillis()));
-
 		Result result = new Result(txId);
 		
 		ReleaseManager releaseManager = null;
@@ -1062,23 +1029,13 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 				chart = chartLoader.load(url);
 			}
 
-			String chartVersion = chart.getMetadata().getVersion();
+			//String chartVersion = chart.getMetadata().getVersion();
 
 			// 서비스 명 체크
 			if (!K8SUtil.isServiceExist(namespace, serviceName)) {
 				String msg = "서비스가 존재하지 않습니다. [" + serviceName + "]";
-
 				log.error(msg);
-
-				event.setChartVersion(chartVersion);
-				event.setResultMessage(msg);
-				event.setStatus(IResult.ERROR);
-				event.setStatusMessage("Update Config 오류");
-				event.setEndTIme(new Date(System.currentTimeMillis()));
-
-				ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-
-				return new Result(txId, IResult.ERROR, msg);
+				result = new Result(txId, IResult.ERROR, "config update fail. [" + serviceName + "]");
 			}
 			
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
@@ -1104,8 +1061,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 			redisConfig.append("rename-command FLUSHDB FDB").append("\n");
 			redisConfig.append("rename-command FLUSHALL FALL").append("\n");			
 
-			// TO-DO
-			Jedis redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "external"); 
+			Jedis redisConnection = RedisConnection.getRedisConnection(namespace, serviceName); 
 			
 			if (redisConnection == null) {
 				throw new Exception("Cannot connect redis. Namespace: " + namespace + ", ServiceName: " + serviceName);
@@ -1144,44 +1100,22 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 
 			valuesBuilder.setRaw(valueYaml);
 
-			log.info("redis.cnf : \n" + valueYaml);
-			log.info(serviceName + " update start.");
+			log.debug("redis.cnf : \n" + valueYaml);
+			log.debug(serviceName + " update start.");
 
 			final Future<UpdateReleaseResponse> releaseFuture = releaseManager.update(requestBuilder, chart);
 			final Release release = releaseFuture.get().getRelease();
 
 			if (release != null) {
-				log.info(release.getConfig().getRaw());
-				log.info(serviceName + " config update success!");
-				result = new Result(txId, IResult.RUNNING, "config update request. [" + serviceName + "]").putValue(IResult.CONFIG_UPDATE, release);
+				result = new Result(txId, IResult.OK, "config update request. [" + serviceName + "]");
 			} else {
 				result = new Result(txId, IResult.ERROR, "config update fail. [" + serviceName + "]");
-			}
-
-		} catch (FileNotFoundException | KubernetesClientException e) {
-			log.error(e.getMessage(), e);
-
-			event.setStatus(IResult.ERROR);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
-
-			if (e.getMessage().indexOf("Unauthorized") > -1) {
-				event.setResultMessage("Unauthorized");
-				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
-			} else {
-				event.setResultMessage(e.getMessage());
-				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
 			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			event.setResultMessage(e.getMessage());
-			event.setStatus(IResult.ERROR);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
-
-			return Result.RESULT_FAIL(txId, e);
+			result = new Result(txId, IResult.ERROR, "config update fail. [" + serviceName + "]");
 		} finally {
-			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-
 			if (releaseManager != null) {
 				try {
 					releaseManager.close();

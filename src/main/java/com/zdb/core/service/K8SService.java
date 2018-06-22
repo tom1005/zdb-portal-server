@@ -13,6 +13,7 @@ import com.zdb.core.domain.MetaData;
 import com.zdb.core.repository.MetadataRepository;
 
 import io.fabric8.kubernetes.api.model.ConfigMap;
+import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Pod;
@@ -182,6 +183,50 @@ public class K8SService {
 			StatefulSet pvc = new Gson().fromJson(meta, StatefulSet.class);
 			
 			list.add(pvc);
+		}
+		
+		return list;
+	}
+	
+	/**
+	 * @param namespace
+	 * @param serviceName
+	 * @return
+	 * @throws Exception
+	 */
+	public List<HasMetadata> getServiceOverviewMeta(final String namespace, final String serviceName, boolean isDetail) throws Exception {
+
+		List<HasMetadata> list = new ArrayList<>();
+		
+		List<MetaData> metaList = metadataRepository.findNamespaceAndReleaseName(namespace, serviceName);
+		
+		for (MetaData metaData : metaList) {
+			String meta = metaData.getMetadata();
+			if("StatefulSet".equals(metaData.getKind())) {
+				StatefulSet data = new Gson().fromJson(meta, StatefulSet.class);
+				list.add(data);
+			} else if("Pod".equals(metaData.getKind())) {
+				Pod data = new Gson().fromJson(meta, Pod.class);
+				list.add(data);
+			} else if("ConfigMap".equals(metaData.getKind()) && isDetail) {
+				ConfigMap data = new Gson().fromJson(meta, ConfigMap.class);
+				list.add(data);
+			} else if("PersistentVolumeClaim".equals(metaData.getKind()) && isDetail) {
+				PersistentVolumeClaim data = new Gson().fromJson(meta, PersistentVolumeClaim.class);
+				list.add(data);
+			} else if("Secret".equals(metaData.getKind()) && isDetail) {
+				Secret data = new Gson().fromJson(meta, Secret.class);
+				list.add(data);
+			} else if("ReplicaSet".equals(metaData.getKind()) && isDetail) {
+				ReplicaSet data = new Gson().fromJson(meta, ReplicaSet.class);
+				list.add(data);
+			} else if("Deployment".equals(metaData.getKind()) && isDetail) {
+				Deployment data = new Gson().fromJson(meta, Deployment.class);
+				list.add(data);
+			} else if("Service".equals(metaData.getKind()) && isDetail) {
+				io.fabric8.kubernetes.api.model.Service data = new Gson().fromJson(meta, io.fabric8.kubernetes.api.model.Service.class);
+				list.add(data);
+			}
 		}
 		
 		return list;

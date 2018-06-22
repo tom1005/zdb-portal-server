@@ -34,7 +34,7 @@ public class RedisTestJson {
 		System.out.println("###################### Redis Config Update #####################");
 		configUpdate("zdb-redis", "redis", "zdb-redis-namyu1");	
 	
-	} 
+	}  
 	 
 	public static void createDeployment(String namespace, String serviceType, String serviceName) {
 		Map<String, Object> inputValues 	= new LinkedHashMap<String, Object>();

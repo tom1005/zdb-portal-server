@@ -58,12 +58,16 @@ import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
 import com.zdb.core.util.K8SUtil;
+import com.zdb.redis.RedisConfiguration;
+import com.zdb.redis.RedisConnection;
 
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.DoneablePod;
+import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.LoadBalancerIngress;
 import io.fabric8.kubernetes.api.model.Namespace;
+import io.fabric8.kubernetes.api.model.NodeList;
 import io.fabric8.kubernetes.api.model.PersistentVolume;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaimSpec;
@@ -80,6 +84,7 @@ import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.dsl.PodResource;
 import lombok.extern.slf4j.Slf4j;
+import redis.clients.jedis.Jedis;
 
 /**
  * ZDBRestService Implementation
@@ -740,14 +745,13 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			long s = System.currentTimeMillis();
 			List<ServiceOverview> overviews = getServiceInNamespace(namespace, detail);
 			
-			System.out.println("ServiceOverview : " + namespace +" > "+(System.currentTimeMillis() - s));
+//			log.warn("ServiceOverview : " + namespace +" > "+(System.currentTimeMillis() - s));
 			
 			if (overviews != null) {
 				for (ServiceOverview overview : overviews) {
 					setServiceOverViewStatusMessage(overview.getServiceName(), overview);
-					System.out.println("setServiceOverViewStatusMessage : " + overview.getServiceName() +" > "+(System.currentTimeMillis() - s));
 				}
-				System.out.println("getServicesWithNamespace : " + namespace +" > "+(System.currentTimeMillis() - s));
+//				log.warn("getServicesWithNamespace : " + namespace +" > "+(System.currentTimeMillis() - s));
 				return new Result("", Result.OK).putValue(IResult.SERVICEOVERVIEWS, overviews);
 			}
 		} catch (KubernetesClientException e) {
@@ -1334,18 +1338,20 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	 * @see com.zdb.core.service.ZDBRestService#restartService(java.lang.String, java.lang.String)
 	 */
 	@Override
-	public Result setNewPassword(String txId, String namespace, String serviceType, String serviceName, String secretType, String newPassword) throws Exception {
+	public Result setNewPassword(String txId, String namespace, String serviceType, String serviceName, String newPassword) throws Exception {
 
 		// 서비스 요청 정보 기록
 		RequestEvent event = new RequestEvent();
 		event.setTxId(txId);
 		event.setServiceName(serviceName);
 		event.setEventType(EventType.UpdatePassword.name());
-		event.setOpertaion("UpdatePassword[" + secretType + "]");
+		event.setOpertaion("UpdatePassword");
 		event.setNamespace(namespace);
 		event.setStartTime(new Date(System.currentTimeMillis()));
 
 		try {
+			String changedPassword = new String();
+			
 			ZDBType dbType = ZDBType.getType(serviceType);
 
 			String secretName = new String();
@@ -1353,17 +1359,22 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			switch (dbType) {
 			case MariaDB:
 				secretName = serviceName + "-mariadb";
+				changedPassword = K8SUtil.updateSecrets(namespace, secretName, "mariadb-password", newPassword);
 				break;
 			case Redis:
+				Jedis redisConnection = null;
+				redisConnection = RedisConnection.getRedisConnection(namespace, serviceName);
+				RedisConfiguration.setConfig(redisConnection, "requirepass", newPassword);
+				
 				secretName = serviceName;
+				changedPassword = K8SUtil.updateSecrets(namespace, secretName, "redis-password", newPassword);
+				
 				break;
 			default:
 				log.error("Not support.");
 				break;
 			}			
 			
-			String changedPassword = K8SUtil.updateSecrets(namespace, secretName, secretType, newPassword);
-
 			if (changedPassword == null) {
 				return new Result(txId, IResult.ERROR, "비밀번호 변경에 실패했습니다");
 			}
@@ -1423,7 +1434,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		
 		s = System.currentTimeMillis();
 		List<Namespace> namespaces = k8sService.getNamespaces();
-		System.out.println("getNamespaces : "+(System.currentTimeMillis() - s));
+		log.info("getNamespaces : "+(System.currentTimeMillis() - s));
 		List<String> nsNameList = new ArrayList<>();
 		for (Namespace ns : namespaces) {
 			nsNameList.add(ns.getMetadata().getName());
@@ -1450,10 +1461,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			so.setVersion(version);
 			
 			so.setDeploymentStatus(release.getStatus());
-			System.out.println("setDeploymentStatus : "+(System.currentTimeMillis() - s));
 			
 			setServiceOverview(so, detail);
-			System.out.println("setServiceOverview : "+(System.currentTimeMillis() - s));
 			serviceList.add(so);
 		}
 		return serviceList;
@@ -1531,12 +1540,24 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		String serviceName = so.getServiceName();
 		String namespace = so.getNamespace();
 
-		List<Pod> pods = k8sService.getPods(namespace, serviceName);
-		so.getPods().addAll(pods);
+//		List<Pod> pods = k8sService.getPods(namespace, serviceName);
+//		List<StatefulSet> statefulSets = k8sService.getStatefulSets(namespace, serviceName);
 		
-		List<StatefulSet> statefulSets = k8sService.getStatefulSets(namespace, serviceName);
+		List<HasMetadata> serviceOverviewMeta = k8sService.getServiceOverviewMeta(namespace, serviceName, detail);
+		
+		List<StatefulSet> statefulSets = new ArrayList<>();
+		List<Pod> pods = new ArrayList<>();
+		for (HasMetadata obj : serviceOverviewMeta) {
+			if (obj instanceof StatefulSet) {
+				statefulSets.add((StatefulSet) obj);
+			} else if (obj instanceof Pod) {
+				pods.add((Pod) obj);
+			}
+		}
+		so.getPods().addAll(pods);
 		so.getStatefulSets().addAll(statefulSets);
 
+//		log.warn("setServiceOverview : " +serviceName + " / "+(System.currentTimeMillis() -s));
 		// 클러스터 사용 여부 
 		so.setClusterEnabled(isClusterEnabled(so));
 		
@@ -1548,23 +1569,41 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		so.getTags().addAll(tagList);
 		
 		if (detail) {
-			List<ConfigMap> configMaps = k8sService.getConfigMaps(namespace, serviceName);
-			so.getConfigMaps().addAll(configMaps);
+//			List<ConfigMap> configMaps = k8sService.getConfigMaps(namespace, serviceName);
+//			List<PersistentVolumeClaim> persistentVolumeClaims = k8sService.getPersistentVolumeClaims(namespace, serviceName);
+//			List<Secret> secrets = k8sService.getSecrets(namespace, serviceName);
+//			List<Service> services = k8sService.getServices(namespace, serviceName);
+//			List<ReplicaSet> replicaSets = k8sService.getReplicaSets(namespace, serviceName);
+//			List<Deployment> deployments = k8sService.getDeployments(namespace, serviceName);
+			
+			List<ConfigMap> configMaps = new ArrayList<>();
+			List<PersistentVolumeClaim> persistentVolumeClaims = new ArrayList<>();
+			List<Secret> secrets = new ArrayList<>();
+			List<Service> services = new ArrayList<>();
+			List<ReplicaSet> replicaSets = new ArrayList<>();
+			List<Deployment> deployments = new ArrayList<>();
+			
+			for (HasMetadata obj : serviceOverviewMeta) {
+				if (obj instanceof ConfigMap) {
+					configMaps.add((ConfigMap) obj);
+				} else if (obj instanceof PersistentVolumeClaim) {
+					persistentVolumeClaims.add((PersistentVolumeClaim) obj);
+				}else if (obj instanceof Secret) {
+					secrets.add((Secret) obj);
+				}else if (obj instanceof Service) {
+					services.add((Service) obj);
+				}else if (obj instanceof ReplicaSet) {
+					replicaSets.add((ReplicaSet) obj);
+				}else if (obj instanceof Deployment) {
+					deployments.add((Deployment) obj);
+				}
+			}
 
-			List<PersistentVolumeClaim> persistentVolumeClaims = k8sService.getPersistentVolumeClaims(namespace, serviceName);
-			so.getPersistentVolumeClaims().addAll(persistentVolumeClaims);
-
-			List<Secret> secrets = k8sService.getSecrets(namespace, serviceName);
-			so.getSecrets().addAll(secrets);
-
-			List<Service> services = k8sService.getServices(namespace, serviceName);
 			so.getServices().addAll(services);
-
-
-			List<ReplicaSet> replicaSets = k8sService.getReplicaSets(namespace, serviceName);
+			so.getPersistentVolumeClaims().addAll(persistentVolumeClaims);
+			so.getConfigMaps().addAll(configMaps);
+			so.getSecrets().addAll(secrets);
 			so.getReplicaSets().addAll(replicaSets);
-
-			List<Deployment> deployments = k8sService.getDeployments(namespace, serviceName);
 			so.getDeployments().addAll(deployments);
 
 			so.setClusterSlaveCount(getClusterSlaveCount(so));
@@ -1582,10 +1621,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				DiskUsage disk = diskRepository.findOne(podName);
 				so.getDiskUsageOfPodMap().put(podName, disk);
 			}
-
 		}
-//		System.out.println("setServiceOverview : " + (System.currentTimeMillis() - s));
-
 	}
 	
 	/**
@@ -2084,4 +2120,82 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		Iterable<Tag> tagList = tagRepository.findAll();
 		return new Result("", Result.OK).putValue(IResult.TAGS, tagList);
 	}
+	
+	public Result getNodes() throws Exception {
+
+		try {
+			NodeList nodes = K8SUtil.getNodes();
+			
+			if (nodes != null) {
+				return new Result("", Result.OK).putValue(IResult.NODES, nodes);
+			}
+		} catch (FileNotFoundException | KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
+			} else {
+				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+
+		return new Result("", Result.OK).putValue(IResult.NODES, "");
+	}		
+	
+	public Result getNodeCount() throws Exception {
+
+		try {
+			int nodeCount = K8SUtil.getNodeCount();
+			
+			return new Result("", Result.OK).putValue(IResult.NODES, nodeCount);
+			
+		} catch (FileNotFoundException | KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
+			} else {
+				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}		
+	
+	@Override
+	public Result getUnusedPersistentVolumeClaims(String namespace) throws Exception {
+		try {
+			List<PersistentVolumeClaim> unusedPvcs = K8SUtil.getAbnormalPersistentVolumeClaims(namespace, "unused");
+			List<HashMap<String, String>> pvcs = new ArrayList<HashMap<String, String>>();
+			HashMap<String, String> pvcInfo = new HashMap<String, String>();
+			
+			if (unusedPvcs != null) {
+				for (PersistentVolumeClaim unusedPvc : unusedPvcs) {
+					pvcInfo.put("name"   		, unusedPvc.getMetadata().getName());
+					pvcInfo.put("release"		, unusedPvc.getMetadata().getLabels().get("release"));
+					pvcInfo.put("amount" 		, unusedPvc.getStatus().getCapacity().get("storage").getAmount());
+					pvcInfo.put("storageClass" 	, unusedPvc.getSpec().getStorageClassName());
+				
+					pvcs.add(pvcInfo);
+				}
+				
+				return new Result("", Result.OK).putValue(IResult.UNUSED_PERSISTENTVOLUMECLAIMS, pvcs);
+			}
+		} catch (KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
+			} else {
+				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+
+		return new Result("", Result.OK).putValue(IResult.UNUSED_PERSISTENTVOLUMECLAIMS, "");
+	}	
+	
 }

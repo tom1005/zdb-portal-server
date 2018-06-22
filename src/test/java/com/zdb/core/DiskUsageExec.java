@@ -6,7 +6,6 @@ import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.net.URLEncoder;
-import java.text.DateFormat;
 import java.util.Date;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -34,7 +33,7 @@ public class DiskUsageExec implements Callback<byte[]> {
 
 	public static void main(String[] args) {
 		try {
-			new DiskUsageExec().toJson();
+			new DiskUsageExec().doBackupCommand();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -61,20 +60,22 @@ public class DiskUsageExec implements Callback<byte[]> {
 			ExecWatch watch = null;
 			BlockingInputStreamPumper pump = null;
 			
-			String[] commands = new String[] {
-					"/bin/sh"
-					, "-c"
-					, "df -Ph | grep IBM | awk '{size = $2} {used = $3} {avail=$4} {use=$5} END {print size\" \"used\" \"avail\" \"use}'"
-//					, "-u"
-//					, "root"
-//					, "-p"
-//					, "zdb1234"
-//					, "shutdown"
-			};
+//			String[] commands = new String[] {
+//					"/bin/sh"
+//					, "-c"
+//					, "df -Ph | grep IBM | awk '{size = $2} {used = $3} {avail=$4} {use=$5} END {print size\" \"used\" \"avail\" \"use}'"
+////					, "-u"
+////					, "root"
+////					, "-p"
+////					, "zdb1234"
+////					, "shutdown"
+//			};
+			String[] commands = new String[] { "/bin/sh", "-c", "df -P | grep bitnami | awk '{size = $2} {used = $3} {avail=$4} {use=$5} END { print size \" \"used \" \" avail \" \" use }'" };
+
 			final CountDownLatch latch = new CountDownLatch(1);
 			
 			ContainerResource<String, LogWatch, InputStream, PipedOutputStream, OutputStream, PipedInputStream, String, ExecWatch> inContainer = 
-					client.inNamespace("zdb-maria").pods().withName("zdb-306-mariadb-master").inContainer("mariadb");
+					client.inNamespace("zdb-redis").pods().withName("zdb-redis-namyu4-master-0").inContainer("zdb-redis-namyu4");
 			
 			TtyExecErrorable<String, OutputStream, PipedInputStream, ExecWatch> redirectingOutput = inContainer.redirectingOutput();
 			

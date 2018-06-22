@@ -59,9 +59,10 @@ public class ZDBEntity {
 	
 	private RedisConfig[] redisConfig; 
 	
-//	private boolean publicEnabled;	
-	
 	private String purpose;
+	
+	private String deployType;
+
 	
 	/**
 	 * @return

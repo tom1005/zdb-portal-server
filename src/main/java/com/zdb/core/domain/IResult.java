@@ -20,7 +20,9 @@ public interface IResult {
 	
 	public static final String PERSISTENTVOLUMECLAIM = "persistentvolumeclaim";
 	
-	public static final String PERSISTENTVOLUMECLAIMS = "psersistentvolumeclaims";
+	public static final String PERSISTENTVOLUMECLAIMS = "persistentvolumeclaims";
+
+	public static final String UNUSED_PERSISTENTVOLUMECLAIMS = "unusedPersistentvolumeclaims";
 	
 	public static final String SERVICEOVERVIEW = "serviceoverview";
 	
@@ -91,6 +93,8 @@ public interface IResult {
 	public static final String DELETE_TAG = "deleteTag";
 	public static final String TAGS = "tags";
 	public static final String TAG = "tag";
+
+	public static final String NODES = "nodes";
 
 	public int getCode();
 	
