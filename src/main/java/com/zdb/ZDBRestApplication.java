@@ -3,7 +3,6 @@ package com.zdb;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
-import org.springframework.boot.system.ApplicationPidFileWriter;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
@@ -17,12 +16,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 @SpringBootApplication
 @Configuration
-//@ServletComponentScan
 public class ZDBRestApplication {
 	public static void main(String[] args) {
-		System.out.println( "==== Spring Boot Web Application ====" );
 		SpringApplication app = new SpringApplication(ZDBRestApplication.class);
-		app.addListeners(new ApplicationPidFileWriter());
+//		app.addListeners(new ApplicationPidFileWriter());
 		app.run(args);
 		
 	}

@@ -1,8 +1,12 @@
 package com.zdb.core.controller;
 
 import java.io.FileNotFoundException;
+import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+
+import javax.servlet.http.HttpServletRequest;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -20,6 +24,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.Tag;
+import com.zdb.core.domain.UserInfo;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBType;
@@ -42,6 +47,9 @@ import lombok.extern.slf4j.Slf4j;
 @RequestMapping(value = "/api/v1")
 public class ZDBRestController {
 
+	@Autowired
+	private HttpServletRequest request;
+	
 	@Autowired
 	@Qualifier("mariadbService")
 	private ZDBRestService mariadbService;
@@ -693,24 +701,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
-	
-	/**
-	 * Retrieve All services
-	 * 
-	 * @return ResponseEntity<List<Service>>
-	 */
-//	@RequestMapping(value = "/namespaces/{namespace}", method = RequestMethod.GET)
-//	public ResponseEntity<String> getNamespace(@PathVariable("namespace") final String namespace) {
-//		try {
-//			Result result = mariadbService.getNamespace(namespace);
-//			return new ResponseEntity<String>(result.toJson(), result.status());
-//		} catch (Exception e) {
-//			log.error(e.getMessage(), e);
-//
-//			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
-//			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
-//		}
-//	}
+
 	
 	@RequestMapping(value = "/service/services", method = RequestMethod.GET)
 	public ResponseEntity<String> getServices() throws Exception {
@@ -741,9 +732,9 @@ public class ZDBRestController {
 
 
 	@RequestMapping(value = "/{namespace}/service/services", method = RequestMethod.GET)
-	public ResponseEntity<String> getServicesWithNamespace(@PathVariable("namespace") String namespace) throws Exception {
+	public ResponseEntity<String> getServicesWithNamespaces(@PathVariable("namespace") String namespaces) throws Exception {
 		try {
-			Result result = mariadbService.getServicesWithNamespace(namespace, false);
+			Result result = mariadbService.getServicesWithNamespaces(namespaces, false);
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -1170,6 +1161,8 @@ public class ZDBRestController {
 	public ResponseEntity<String> getTags() {
 		String txId = txId();
 		
+		UserInfo userInfo = getUserInfo();
+		
 		try {
 			Result result = mariadbService.getTags();
 			
@@ -1224,6 +1217,21 @@ public class ZDBRestController {
 			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
+	}
+	
+	/**
+	 * @return
+	 */
+	private UserInfo getUserInfo() {
+		UserInfo userInfo = new UserInfo();
+		userInfo.setUserId(request.getHeader("userId"));
+		userInfo.setUserName(request.getHeader("userName"));
+		userInfo.setEmail(request.getHeader("email"));
+		userInfo.setAccessRole(request.getHeader("accessRole"));
+		userInfo.setNamespaces(request.getHeader("namespaces"));
+		userInfo.setDefaultNamespace(request.getHeader("defaultNamespace"));
+
+		return userInfo;
 	}
 	
 }

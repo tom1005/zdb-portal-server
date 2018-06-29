@@ -75,7 +75,7 @@ public class DiskUsageExec implements Callback<byte[]> {
 			final CountDownLatch latch = new CountDownLatch(1);
 			
 			ContainerResource<String, LogWatch, InputStream, PipedOutputStream, OutputStream, PipedInputStream, String, ExecWatch> inContainer = 
-					client.inNamespace("zdb-redis").pods().withName("zdb-redis-namyu4-master-0").inContainer("zdb-redis-namyu4");
+					client.inNamespace("zdb-maria").pods().withName("zdb-maria-pns1-mariadb-master-0").inContainer("mariadb");
 			
 			TtyExecErrorable<String, OutputStream, PipedInputStream, ExecWatch> redirectingOutput = inContainer.redirectingOutput();
 			

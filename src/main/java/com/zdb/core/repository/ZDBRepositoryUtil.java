@@ -11,10 +11,9 @@ import lombok.extern.slf4j.Slf4j;
 public class ZDBRepositoryUtil {
 
 	public static void saveRequestEvent(ZDBRepository metaRepository, RequestEvent event) {
-		log.info("!!!" + new Gson().toJson(event));
+		log.info(new Gson().toJson(event));
 		
 		if(metaRepository != null) {
-			
 			RequestEvent re = metaRepository.findByTxId(event.getTxId());
 			if(re != null) {
 				Date updateTime = event.getUpdateTime();
@@ -36,12 +35,10 @@ public class ZDBRepositoryUtil {
 					re.setChartVersion(event.getChartVersion());
 				} 
 				
-//				metaRepository.save(re);
-				
-//				metaRepository.update(txId, updateTime, endTIme, status, message);
+				metaRepository.save(re);
 			} else {
 				event.setStartTime(new Date(System.currentTimeMillis()));
-//				metaRepository.save(event);
+				metaRepository.save(event);
 			}
 		} else {
 			log.error("Save fail. (ZDBRepository is null.)");

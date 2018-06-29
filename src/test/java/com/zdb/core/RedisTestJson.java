@@ -30,10 +30,10 @@ public class RedisTestJson {
 		System.out.println("###################### Scale Out #####################");
 		scaleOut("zdb-redis", "redis", "zdb-redis-namyu1");	
 		System.out.println("");
-
+ 
 		System.out.println("###################### Redis Config Update #####################");
 		configUpdate("zdb-redis", "redis", "zdb-redis-namyu1");	
-	
+	 
 	}  
 	 
 	public static void createDeployment(String namespace, String serviceType, String serviceName) {

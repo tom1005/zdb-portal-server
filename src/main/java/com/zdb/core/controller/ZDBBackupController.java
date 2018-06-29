@@ -1,11 +1,21 @@
 package com.zdb.core.controller;
 
+import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Date;
 import java.util.UUID;
+
+import javax.servlet.http.HttpServletRequest;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -14,13 +24,18 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import com.zdb.backup.config.BackupConfig;
 import com.zdb.core.domain.BackupEntity;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ScheduleEntity;
 import com.zdb.core.domain.ZDBType;
+import com.zdb.core.repository.BackupEntityRepository;
 import com.zdb.core.service.MariaDBBackupServiceImpl;
 import com.zdb.core.service.RedisBackupServiceImpl;
+import com.zdb.storage.StorageConfig;
+import com.zdb.storage.StorageService;
+import com.zdb.storage.StorageType;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -44,6 +59,9 @@ public class ZDBBackupController {
 	@Qualifier("redisBackupService")
 	private RedisBackupServiceImpl redisBackupService;
 
+	@Autowired
+	BackupEntityRepository backupRepostiry;
+		
 	private String txId() {
 		return UUID.randomUUID().toString();
 	}
@@ -352,6 +370,108 @@ public class ZDBBackupController {
 			log.error(e.getMessage(), e);
 			Result result = new Result(txId, IResult.ERROR, "").putValue("error", e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+
+	@RequestMapping(value = "/download/{backupId}", method = RequestMethod.GET)
+	public ResponseEntity<Resource> downloadBackup(
+			@PathVariable("backupId") final String backupId
+			, HttpServletRequest request) {
+
+		String txId = txId();
+		HttpStatus statusCode = null;
+		StorageService s3Service = null;
+		String downloadPath="";
+		long startTime= 0;
+		long downloadOKTime = 0;
+		long fileSize=0;
+		String fileName="";
+		try {
+			com.zdb.core.domain.Result result = null;
+			
+			BackupEntity backup = backupRepostiry.findBackup(backupId);
+
+			fileName = backup.getArchiveName();
+			fileSize = backup.getArchiveFileSize();
+			
+			downloadPath = BackupConfig.getWorkingDir()+File.separator+backup.getServiceName();
+			if (null == backup) {
+				statusCode = HttpStatus.NOT_FOUND;
+				throw new Exception(backup.getArchiveName()+" is invalid");
+			}
+			else if (!"DONE".equals(backup.getStatus())) {
+				statusCode = HttpStatus.BAD_REQUEST;
+				throw new Exception(backupId+" cannot be found");
+			} else {
+				startTime=System.currentTimeMillis();
+				s3Service = StorageType.getService(StorageType.valueOf(StorageConfig.getStorageType()));
+				if(false == s3Service.hasObject(backup.getBucketName(), backup.getArchiveName())) {
+					statusCode = HttpStatus.NOT_FOUND;
+					throw new Exception(backupId +" cannot be found in "+backup.getBucketName());
+				}
+				
+				File f = new File(downloadPath);
+				if (!f.exists()) {
+					f.mkdirs();
+				}
+				String downloadFilePath=downloadPath+File.separator+backup.getArchiveName();
+				if (false == s3Service.downloadObject(backup.getBucketName(), backup.getArchiveName(), downloadFilePath)) {
+					statusCode = HttpStatus.CONFLICT;
+					throw new Exception(backupId + "cannot be downloaded {backupName:"+backup.getBucketName()
+							+",archiveName:"+backup.getArchiveName()
+							+",downloadFilePath:"+downloadFilePath+"}");
+				}
+
+				downloadOKTime = System.currentTimeMillis();
+				Path filePath = Paths.get(backup.getFilePath()+File.separator+backup.getArchiveName());
+	            Resource resource = new UrlResource(filePath.toUri());
+	            String contentType = "";
+	            try {
+	            	contentType = request.getServletContext().getMimeType(resource.getFile().getAbsolutePath());
+	            } catch (Exception e) {
+	            	contentType = "application/octet-stream";
+	            	log.error(e.getMessage(),e);
+	            }
+	            return ResponseEntity.ok()
+	                    .contentType(MediaType.parseMediaType(contentType))
+	                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+	                    .body(resource);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new ResponseEntity<Resource>(statusCode);
+		} finally {
+			long completedTime=System.currentTimeMillis();
+			log.warn("Download completed!{fileName:"+fileName
+					+",fileSize:"+fileSize
+					+",startTime+"+new Date(startTime)
+					+",download:"+new Date(downloadOKTime)
+					+",requestComplete:"+new Date(completedTime));
+			if (s3Service != null) {
+				s3Service.close();
+			}
+			if (downloadPath != null && "".equals(downloadPath)==false) {
+				removeFile(new File(downloadPath));
+			}
+		}
+	}
+	
+	private void removeFile(File file) {
+		try {
+			if (file.isDirectory()) {
+				if (file.listFiles().length == 0) {
+					file.delete();
+				} else {
+					File[] files = file.listFiles();
+					for (File f : files) {
+						removeFile(f);
+					}
+				}
+			} else {
+				file.delete();
+			}
+		} catch (Exception e) {
+			log.warn(e.getMessage(), e);
 		}
 	}
 }

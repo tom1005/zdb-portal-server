@@ -8,12 +8,14 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
@@ -26,10 +28,12 @@ import javax.persistence.criteria.Root;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
+import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.zdb.core.domain.DefaultExchange;
 import com.zdb.core.domain.DiskUsage;
@@ -38,7 +42,6 @@ import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.Exchange;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.KubernetesOperations;
-import com.zdb.core.domain.MetaData;
 import com.zdb.core.domain.PersistenceSpec;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
@@ -57,6 +60,7 @@ import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
+import com.zdb.core.util.DateUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.redis.RedisConfiguration;
 import com.zdb.redis.RedisConnection;
@@ -72,6 +76,8 @@ import io.fabric8.kubernetes.api.model.PersistentVolume;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaimSpec;
 import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.kubernetes.api.model.PodCondition;
+import io.fabric8.kubernetes.api.model.PodStatus;
 import io.fabric8.kubernetes.api.model.ResourceRequirements;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
@@ -126,8 +132,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	
 	static BlockingQueue<Exchange> deploymentQueue = null;
 	
-//	static BlockingQueue<Exchange> createPVCQueue = null;
-
 	protected AbstractServiceImpl() {
 
 		if (deploymentQueue == null) {
@@ -138,13 +142,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			}
 		}
 		
-//		if (createPVCQueue == null) {
-//			createPVCQueue = new ArrayBlockingQueue<Exchange>(MAX_QUEUE_SIZE);
-//			
-//			for(int i = 0; i < WORKER_COUNT; i++) {
-//				new Thread(new CreatePVCConsumer("worker-"+i, createPVCQueue)).start();
-//			}
-//		}
 	}
 
 	/**
@@ -158,19 +155,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			return Result.RESULT_OK;
 		}
 	}
-	
-	/**
-	 * PVC 생성 요청 가능 여부 체크
-	 * 
-	 * @return
-	 */
-//	protected Result isCreatePVCAvaliable() {
-//		if(createPVCQueue.size() >= MAX_QUEUE_SIZE) {
-//			return new Result("", IResult.ERROR, "서비스 생성 요청이 너무 많습니다. 잠시 후 다시 이용하세요. | "+ createPVCQueue.size()+"/"+MAX_QUEUE_SIZE);
-//		} else {
-//			return Result.RESULT_OK;
-//		}
-//	}
 	
 	/**
 	 * 서비스 생성 요청.
@@ -192,29 +176,40 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		}
 	}
 	
-	/**
-	 * PVC 생성 요청
-	 * @param req
-	 */
-//	protected void createPVCRequest(Exchange req) {
-//		try {
-//			createPVCQueue.put(req);
-//		} catch (InterruptedException e) {
-//			e.printStackTrace();
-//		}
-//	}
-	
 	@Override
 	public Result createDeployment(String txId, ZDBEntity service) throws Exception {
+//		# id, 
+//		#uid, 
+//		#first_timestamp, 
+//		#last_timestamp, 
+//		#kind, 
+//		#name, 
+//		#namespace, 
+//		#reason, 
+//		#message, 
+//		#release_name
+//		#metadata, 
+//
+//		#30b17e5d7-8322-41cf-9970-f59c25d43caf', 
+//		#'15d38e03-754e-11e8-9249-62f12bbc403a', 
+//		#'2018-06-21 12:24:46', 
+//		#'2018-06-21 12:24:46', 
+//		#'Deployment', 
+//		#'zdb-redis-demo-session-slave', 
+//		#'zdb-redis', 
+//		#'ScalingReplicaSet', 
+//		#'Scaled up replica set zdb-redis-demo-session-slave-786c494c5b to 1', 
+//		#NULL
+//		#'{\"apiVersion\":\"v1\",\"count\":1,\"firstTimestamp\":\"2018-06-21T12:24:46Z\",\"involvedObject\":{\"apiVersion\":\"extensions\",\"kind\":\"Deployment\",\"name\":\"zdb-redis-demo-session-slave\",\"namespace\"
 		
 		RequestEvent event = new RequestEvent();
 
 		event.setTxId(txId);
-		event.setServiceName(service.getServiceName());
+		event.setStartTime(new Date(System.currentTimeMillis()));
 		event.setServiceType(service.getServiceType());
 		event.setNamespace(service.getNamespace());
+		event.setServiceName(service.getServiceName());
 		event.setEventType(EventType.Deployment.name());
-		event.setStartTime(new Date(System.currentTimeMillis()));
 		
 		Result requestCheck = isDeploymentAvaliable();
 		if(!requestCheck.isOK()) {
@@ -227,6 +222,9 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			
 			return requestCheck;
 		} else {
+			
+			service.setNamespace(service.getNamespace().trim().toLowerCase());
+			service.setServiceName(service.getServiceName().trim().toLowerCase());
 
 			Exchange exchange = new DefaultExchange();
 			exchange.setProperty(Exchange.TXID, txId);
@@ -237,38 +235,72 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			exchange.setProperty(Exchange.CHART_URL, chartUrl);
 			exchange.setProperty(Exchange.META_REPOSITORY, zdbRepository);
 			exchange.setProperty(Exchange.OPERTAION, EventType.Deployment);
+			
+			long s = System.currentTimeMillis();
+			// 서비스 명 중복 체크
+			ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(service.getServiceName());
+			if (releaseMeta != null/*K8SUtil.isServiceExist(service.getNamespace(), service.getServiceName())*/) {
+				String msg = "사용중인 서비스 명입니다.[" + service.getServiceName() + "]";
+				log.error(msg);
 
-			deploymentRequest(exchange);
-
-			event.setResultMessage("[" + service.getServiceName() + "] 설치 요청 성공.");
-			event.setEndTIme(new Date(System.currentTimeMillis()));
-
-			log.info(toPrettyJson(event));
-			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-
-			try {
-				final CountDownLatch latch = new CountDownLatch(1);
-				long s = System.currentTimeMillis();
-				while (true) {
-					if((System.currentTimeMillis() - s) > 10 * 1000) {
-						break;
-					}
-					try {
-						List<Pod> pods = k8sService.getPods(service.getNamespace(), service.getServiceName());
-						if (pods != null && !pods.isEmpty()) {
-							latch.countDown();
-							break;
-						}
-					} catch (Exception e) {
-					}
-					
-					Thread.sleep(500);
-				}
-
-				latch.await(10, TimeUnit.SECONDS);
-				
-			} catch (Exception e) {
+				return new Result(txId, IResult.ERROR, msg);
 			}
+			log.error("서비스 명 중복 체크 : " + (System.currentTimeMillis() - s));
+			// 설치 요청 정보 저장
+			if(releaseMeta == null) {
+				releaseMeta = new ReleaseMetaData();
+			}
+			releaseMeta.setAction("CREATE");
+			releaseMeta.setApp(service.getServiceType());
+			releaseMeta.setAppVersion(service.getVersion());
+			releaseMeta.setChartVersion("");
+			releaseMeta.setChartName("");
+			releaseMeta.setCreateTime(new Date(System.currentTimeMillis()));
+			releaseMeta.setNamespace(service.getNamespace());
+			releaseMeta.setReleaseName(service.getServiceName());
+			releaseMeta.setStatus("REQUEST");
+			releaseMeta.setDescription("install request.");
+			releaseMeta.setInputValues("");
+			releaseMeta.setNotes("");
+			if("mariadb".equals(service.getServiceType())) {
+				releaseMeta.setDbname(service.getMariaDBConfig().getMariadbDatabase());
+			}
+			releaseMeta.setManifest("");
+			releaseMeta.setUpdateTime(new Date(System.currentTimeMillis()));
+			releaseMeta.setPublicEnabled(service.isClusterEnabled());
+			releaseMeta.setPurpose(service.getPurpose());
+
+			log.info(">>> install request : "+new Gson().toJson(releaseMeta));
+
+			releaseRepository.save(releaseMeta);
+
+			// install request
+			deploymentRequest(exchange);
+//			long s = System.currentTimeMillis();
+//			try {
+//				while (true) {
+//					Thread.sleep(500);
+//					if((System.currentTimeMillis() - s) > 3 * 1000) {
+//						break;
+//					}
+//					try {
+//						List<Pod> pods = k8sService.getPods(service.getNamespace(), service.getServiceName());
+//						if (pods != null && !pods.isEmpty()) {
+//							break;
+//						}
+//					} catch (Exception e) {
+//					}
+//					
+//				}
+//
+//			} catch (Exception e) {
+//			} finally {
+//				event.setResultMessage("[" + service.getServiceName() + "] 설치 요청 성공.");
+//				event.setEndTIme(new Date(System.currentTimeMillis()));
+//
+//				log.info(toPrettyJson(event));
+//				ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+//			}
 
 			return new Result(txId, IResult.OK, "[" + service.getServiceName() + "] 설치 요청 성공.");
 		}
@@ -323,7 +355,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		}
 		
 	}
-	
 
 	/* (non-Javadoc)
 	 * @see com.zdb.core.service.ZDBRestService#getDeployments(java.lang.String, java.lang.String)
@@ -345,10 +376,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 						result.add(deployment);
 					}
 				}
-
-//				if (deployments != null) {
-//					return new Result("", Result.OK).putValue(IResult.DEPLOYMENTS, deployments.getItems());
-//				}
 				if (result != null) {
 					return new Result("", Result.OK).putValue(IResult.DEPLOYMENTS, result);
 				}
@@ -546,7 +573,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 								log.error("Not support.");
 								break;
 							}
-						} else if (ZDBType.Redis.name().equalsIgnoreCase(property.getServiceType())) {
+						} else if (ZDBType.Redis.name().equalsIgnoreCase(serviceType)) {
 							RedisInstaller installer = beanFactory.getBean(RedisInstaller.class);
 							
 							switch (operation) {
@@ -554,8 +581,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 								installer.doInstall(exchange);
 								break;
 							case Delete:
-								// TODO 구현 예정.....
-								//installer.doUnInstall(exchange);
+								installer.doUnInstall(exchange);
 								break;
 							default:
 								log.error("Not support.");
@@ -618,11 +644,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	@PersistenceContext
 	protected EntityManager entityManager;
 	
-//	public void setEntityManager(EntityManager entityManager) {
-//	    this.entityManager = entityManager;
-//	}
-
-	
 	/* kind : 
 	 * //	'StatefulSet'
 	 * //	'Service'
@@ -647,7 +668,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			CriteriaBuilder builder = entityManager.getCriteriaBuilder();
 			CriteriaQuery<EventMetaData> query = builder.createQuery(EventMetaData.class);
 			Root<EventMetaData> root = query.from(EventMetaData.class);
-
 			// where절에 들어갈 옵션 목록.
 			List<Predicate> predicates = new ArrayList<>();
 
@@ -672,22 +692,16 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			if (start != null && !start.isEmpty() && end != null && !end.isEmpty()) {
 				Expression<Date> last_timestamp = root.get("lastTimestamp");
 
-				SimpleDateFormat sd = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+				GregorianCalendar gc1 = new GregorianCalendar();
+				gc1.setTime(DateUtil.parseDate(start));
+				gc1.add(Calendar.HOUR_OF_DAY, -9);
+				Date changeStartDate = gc1.getTime();
 				
-				Date startDate = sd.parse(start);
-				GregorianCalendar gc = new GregorianCalendar();
-				gc.setTime(startDate);
-				gc.set(Calendar.HOUR, -9);
+				Calendar gc2 = Calendar.getInstance();
+				gc2.setTime(DateUtil.parseDate(end));
+				gc2.add(Calendar.HOUR_OF_DAY, -9);
+				Date changeEndDate = gc2.getTime();
 				
-				Date changeStartDate = gc.getTime();
-				
-				Date endDate = sd.parse(end);
-				gc = new GregorianCalendar();
-				gc.setTime(endDate);
-				gc.set(Calendar.HOUR, -9);
-				Date changeEndDate = gc.getTime();
-				
-
 				predicates.add(builder.between(last_timestamp, changeStartDate, changeEndDate));
 			}
 
@@ -704,7 +718,20 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 
 			// 쿼리 실행 후 결과 확인
 			List<EventMetaData> eventMetaDataList = typedQuery.getResultList();
-
+			
+			for (EventMetaData eventMetaData : eventMetaDataList) {
+				String lastTimestamp = eventMetaData.getLastTimestamp();
+				
+				Date d = DateUtil.parseDate(lastTimestamp);
+				GregorianCalendar gc = new GregorianCalendar();
+				gc.setTime(d);
+				gc.add(Calendar.HOUR_OF_DAY, 9);
+				
+				Date changeDate = gc.getTime();
+				
+				eventMetaData.setLastTimestamp(DateUtil.formatDate(changeDate));
+			}
+			
 			return new Result("", Result.OK).putValue(IResult.SERVICE_EVENTS, eventMetaDataList);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -736,22 +763,20 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	
 	@Override
 	public Result getAllServices() throws Exception {
-		return getServicesWithNamespace(null, false);
+		// @getService
+		return getServicesWithNamespaces(null, false);
 	}
 
 	@Override
-	public Result getServicesWithNamespace(String namespace, boolean detail) throws Exception {
+	public Result getServicesWithNamespaces(String namespaces, boolean detail) throws Exception {
+		// @getService
 		try {
-			long s = System.currentTimeMillis();
-			List<ServiceOverview> overviews = getServiceInNamespace(namespace, detail);
-			
-//			log.warn("ServiceOverview : " + namespace +" > "+(System.currentTimeMillis() - s));
+			List<ServiceOverview> overviews = getServiceInNamespaces(namespaces, detail);
 			
 			if (overviews != null) {
 				for (ServiceOverview overview : overviews) {
 					setServiceOverViewStatusMessage(overview.getServiceName(), overview);
 				}
-//				log.warn("getServicesWithNamespace : " + namespace +" > "+(System.currentTimeMillis() - s));
 				return new Result("", Result.OK).putValue(IResult.SERVICEOVERVIEWS, overviews);
 			}
 		} catch (KubernetesClientException e) {
@@ -771,6 +796,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 
 	@Override
 	public Result getService(String namespace, String serviceType, String serviceName) throws Exception {
+		// @getService
 		try {
 			ServiceOverview overview = getServiceWithName(namespace, serviceType, serviceName);
 			
@@ -799,6 +825,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	 */
 	@Override
 	public Result getServicesOfServiceType(String serviceType) throws Exception {
+		// @getService
 		try {
 			List<ServiceOverview> overviews = getServiceInServiceType(serviceType);
 			
@@ -828,6 +855,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	 */
 	@Override
 	public Result getServices(String namespace, String serviceType) throws Exception {
+		// @getService
 		try {
 			List<ServiceOverview> overviews = getServiceInNamespaceInServiceType(namespace, serviceType);
 			
@@ -885,12 +913,12 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 					statusMessage = "Storage[master:%s], Container[master:%s]";
 				}
 				
-		        String storageMasger = "unknown";
-		        String storageSlave = "unknown";
-		        String containerMasger = "unknown";
-		        String containerSlave = "unknown";
-		        String isReadyMaster = "unknown";
-		        String isReadySlave = "unknown";
+		        String storageMaster = "-";
+		        String storageSlave = "-";
+		        String containerMasger = "-";
+		        String containerSlave = "-";
+		        String isReadyMaster = "-";
+		        String isReadySlave = "-";
 				
 				// pvc 상태 
 				List<PersistentVolumeClaim> pvcList = k8sService.getPersistentVolumeClaims(overview.getNamespace(), serviceName);
@@ -904,18 +932,18 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 					}
 
 					if ("master".equals(role)) {
-						storageMasger = "Storage 생성중";
+						storageMaster = " 생성중";
 					} else {
-						storageSlave = "Storage 생성중";
+						storageSlave = " 생성중";
 					}
 					
 					if (!pvcStatus.isEmpty()) {
 						for (EventMetaData eventMetaData : pvcStatus) {
 							if (pvcName.equals(eventMetaData.getName())) {
 								if ("master".equals(role)) {
-									storageMasger = "Storage 생성완료";
+									storageMaster = " 생성완료";
 								} else {
-									storageSlave = "Storage 생성완료";
+									storageSlave = " 생성완료";
 								}
 							}
 						}
@@ -927,9 +955,9 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 						for (EventMetaData eventMetaData : podVolumeStatus) {
 							if (eventMetaData.getMessage().indexOf("MountVolume.SetUp succeeded") > -1) {
 								if ("master".equals(role)) {
-									storageMasger = "Storage Mount";
+									storageMaster = " 마운트OK";
 								} else {
-									storageSlave = "Storage Mount";
+									storageSlave = " 마운트OK";
 								}
 							}
 						}
@@ -951,9 +979,9 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 							log.info(eventMetaData.getMetadata());
 							if (eventMetaData.getMessage().indexOf("Started container") > -1) {
 								if ("master".equals(role)) {
-									containerMasger = "Started";
+									containerMasger = " 동작중";
 								} else {
-									containerSlave = "Started";
+									containerSlave = " 동작중";
 								}
 							}
 						} catch (Exception e) {
@@ -973,20 +1001,24 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 					
 					boolean isReady = K8SUtil.IsReady(pod);
 					if ("master".equals(role)) {
-						isReadyMaster = isReady+"";
+						isReadyMaster = isReady ? "OK" : "준비중";
 					} else {
-						isReadySlave = isReady+"";
+						isReadySlave = isReady ? "OK" : "준비중";
 					}
 				}
 				
+				String storageMsg = "";
+				if (pvcList.size() == 2) {
+					storageMsg = String.format("‣스토리지[M: %s, S: %s]</br>", storageMaster, storageSlave);
+				} else if (pvcList.size() == 1) {
+					storageMsg = String.format("‣스토리지[M: %s]</br>", storageMaster);
+				}
+				
 				if (overview.isClusterEnabled()) {
-					if(pvcList.size() == 1) {
-						statusMessage = String.format("Storage[master:%s]\nContainer[master:%s, slave:%s]\nIsReady[master:%s, slave:%s]", storageMasger, containerMasger, containerSlave, isReadyMaster, isReadySlave);
-					} else {
-						statusMessage = String.format("Storage[master:%s, slave:%s]\nContainer[master:%s, slave:%s]\nIsReady[master:%s, slave:%s]", storageMasger, storageSlave, containerMasger, containerSlave, isReadyMaster, isReadySlave);
-					}
+					statusMessage = String.format("%s‣컨테이너[M: %s, S: %s]</br>‣상태[M: %s, S: %s]", storageMsg, containerMasger, containerSlave,
+							isReadyMaster, isReadySlave);
 				} else {
-					statusMessage = String.format("Storage[master:%s]\nContainer[master:%s]\nIsReady[master:%s]", storageMasger, containerMasger, isReadyMaster);
+					statusMessage = String.format("%s‣컨테이너[M: %s]</br>‣상태[M: %s]", storageMsg, containerMasger, isReadyMaster);
 				}
 				overview.setStatusMessage(statusMessage);
 			}
@@ -1363,9 +1395,13 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				break;
 			case Redis:
 				Jedis redisConnection = null;
-				redisConnection = RedisConnection.getRedisConnection(namespace, serviceName);
+
+				redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "master");
 				RedisConfiguration.setConfig(redisConnection, "requirepass", newPassword);
 				
+				redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "slave");
+				RedisConfiguration.setConfig(redisConnection, "requirepass", newPassword);
+
 				secretName = serviceName;
 				changedPassword = K8SUtil.updateSecrets(namespace, secretName, "redis-password", newPassword);
 				
@@ -1410,13 +1446,12 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	}			
 
 	/**
-	 * @param namespace
+	 * @param namespaces : zdb-001, zdb002
 	 * @return
 	 * @throws Exception
 	 */
-	public List<ServiceOverview> getServiceInNamespace(String namespace, boolean detail) throws Exception {
-		long s = System.currentTimeMillis();
-		
+	public List<ServiceOverview> getServiceInNamespaces(String namespaces, boolean detail) throws Exception {
+		// @getService
 		List<ServiceOverview> serviceList = new ArrayList<>();
 		List<String> apps = new ArrayList<>();
 		ZDBType[] values = ZDBType.values();
@@ -1424,24 +1459,37 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			apps.add(type.getName().toLowerCase());
 		}
 		
-		Iterable<ReleaseMetaData> releaseList = null;
+		List<ReleaseMetaData> releaseListWithNamespaces = new ArrayList<>();
 		
-		if (namespace == null || namespace.isEmpty()) {
-			releaseList = releaseRepository.findAll();
+		if (namespaces == null || namespaces.isEmpty()) {
+			Iterable<ReleaseMetaData> releaseList = releaseRepository.findAll();
+			for (ReleaseMetaData release : releaseList) {
+				releaseListWithNamespaces.add(release);
+			}
 		} else {
-			releaseList = releaseRepository.findByNamespace(namespace);
+			String[] split = namespaces.split(",");
+			Set<String> set = new HashSet<String>();
+			for (String ns : split) {
+				set.add(ns.trim());
+			}
+			for (String ns : set) {
+				
+				String namespace = ns.trim();
+				
+				Iterable<ReleaseMetaData> releaseList = releaseRepository.findByNamespace(namespace);
+				for (ReleaseMetaData release : releaseList) {
+					releaseListWithNamespaces.add(release);
+				}
+			}
 		}
 		
-		s = System.currentTimeMillis();
-		List<Namespace> namespaces = k8sService.getNamespaces();
-		log.info("getNamespaces : "+(System.currentTimeMillis() - s));
+		List<Namespace> namespaceList = k8sService.getNamespaces();
 		List<String> nsNameList = new ArrayList<>();
-		for (Namespace ns : namespaces) {
+		for (Namespace ns : namespaceList) {
 			nsNameList.add(ns.getMetadata().getName());
 		}
 		
-		for (ReleaseMetaData release : releaseList) {
-			s = System.currentTimeMillis();
+		for (ReleaseMetaData release : releaseListWithNamespaces) {
 			if ("DELETED".equals(release.getStatus()) || "DELETING".equals(release.getStatus())) {
 				continue;
 			}
@@ -1453,6 +1501,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 
 			so.setServiceName(release.getReleaseName());
 			so.setNamespace(release.getNamespace());
+			so.setPurpose(release.getPurpose());
 			
 			String serviceType = release.getApp();
 			String version = release.getAppVersion();
@@ -1475,6 +1524,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	 * @throws Exception
 	 */
 	public List<ServiceOverview> getServiceInNamespaceInServiceType(String namespace, String serviceType) throws Exception {
+		// @getService
 		ArrayList <ServiceOverview> serviceList = new ArrayList<>();
 
 		List<String> apps = new ArrayList<>();
@@ -1504,6 +1554,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				so.setServiceType(serviceType);
 				so.setVersion(release.getAppVersion());
 				so.setDeploymentStatus(release.getStatus());
+				so.setPurpose(release.getPurpose());
 
 				setServiceOverview(so, false);
 
@@ -1535,52 +1586,89 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	 * @throws Exception
 	 */
 	private void setServiceOverview(ServiceOverview so, boolean detail) throws Exception {
-		long s = System.currentTimeMillis();
-
 		String serviceName = so.getServiceName();
 		String namespace = so.getNamespace();
 
-//		List<Pod> pods = k8sService.getPods(namespace, serviceName);
-//		List<StatefulSet> statefulSets = k8sService.getStatefulSets(namespace, serviceName);
-		
 		List<HasMetadata> serviceOverviewMeta = k8sService.getServiceOverviewMeta(namespace, serviceName, detail);
 		
 		List<StatefulSet> statefulSets = new ArrayList<>();
 		List<Pod> pods = new ArrayList<>();
+		List<ReplicaSet> replicaSets = new ArrayList<>();
 		for (HasMetadata obj : serviceOverviewMeta) {
 			if (obj instanceof StatefulSet) {
 				statefulSets.add((StatefulSet) obj);
 			} else if (obj instanceof Pod) {
 				pods.add((Pod) obj);
+			} else if (obj instanceof ReplicaSet) {
+				replicaSets.add((ReplicaSet) obj);
 			}
 		}
 		so.getPods().addAll(pods);
 		so.getStatefulSets().addAll(statefulSets);
+		so.getReplicaSets().addAll(replicaSets);
 
-//		log.warn("setServiceOverview : " +serviceName + " / "+(System.currentTimeMillis() -s));
 		// 클러스터 사용 여부 
 		so.setClusterEnabled(isClusterEnabled(so));
 		
 		// 상태정보 
 		so.setStatus(getStatus(so));
 		
+		so.setElapsedTime("");
+		String lastTransitionTime = null;
+		if (pods != null && pods.size() > 0) {
+			for (Pod pod : pods) {
+				
+				Map<String, String> labels = pod.getMetadata().getLabels();
+				String app = labels.get("app");
+				boolean isMaster = false;
+				if ("redis".equals(app)) {
+					String role = labels.get("role");
+					if ("master".equals(role)) {
+						isMaster = true;
+					}
+				} else if ("mariadb".equals(app)) {
+					String component = labels.get("component");
+					if ("master".equals(component)) {
+						isMaster = true;
+					}
+				}
+				if (!isMaster) {
+					continue;
+				}
+
+				PodStatus status = pod.getStatus();
+
+				List<PodCondition> conditions = status.getConditions();
+
+				for (PodCondition condition : conditions) {
+					if ("Ready".equals(condition.getType())) {
+						try {
+							lastTransitionTime = condition.getLastTransitionTime();
+							lastTransitionTime = lastTransitionTime.replace("T", " ").replace("Z", "");
+							
+							String elapsedTime = elapsedTime(lastTransitionTime);
+							so.setElapsedTime(elapsedTime);
+							
+						} catch (Exception e) {
+							so.setElapsedTime("");
+						}
+						break;
+					}
+
+				}
+			}
+		}
+		
 		// 태그 정보 
 		List<Tag> tagList = tagRepository.findByNamespaceAndReleaseName(namespace, serviceName);
 		so.getTags().addAll(tagList);
 		
 		if (detail) {
-//			List<ConfigMap> configMaps = k8sService.getConfigMaps(namespace, serviceName);
-//			List<PersistentVolumeClaim> persistentVolumeClaims = k8sService.getPersistentVolumeClaims(namespace, serviceName);
-//			List<Secret> secrets = k8sService.getSecrets(namespace, serviceName);
-//			List<Service> services = k8sService.getServices(namespace, serviceName);
-//			List<ReplicaSet> replicaSets = k8sService.getReplicaSets(namespace, serviceName);
-//			List<Deployment> deployments = k8sService.getDeployments(namespace, serviceName);
-			
 			List<ConfigMap> configMaps = new ArrayList<>();
 			List<PersistentVolumeClaim> persistentVolumeClaims = new ArrayList<>();
 			List<Secret> secrets = new ArrayList<>();
 			List<Service> services = new ArrayList<>();
-			List<ReplicaSet> replicaSets = new ArrayList<>();
+			
 			List<Deployment> deployments = new ArrayList<>();
 			
 			for (HasMetadata obj : serviceOverviewMeta) {
@@ -1588,13 +1676,11 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 					configMaps.add((ConfigMap) obj);
 				} else if (obj instanceof PersistentVolumeClaim) {
 					persistentVolumeClaims.add((PersistentVolumeClaim) obj);
-				}else if (obj instanceof Secret) {
+				} else if (obj instanceof Secret) {
 					secrets.add((Secret) obj);
-				}else if (obj instanceof Service) {
+				} else if (obj instanceof Service) {
 					services.add((Service) obj);
-				}else if (obj instanceof ReplicaSet) {
-					replicaSets.add((ReplicaSet) obj);
-				}else if (obj instanceof Deployment) {
+				} else if (obj instanceof Deployment) {
 					deployments.add((Deployment) obj);
 				}
 			}
@@ -1603,7 +1689,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			so.getPersistentVolumeClaims().addAll(persistentVolumeClaims);
 			so.getConfigMaps().addAll(configMaps);
 			so.getSecrets().addAll(secrets);
-			so.getReplicaSets().addAll(replicaSets);
 			so.getDeployments().addAll(deployments);
 
 			so.setClusterSlaveCount(getClusterSlaveCount(so));
@@ -1624,12 +1709,70 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		}
 	}
 	
+	@Autowired
+	private MessageSource messageSource;
+	
+	/**
+	 * 경과 시간 계산.
+	 * 
+	 * @param endDate
+	 * @return
+	 */
+	public String elapsedTime(String dateStr){
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		
+		long elapsedDays;
+		long elapsedHours;
+		long elapsedMinutes;
+		long elapsedSeconds;
+		try {
+			Date endDate = sdf.parse(dateStr);
+			long currentTime = System.currentTimeMillis();
+			
+			//milliseconds
+			long different = currentTime - endDate.getTime();
+			
+			long secondsInMilli = 1000;
+			long minutesInMilli = secondsInMilli * 60;
+			long hoursInMilli = minutesInMilli * 60;
+			long daysInMilli = hoursInMilli * 24;
+
+			elapsedDays = different / daysInMilli;
+			different = different % daysInMilli;
+			
+			elapsedHours = different / hoursInMilli;
+			different = different % hoursInMilli;
+			
+			elapsedMinutes = different / minutesInMilli;
+			different = different % minutesInMilli;
+			
+			elapsedSeconds = different / secondsInMilli;
+
+			if (elapsedDays > 0) {
+				return elapsedDays +" "+ messageSource.getMessage("elapsed.days", null, Locale.KOREA);
+			} else if (elapsedHours > 0) {
+				return elapsedHours +" "+ messageSource.getMessage("elapsed.hours", null, Locale.KOREA);
+			} else if (elapsedMinutes > 0) {
+				return elapsedMinutes +" "+ messageSource.getMessage("elapsed.minutes", null, Locale.KOREA);
+			} else if (elapsedSeconds > 0) {
+				return elapsedSeconds +" "+ messageSource.getMessage("elapsed.seconds", null, Locale.KOREA);
+			} else {
+				return "";
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
+		
+		return "";
+	}
+	
 	/**
 	 * @param namespace
 	 * @return
 	 * @throws Exception
 	 */
 	public ServiceOverview getServiceWithName(String namespace, String serviceType, String serviceName) throws Exception {
+		// @getService
 		ArrayList <ServiceOverview> serviceList = new ArrayList<>();
 
 		List<String> apps = new ArrayList<>();
@@ -1658,7 +1801,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 
 				so.setServiceName(serviceName);
 				so.setNamespace(namespace);
-
+				so.setPurpose(release.getPurpose());
+				
 				String version = release.getAppVersion();
 
 				so.setServiceType(serviceType);
@@ -1679,7 +1823,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		if (ZDBType.MariaDB.name().toLowerCase().equals(so.getServiceType().toLowerCase())) {
 			return so.getStatefulSets().size() > 1 ? true : false;
 		} else if (ZDBType.Redis.name().toLowerCase().equals(so.getServiceType().toLowerCase())) {
-			return so.getStatefulSets().size() == 1 && so.getReplicaSets().size() == 1 ? true : false;
+			return so.getStatefulSets().size() == 1 && so.getReplicaSets().size() >= 1 ? true : false;
 		} else {
 			return false;
 		}
@@ -1780,6 +1924,15 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 										storageUnit = amount.substring(amount.indexOf(u));
 										break;
 									}
+									
+									if(amount != null) {
+										try {
+											storageSum += Integer.parseInt(amount);
+											storageUnit = "G";
+											break;
+										}catch(Exception e) {
+										}
+									}
 								}
 							} finally {
 							}
@@ -1834,6 +1987,15 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 									storageUnit = amount.substring(amount.indexOf(u));
 									break;
 								}
+								
+								if(amount != null) {
+									try {
+										storageSum += Integer.parseInt(amount);
+										storageUnit = "G";
+										break;
+									}catch(Exception e) {
+									}
+								}
 							}
 						    
 						} finally {
@@ -1887,7 +2049,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			    }
 			    
 				for (Container container : containers) {
-					if (selector.toLowerCase().equals(container.getName().toLowerCase())) {
+					if (container.getName().toLowerCase().startsWith(selector.toLowerCase())) {
 						ResourceRequirements resources = container.getResources();
 						if (resources != null) {
 							try {
@@ -1968,7 +2130,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				List<Container> containers = spec.getContainers();
 
 				for (Container container : containers) {
-					if (selector.toLowerCase().equals(container.getName().toLowerCase())) {
+					if (container.getName().toLowerCase().startsWith(selector.toLowerCase())) {
 						ResourceRequirements resources = container.getResources();
 						if (resources != null) {
 							try {
@@ -2108,9 +2270,17 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	@Override
 	public Result getTagsWithNamespace(String namespace) throws Exception {
 		if (namespace != null) {
-			List<Tag> tagList = tagRepository.findByNamespace(namespace);
+			String[] split = namespace.split(",");
+			Map<String, Tag> tagMap = new TreeMap<String, Tag>();
+			
+			for (String ns : split) {
+				List<Tag> tagList = tagRepository.findByNamespace(ns.trim());
+				for (Tag tag : tagList) {
+					tagMap.put(tag.getTagName(), tag);
+				}
+			}
 
-			return new Result("", Result.OK).putValue(IResult.TAGS, tagList);
+			return new Result("", Result.OK).putValue(IResult.TAGS, tagMap.values());
 		} else {
 			return new Result("", Result.ERROR);
 		}

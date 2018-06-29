@@ -1,8 +1,8 @@
 info:
   app:
-    name: zdb.rest.api
+    name: zdb-portal-server
     version: 1.0.0-SNAPSHOT
-    description: zdb rest api
+    description: zdb-portal-server
 
 spring:
   profiles:
@@ -52,13 +52,9 @@ management:
 
 ---
 spring:
-  profiles:
-    active: local
-  pid:
-    file: '${user.home}/zdb.rest.api.pid'
+  profiles: local
   datasource:
-    url: jdbc:mariadb://169.56.71.109:3306/zdb
-#    url: jdbc:mariadb://169.56.76.142:3306/zdb
+    url: jdbc:mariadb://169.56.80.186:3306/zdb
     platform: h2
     username: zdb
     password: 24cmdshvek!
@@ -72,8 +68,10 @@ spring:
         show_sql: false
         use_sql_comments: true
         format_sql: true
+
 logging:
   config: classpath:logback-local.xml
+
 k8s:
   region: seo01
   cluster: zdb-dev
@@ -87,15 +85,36 @@ chart:
     url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/mariadb/charts/mariadb-4.2.0.tgz"
   redis:
     url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/redis/charts/redis-3.3.2.tgz"
+  
+storage:
+  storageType: AWS_S3
+  accessKey: "6bf48d42eb304e1292f178bf69034f12"
+  secretKey: "0c61052e1bd30002a96cc57c8589d7521efef440f0471873"
+  endpointUrl: "s3-api.us-geo.objectstorage.softlayer.net"
+  apiKey: "na"
+  serviceInstanceId: "na"
+  location: "us"
+
+backup:
+  backupShell: "/zdb/shell/backup_mariadb.sh"
+  restoreShell: "/zdb/shell/restore_mariadb.sh"
+  prepareShell: "/zdb/shell/dump_master.sh"
+  masterInfo: "/zdb/shell/master_info.sh"
+  filemeta: "/zdb/shell/parse_filemeta.sh"
+  cleanShell: "/zdb/shell/clean.sh"
+  workingDir: "C:\\zdb\\work"
+  target: "slave"
+  type: "public"
+  redisDumpPath: "bitnami/redis/data"
+  redisDumpFile: "dump.rdb"
+
 ---
-spring.profiles: prod  
-logging:
-  config: classpath:logback-prod.xml
+spring:
+  profiles: prod
   datasource:
-    url: jdbc:mariadb://172.21.216.17:3306/zdb
-    platform: h2
+    url: ${datasource.url}
     username: zdb
-    password: zdbadmin
+    password: 24cmdshvek!
     driverClassName: org.mariadb.jdbc.Driver
   jpa:
     database-platform: org.hibernate.dialect.MySQLDialect
@@ -106,6 +125,10 @@ logging:
         show_sql: false
         use_sql_comments: true
         format_sql: true  
+        
+logging:
+  config: classpath:logback-prod.xml
+          
 k8s:
   region: seo01
   cluster: zdb-dev
@@ -116,7 +139,29 @@ k8s:
   
 chart:
   mariadb:
-    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/mariadb/charts/mariadb-4.2.0.tgz"
+    url: ${chart.mariadb.url}
   redis:
-    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/redis/charts/redis-3.3.2.tgz"
-    
+    url: ${chart.redis.url}
+      
+storage:
+  storageType: AWS_S3
+  accessKey: "6bf48d42eb304e1292f178bf69034f12"
+  secretKey: "0c61052e1bd30002a96cc57c8589d7521efef440f0471873"
+  endpointUrl: "s3-api.us-geo.objectstorage.softlayer.net"
+  apiKey: "na"
+  serviceInstanceId: "na"
+  location: "us"
+ 
+backup:
+  backupShell: "/zdb/shell/backup_mariadb.sh"
+  restoreShell: "/zdb/shell/restore_mariadb.sh"
+  prepareShell: "/zdb/shell/dump_master.sh"
+  masterInfo: "/zdb/shell/master_info.sh"
+  filemeta: "/zdb/shell/parse_filemeta.sh"
+  cleanShell: "/zdb/shell/clean.sh"
+  workingDir: "/zdb/work"
+  target: "slave"
+  type: "public"
+  redisDumpPath: "bitnami/redis/data"
+  redisDumpFile: "dump.rdb"
+ 

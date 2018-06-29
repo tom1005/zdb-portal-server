@@ -217,7 +217,7 @@ public class K8SService {
 			} else if("Secret".equals(metaData.getKind()) && isDetail) {
 				Secret data = new Gson().fromJson(meta, Secret.class);
 				list.add(data);
-			} else if("ReplicaSet".equals(metaData.getKind()) && isDetail) {
+			} else if("ReplicaSet".equals(metaData.getKind())) {
 				ReplicaSet data = new Gson().fromJson(meta, ReplicaSet.class);
 				list.add(data);
 			} else if("Deployment".equals(metaData.getKind()) && isDetail) {

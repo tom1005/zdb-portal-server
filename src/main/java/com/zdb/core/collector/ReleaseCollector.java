@@ -8,7 +8,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import com.google.gson.Gson;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.util.K8SUtil;

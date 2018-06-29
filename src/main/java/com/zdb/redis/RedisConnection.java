@@ -30,23 +30,24 @@ public class RedisConnection {
 	 * @return
 	 * @throws Exception
 	 */
-	public static Jedis getRedisConnection(final String namespace, final String serviceName) throws Exception, JedisException {
+	public static Jedis getRedisConnection(final String namespace, final String serviceName, final String redisRole) throws Exception, JedisException {
 		try {
-			String redisHost = K8SUtil.getRedisHostIP(namespace, serviceName);
-			Integer redisPort = K8SUtil.getServicePort(namespace, serviceName);
+			String redisHost = K8SUtil.getRedisHostIP(namespace, serviceName, redisRole);
+			Integer redisPort = 6379; //K8SUtil.getServicePort(namespace, serviceName);
 			if (redisHost != null) {
+				
 				String password = RedisSecret.getSecret(namespace, serviceName);
 	
 				if (password != null && !password.isEmpty()) {
 					password = new String(Base64.getDecoder().decode(password));
 				}
-				logger.info("redisHost: " + redisHost);
-				logger.info("redisPort: " + redisPort);
+				logger.debug("redisHost: " + redisHost);
+				logger.debug("redisPort: " + redisPort);
 				Jedis jedis = new Jedis(redisHost, redisPort);
 				jedis.connect();
 				jedis.auth(password);
 				
-				logger.info("Redis connection succeeded.");
+				logger.debug("Redis connection succeeded.");
 				
 				return jedis;
 			}

@@ -53,7 +53,7 @@ public class AbstractBackupServiceImpl implements ZDBBackupService {
 			ScheduleEntity oldSche = scheduleRepository.findScheduleByName(entity.getNamespace(), entity.getServiceType(), entity.getServiceName());
 			if (oldSche != null) {
 				log.debug("update : "+entity);
-				scheduleRepository.modify(entity.getStartTime(), entity.getStorePeriod(), oldSche.getScheduleId());
+				scheduleRepository.modify(entity.getStartTime(), entity.getStorePeriod(), entity.getUseYn(), oldSche.getScheduleId());
 			} else {
 				scheduleRepository.save(entity);
 			}

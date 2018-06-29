@@ -6,35 +6,35 @@ service:
   type: LoadBalancer
   port: 3306
   publicip:
-    enabled: ${service.publicip.enabled}
+    enabled: true
 
 rootUser:
   ## MariaDB admin password
-  password: ${rootUser.password}
+  password: zdbroot!@34
   forcePassword: false
 
 db:
   ## MariaDB username and password
-  user: ${db.user}
-  password: ${db.password}
-  name: ${db.name}
+  user: zdb
+  password: 24cmdshvek!
+  name: zdb
   forcePassword: false
 
 replication:
-  enabled: ${replication.enabled}
+  enabled: true
   user: replicator
-  password: ${db.password}
+  password: zdbroot!@34
   forcePassword: false
 
 master:
   antiAffinity: soft
   persistence:
     enabled: true
-    storageClass: "${master.persistence.storageClass}"
+    storageClass: "ibmc-block-silver"
     annotations:
     accessModes:
     - ReadWriteOnce
-    size: ${master.persistence.size}Gi
+    size: 20Gi
 
   ## Configure MySQL with a custom my.cnf file
   ## ref: https://mysql.com/kb/en/mysql/configuring-mysql-with-mycnf/#example-of-configuration-file
@@ -87,7 +87,7 @@ master:
     long_query_time=5
     
     # Innodb Config
-    innodb_buffer_pool_size=${buffer.pool.size}
+    innodb_buffer_pool_size=256M
     innodb_file_per_table=1
     innodb_flush_method=O_DIRECT
     innodb_lock_wait_timeout=15
@@ -148,11 +148,11 @@ master:
   ##
   resources:
     requests:
-      cpu: ${master.resources.requests.cpu}m
-      memory: ${master.resources.requests.memory}Mi
+      cpu: 500m
+      memory: 512Mi
     limits:
-      cpu: ${master.resources.limits.cpu}m
-      memory: ${master.resources.limits.memory}Mi
+      cpu: 500m
+      memory: 512Mi
   annotations:
     service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type: private
     
@@ -161,11 +161,11 @@ slave:
   antiAffinity: soft
   persistence:
     enabled: true
-    storageClass: "${slave.persistence.storageClass}"
+    storageClass: "ibmc-block-silver"
     annotations:
     accessModes:
     - ReadWriteOnce
-    size: ${master.persistence.size}Gi
+    size: 20Gi
 
   ## Configure MySQL slave with a custom my.cnf file
   ## ref: https://mysql.com/kb/en/mysql/configuring-mysql-with-mycnf/#example-of-configuration-file
@@ -218,7 +218,7 @@ slave:
     long_query_time=5
     
     # Innodb Config
-    innodb_buffer_pool_size=${buffer.pool.size}
+    innodb_buffer_pool_size=256M
     innodb_file_per_table=1
     innodb_flush_method=O_DIRECT
     innodb_lock_wait_timeout=15
@@ -280,11 +280,11 @@ slave:
   ##
   resources:
     requests:
-      cpu: ${slave.resources.requests.cpu}m
-      memory: ${slave.resources.requests.memory}Mi
+      cpu: 500m
+      memory: 512Gi
     limits:
-      cpu: ${slave.resources.limits.cpu}m
-      memory: ${slave.resources.limits.memory}Mi
+      cpu: 500m
+      memory: 512Gi
   annotations:
     service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type: private
     

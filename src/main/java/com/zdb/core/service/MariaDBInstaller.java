@@ -34,6 +34,7 @@ import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ServiceSpec;
+import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBType;
@@ -125,21 +126,21 @@ public class MariaDBInstaller implements ZDBInstaller {
 			
 			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 			
-			// 서비스 명 중복 체크
-			if (K8SUtil.isServiceExist(service.getNamespace(), service.getServiceName())) {
-				String msg = "사용중인 서비스 명입니다.[" + service.getServiceName() + "]";
-				log.error(msg);
-
-				event.setStatus(IResult.ERROR);
-				event.setResultMessage(msg);
-				event.setStatusMessage("서비스명 중복 오류");
-				event.setUpdateTime(new Date(System.currentTimeMillis()));
-				event.setEndTIme(new Date(System.currentTimeMillis()));
-
-				ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-
-				return;
-			}
+//			// 서비스 명 중복 체크
+//			if (K8SUtil.isServiceExist(service.getNamespace().trim().toLowerCase(), service.getServiceName().trim().toLowerCase())) {
+//				String msg = "사용중인 서비스 명입니다.[" + service.getServiceName() + "]";
+//				log.error(msg);
+//
+//				event.setStatus(IResult.ERROR);
+//				event.setResultMessage(msg);
+//				event.setStatusMessage("서비스명 중복 오류");
+//				event.setUpdateTime(new Date(System.currentTimeMillis()));
+//				event.setEndTIme(new Date(System.currentTimeMillis()));
+//
+//				ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
+//
+//				return;
+//			}
 			
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
 			final Tiller tiller = new Tiller(client);
@@ -148,8 +149,8 @@ public class MariaDBInstaller implements ZDBInstaller {
 			final InstallReleaseRequest.Builder requestBuilder = InstallReleaseRequest.newBuilder();
 			if (requestBuilder != null) {
 				requestBuilder.setTimeout(300L);
-				requestBuilder.setName(service.getServiceName());
-				requestBuilder.setNamespace(service.getNamespace());
+				requestBuilder.setName(service.getServiceName().trim().toLowerCase());
+				requestBuilder.setNamespace(service.getNamespace().trim().toLowerCase());
 
 				requestBuilder.setWait(false);
 
@@ -255,6 +256,22 @@ public class MariaDBInstaller implements ZDBInstaller {
 
 					releaseRepository.save(releaseMeta);
 
+					Tag typeTag = new Tag();
+					typeTag.setNamespace(service.getNamespace());
+					typeTag.setReleaseName(service.getServiceName());
+					typeTag.setTagName(service.getServiceType());		
+					
+					tagRepository.save(typeTag);
+					
+//					if (service.getPurpose() != null) {
+//						Tag purposeTag = new Tag();
+//						purposeTag.setNamespace(service.getNamespace());
+//						purposeTag.setReleaseName(service.getServiceName());
+//						purposeTag.setTagName(service.getPurpose().toLowerCase());
+//						
+//						tagRepository.save(purposeTag);
+//					}						
+					
 					// TODO 생성 UI에서 선택 할 수 있는 옵션 추가 후 적용.
 					// LB목록 조회 및 추가 주문 로직 구현 필요.
 					exchange.setProperty(KubernetesConstants.KUBERNETES_SERVICE_NAME, service.getServiceName());
@@ -284,7 +301,6 @@ public class MariaDBInstaller implements ZDBInstaller {
 									boolean isAllReady = true;
 									for(Pod pod : pods) {
 										boolean isReady = Readiness.isReady(pod);
-										log.info(">>>>>>>> {} : {}", pod.getMetadata().getName(), isReady);
 										isAllReady = isAllReady && isReady;
 									}
 									
@@ -305,6 +321,8 @@ public class MariaDBInstaller implements ZDBInstaller {
 					
 					if(lacth.getCount() == 0) {
 						MariaDBAccount.updateAdminPrivileges(service.getNamespace(), service.getServiceName(), account.getUserId());
+					} else {
+						log.error("{} > {} > {} 권한 변경 실패!", service.getNamespace(), service.getServiceName(), account.getUserId());
 					}
 					
 				} else {
@@ -367,53 +385,6 @@ public class MariaDBInstaller implements ZDBInstaller {
 		return requestEvent;
 	}
 	
-	/**
-	 * values.yaml builder.
-	 * @param pvcName
-	 * @param cpu
-	 * @param memory
-	 * @return String of values.yaml
-	 */
-	public static String getValuesYaml(
-			final String pvcName, 
-			final String cpu, 
-			final String memory, 
-			final String adminId, 
-			final String adminPassword, 
-			final String database) {
-		StringBuilder sb = new StringBuilder();
-		
-		sb.append("mariadbUser: ").append(adminId).append("\n");
-		sb.append("mariadbPassword: ").append(adminPassword).append("\n");
-		sb.append("mariadbDatabase: ").append(database).append("\n");
-		sb.append("persistence: \n");
-		sb.append("  existingClaim: ").append(pvcName).append("\n");
-		sb.append("resources:\n");
-		sb.append("  requests:\n");
-		
-		sb.append("    cpu: ");	
-		if (cpu == null || cpu.isEmpty()) {
-			sb.append(MARIADB_RESOURCE_CPU_DEFAULT);
-		} else {
-			sb.append(cpu);
-		}
-		sb.append("\n");
-		
-		sb.append("    memory: ");
-		if (memory == null || memory.isEmpty()) {
-			sb.append(MARIADB_RESOURCE_MEMORY_DEFAULT);
-		} else {
-			sb.append(memory);
-		}
-		sb.append("\n");
-		
-		if (log.isDebugEnabled()) {
-			log.debug("values.yaml: \n{}", sb.toString());
-		}
-
-		return sb.toString(); 
-	}
-
 	@Override
 	public void doUnInstall(Exchange exchange) {
 		String txId = exchange.getProperty(Exchange.TXID, String.class);
@@ -459,13 +430,12 @@ public class MariaDBInstaller implements ZDBInstaller {
 				event.setEndTIme(new Date(System.currentTimeMillis()));
 				ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 
-//				return new Result(txId, IResult.ERROR, msg);
 			    return;
 			}
 
 			final UninstallReleaseRequest.Builder uninstallRequestBuilder = UninstallReleaseRequest.newBuilder();
 
-			uninstallRequestBuilder.setName(serviceName); // set releaseName
+			uninstallRequestBuilder.setName(serviceName.trim().toLowerCase()); // set releaseName
 			uninstallRequestBuilder.setPurge(true); // --purge
 
 			ReleaseMetaData findByReleaseName = releaseRepository.findByReleaseName(serviceName);

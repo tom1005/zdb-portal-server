@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -46,11 +47,15 @@ import hapi.chart.ChartOuterClass.Chart;
 import hapi.release.ReleaseOuterClass.Release;
 import hapi.services.tiller.Tiller.UpdateReleaseRequest;
 import hapi.services.tiller.Tiller.UpdateReleaseResponse;
+import io.fabric8.kubernetes.api.model.ConfigMap;
+import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
+import io.fabric8.kubernetes.api.model.DoneableConfigMap;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.ServicePort;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.dsl.Resource;
 import lombok.extern.slf4j.Slf4j;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.exceptions.JedisException;
@@ -247,22 +252,29 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 				values.put("master", master);
 				values.put("slave", slave);
 			}
+			
+			Secret secret  = K8SUtil.getSecret(service.getNamespace(), service.getServiceName());
+			String password = new String();
+			
+			if (secret != null) {
+				Map<String, String> data = secret.getData();
 
-//			int slaveCount = service.getClusterSlaveCount();
-//
-//			Map<String, Object> clusterInfo = new HashMap<String, Object>();
-//			clusterInfo.put("slaveCount", slaveCount);
-//			values.put("cluster", clusterInfo);
-
+				if (!data.isEmpty()) {
+					password = new String(Base64.getDecoder().decode(data.get("redis-password").getBytes()));
+				}
+			}			
+			
+			values.put("password", password );
+			
 			DumperOptions options = new DumperOptions();
 			options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
 			options.setPrettyFlow(true);
 
 			Yaml yaml = new Yaml(options);
 			String valueYaml = yaml.dump(values);
-
-			log.debug("****** YAML Values : " + valueYaml);
-
+ 
+			log.info("****** YAML Values : " + valueYaml);
+ 
 			valuesBuilder.setRaw(valueYaml);
 
 			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
@@ -876,7 +888,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 		Jedis redisConnection = null;
 
 		try {
-			redisConnection = RedisConnection.getRedisConnection(namespace, serviceName); 
+			redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "master"); 
 
 			if (redisConnection == null) {
 				throw new Exception("Cannot connect redis. Namespace: " + namespace + ", ServiceName: " + serviceName);
@@ -920,8 +932,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 	 * @author chanhokim
 	 */
 	@Override
-	public Result updateDBVariables(final String txId, final String namespace, final String serviceName,
-			Map<String, String> config) throws Exception {
+	public Result updateDBVariables(final String txId, final String namespace, final String serviceName, Map<String, String> config) throws Exception {
 		Result result = Result.RESULT_OK(txId);
 		Jedis redisConnection = null;
 
@@ -937,11 +948,12 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 			event.setServiceType(K8SUtil.getChartName(namespace, serviceName));
 			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 
-			redisConnection = RedisConnection.getRedisConnection(namespace, serviceName);
-			if (redisConnection == null) {
-				throw new Exception("Cannot connect Redis. Namespace: " + namespace + ", Service Name: " + serviceName);
-			}
-			RedisConfiguration.setConfig(zdbRedisConfigRepository, redisConnection, namespace, serviceName, config); 
+//			redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "master");
+//
+//			if (redisConnection == null) {
+//				throw new Exception("Cannot connect Redis. Namespace: " + namespace + ", Service Name: " + serviceName);
+//			}
+//			RedisConfiguration.setConfig(zdbRedisConfigRepository, redisConnection, namespace, serviceName, config); 
 
 			result = updateConfig(txId, namespace, serviceName, config); 
 			
@@ -992,7 +1004,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 		Jedis redisConnection = null;
 		
 		try {
-			redisConnection = RedisConnection.getRedisConnection(namespace, serviceName);
+			redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "master");
 
 			if ("PONG".equals(redisConnection.ping())) {
 				return new Result("", Result.OK).putValue(IResult.SERVICE_STATUS, "healthy");
@@ -1020,14 +1032,14 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 	public Result updateConfig(String txId, final String namespace, final String serviceName, Map<String, String> config) throws Exception {
 		Result result = new Result(txId);
 		
-		ReleaseManager releaseManager = null;
+//		ReleaseManager releaseManager = null;
 		try {
-			final URI uri = URI.create(chartUrl);
-			final URL url = uri.toURL();
-			Chart.Builder chart = null;
-			try (final URLChartLoader chartLoader = new URLChartLoader()) {
-				chart = chartLoader.load(url);
-			}
+//			final URI uri = URI.create(chartUrl);
+//			final URL url = uri.toURL();
+//			Chart.Builder chart = null;
+//			try (final URLChartLoader chartLoader = new URLChartLoader()) {
+//				chart = chartLoader.load(url);
+//			}
 
 			//String chartVersion = chart.getMetadata().getVersion();
 
@@ -1035,23 +1047,22 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 			if (!K8SUtil.isServiceExist(namespace, serviceName)) {
 				String msg = "서비스가 존재하지 않습니다. [" + serviceName + "]";
 				log.error(msg);
-				result = new Result(txId, IResult.ERROR, "config update fail. [" + serviceName + "]");
+				result = new Result(txId, IResult.ERROR, "config update fail. [" + serviceName + "] - " + msg);
 			}
 			
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
 
-			final Tiller tiller = new Tiller(client);
-			releaseManager = new ReleaseManager(tiller);
-
-			final UpdateReleaseRequest.Builder requestBuilder = UpdateReleaseRequest.newBuilder();
-			requestBuilder.setTimeout(300L);
-			requestBuilder.setName(serviceName);
-			requestBuilder.setWait(true);
-
-			requestBuilder.setReuseValues(true);
-			//requestBuilder.setRecreate(true);
-		
-			hapi.chart.ConfigOuterClass.Config.Builder valuesBuilder = requestBuilder.getValuesBuilder();
+//			final Tiller tiller = new Tiller(client);
+//			releaseManager = new ReleaseManager(tiller);
+//
+//			final UpdateReleaseRequest.Builder requestBuilder = UpdateReleaseRequest.newBuilder();
+//			requestBuilder.setTimeout(300L);
+//			requestBuilder.setName(serviceName);
+//			requestBuilder.setWait(true);
+//
+//			requestBuilder.setReuseValues(true);
+//		
+//			hapi.chart.ConfigOuterClass.Config.Builder valuesBuilder = requestBuilder.getValuesBuilder();
 
 			StringBuffer redisConfig = new StringBuffer();
 			redisConfig.append("bind 0.0.0.0").append("\n");
@@ -1061,7 +1072,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 			redisConfig.append("rename-command FLUSHDB FDB").append("\n");
 			redisConfig.append("rename-command FLUSHALL FALL").append("\n");			
 
-			Jedis redisConnection = RedisConnection.getRedisConnection(namespace, serviceName); 
+			Jedis redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "master"); 
 			
 			if (redisConnection == null) {
 				throw new Exception("Cannot connect redis. Namespace: " + namespace + ", ServiceName: " + serviceName);
@@ -1086,43 +1097,70 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 				}
 			}
 			
-			Map<String, Object> values = new HashMap<String, Object>();
-			Map<String, Object> master = new HashMap<String, Object>(); 
-	        master.put("config", redisConfig.toString());
-			values.put("master", master);				
+//			Map<String, Object> values = new HashMap<String, Object>();
+//			Map<String, Object> master = new HashMap<String, Object>(); 
+//	        master.put("config", redisConfig.toString());
+//			values.put("master", master);				
 
-			DumperOptions options = new DumperOptions();
-			options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-			options.setPrettyFlow(true);				
+//			DumperOptions options = new DumperOptions();
+//			options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+//			options.setPrettyFlow(true);				
+//			
+//			Yaml yaml = new Yaml(options);
+//			String valueYaml = yaml.dump(values);
+
+//			valuesBuilder.setRaw(valueYaml);
+
+//			log.debug("redis.cnf : \n" + valueYaml);
+//			log.debug(serviceName + " update start.");
+
+//			final Future<UpdateReleaseResponse> releaseFuture = releaseManager.update(requestBuilder, chart);
+//			final Release release = releaseFuture.get().getRelease();
+//
+//			if (release != null) {
+//				result = new Result(txId, IResult.OK, "config update request. [" + serviceName + "]");
+//			} else {
+//				throw new Exception("Cannot change chart for Redis. Namespace: " + namespace + ", Service Name: " + serviceName);
+//			}
 			
-			Yaml yaml = new Yaml(options);
-			String valueYaml = yaml.dump(values);
+			Resource<ConfigMap, DoneableConfigMap> configMapResource = client.configMaps().inNamespace(namespace).withName(serviceName + "-redis-config");
 
-			valuesBuilder.setRaw(valueYaml);
+		    ConfigMap configMap = configMapResource.createOrReplace(new ConfigMapBuilder().
+		          withNewMetadata().withName(serviceName + "-redis-config").endMetadata().
+		          addToData("redis-config", redisConfig.toString()).
+		          build());			
+			
+			// Set Redis master config.
+			redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "master");
 
-			log.debug("redis.cnf : \n" + valueYaml);
-			log.debug(serviceName + " update start.");
-
-			final Future<UpdateReleaseResponse> releaseFuture = releaseManager.update(requestBuilder, chart);
-			final Release release = releaseFuture.get().getRelease();
-
-			if (release != null) {
-				result = new Result(txId, IResult.OK, "config update request. [" + serviceName + "]");
-			} else {
-				result = new Result(txId, IResult.ERROR, "config update fail. [" + serviceName + "]");
+			if (redisConnection == null) {
+				throw new Exception("Cannot connect Redis(Master). Namespace: " + namespace + ", Service Name: " + serviceName);
 			}
+			RedisConfiguration.setConfig(zdbRedisConfigRepository, redisConnection, namespace, serviceName, config); 
+			
+			
+			// Set Redis slave config.
+			redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "slave");
+
+			if (redisConnection == null) {
+				throw new Exception("Cannot connect Redis(Slave). Namespace: " + namespace + ", Service Name: " + serviceName);
+			}
+			
+			RedisConfiguration.setConfig(zdbRedisConfigRepository, redisConnection, namespace, serviceName, config); 
+			
+			result = new Result(txId, IResult.OK, "config update request. [" + serviceName + "]");			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			result = new Result(txId, IResult.ERROR, "config update fail. [" + serviceName + "]");
-		} finally {
-			if (releaseManager != null) {
-				try {
-					releaseManager.close();
-				} catch (IOException e) {
-					log.error(e.getMessage(), e);
-				}
-			}
+			result = new Result(txId, IResult.ERROR, "config update fail. [" + serviceName + "] - " + e.getLocalizedMessage());
+//		} finally {
+//			if (releaseManager != null) {
+//				try {
+//					releaseManager.close();
+//				} catch (IOException e) {
+//					log.error(e.getMessage(), e);
+//				}
+//			}
 		}
 		
 		return result;

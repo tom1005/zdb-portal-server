@@ -50,6 +50,9 @@ public class RequestEvent {
 	
 	@Column(name = "chartVersion")
 	private String chartVersion;
+
+//	@Column(name = "appVersion")
+//	private String appVersion;
 	
 	@Lob
 	@Column(length=1000000, name = "resourceLog")

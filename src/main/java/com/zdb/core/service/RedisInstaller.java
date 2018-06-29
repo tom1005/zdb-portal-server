@@ -32,6 +32,7 @@ import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ServiceSpec;
+import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBType;
 import com.zdb.core.repository.DiskUsageRepository;
@@ -101,21 +102,21 @@ public class RedisInstaller implements ZDBInstaller {
 			
 			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 
-			// 서비스 명 중복 체크
-			if (K8SUtil.isServiceExist(service.getNamespace(), service.getServiceName())) {
-				String msg = "사용중인 서비스 명입니다.[" + service.getServiceName() + "]";
-				log.error(msg);
-
-				event.setStatus(IResult.ERROR);
-				event.setResultMessage(msg);
-				event.setStatusMessage("서비스명 중복 오류");
-				event.setUpdateTime(new Date(System.currentTimeMillis()));
-				event.setEndTIme(new Date(System.currentTimeMillis()));
-
-				ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-
-				return;
-			}
+//			// 서비스 명 중복 체크
+//			if (K8SUtil.isServiceExist(service.getNamespace(), service.getServiceName())) {
+//				String msg = "사용중인 서비스 명입니다.[" + service.getServiceName() + "]";
+//				log.error(msg);
+//
+//				event.setStatus(IResult.ERROR);
+//				event.setResultMessage(msg);
+//				event.setStatusMessage("서비스명 중복 오류");
+//				event.setUpdateTime(new Date(System.currentTimeMillis()));
+//				event.setEndTIme(new Date(System.currentTimeMillis()));
+//
+//				ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
+//
+//				return;
+//			}
 			
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
 			final Tiller tiller = new Tiller(client);
@@ -396,6 +397,22 @@ public class RedisInstaller implements ZDBInstaller {
 					
 					releaseRepository.save(releaseMeta);
 					
+					Tag typeTag = new Tag();
+					typeTag.setNamespace(service.getNamespace());
+					typeTag.setReleaseName(service.getServiceName());
+					typeTag.setTagName(service.getServiceType());		
+					
+					tagRepository.save(typeTag);
+					
+					if (service.getPurpose() != null) {
+						Tag purposeTag = new Tag();
+						purposeTag.setNamespace(service.getNamespace());
+						purposeTag.setReleaseName(service.getServiceName());
+						purposeTag.setTagName(service.getPurpose().toLowerCase());
+						
+						tagRepository.save(purposeTag);
+					}					
+					
 					exchange.setProperty(KubernetesConstants.KUBERNETES_SERVICE_NAME, service.getServiceName());
 					exchange.setProperty(KubernetesConstants.KUBERNETES_NAMESPACE_NAME, service.getNamespace());
 				} else {
@@ -532,7 +549,7 @@ public class RedisInstaller implements ZDBInstaller {
 				releaseMeta.setAppVersion(release.getChart().getMetadata().getAppVersion());
 				releaseMeta.setChartVersion(release.getChart().getMetadata().getVersion());
 				releaseMeta.setChartName(release.getChart().getMetadata().getName());
-				releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds()));
+				releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds() * 1000L));
 				releaseMeta.setNamespace(namespace);
 				releaseMeta.setReleaseName(serviceName);
 				releaseMeta.setStatus(release.getInfo().getStatus().getCode().name());
@@ -558,11 +575,13 @@ public class RedisInstaller implements ZDBInstaller {
 					for (PersistentVolumeClaim pvc : persistentVolumeClaims) {
 						client.inNamespace(namespace).persistentVolumeClaims().withName(pvc.getMetadata().getName()).delete();
 					}
+
+					// disk usage 정보 삭제처리 
+					if (persistentVolumeClaims.size() > 0) {
+						diskUsageRepository.deleteByNamespaceAndReleaseName(namespace, serviceName);
+					}
 				}
 
-				// disk usage 정보 삭제처리 
-				diskUsageRepository.deleteByNamespaceAndReleaseName(namespace, serviceName);
-				
 				// tag 정보 삭제 
 				tagRepository.deleteByNamespaceAndReleaseName(namespace, serviceName);
 			} else {

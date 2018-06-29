@@ -25,4 +25,5 @@ public class ScheduleEntity {
 	private String namespace;
 	private String startTime;
 	private int storePeriod;
+	private String useYn;
 }

@@ -1042,7 +1042,6 @@ public class K8SUtil {
 	 */
 	public static String[] getPodLog(String namespace, String podName) throws Exception {
 		DefaultKubernetesClient client;
-//		String podLog = null;
 		String[] lines = null;
 		
 		try {
@@ -1050,17 +1049,19 @@ public class K8SUtil {
 
 			if (client != null) {
 				String app = client.pods().inNamespace(namespace).withName(podName).get().getMetadata().getLabels().get("app");
-				
-				PrettyLoggable<String, LogWatch> tailingLines = null;
-				//Loggable<String, LogWatch> tailingLines = null;
-				
+				String log = null;
 				if ("redis".equals(app)) {
-					tailingLines = client.pods().inNamespace(namespace).withName(podName).tailingLines(1000);
+					String name = client.pods().inNamespace(namespace).withName(podName).get().getSpec().getContainers().get(0).getName();
+					PrettyLoggable<String, LogWatch> tailingLines = client.pods().inNamespace(namespace).withName(podName).inContainer(name).tailingLines(1000);
+					log = tailingLines.getLog();
 				} else if ("mariadb".equals(app)) {
-					tailingLines = client.pods().inNamespace(namespace).withName(podName).inContainer("mariadb").tailingLines(1000);
+					PrettyLoggable<String, LogWatch> tailingLines = client.pods().inNamespace(namespace).withName(podName).inContainer("mariadb").tailingLines(1000);
+					log = tailingLines.getLog();
 				}
-				
-				lines = tailingLines.getLog().split("\n");				
+				if (log != null) {
+					log = log.replaceAll("\\[\\dm|\\[[\\d]{2}[;][\\d][;][\\d]m", "");
+					lines = log.split("\n");
+				}
  
 //				podLog = unescape(podLog);
 //				String unescapeString = unescapeJava(tailingLines.getLog());
@@ -1391,7 +1392,7 @@ public class K8SUtil {
 	 * @return java.util.List<String>
 	 * @throws FileNotFoundException
 	 */
-	public static String getRedisHostIP(String namespace, String serviceName) throws Exception {
+	public static String getRedisHostIP(String namespace, String serviceName, String redisRole) throws Exception {
 		List<io.fabric8.kubernetes.api.model.Service> services = kubernetesClient().inNamespace(namespace).services().withLabel("release", serviceName).list().getItems();
  
         String ip = new String();
@@ -1400,21 +1401,21 @@ public class K8SUtil {
 	        try {
 	          String role = service.getSpec().getSelector().get("role");
 	          
-	          if ("master".equals(role)) {
+	          if (role.equals(redisRole)) {
 	        	  String loadbalancerType = service.getMetadata().getAnnotations().get("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type");
 	        	  
 	      		  if ("local".equals(profile)) {
 		        	  if ("public".equals(loadbalancerType)) {
 		        		  ip = service.getStatus().getLoadBalancer().getIngress().get(0).getIp();
-			        	  break;  
+			        	  continue;  
 		        	  }
 	    		  } else if (profile == null || "prod".equals(profile)) {	        	  
 		        	  if ("private".equals(loadbalancerType)) {
 		        		  ip = service.getSpec().getClusterIP();
-			        	  break;
+		        		  continue;
 		        	  }
-	    		  }	
-	          } 
+	    		  }		        	  
+	          }
 	        } catch (Exception e) {
 	        	log.error(e.getMessage(), e);
 	        }

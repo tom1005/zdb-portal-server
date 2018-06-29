@@ -42,11 +42,15 @@ public class ServiceOverview {
 	
 	private String deploymentStatus;
 	
+	private String elapsedTime;
+	
 	private ZDBStatus status;
 	
 	private String statusMessage;
 	
 	private String reason;
+
+	private String purpose;
 	
 	private List<PersistentVolumeClaim> persistentVolumeClaims = new ArrayList<>();
 	

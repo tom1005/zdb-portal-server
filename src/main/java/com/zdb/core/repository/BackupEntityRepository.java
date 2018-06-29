@@ -25,7 +25,7 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 	@Query("select t from BackupEntity t where backupId=:backupId" )
 	BackupEntity findBackup(@Param("backupId") String backupId);
 
-	@Query("select t from BackupEntity t where serviceType=:serviceType and serviceName=:serviceName" )
+	@Query("select t from BackupEntity t where serviceType=:serviceType and serviceName=:serviceName order by startDatetime desc" )
 	List<BackupEntity> findScheduleByName(@Param("serviceType") String serviceType, @Param("serviceName") String serviceName);
 	
 	@Modifying(clearAutomatically = true)

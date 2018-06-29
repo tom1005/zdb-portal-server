@@ -4,7 +4,7 @@ import java.util.Arrays;
 
 public enum EventType {
 	
-	Deployment, Delete, Restart, RestartPod, Update, UpdatePassword, SearchList
+	Deployment, Delete, Restart, RestartPod, Update, UpdatePassword
 	, SearchDetail, ServiceAccount, UpdateDBConfig, CreatePersistentVolumeClaim, BackupSchedule, Backup, BackupList, BackupDetail
 	, DeleteBackup, Restore, EMPTY;
 
