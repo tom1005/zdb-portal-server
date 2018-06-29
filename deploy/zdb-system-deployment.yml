@@ -31,7 +31,22 @@ spec:
           valueFrom:
             configMapKeyRef:
               name: zdb-portal-server-config
-              key: daemonUrl                       
+              key: daemonUrl
+        - name: chart.redis.url
+          valueFrom:
+            configMapKeyRef:
+              name: zdb-portal-server-config
+              key: chart.redis.url
+        - name: chart.mariadb.url
+          valueFrom:
+            configMapKeyRef:
+              name: zdb-portal-server-config
+              key: chart.mariadb.url              
+        - name: datasource.url
+          valueFrom:
+            configMapKeyRef:
+              name: zdb-portal-server-config
+              key: datasource.url              
       imagePullSecrets:
       - name: zdb-system-secret
       serviceAccountName: zdb-system-account
@@ -44,7 +59,7 @@ metadata:
   name: zdb-portal-server-loadbalancer
   namespace: zdb-system
   annotations:
-    service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type: public
+    service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type: private
 spec:
   type: LoadBalancer
   selector:
@@ -52,5 +67,4 @@ spec:
   ports:
    - protocol: TCP
      port: 8080
-  loadBalancerIP: 169.56.70.222  
           
