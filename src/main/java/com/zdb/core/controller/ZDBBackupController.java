@@ -372,7 +372,7 @@ public class ZDBBackupController {
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
-
+/*
 	@RequestMapping(value = "/download/{backupId}", method = RequestMethod.GET)
 	public ResponseEntity<Resource> downloadBackup(
 			@PathVariable("backupId") final String backupId
@@ -455,7 +455,7 @@ public class ZDBBackupController {
 			}
 		}
 	}
-	
+*/
 	private void removeFile(File file) {
 		try {
 			if (file.isDirectory()) {

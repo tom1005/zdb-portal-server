@@ -27,7 +27,7 @@ public interface ScheduleEntityRepository extends CrudRepository<ScheduleEntity,
 	@Query("select t from ScheduleEntity t where namespace=:namespace and serviceType=:serviceType and serviceName=:serviceName" )
 	ScheduleEntity findScheduleByName(@Param("namespace") String namespace, @Param("serviceType") String serviceType, @Param("serviceName") String serviceName);
 	
-	@Query("select t from ScheduleEntity t where startTime=:startTime and useYn='Y'" )
+	@Query("select t from ScheduleEntity t where startTime=:startTime" )
 	List<ScheduleEntity> findCurrentSchedule(@Param("startTime") String startTime);
 	
 	@Query("select t from ScheduleEntity t" )
