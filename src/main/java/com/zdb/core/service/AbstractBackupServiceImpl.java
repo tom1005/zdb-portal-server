@@ -142,7 +142,7 @@ public class AbstractBackupServiceImpl implements ZDBBackupService {
 			log.debug("namespace : "+namespace+", serviceName : "+serviceName+", serviceType : "+serviceType);
 			event.setResultMessage("Not supperted method requested");
 			event.setEndTIme(new Date(System.currentTimeMillis()));
-			List<BackupEntity> list = backupRepository.findScheduleByName(serviceType, serviceName);
+			List<BackupEntity> list = backupRepository.findBackupByService(serviceType, serviceName);
 			if (list != null) {
 				result = new Result(txid, Result.OK).putValue("backupList", list);
 			}

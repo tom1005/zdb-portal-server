@@ -25,8 +25,21 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 	@Query("select t from BackupEntity t where backupId=:backupId" )
 	BackupEntity findBackup(@Param("backupId") String backupId);
 
-	@Query("select t from BackupEntity t where serviceType=:serviceType and serviceName=:serviceName order by startDatetime desc" )
-	List<BackupEntity> findScheduleByName(@Param("serviceType") String serviceType, @Param("serviceName") String serviceName);
+	@Query("select t from BackupEntity t where serviceType=:serviceType"
+			+ " and serviceName=:serviceName"
+			+ " and start_datetime is not null"
+			+ " order by start_datetime desc" )
+	List<BackupEntity> findBackupByService(@Param("serviceType") String serviceType, @Param("serviceName") String serviceName);
+	
+	@Query("select t from BackupEntity t where namespace=:namespace"
+			+ " and serviceType=:serviceType"
+			+ " and serviceName=:serviceName"
+			+ " and status='OK'"
+			+ " and start_datetime <:expiredDate order by start_datetime desc" )
+	List<BackupEntity> findExpiredBackup(@Param("namespace") String namespace
+			, @Param("serviceType") String serviceType
+			, @Param("serviceName") String serviceName
+			, @Param("expiredDate") Date expiredDate);
 	
 	@Modifying(clearAutomatically = true)
 	@Transactional
@@ -89,6 +102,18 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 	int modify2Completed(@Param("completeDatetime") Date completeDatetime
 			, @Param("status") String status
 			, @Param("backupId") String backupId);
+	
+	@Modifying(clearAutomatically = true)
+	@Transactional
+	@Query("UPDATE BackupEntity t SET t.completeDatetime=:completeDatetime, t.status=:status, t.reason=:reason WHERE t.namespace=:namespace"
+			+ " and t.serviceType=:serviceType"
+			+ " and t.serviceName=:serviceName")
+	int modifyAllbyService(@Param("completeDatetime") Date completeDatetime
+			, @Param("status") String status
+			, @Param("reason") String reason
+			, @Param("namespace") String namespace
+			, @Param("serviceType") String serviceType
+			, @Param("serviceName") String serviceName);
 	
 	@Modifying
 	@Transactional
