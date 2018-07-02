@@ -208,6 +208,9 @@ public class K8SService {
 			} else if("Pod".equals(metaData.getKind())) {
 				Pod data = new Gson().fromJson(meta, Pod.class);
 				list.add(data);
+			} else if("ReplicaSet".equals(metaData.getKind())) {
+				ReplicaSet data = new Gson().fromJson(meta, ReplicaSet.class);
+				list.add(data);
 			} else if("ConfigMap".equals(metaData.getKind()) && isDetail) {
 				ConfigMap data = new Gson().fromJson(meta, ConfigMap.class);
 				list.add(data);
@@ -216,9 +219,6 @@ public class K8SService {
 				list.add(data);
 			} else if("Secret".equals(metaData.getKind()) && isDetail) {
 				Secret data = new Gson().fromJson(meta, Secret.class);
-				list.add(data);
-			} else if("ReplicaSet".equals(metaData.getKind())) {
-				ReplicaSet data = new Gson().fromJson(meta, ReplicaSet.class);
 				list.add(data);
 			} else if("Deployment".equals(metaData.getKind()) && isDetail) {
 				Deployment data = new Gson().fromJson(meta, Deployment.class);

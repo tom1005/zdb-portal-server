@@ -195,8 +195,11 @@ public class ZDBRestController {
 
 		String txId = txId();
 		try {
+			UserInfo userInfo = getUserInfo();
+			
 			// mariadb , redis, postgresql, rabbitmq, mongodb
 			ZDBType dbType = ZDBType.getType(serviceType);
+			log.info("{}, {}, {}", userInfo.getUserId(), userInfo.getUserName(), userInfo.getAccessRole());
 
 			com.zdb.core.domain.Result result = null;
 

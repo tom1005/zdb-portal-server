@@ -1,5 +1,6 @@
 package com.zdb.core.collector;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +41,7 @@ public class MetaDataCollector {
 	MetadataRepository metaRepo;
 	
 	// @Scheduled(initialDelayString = "${collector.period.initial-delay}", fixedRateString = "${collector.period.fixed-rate}")
-	@Scheduled(initialDelayString = "10000", fixedRateString = "300000")
+	@Scheduled(initialDelayString = "20000", fixedRateString = "60000")
 	public void collect() {
 		try {
 			long s = System.currentTimeMillis();
@@ -49,36 +50,88 @@ public class MetaDataCollector {
 
 			save(namespaces);
 			
+			List<Deployment> allDeployments = new ArrayList<>();
+			List<Pod> allPods = new ArrayList<>();
+			List<ReplicaSet> allReplicaaSets = new ArrayList<>();
+			List<StatefulSet> allStatuefulSets = new ArrayList<>();
+			List<Service> allServices = new ArrayList<>();
+			List<ConfigMap> allConfigMaps = new ArrayList<>();
+			List<Secret> allSecrets = new ArrayList<>();
+			
+			// Kube 기준 동기화
 			for (Namespace ns : namespaces) {
 				String name = ns.getMetadata().getName();
 				
 				// deployments
 				List<Deployment> deployments = client.inNamespace(name).extensions().deployments().list().getItems();
 				save(deployments);
+				allDeployments.addAll(deployments);
 				
 				// pods
 				List<Pod> pods = client.inNamespace(name).pods().list().getItems();
 				save(pods);
+				allPods.addAll(pods);
 				
 				// replicasets
 				List<ReplicaSet> replicaSets = client.inNamespace(name).extensions().replicaSets().list().getItems();
 				save(replicaSets);
+				allReplicaaSets.addAll(replicaSets);
 				
 				// statefulsets
 				List<StatefulSet> statefulSets = client.inNamespace(name).apps().statefulSets().list().getItems();
 				save(statefulSets);
+				allStatuefulSets.addAll(statefulSets);
 				
 				// services
 				List<Service> services = client.inNamespace(name).services().list().getItems();
 				save(services);
+				allServices.addAll(services);
 				
 				// configmap
 				List<ConfigMap> configMaps = client.inNamespace(name).configMaps().list().getItems();
 				save(configMaps);
+				allConfigMaps.addAll(configMaps);
 				
 				// secrets
 				List<Secret> secrets = client.inNamespace(name).secrets().list().getItems();
 				save(secrets);
+				allSecrets.addAll(secrets);
+			}
+			
+			// DB기준 체크(Kube에 삭제되고 DB에 남아있는 데이터 삭제)
+			Iterable<MetaData> findAll = metaRepo.findAll();
+			for (MetaData metaData : findAll) {
+				
+				String kind = metaData.getKind();
+				String namespace = metaData.getNamespace();
+				String name = metaData.getName();
+				
+				boolean flag = false;
+				if("Deployment".equals(kind)) {
+					flag = exist(allDeployments, namespace, name);
+				} else if("Pod".equals(kind)) {
+					flag = exist(allPods, namespace, name);
+				} else if("ReplicaSet".equals(kind)) {
+					flag = exist(allReplicaaSets, namespace, name);
+				} else if("StatefulSet".equals(kind)) {
+					flag = exist(allStatuefulSets, namespace, name);
+				} else if("Service".equals(kind)) {
+					flag = exist(allServices, namespace, name);
+				} else if("ConfigMap".equals(kind)) {
+					flag = exist(allConfigMaps, namespace, name);
+				} else if("Secret".equals(kind)) {
+					flag = exist(allSecrets, namespace, name);
+				}
+				
+				// not exist
+				if(!flag) {
+					metaData.setAction("DELETED");
+					metaData.setUpdateTime(DateUtil.currentDate());
+					metaData.setStatus("");
+					metaRepo.save(metaData);
+					log.info("MetaData DELETED.{} {} {}", kind, namespace, name);
+				}
+				
 			}
 			
 			log.info("MetaData Sync : " + (System.currentTimeMillis() - s));
@@ -87,6 +140,17 @@ public class MetaDataCollector {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 		}
+	}
+
+	private boolean exist(List<? extends HasMetadata> allSecrets, String namespace, String name) {
+		boolean flag = false;
+		for (HasMetadata secret : allSecrets) {
+			if(secret.getMetadata().getNamespace().equals(namespace) && secret.getMetadata().getName().equals(name)) {
+				flag = true;
+				break;
+			}
+		}
+		return flag;
 	}
 	
 	private void save(List<? extends HasMetadata> metadataList) {
@@ -108,7 +172,7 @@ public class MetaDataCollector {
 					m.setNamespace(metaObj.getMetadata().getNamespace());
 					m.setName(metaObj.getMetadata().getName());
 					m.setReleaseName(getReleasename(metaObj));
-					m.setAction("ADDED");
+					m.setAction("AUTO_SYNC");
 				} catch (Exception e) {
 					log.error(e.getMessage(), e);
 				}
