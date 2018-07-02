@@ -8,7 +8,7 @@
 	<version>1.0.0</version>
 
 	<name>zdb-portal-server</name>
-	<url>http://maven.apache.org</url>
+	<url>https://www.cloudz.co.kr</url>
 
 	<parent>
 		<groupId>org.springframework.boot</groupId>
@@ -148,6 +148,39 @@
 				</plugins>
 			</build>
 		</profile>
+		<profile>
+			<id>agent</id>
+			<properties>
+				<artifact.id>zdb-portal-server-for-agent</artifact.id>
+			</properties>
+			<build>
+				<plugins>
+					<plugin>
+						<artifactId>maven-jar-plugin</artifactId>
+						<version>2.3.1</version>
+						<configuration>
+							<includes>
+								<include>com/zdb/core/**/*.*</include>
+								<include>com/zdb/mariadb/**/*.*</include>
+							</includes>
+							<packagingexcludes>
+								**/*.xml,
+								**/*.properties,
+								**/*.json,
+								**/*.yml
+							</packagingexcludes>
+							<excludes>
+								<exclude>**/*.xml</exclude>
+								<exclude>**/*.json</exclude>
+								<exclude>com/zdb/core/collector/*.*</exclude>
+								<exclude>com/zdb/core/controller/*.*</exclude>
+								<exclude>com/zdb/core/event/**/*.*</exclude>
+							</excludes>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>		
 		<profile>
 			<id>prod</id>
 			<properties>

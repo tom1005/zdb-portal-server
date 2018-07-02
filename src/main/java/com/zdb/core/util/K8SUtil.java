@@ -547,7 +547,7 @@ public class K8SUtil {
 		return null;
 	}
 
-	public static Secret getSecret(final String namespace, final String secretName) throws Exception {
+	public static Secret getSecret(final String namespace, final String serviceName) throws Exception {
 		SecretList secrets = getSecrets(namespace);
 		if (secrets != null) {
 			List<Secret> secretList = secrets.getItems();
@@ -557,7 +557,7 @@ public class K8SUtil {
 				if (labels != null) {
 					String release = labels.get("release");
 
-					if (secretName.equals(release)) {
+					if (serviceName.equals(release)) {
 						return secret;
 					}
 				}
