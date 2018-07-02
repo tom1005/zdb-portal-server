@@ -1,8 +1,8 @@
 package com.zdb.core.controller;
 
 import java.io.FileNotFoundException;
-import java.util.Enumeration;
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -695,8 +695,19 @@ public class ZDBRestController {
 	@RequestMapping(value = "/namespaces", method = RequestMethod.GET)
 	public ResponseEntity<String> getNamespaces() {
 		try {
-			Result result = mariadbService.getNamespaces();
+			
+			UserInfo userInfo = getUserInfo();
+			String namespaces = userInfo.getNamespaces();
+			List<String> userNamespaces = new ArrayList<>();
+			if(namespaces != null) {
+				String[] split = namespaces.split(",");
+				for (String ns : split) {
+					userNamespaces.add(ns.trim());
+				}
+			}
+			Result result = mariadbService.getNamespaces(userNamespaces);
 			return new ResponseEntity<String>(result.toJson(), result.status());
+			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 

@@ -7,6 +7,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -721,9 +722,15 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	}
 	
 	@Override
-	public Result getNamespaces() throws Exception {
+	public Result getNamespaces(List<String> namespaceFilter) throws Exception {
 		try {
 			List<Namespace> namespaces = k8sService.getNamespaces();
+			for (Iterator<Namespace> iterator = namespaces.iterator(); iterator.hasNext();) {
+				Namespace namespace = (Namespace) iterator.next();
+				if (!namespaceFilter.contains(namespace.getMetadata().getName())) {
+					iterator.remove();
+				}
+			}
 			if (namespaces != null) {
 				return new Result("", Result.OK).putValue(IResult.NAMESPACES, namespaces);
 			}

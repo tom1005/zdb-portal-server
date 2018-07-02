@@ -1,5 +1,6 @@
 package com.zdb.core.service;
 
+import java.util.List;
 import java.util.Map;
 
 import com.zdb.core.domain.Result;
@@ -111,7 +112,7 @@ public interface ZDBRestService {
 	 *  get persistent volume claims
 	 * @param namespace
 	 */
-	Result getNamespaces() throws Exception;
+	Result getNamespaces(List<String> filters) throws Exception;
 	
 	// 전체 서비스 getServices
 	Result getAllServices() throws Exception;

@@ -41,7 +41,7 @@ public class MetaDataCollector {
 	MetadataRepository metaRepo;
 	
 	// @Scheduled(initialDelayString = "${collector.period.initial-delay}", fixedRateString = "${collector.period.fixed-rate}")
-	@Scheduled(initialDelayString = "20000", fixedRateString = "60000")
+	@Scheduled(initialDelayString = "20000", fixedRateString = "60")
 	public void collect() {
 		try {
 			long s = System.currentTimeMillis();
@@ -121,6 +121,8 @@ public class MetaDataCollector {
 					flag = exist(allConfigMaps, namespace, name);
 				} else if("Secret".equals(kind)) {
 					flag = exist(allSecrets, namespace, name);
+				} else if("Namespace".equals(kind)) {
+					flag = exist(namespaces, name);
 				}
 				
 				// not exist
@@ -144,8 +146,19 @@ public class MetaDataCollector {
 
 	private boolean exist(List<? extends HasMetadata> allSecrets, String namespace, String name) {
 		boolean flag = false;
-		for (HasMetadata secret : allSecrets) {
-			if(secret.getMetadata().getNamespace().equals(namespace) && secret.getMetadata().getName().equals(name)) {
+		for (HasMetadata metaData : allSecrets) {
+			if(metaData.getMetadata().getNamespace().equals(namespace) && metaData.getMetadata().getName().equals(name)) {
+				flag = true;
+				break;
+			}
+		}
+		return flag;
+	}
+	
+	private boolean exist(List<? extends HasMetadata> allSecrets, String name) {
+		boolean flag = false;
+		for (HasMetadata metaData : allSecrets) {
+			if(metaData.getMetadata().getName().equals(name)) {
 				flag = true;
 				break;
 			}

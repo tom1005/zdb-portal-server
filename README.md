@@ -3,6 +3,7 @@ zdb-portal-server
 
 ## Build & Dockerize
 mvn -P ui clean install -Dmaven.test.skip=true
+mvn -P agent clean install -Dmaven.test.skip=true
 mvn -P prod clean install -Dmaven.test.skip=true docker:build
 
 #bx cr login
