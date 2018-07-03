@@ -81,4 +81,16 @@ public interface ZDBBackupService {
 	 * @throws Exception
 	 */
 	Result restoreFromBackup(String txId, String namespace, String serviceName, String serviceType, String backupId) throws Exception;
+
+	/**
+	 * 
+	 * @param txId
+	 * @param namespace
+	 * @param serviceName
+	 * @param serviceType
+	 * @param serviceName
+	 * @return
+	 * @throws Exception
+	 */
+	Result removeServiceResource(String txId, String namespace, String serviceType, String serviceName) throws Exception;
 }

@@ -68,6 +68,9 @@ public class RedisInstaller implements ZDBInstaller {
 	@Autowired
 	private DiskUsageRepository diskUsageRepository;
 	
+	@Autowired
+	private RedisBackupServiceImpl redisBackupService;
+	
 	/**
 	 * @param exchange
 	 */
@@ -584,6 +587,9 @@ public class RedisInstaller implements ZDBInstaller {
 
 				// tag 정보 삭제 
 				tagRepository.deleteByNamespaceAndReleaseName(namespace, serviceName);
+				
+				// backup resource 삭제 요청
+				redisBackupService.removeServiceResource(txId, namespace, ZDBType.Redis.getName(), serviceName);
 			} else {
 				String msg = "설치된 서비스가 존재하지 않습니다.";
 				event.setResultMessage(msg);

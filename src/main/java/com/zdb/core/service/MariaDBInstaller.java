@@ -87,6 +87,9 @@ public class MariaDBInstaller implements ZDBInstaller {
 	@Autowired
 	private DiskUsageRepository diskUsageRepository;
 	
+	@Autowired
+	private MariaDBBackupServiceImpl mariadbBackupService;
+	
 	private static final String DEFAULT_ROOT_PASSWORD = "zdb12#$";
 	private static final String DEFAULT_USER = "admin";
 	private static final String DEFAULT_USER_PASSWORD = "zdbadmin12#$";
@@ -523,6 +526,9 @@ public class MariaDBInstaller implements ZDBInstaller {
 				
 				// tag 정보 삭제 
 				tagRepository.deleteByNamespaceAndReleaseName(namespace, serviceName);
+				
+				// Backup Resource 삭제 요청
+				mariadbBackupService.removeServiceResource(txId, namespace, ZDBType.MariaDB.getName(), serviceName);
 			} else {
 				String msg = "설치된 서비스가 존재하지 않습니다.";
 				event.setResultMessage(msg);

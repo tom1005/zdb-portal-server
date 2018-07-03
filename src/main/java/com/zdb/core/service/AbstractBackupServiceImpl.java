@@ -241,6 +241,39 @@ public class AbstractBackupServiceImpl implements ZDBBackupService {
 		return result;
 	}
 	
+	public Result removeServiceResource(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+		RequestEvent event = new RequestEvent();
+		Result result = null;
+		try {
+			event.setTxId(txId);
+			event.setServiceName(serviceName);
+			event.setServiceType(serviceType);
+			event.setEventType(EventType.Delete.name());
+			event.setNamespace(namespace);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			
+			log.debug("namespace : "+namespace
+					+", serviceName : "+serviceName
+					+", serviceType : "+serviceType);
+			event.setResultMessage("ServiceResource("+serviceName+") to delete");
+			StringBuilder sb = new StringBuilder();
+			sb.append(K8SUtil.daemonUrl)
+					.append("/api/v1/").append(namespace).append("/").append(serviceType).append("/service/").append(serviceName).append("/delete");
+			RestTemplate restTemplate = new RestTemplate();
+			log.info(">>>> uri : "+sb.toString());
+			event.setStatus(IResult.RUNNING);
+			result = restTemplate.getForObject(sb.toString(), Result.class);
+		} catch (Exception e) {
+			event.setStatus(IResult.ERROR);
+			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setResultMessage("ServiceResource("+serviceName+") to delete not found");
+		} finally {
+			zdbRepository.save(event);
+		}		
+		return result;
+	}
+	
+	
 	public Result updateDBInstanceConfiguration(final String txId, final String namespace, final String serviceName, Map<String, String> config) throws Exception {
 		return null;
 	}
