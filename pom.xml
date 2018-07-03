@@ -4,6 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.skcc.cloudz.zdb</groupId>
+	<artifactId>zdb-portal-server</artifactId>
 	<version>1.0.0</version>
 
 	<name>zdb-portal-server</name>
@@ -127,7 +128,7 @@
 		<profile>
 			<id>ui</id>
 			<properties>
-				<artifact.id>zdb-portal-server-for-ui</artifact.id>
+				<artifactId>zdb-portal-server-for-ui</artifactId>
 			</properties>
 			<build>
 				<plugins>
@@ -161,7 +162,7 @@
 		<profile>
 			<id>prod</id>
 			<properties>
-				<artifact.id>zdb-portal-server</artifact.id>
+				<artifactId>zdb-portal-server</artifactId>
 			</properties>
 			<build>
 				<plugins>
