@@ -4,12 +4,16 @@ import java.io.FileNotFoundException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -64,6 +68,7 @@ import io.fabric8.kubernetes.api.model.NodeList;
 import io.fabric8.kubernetes.api.model.PersistentVolume;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.kubernetes.api.model.PodCondition;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.ServicePort;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
@@ -732,6 +737,9 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				}
 			}
 			if (namespaces != null) {
+				Ascending descending = new Ascending();
+				Collections.sort(namespaces, descending);
+
 				return new Result("", Result.OK).putValue(IResult.NAMESPACES, namespaces);
 			}
 		} catch (KubernetesClientException e) {
@@ -749,6 +757,15 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		return new Result("", Result.OK).putValue(IResult.NAMESPACES, "");
 	}
 	
+	class Ascending implements Comparator<Namespace> {
+		 
+	    @Override
+	    public int compare(Namespace o1, Namespace o2) {
+	        return o1.getMetadata().getName().compareTo(o2.getMetadata().getName());
+	    }
+	 
+	}
+
 	@Override
 	public Result getAllServices() throws Exception {
 		// @getService
@@ -882,7 +899,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			long createTime = releaseMetaData.getCreateTime().getTime();
 			
 			// 15분이내 생성된 서버 1529453558000
-			if((System.currentTimeMillis() - createTime) < 150 * 60 * 1000) {
+			if(true/*(System.currentTimeMillis() - createTime) < 150 * 60 * 1000*/) {
 				// kind, name, reason
 //				'PersistentVolumeClaim', 'data-zdb-116-mariadb-master-0', '2018-06-01T09:56:59Z', '2018-06-01T09:56:59Z', 'Successfully provisioned volume pvc-f941d085-6581-11e8-bddb-ea6741069087', 'ProvisioningSucceeded'
 //				'Pod', 'zdb-116-mariadb-master-0', '2018-06-01T09:58:53Z', '2018-06-01T09:58:53Z', 'MountVolume.SetUp succeeded for volume \"pvc-f941d085-6581-11e8-bddb-ea6741069087\" ', 'SuccessfulMountVolume'
@@ -907,7 +924,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		        String containerSlave = "-";
 		        String isReadyMaster = "-";
 		        String isReadySlave = "-";
-				
+		        Set<String> eventMessageSet = new HashSet<>();
+		        
 				// pvc 상태 
 				List<PersistentVolumeClaim> pvcList = k8sService.getPersistentVolumeClaims(overview.getNamespace(), serviceName);
 				for (PersistentVolumeClaim persistentVolumeClaim : pvcList) {
@@ -978,6 +996,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 					}
 				}
 				List<Pod> pods = overview.getPods();
+				
 				for (Pod pod : pods) {
 					
 					String role = "";
@@ -992,6 +1011,14 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 						isReadyMaster = isReady ? "OK" : "준비중";
 					} else {
 						isReadySlave = isReady ? "OK" : "준비중";
+					}
+					 
+					if(!isReady) {
+						List<PodCondition> conditions = pod.getStatus().getConditions();
+						if(!conditions.isEmpty()) {
+							String message = conditions.get(0).getMessage();
+							eventMessageSet.add(message);
+						}
 					}
 				}
 				
@@ -1008,6 +1035,15 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				} else {
 					statusMessage = String.format("%s‣컨테이너[M: %s]</br>‣상태[M: %s]", storageMsg, containerMasger, isReadyMaster);
 				}
+				
+				if(!eventMessageSet.isEmpty()) {
+					statusMessage = statusMessage + "</br>‣메세지:";
+					for (Iterator<String> iterator = eventMessageSet.iterator(); iterator.hasNext();) {
+						String m = (String) iterator.next();
+						statusMessage += "</br>&nbsp; &nbsp; &nbsp;&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;" + m;
+					}
+				}
+				
 				overview.setStatusMessage(statusMessage);
 			}
 		}
