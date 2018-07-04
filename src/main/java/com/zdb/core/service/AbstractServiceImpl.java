@@ -29,7 +29,9 @@ import javax.persistence.criteria.Root;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
@@ -1108,6 +1110,23 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		return new Result("", Result.OK).putValue(IResult.POD, "");
 	}	
 	
+	public static String iamBaseUrl;
+	
+	@Value("${iam.baseUrl}")
+	public void setMasterUrl(String url) {
+		iamBaseUrl = url;
+	}
+	
+	public Map<String, String> getNamespaceResource(String namespace) {
+		//https://zcp-iam.cloudzcp.io:443/iam/namespace/ns-zdb-02/resource
+		
+		RestTemplate restTemplate = getRestTemplate();
+		URI uri = URI.create(iamBaseUrl + "/iam/namespace/"+namespace+"/resource");
+		Map<String, Object> responseMap = restTemplate.getForObject(uri, Map.class);
+		
+		return null;
+	}
+	
 	public Result getPodMetrics(String namespace, String podName) throws Exception {
 		List<Service> services = K8SUtil.getServicesWithNamespace("kube-system");
 
@@ -1158,7 +1177,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 
 				Result result = new Result("", Result.OK);
 
-				RestTemplate restTemplate = new RestTemplate();
+				RestTemplate restTemplate = getRestTemplate();
 				{
 					URI uri = URI.create(metricUrl + "/cpu-usage");
 					Map<String, Object> responseMap = restTemplate.getForObject(uri, Map.class);
@@ -1177,6 +1196,15 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		}
 
 		return new Result("", Result.ERROR);
+	}
+	
+	private RestTemplate getRestTemplate() {
+		HttpComponentsClientHttpRequestFactory httpRequestFactory = new HttpComponentsClientHttpRequestFactory();
+        httpRequestFactory.setConnectionRequestTimeout(1000);
+        httpRequestFactory.setConnectTimeout(1000);
+        httpRequestFactory.setReadTimeout(1000);
+        
+        return new RestTemplate(httpRequestFactory);
 	}
 	
 	public Result updateDBVariables(final String txId, final String namespace, final String serviceName, Map<String, String> config) throws Exception {

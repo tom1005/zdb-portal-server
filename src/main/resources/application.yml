@@ -12,10 +12,13 @@ management:
  security:
   enabled: false
 
+iam:
+    baseUrl: ${iam.baseUrl}
 ---
 spring:
   profiles: local
   datasource:
+#    url: jdbc:mariadb://169.56.94.12:3306/zdb
     url: jdbc:mariadb://169.56.80.186:3306/zdb
     platform: h2
     username: zdb
@@ -39,7 +42,8 @@ k8s:
   cluster: zdb-dev
   privatelb: 10.178.191.134
   publiclb: 169.56.70.222
-  masterUrl: "https://169.56.69.242:30134"    
+  masterUrl: "https://169.56.69.242:23078"    
+#  masterUrl: "https://169.56.69.242:30134"    
   daemonUrl: "http://localhost:8090" 
   
 chart:

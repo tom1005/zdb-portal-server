@@ -28,8 +28,8 @@ public class UpdateNamespace {
 			}
 			
 //			Namespace ns = new NamespaceBuilder().withNewMetadata().withName("zdb-system").removeFromLabels("name").endMetadata().build();
-//			Namespace ns = new NamespaceBuilder().withNewMetadata().withName("zdb-system").addToLabels("name", "").endMetadata().build();
-//			client.namespaces().createOrReplace(ns);
+			Namespace ns = new NamespaceBuilder().withNewMetadata().withName("ns-zdb-02").addToLabels("cloudzdb.io/zdb-system", "true").endMetadata().build();
+			client.namespaces().createOrReplace(ns);
 
 		} catch (Exception e) {
 			e.printStackTrace();
