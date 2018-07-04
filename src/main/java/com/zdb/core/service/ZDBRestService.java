@@ -164,7 +164,7 @@ public interface ZDBRestService {
 
 	Result getTagsWithNamespace(String namespace) throws Exception;
 
-	Result getTags() throws Exception;
+	Result getTags(List<String> namespaceList) throws Exception;
 
 	Result getNodes() throws Exception;
 

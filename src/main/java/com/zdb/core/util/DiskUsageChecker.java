@@ -59,7 +59,8 @@ public class DiskUsageChecker {
 			}
 
 			List<Pod> items = new ArrayList<>();
-			List<Namespace> nsList = client.namespaces().withLabel("name", "zdb").list().getItems();
+			// zdb namespace label
+			List<Namespace> nsList = client.namespaces().withLabel("cloudzdb.io/zdb-system", "true").list().getItems();
 			for (Namespace namespace : nsList) {
 				items.addAll(client.inNamespace(namespace.getMetadata().getName()).pods().list().getItems());
 			}

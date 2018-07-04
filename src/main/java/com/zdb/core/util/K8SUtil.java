@@ -134,7 +134,8 @@ public class K8SUtil {
 	 * @throws FileNotFoundException
 	 */
 	public static List<Namespace> getNamespaces() throws Exception {
-		return kubernetesClient().namespaces().withLabel("name", "zdb").list().getItems();
+		// zdb namespace label
+		return kubernetesClient().namespaces().withLabel("cloudzdb.io/zdb-system", "true").list().getItems();
 	}
 
 	public static Namespace getNamespace(String namespace) throws Exception {

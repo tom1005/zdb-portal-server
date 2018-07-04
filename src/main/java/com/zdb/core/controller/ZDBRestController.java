@@ -1178,7 +1178,16 @@ public class ZDBRestController {
 		UserInfo userInfo = getUserInfo();
 		
 		try {
-			Result result = mariadbService.getTags();
+			String namespaces = userInfo.getNamespaces();
+			List<String> userNamespaces = new ArrayList<>();
+			if(namespaces != null) {
+				String[] split = namespaces.split(",");
+				for (String ns : split) {
+					userNamespaces.add(ns.trim());
+				}
+			}
+			
+			Result result = mariadbService.getTags(userNamespaces);
 			
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {

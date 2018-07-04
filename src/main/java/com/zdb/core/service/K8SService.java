@@ -531,9 +531,11 @@ public class K8SService {
 		}
 		
 		// 태그 정보 
-		List<Tag> tagList = tagRepository.findByNamespaceAndReleaseName(namespace, serviceName);
-		so.getTags().addAll(tagList);
-		
+		ReleaseMetaData findByReleaseName = releaseRepository.findByReleaseName(serviceName);
+		if (findByReleaseName != null) {
+			List<Tag> tagList = tagRepository.findByNamespaceAndReleaseName(namespace, serviceName);
+			so.getTags().addAll(tagList);
+		}
 		if (detail) {
 			List<ConfigMap> configMaps = new ArrayList<>();
 			List<PersistentVolumeClaim> persistentVolumeClaims = new ArrayList<>();
@@ -1120,8 +1122,9 @@ public class K8SService {
 
 			Map<String, String> labels = pvc.getMetadata().getLabels();
 			if (labels != null) {
-				String name = labels.get("name");
-				if ("zdb".equals(name)) {
+				// zdb namespace label
+				String name = labels.get("cloudzdb.io/zdb-system");
+				if ("true".equals(name)) {
 					list.add(pvc);
 				}
 			}

@@ -71,6 +71,23 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 			m.setUid(event.getInvolvedObject().getUid());
 			m.setName(event.getInvolvedObject().getName());
 			m.setNamespace(event.getInvolvedObject().getNamespace());
+			
+			try {
+				Namespace namespace = K8SUtil.getNamespace(event.getInvolvedObject().getNamespace());
+				Map<String, String> labels = namespace.getMetadata().getLabels();
+				if(labels != null) {
+					// zdb namespace label
+					String key = labels.get("cloudzdb.io/zdb-system");
+					if(!"true".equals(key)) {
+						return;
+					}
+				} else {
+					log.debug(event.getInvolvedObject().getNamespace());
+					return;
+				}
+			} catch (Exception e) {
+				log.error(e.getMessage(), e);
+			}
 
 //			log.info(m.getName()+" / "+m.getMessage()+" / "+m.getLastTimestamp());
 			EventMetaData findByNameAndMessageAndLastTimestamp = ((EventRepository) metaRepo).findByNameAndMessageAndLastTimestamp(m.getName(), m.getMessage(), m.getLastTimestamp());
@@ -152,8 +169,9 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 		if (resource instanceof Namespace) {
 			Map<String, String> labels = resource.getMetadata().getLabels();
 			if(labels != null) {
-				String key = labels.get("name");
-				if("zdb".equals(key)) {
+				// zdb namespace label
+				String key = labels.get("cloudzdb.io/zdb-system");
+				if("true".equals(key)) {
 					return true;
 				}
 			}
@@ -163,8 +181,9 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 				Namespace namespace = K8SUtil.getNamespace(name);
 				Map<String, String> labels = namespace.getMetadata().getLabels();
 				if(labels != null) {
-					String key = labels.get("name");
-					if("zdb".equals(key)) {
+					// zdb namespace label
+					String key = labels.get("cloudzdb.io/zdb-system");
+					if("true".equals(key)) {
 						return true;
 					}
 				}

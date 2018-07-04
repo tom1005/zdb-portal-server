@@ -1484,7 +1484,10 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			for (String ns : split) {
 				List<Tag> tagList = tagRepository.findByNamespace(ns.trim());
 				for (Tag tag : tagList) {
-					tagMap.put(tag.getTagName(), tag);
+					ReleaseMetaData findByReleaseName = releaseRepository.findByReleaseName(tag.getReleaseName());
+					if(findByReleaseName != null) {
+						tagMap.put(tag.getTagName(), tag);
+					}
 				}
 			}
 
@@ -1494,8 +1497,16 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		}
 	}
 	
-	public Result getTags() throws Exception {
+	public Result getTags(List<String> namespaceList) throws Exception {
 		Iterable<Tag> tagList = tagRepository.findAll();
+		
+		for (Iterator iterator = tagList.iterator(); iterator.hasNext();) {
+			String ns = (String) iterator.next();
+			if(!namespaceList.contains(ns)) {
+				iterator.remove();
+			}
+		}
+		
 		return new Result("", Result.OK).putValue(IResult.TAGS, tagList);
 	}
 	

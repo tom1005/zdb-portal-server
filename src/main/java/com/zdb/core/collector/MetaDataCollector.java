@@ -123,6 +123,8 @@ public class MetaDataCollector {
 					flag = exist(allSecrets, namespace, name);
 				} else if("Namespace".equals(kind)) {
 					flag = exist(namespaces, name);
+				} else if("PersistentVolumeClaim".equals(kind)) {
+					flag = exist(namespaces, name);
 				}
 				
 				// not exist
