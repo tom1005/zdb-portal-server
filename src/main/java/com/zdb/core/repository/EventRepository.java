@@ -26,6 +26,9 @@ public interface EventRepository extends CrudRepository<EventMetaData, String> {
 	
 	@Query(value = "select id, date_format(first_timestamp, '%Y-%m-%d %T') as first_timestamp, date_format(last_timestamp, '%Y-%m-%d %T') as last_timestamp, kind, message, metadata, name, namespace, reason, uid, release_name from event_meta_data t where name like :name and kind=:kind and reason=:reason order by last_timestamp ", nativeQuery = true)
 	List<EventMetaData> findByKindAndNameAndReason(@Param("kind") final String kind, @Param("name") final String name, @Param("reason") final String reason);
+	
+	@Query(value = "select id, date_format(first_timestamp, '%Y-%m-%d %T') as first_timestamp, date_format(last_timestamp, '%Y-%m-%d %T') as last_timestamp, kind, message, metadata, name, namespace, reason, uid, release_name from event_meta_data t where name like :name and kind=:kind order by last_timestamp desc limit 1 ", nativeQuery = true)
+	EventMetaData findByKindAndName(@Param("kind") final String kind, @Param("name") final String name);
 //	
 //	@Query(value = "select id, date_format(first_timestamp, '%Y-%m-%d %T') as first_timestamp, date_format(last_timestamp, '%Y-%m-%d %T') as last_timestamp, kind, '' as metadata, message, name, namespace, reason, uid from event_meta_data t where namespace=:namespace and kind=:kind and name like %:name% order by last_timestamp ", nativeQuery = true)
 //	List<EventMetaData> findByNamespaceAndKindAndName(@Param("namespace") final String namespace, @Param("kind") final String kind, @Param("name") final String name);
