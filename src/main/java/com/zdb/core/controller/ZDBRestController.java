@@ -25,9 +25,11 @@ import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.UserInfo;
+import com.zdb.core.domain.UserNamespaces;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBType;
+import com.zdb.core.repository.UserNamespaceRepository;
 import com.zdb.core.service.MariaDBServiceImpl;
 import com.zdb.core.service.RedisServiceImpl;
 import com.zdb.core.service.ZDBRestService;
@@ -57,6 +59,13 @@ public class ZDBRestController {
 	@Autowired
 	@Qualifier("redisService")
 	private ZDBRestService redisService;
+	
+	@Autowired
+	@Qualifier("commonService")
+	private ZDBRestService commonService;
+	
+	@Autowired
+	private UserNamespaceRepository userNamespaceRepo;
 
 	// @Autowired
 	// @Qualifier("postgresqlService")
@@ -208,6 +217,7 @@ public class ZDBRestController {
 				result = mariadbService.createDeployment(txId, entity);
 				break;
 			case Redis:
+				entity.setClusterEnabled(true);
 				result = redisService.createDeployment(txId, entity);
 				break;
 			case PostgreSQL:
@@ -705,6 +715,28 @@ public class ZDBRestController {
 					userNamespaces.add(ns.trim());
 				}
 			}
+			
+			if(userInfo != null && userInfo.getUserId() != null) {
+				List<UserNamespaces> userNamespaceList = userNamespaceRepo.findByUserId(userInfo.getUserId());
+				List<String> savedUserNamespaceList = new ArrayList<>();
+				for (UserNamespaces us : userNamespaceList) {
+					savedUserNamespaceList.add(us.getNamespace());
+					if(!userNamespaces.contains(us.getNamespace())) {
+						userNamespaceRepo.delete(us);
+					}
+				}
+				
+				for (String ns : userNamespaces) {
+					if(!savedUserNamespaceList.contains(ns)) {
+						UserNamespaces un = new UserNamespaces();
+						un.setUserId(userInfo.getUserId());
+						un.setNamespace(ns);
+						
+						userNamespaceRepo.save(un);
+					}
+				}
+			}
+			
 			Result result = mariadbService.getNamespaces(userNamespaces);
 			return new ResponseEntity<String>(result.toJson(), result.status());
 			
@@ -910,6 +942,25 @@ public class ZDBRestController {
 		try {
 			//http://169.56.80.189/api/v1/model/namespaces/zdb-maria/pod-list/maria-test777-mariadb-0/metrics/cpu-usage
 			Result result = mariadbService.getPodMetrics(namespace, podName);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+
+			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
+	/**
+	 * resource check
+	 * 
+	 * @return ResponseEntity<List<Service>>
+	 */
+	@RequestMapping(value = "/{namespace}/avaliable", method = RequestMethod.GET)
+	public ResponseEntity<String> isAva(@PathVariable("namespace") final String namespace, 
+			@RequestParam("memory") final String memory, @RequestParam("cpu") final String cpu,  @RequestParam("clusterEnabled") final boolean clusterEnabled) {
+		try {
+			Result result = commonService.isAvailableResource(namespace, cpu, memory, clusterEnabled);
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);

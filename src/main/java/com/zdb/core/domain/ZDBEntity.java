@@ -41,6 +41,8 @@ public class ZDBEntity {
 	
 	private boolean metricEnabled;
 	
+	private boolean backupEnabled;
+	
 	private PodSpec[] podSpec;
 	
 	private ServiceSpec[] serviceSpec;

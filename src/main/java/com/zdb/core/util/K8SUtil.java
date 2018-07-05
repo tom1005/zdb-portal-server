@@ -1464,6 +1464,54 @@ public class K8SUtil {
 		
 		return bufferSize;
 	}
+	
+	/**
+	 * @param memory
+	 * @return
+	 */
+	public static int convertToMemory(String memory) {
+		String[] unit = new String[] { "E", "P", "T", "G", "M", "K" };
+
+		int memSize = 0;
+		String memUnit = "";
+		
+		try {
+			for (String u : unit) {
+				if (memory.indexOf(u) > 0) {
+
+					memSize = Integer.parseInt(memory.substring(0, memory.indexOf(u)));
+
+					memUnit = memory.substring(memory.indexOf(u));
+
+					if (memUnit.startsWith("M")) {
+						return memSize;
+					} else if (memUnit.startsWith("G")) {
+						return memSize * 1000;
+					}
+
+					break;
+				}
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
+		
+		return -1;
+	}
+	
+	public static int convertToCpu(String cpu) {
+		int cpuMilicore = 0;
+		
+		boolean isMilicore = cpu.endsWith("m");
+		
+		if(isMilicore) {
+			cpuMilicore = Integer.parseInt(cpu.substring(0, cpu.indexOf("m")));
+		} else {
+			cpuMilicore = Integer.parseInt(cpu) * 1000;
+		}
+		
+		return cpuMilicore;
+	}
 		
 	public static NodeList getNodes() throws Exception {
 		DefaultKubernetesClient client;

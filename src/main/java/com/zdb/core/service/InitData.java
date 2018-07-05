@@ -14,7 +14,7 @@ public class InitData {
 		defaultConfigMap.put("binlog_cache_size", "1M|범위 : 4096 to 18446744073709547520|true|numeric");
 		defaultConfigMap.put("bulk_insert_buffer_size", "16M|범위 : 0 ~ 18446744073709547520|true|numeric");
 		defaultConfigMap.put("character_set_server", "utf8|범위 : utf8,euckr|true|string");
-		defaultConfigMap.put("collation_server", "utf8_general_ci||true|string");
+		defaultConfigMap.put("collation-server", "utf8_general_ci||true|string");
 		defaultConfigMap.put("connect_timeout", "10|범위 : 2이상|true|numeric");
 		defaultConfigMap.put("innodb_buffer_pool_instances", "4|범위 : 1,2,4,8|false|numeric");
 		defaultConfigMap.put("innodb_buffer_pool_size", "256M|범위 : 5M ~ 8192PB|false|numeric");

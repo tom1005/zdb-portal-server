@@ -171,5 +171,7 @@ public interface ZDBRestService {
 	Result getNodeCount() throws Exception;
 
 	Result getUnusedPersistentVolumeClaims(String namespace) throws Exception;
+	
+	Result isAvailableResource(String namespace, String cpu, String memory, boolean clusterEnabled) throws Exception;
 
 }

@@ -80,4 +80,7 @@ public class ReleaseMetaData {
 	
 	@Column(name = "purpose")
 	String purpose;
+	
+	@Column(name = "clusterEnabled")
+	Boolean clusterEnabled;
 }

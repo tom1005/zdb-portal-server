@@ -29,7 +29,6 @@ import javax.persistence.criteria.Root;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.util.StringUtils;
@@ -43,14 +42,17 @@ import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.Exchange;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.KubernetesOperations;
+import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
+import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ServiceOverview;
 import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBStatus;
 import com.zdb.core.domain.ZDBType;
+import com.zdb.core.exception.ResourceException;
 import com.zdb.core.repository.DiskUsageRepository;
 import com.zdb.core.repository.EventRepository;
 import com.zdb.core.repository.MetadataRepository;
@@ -60,6 +62,7 @@ import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
 import com.zdb.core.util.DateUtil;
 import com.zdb.core.util.K8SUtil;
+import com.zdb.core.util.NamespaceResourceChecker;
 import com.zdb.redis.RedisConfiguration;
 import com.zdb.redis.RedisConnection;
 
@@ -166,6 +169,34 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	}
 	
 	@Override
+	public Result isAvailableResource(String namespace, String cpu, String memory, boolean clusterEnabled) throws Exception {
+		int requestCpu = 0;
+		int requestMem = 0;
+		
+		String masterCpu = cpu;
+		String masterMemory = memory;
+		
+		if(clusterEnabled) {
+			String slaveCpu = cpu;
+			String slaveMemory = memory;
+			
+			requestCpu += K8SUtil.convertToCpu(slaveCpu);
+			requestMem += K8SUtil.convertToMemory(slaveMemory);
+		}
+		
+		requestCpu += K8SUtil.convertToCpu(masterCpu);
+		requestMem += K8SUtil.convertToMemory(masterMemory);
+		
+		try {
+			NamespaceResourceChecker.isAvailableResource(namespace, requestMem+"Mi", requestCpu+"m");
+			return new Result("", IResult.OK, "");
+		} catch (ResourceException e) {
+			log.error(e.getMessage(), e);
+			return new Result("", IResult.ERROR, e.getMessage());
+		}
+	}
+	
+	@Override
 	public Result createDeployment(String txId, ZDBEntity service) throws Exception {
 //		# id, 
 //		#uid, 
@@ -228,12 +259,27 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			long s = System.currentTimeMillis();
 			// 서비스 명 중복 체크
 			ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(service.getServiceName());
-			if (releaseMeta != null/*K8SUtil.isServiceExist(service.getNamespace(), service.getServiceName())*/) {
+			if (releaseMeta != null) {
 				String msg = "사용중인 서비스 명입니다.[" + service.getServiceName() + "]";
 				log.error(msg);
 
 				return new Result(txId, IResult.ERROR, msg);
 			}
+			
+			// 가용 리소스 체크
+			boolean clusterEnabled = service.isClusterEnabled();
+			PodSpec[] podSpec = service.getPodSpec();
+			
+			ResourceSpec masterSpec = podSpec[0].getResourceSpec()[0];
+			String masterCpu = masterSpec.getCpu();
+			String masterMemory = masterSpec.getMemory();
+		
+			
+			Result availableResource = isAvailableResource(service.getNamespace(), masterCpu, masterMemory, clusterEnabled);
+			if(!availableResource.isOK()) {
+				return new Result(txId, IResult.ERROR, availableResource.getMessage());
+			}
+			
 			log.error("서비스 명 중복 체크 : " + (System.currentTimeMillis() - s));
 			// 설치 요청 정보 저장
 			if(releaseMeta == null) {
@@ -256,7 +302,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			}
 			releaseMeta.setManifest("");
 			releaseMeta.setUpdateTime(new Date(System.currentTimeMillis()));
-			releaseMeta.setPublicEnabled(service.isClusterEnabled());
+			releaseMeta.setPublicEnabled(clusterEnabled);
 			releaseMeta.setPurpose(service.getPurpose());
 
 			log.info(">>> install request : "+new Gson().toJson(releaseMeta));
@@ -1110,19 +1156,14 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		return new Result("", Result.OK).putValue(IResult.POD, "");
 	}	
 	
-	public static String iamBaseUrl;
-	
-	@Value("${iam.baseUrl}")
-	public void setMasterUrl(String url) {
-		iamBaseUrl = url;
-	}
+
 	
 	public Map<String, String> getNamespaceResource(String namespace) {
 		//https://zcp-iam.cloudzcp.io:443/iam/namespace/ns-zdb-02/resource
 		
-		RestTemplate restTemplate = getRestTemplate();
-		URI uri = URI.create(iamBaseUrl + "/iam/namespace/"+namespace+"/resource");
-		Map<String, Object> responseMap = restTemplate.getForObject(uri, Map.class);
+//		RestTemplate restTemplate = getRestTemplate();
+//		URI uri = URI.create(iamBaseUrl + "/iam/namespace/"+namespace+"/resource");
+//		Map<String, Object> responseMap = restTemplate.getForObject(uri, Map.class);
 		
 		return null;
 	}

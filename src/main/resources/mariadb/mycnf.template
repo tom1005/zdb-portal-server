@@ -16,7 +16,7 @@ query_cache_limit=${query_cache_limit}
 
 character-set-client-handshake=FALSE
 character_set_server=${character_set_server}
-collation-server=${collation_server}
+collation-server=${collation-server}
     
 connect_timeout=${connect_timeout}
 max_connections=${max_connections}

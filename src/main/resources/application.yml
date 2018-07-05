@@ -12,8 +12,6 @@ management:
  security:
   enabled: false
 
-iam:
-    baseUrl: ${iam.baseUrl}
 ---
 spring:
   profiles: local
@@ -42,8 +40,8 @@ k8s:
   cluster: zdb-dev
   privatelb: 10.178.191.134
   publiclb: 169.56.70.222
-  masterUrl: "https://169.56.69.242:23078"    
-#  masterUrl: "https://169.56.69.242:30134"    
+#  masterUrl: "https://169.56.69.242:23078"    
+  masterUrl: "https://169.56.69.242:30134"    
   daemonUrl: "http://localhost:8090" 
   
 chart:
@@ -52,6 +50,9 @@ chart:
   redis:
     url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/redis/charts/redis-3.3.2.tgz"
   
+iam:
+    baseUrl: https://zcp-iam.cloudzcp.io:443
+      
 storage:
   storageType: AWS_S3
   accessKey: "6bf48d42eb304e1292f178bf69034f12"
@@ -109,6 +110,9 @@ chart:
   redis:
     url: ${chart.redis.url}
       
+iam:
+    baseUrl: ${iam.baseUrl}
+          
 storage:
   storageType: AWS_S3
   accessKey: "6bf48d42eb304e1292f178bf69034f12"
