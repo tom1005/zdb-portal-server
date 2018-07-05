@@ -86,6 +86,7 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 					return;
 				}
 			} catch (Exception e) {
+
 				log.error(e.getMessage(), e);
 			}
 

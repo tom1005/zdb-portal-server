@@ -946,8 +946,19 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			}
 			long createTime = releaseMetaData.getCreateTime().getTime();
 			
+			List<Pod> pods = overview.getPods();
+			
+			boolean isPodReady = true;
+			for (Pod pod : pods) {
+				if(!K8SUtil.IsReady(pod)) {
+					isPodReady = false;
+					break;
+				}
+				
+			}
+			
 			// 15분이내 생성된 서버 1529453558000
-			if(true/*(System.currentTimeMillis() - createTime) < 150 * 60 * 1000*/) {
+			if((System.currentTimeMillis() - createTime) < 150 * 60 * 1000 || !isPodReady) {
 				// kind, name, reason
 //				'PersistentVolumeClaim', 'data-zdb-116-mariadb-master-0', '2018-06-01T09:56:59Z', '2018-06-01T09:56:59Z', 'Successfully provisioned volume pvc-f941d085-6581-11e8-bddb-ea6741069087', 'ProvisioningSucceeded'
 //				'Pod', 'zdb-116-mariadb-master-0', '2018-06-01T09:58:53Z', '2018-06-01T09:58:53Z', 'MountVolume.SetUp succeeded for volume \"pvc-f941d085-6581-11e8-bddb-ea6741069087\" ', 'SuccessfulMountVolume'
@@ -1022,7 +1033,19 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				if (!podContainerStatus.isEmpty()) {
 					for (EventMetaData eventMetaData : podContainerStatus) {
 						try {
-							Pod pod = K8SUtil.getPodWithName(eventMetaData.getNamespace(), serviceName, eventMetaData.getName());
+//							Pod pod = K8SUtil.getPodWithName(eventMetaData.getNamespace(), serviceName, eventMetaData.getName());
+							Pod pod = null;
+//							List<Pod> pods = k8sService.getPods(eventMetaData.getNamespace(), serviceName);
+							for(Pod p : pods) {
+//								System.out.println(p.getMetadata().getName() +" / "+eventMetaData.getName() +" ==> "+p.getMetadata().getName().equals( eventMetaData.getName()));
+								if(p.getMetadata().getName().equals( eventMetaData.getName())) {
+									pod = p;
+									break;
+								}
+							}
+							if(pod == null) {
+								continue;
+							}
 							String role = "";
 							if ("mariadb".equals(overview.getServiceType())) {
 								role = pod.getMetadata().getLabels().get("component");
@@ -1043,7 +1066,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 						}
 					}
 				}
-				List<Pod> pods = overview.getPods();
 				
 				for (Pod pod : pods) {
 					

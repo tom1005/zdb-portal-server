@@ -21,7 +21,6 @@ import io.fabric8.kubernetes.api.model.Event;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
-import io.fabric8.kubernetes.api.model.PersistentVolumeClaimSpec;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
@@ -130,7 +129,7 @@ public class MetaDataCollector {
 				} else if("Namespace".equals(kind)) {
 					flag = exist(namespaces, name);
 				} else if("PersistentVolumeClaim".equals(kind)) {
-					flag = exist(namespaces, name);
+					flag = exist(allPvcs, name);
 				}
 				
 				// not exist
@@ -140,6 +139,11 @@ public class MetaDataCollector {
 					metaData.setStatus("");
 					metaRepo.save(metaData);
 					log.info("MetaData DELETED.{} {} {}", kind, namespace, name);
+				} else {
+					metaData.setAction("AUTO_SYNC");
+					metaData.setUpdateTime(DateUtil.currentDate());
+					metaData.setStatus("");
+					metaRepo.save(metaData);
 				}
 				
 			}
@@ -204,7 +208,6 @@ public class MetaDataCollector {
 			m.setStatus(getStatus(metaObj));
 			m.setMetadata(metaToJon);
 			m.setUpdateTime(new Date(System.currentTimeMillis()));
-
 			((MetadataRepository) metaRepo).save(m);
 		}
 	}

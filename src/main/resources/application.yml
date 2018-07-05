@@ -20,7 +20,7 @@ spring:
     url: jdbc:mariadb://169.56.80.186:3306/zdb
     platform: h2
     username: zdb
-    password: 24cmdshvek!
+    password: 1111
     driverClassName: org.mariadb.jdbc.Driver
   jpa:
     database-platform: org.hibernate.dialect.MySQLDialect
