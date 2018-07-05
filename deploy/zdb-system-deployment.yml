@@ -47,6 +47,11 @@ spec:
             configMapKeyRef:
               name: zdb-portal-server-config
               key: datasource.url              
+        - name: iam.baseUrl
+          valueFrom:
+            configMapKeyRef:
+              name: zdb-portal-server-config
+              key: iam.baseUrl              
       imagePullSecrets:
       - name: zdb-system-secret
       serviceAccountName: zdb-system-account
