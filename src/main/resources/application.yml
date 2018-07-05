@@ -74,14 +74,15 @@ backup:
   type: "public"
   redisDumpPath: "bitnami/redis/data"
   redisDumpFile: "dump.rdb"
-
+  
 ---
 spring:
   profiles: prod
   datasource:
     url: ${datasource.url}
     username: zdb
-    password: 24cmdshvek!
+#    password: 24cmdshvek!
+    password: 1111
     driverClassName: org.mariadb.jdbc.Driver
   jpa:
     database-platform: org.hibernate.dialect.MySQLDialect
