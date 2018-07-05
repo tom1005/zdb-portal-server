@@ -21,6 +21,7 @@ import io.fabric8.kubernetes.api.model.Event;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
+import io.fabric8.kubernetes.api.model.PersistentVolumeClaimSpec;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
@@ -57,6 +58,7 @@ public class MetaDataCollector {
 			List<Service> allServices = new ArrayList<>();
 			List<ConfigMap> allConfigMaps = new ArrayList<>();
 			List<Secret> allSecrets = new ArrayList<>();
+			List<PersistentVolumeClaim> allPvcs = new ArrayList<>();
 			
 			// Kube 기준 동기화
 			for (Namespace ns : namespaces) {
@@ -96,6 +98,10 @@ public class MetaDataCollector {
 				List<Secret> secrets = client.inNamespace(name).secrets().list().getItems();
 				save(secrets);
 				allSecrets.addAll(secrets);
+				
+				List<PersistentVolumeClaim> pvcs = client.inNamespace(name).persistentVolumeClaims().list().getItems();
+				save(pvcs);
+				allPvcs.addAll(pvcs);
 			}
 			
 			// DB기준 체크(Kube에 삭제되고 DB에 남아있는 데이터 삭제)
