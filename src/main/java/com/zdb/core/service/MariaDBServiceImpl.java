@@ -55,7 +55,6 @@ import hapi.release.ReleaseOuterClass.Release;
 import hapi.services.tiller.Tiller.UpdateReleaseRequest;
 import hapi.services.tiller.Tiller.UpdateReleaseResponse;
 import io.fabric8.kubernetes.api.model.ConfigMap;
-import io.fabric8.kubernetes.api.model.ConfigMapList;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.ServicePort;
@@ -185,6 +184,28 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 				return new Result(txId, IResult.ERROR, msg);
 			}
+			
+			PodSpec[] podSpec = service.getPodSpec();
+			
+			String master = podSpec[0].getPodType();
+			ResourceSpec masterSpec = podSpec[0].getResourceSpec()[0];
+			String masterResourceType = masterSpec.getResourceType();
+			String masterCpu = masterSpec.getCpu();
+			String masterMemory = masterSpec.getMemory();
+			
+			String slave = podSpec[1].getPodType();
+			ResourceSpec slaveSpec = podSpec[1].getResourceSpec()[0];
+			String slaveCpu = slaveSpec.getCpu();
+			String slaveMemory = slaveSpec.getMemory();
+			
+			// 가용 리소스 체크
+			// 현재보다 작으면ok
+			// 현재보다 크면 커진 사이즈 만큼 가용량 체크 
+			boolean availableResource = isAvailableScaleUp(service);
+			
+			if(!availableResource) {
+				return new Result(txId, IResult.ERROR, "가용 리소스가 부족합니다.");
+			}
 
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
 
@@ -204,18 +225,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			
 			String inputJson = IOUtils.toString(is, StandardCharsets.UTF_8.name());
 			
-			PodSpec[] podSpec = service.getPodSpec();
 			
-			String master = podSpec[0].getPodType();
-			ResourceSpec masterSpec = podSpec[0].getResourceSpec()[0];
-			String masterResourceType = masterSpec.getResourceType();
-			String masterCpu = masterSpec.getCpu();
-			String masterMemory = masterSpec.getMemory();
-			
-			String slave = podSpec[1].getPodType();
-			ResourceSpec slaveSpec = podSpec[1].getResourceSpec()[0];
-			String slaveCpu = slaveSpec.getCpu();
-			String slaveMemory = slaveSpec.getMemory();
 			
 			inputJson = inputJson.replace("${master.resources.requests.cpu}", masterCpu);// input , *******   필수값  
 			inputJson = inputJson.replace("${master.resources.requests.memory}", masterMemory);// input *******   필수값 

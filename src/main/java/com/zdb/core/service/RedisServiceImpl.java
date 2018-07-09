@@ -175,6 +175,15 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 				return new Result(txId, IResult.ERROR, msg);
 			}
 
+			// 가용 리소스 체크
+			// 현재보다 작으면ok
+			// 현재보다 크면 커진 사이즈 만큼 가용량 체크 
+			boolean availableResource = isAvailableScaleUp(service);
+			
+			if(!availableResource) {
+				return new Result(txId, IResult.ERROR, "가용 리소스가 부족합니다.");
+			}
+			
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
 
 			final Tiller tiller = new Tiller(client);

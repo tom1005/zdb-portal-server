@@ -28,6 +28,8 @@ public class ZDBEntity {
 	private String id;
 	
 	private String version;
+
+	private String requestUserId;
 	
 	private String serviceType;
 

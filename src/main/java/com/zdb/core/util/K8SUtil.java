@@ -1161,7 +1161,7 @@ public class K8SUtil {
 				
 				for (Container container : containers) {
 
-					if(selector.toLowerCase().equals(container.getName().toLowerCase())) {	
+					if(container.getName().toLowerCase().startsWith(selector.toLowerCase())) {	
 						ResourceRequirements  resources = container.getResources();
 						if(resources != null) {
 							try {
@@ -1178,6 +1178,9 @@ public class K8SUtil {
 								podSpec.setPodName(pod.getMetadata().getName());
 								
 								ResourceSpec rSpec = new ResourceSpec();
+								if(!cpu.endsWith("m")) {
+									cpu = (Integer.parseInt(cpu) * 1000) +"m";
+								}
 								rSpec.setCpu(cpu);
 								rSpec.setMemory(memory);
 								rSpec.setResourceType("requests");
@@ -1508,7 +1511,7 @@ public class K8SUtil {
 			cpuMilicore = Integer.parseInt(cpu.substring(0, cpu.indexOf("m")));
 		} else {
 			int parseInt = Integer.parseInt(cpu);
-			if(parseInt <= 64) {
+			if(parseInt <= 128) {
 				cpuMilicore = parseInt * 1000;				
 			} else {
 				cpuMilicore = parseInt;

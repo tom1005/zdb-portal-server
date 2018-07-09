@@ -1724,4 +1724,64 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		return new Result("", Result.OK).putValue(IResult.UNUSED_PERSISTENTVOLUMECLAIMS, "");
 	}	
 	
+	/**
+	 * @param service
+	 * @return
+	 * @throws Exception
+	 */
+	protected boolean isAvailableScaleUp(final ZDBEntity service) throws Exception {
+		PodSpec[] podSpec = service.getPodSpec();
+		
+		String master = podSpec[0].getPodType();
+		ResourceSpec masterSpec = podSpec[0].getResourceSpec()[0];
+		String masterResourceType = masterSpec.getResourceType();
+		String masterCpu = masterSpec.getCpu();
+		String masterMemory = masterSpec.getMemory();
+		
+		ZDBEntity podResources = K8SUtil.getPodResources(service.getNamespace(), service.getServiceType(), service.getServiceName());
+		PodSpec[] currentPodSpecs = podResources.getPodSpec();
+		
+		int gapCpu = 0;
+		int gapMem = 0;
+		
+		for (PodSpec currentPodSpec : currentPodSpecs) {
+			ResourceSpec[] resourceSpec = currentPodSpec.getResourceSpec();
+			String currentCpu = resourceSpec[0].getCpu();
+			String currentMemory = resourceSpec[0].getMemory();
+			
+			try {
+				int cCpu = K8SUtil.convertToCpu(currentCpu);
+				int cMem = K8SUtil.convertToMemory(currentMemory);
+				
+				int rCpu = Integer.parseInt(masterCpu);
+				int rMem = Integer.parseInt(masterMemory);
+			
+				// 현재 설정 값보다 스케일 업 설정 값이 크면...
+				if(cCpu < rCpu) {
+					gapCpu = gapCpu + rCpu - cCpu;
+				} else {
+					// nothing
+				}
+				
+				if(cMem < rMem) {
+					gapMem = gapMem + rMem - cMem;
+				} else {
+					// nothing
+				}
+			} catch (Exception e) {
+				log.error(e.getMessage(), e);
+			}
+		}
+		
+		if(gapCpu == 0) {
+			gapCpu = Integer.parseInt(masterCpu);
+		}
+		if(gapMem == 0) {
+			gapMem = Integer.parseInt(masterMemory);
+		}
+		
+		boolean availableResource = NamespaceResourceChecker.isAvailableResource(service.getNamespace(), service.getRequestUserId(), gapMem, gapCpu);
+		return availableResource;
+	}
+	
 }

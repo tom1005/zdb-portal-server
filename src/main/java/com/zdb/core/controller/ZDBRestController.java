@@ -264,6 +264,8 @@ public class ZDBRestController {
 			ZDBType dbType = ZDBType.getType(serviceType);
 
 			com.zdb.core.domain.Result result = null;
+			UserInfo userInfo = getUserInfo();
+			service.setRequestUserId(userInfo.getUserId());
 
 			switch (dbType) {
 			case MariaDB:
