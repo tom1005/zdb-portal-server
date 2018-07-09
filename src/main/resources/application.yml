@@ -81,8 +81,7 @@ spring:
   datasource:
     url: ${datasource.url}
     username: zdb
-#    password: 24cmdshvek!
-    password: 1111
+    password: 24cmdshvek!
     driverClassName: org.mariadb.jdbc.Driver
   jpa:
     database-platform: org.hibernate.dialect.MySQLDialect
