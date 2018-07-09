@@ -92,7 +92,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -110,7 +110,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -128,7 +128,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -183,7 +183,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 
@@ -214,11 +214,11 @@ public class ZDBRestController {
 
 			switch (dbType) {
 			case MariaDB:
-				result = mariadbService.createDeployment(txId, entity);
+				result = mariadbService.createDeployment(txId, entity, userInfo);
 				break;
 			case Redis:
 				entity.setClusterEnabled(true);
-				result = redisService.createDeployment(txId, entity);
+				result = redisService.createDeployment(txId, entity, userInfo);
 				break;
 			case PostgreSQL:
 				// TODO
@@ -238,7 +238,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 
@@ -290,7 +290,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -329,7 +329,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}	
@@ -375,7 +375,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -414,7 +414,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			com.zdb.core.domain.Result result = new Result(txId, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			com.zdb.core.domain.Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -457,7 +457,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -500,7 +500,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -520,7 +520,7 @@ public class ZDBRestController {
 
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -544,7 +544,7 @@ public class ZDBRestController {
 
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -567,7 +567,7 @@ public class ZDBRestController {
 
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -613,7 +613,7 @@ public class ZDBRestController {
 
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -655,7 +655,7 @@ public class ZDBRestController {
 //			
 //		} catch (Exception e) {
 //			log.error(e.getMessage(), e);
-//			result = new Result(txId, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+//			result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 //			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 //		}
 //	}
@@ -673,7 +673,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -692,7 +692,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -743,7 +743,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -758,7 +758,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -771,7 +771,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -785,7 +785,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -798,7 +798,7 @@ public class ZDBRestController {
 //		} catch (Exception e) {
 //			log.error(e.getMessage(), e);
 //
-//			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+//			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 //			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 //		}
 //	}
@@ -811,7 +811,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -828,7 +828,7 @@ public class ZDBRestController {
 //		} catch (Exception e) {
 //			log.error(e.getMessage(), e);
 //
-//			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+//			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 //			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 //		}
 //	}
@@ -848,7 +848,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -869,7 +869,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -889,7 +889,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -926,7 +926,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -946,7 +946,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -957,15 +957,18 @@ public class ZDBRestController {
 	 * @return ResponseEntity<List<Service>>
 	 */
 	@RequestMapping(value = "/{namespace}/avaliable", method = RequestMethod.GET)
-	public ResponseEntity<String> isAva(@PathVariable("namespace") final String namespace, 
+	public ResponseEntity<String> isAvailableResource(@PathVariable("namespace") final String namespace, 
 			@RequestParam("memory") final String memory, @RequestParam("cpu") final String cpu,  @RequestParam("clusterEnabled") final boolean clusterEnabled) {
 		try {
-			Result result = commonService.isAvailableResource(namespace, cpu, memory, clusterEnabled);
+			UserInfo userInfo = getUserInfo();
+			String userId = userInfo.getUserId();
+			
+			Result result = commonService.isAvailableResource(namespace, userId, cpu, memory, clusterEnabled);
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1018,7 +1021,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1037,7 +1040,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1056,7 +1059,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1091,7 +1094,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 
@@ -1128,7 +1131,7 @@ public class ZDBRestController {
 //		} catch (Exception e) {
 //			log.error(e.getMessage(), e);
 //
-//			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+//			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 //			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 //		}
 //	}	
@@ -1152,7 +1155,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1168,7 +1171,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1186,7 +1189,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1201,7 +1204,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1217,7 +1220,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1244,7 +1247,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1257,7 +1260,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}	
@@ -1270,7 +1273,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}	
@@ -1288,7 +1291,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}

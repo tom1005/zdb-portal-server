@@ -5,6 +5,7 @@ import java.util.Map;
 
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.Tag;
+import com.zdb.core.domain.UserInfo;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBType;
 
@@ -33,7 +34,7 @@ public interface ZDBRestService {
 	 * @param zdbEntity Customer entity to be saved
 	 * @throws Exception 
 	 */
-	Result createDeployment(String txId, ZDBEntity zdbEntity) throws Exception;
+	Result createDeployment(String txId, ZDBEntity zdbEntity, UserInfo userInfo) throws Exception;
 	
 	/**
 	 * @param id zdbEntity ID to be updated
@@ -172,6 +173,6 @@ public interface ZDBRestService {
 
 	Result getUnusedPersistentVolumeClaims(String namespace) throws Exception;
 	
-	Result isAvailableResource(String namespace, String cpu, String memory, boolean clusterEnabled) throws Exception;
+	Result isAvailableResource(String namespace, String userId, String cpu, String memory, boolean clusterEnabled) throws Exception;
 
 }

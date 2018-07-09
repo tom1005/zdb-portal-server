@@ -1507,7 +1507,12 @@ public class K8SUtil {
 		if(isMilicore) {
 			cpuMilicore = Integer.parseInt(cpu.substring(0, cpu.indexOf("m")));
 		} else {
-			cpuMilicore = Integer.parseInt(cpu) * 1000;
+			int parseInt = Integer.parseInt(cpu);
+			if(parseInt <= 64) {
+				cpuMilicore = parseInt * 1000;				
+			} else {
+				cpuMilicore = parseInt;
+			}
 		}
 		
 		return cpuMilicore;

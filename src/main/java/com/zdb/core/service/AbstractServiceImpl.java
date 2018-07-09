@@ -49,10 +49,10 @@ import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ServiceOverview;
 import com.zdb.core.domain.Tag;
+import com.zdb.core.domain.UserInfo;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBStatus;
 import com.zdb.core.domain.ZDBType;
-import com.zdb.core.exception.ResourceException;
 import com.zdb.core.repository.DiskUsageRepository;
 import com.zdb.core.repository.EventRepository;
 import com.zdb.core.repository.MetadataRepository;
@@ -169,7 +169,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	}
 	
 	@Override
-	public Result isAvailableResource(String namespace, String cpu, String memory, boolean clusterEnabled) throws Exception {
+	public Result isAvailableResource(String namespace, String userId, String cpu, String memory, boolean clusterEnabled) throws Exception {
 		int requestCpu = 0;
 		int requestMem = 0;
 		
@@ -180,24 +180,28 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			String slaveCpu = cpu;
 			String slaveMemory = memory;
 			
-			requestCpu += K8SUtil.convertToCpu(slaveCpu);
-			requestMem += K8SUtil.convertToMemory(slaveMemory);
+			requestCpu += Integer.parseInt(slaveCpu);
+			requestMem += Integer.parseInt(slaveMemory);
 		}
 		
-		requestCpu += K8SUtil.convertToCpu(masterCpu);
-		requestMem += K8SUtil.convertToMemory(masterMemory);
+		requestCpu += Integer.parseInt(masterCpu);
+		requestMem += Integer.parseInt(masterMemory);
 		
 		try {
-			NamespaceResourceChecker.isAvailableResource(namespace, requestMem+"Mi", requestCpu+"m");
-			return new Result("", IResult.OK, "");
-		} catch (ResourceException e) {
+			boolean availableResource = NamespaceResourceChecker.isAvailableResource(namespace, userId, requestMem, requestCpu);
+			if(availableResource) {
+				return new Result("", IResult.OK, "");
+			} else {
+				return new Result("", IResult.ERROR, "가용 리소스가 부족가 부족합니다.");
+			}
+		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			return new Result("", IResult.ERROR, e.getMessage());
 		}
 	}
 	
 	@Override
-	public Result createDeployment(String txId, ZDBEntity service) throws Exception {
+	public Result createDeployment(String txId, ZDBEntity service, UserInfo userInfo) throws Exception {
 //		# id, 
 //		#uid, 
 //		#first_timestamp, 
@@ -273,9 +277,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			ResourceSpec masterSpec = podSpec[0].getResourceSpec()[0];
 			String masterCpu = masterSpec.getCpu();
 			String masterMemory = masterSpec.getMemory();
-		
 			
-			Result availableResource = isAvailableResource(service.getNamespace(), masterCpu, masterMemory, clusterEnabled);
+			Result availableResource = isAvailableResource(service.getNamespace(), userInfo.getUserId(), masterCpu, masterMemory, clusterEnabled);
 			if(!availableResource.isOK()) {
 				return new Result(txId, IResult.ERROR, availableResource.getMessage());
 			}

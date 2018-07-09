@@ -131,17 +131,6 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 		return super.getDeployments(namespace, serviceType);
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see com.zdb.core.service.ZDBRestService#createService(com.zdb.core.domain.
-	 * ZDBEntity)
-	 */
-	@Override
-	public synchronized Result createDeployment(String txId, final ZDBEntity service) throws Exception {
-		return super.createDeployment(txId, service);
-	}
-
 	@Override
 	public Result updateScale(String txId, final ZDBEntity service) throws Exception {
 

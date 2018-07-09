@@ -29,11 +29,11 @@ public class NamespaceResourceChecker {
 		iamBaseUrl = url;
 	}
 	
-	private static NamespaceResource getNamespaceResource(String namespace) {
+	private static NamespaceResource getNamespaceResource(String namespace, String userId) {
 		//https://zcp-iam.cloudzcp.io:443/iam/namespace/ns-zdb-02/resource
 		
 		RestTemplate restTemplate = getRestTemplate();
-		URI uri = URI.create(iamBaseUrl + "/iam/namespace/"+namespace+"/resource");
+		URI uri = URI.create(iamBaseUrl + "/iam/namespace/"+namespace+"/resource?userId="+userId);
 		Map<String, Object> namespaceResource = restTemplate.getForObject(uri, Map.class);
 		
 		if(namespaceResource != null) {
@@ -58,8 +58,13 @@ public class NamespaceResourceChecker {
         return new RestTemplate(httpRequestFactory);
 	}
 	
-	public static boolean isAvailableResource(String namespace, String memory, String cpu) throws Exception {
-		NamespaceResource resource = getNamespaceResource(namespace);
+	public static boolean isAvailableResource(String namespace, String userId, int memory, int cpu) throws Exception {
+		NamespaceResource resource = getNamespaceResource(namespace, userId);
+		
+		if(resource == null) {
+			log.error("네임스페이스[{}] 의 가용 리소스 정보를 알 수 없습니다.", namespace);
+			throw new ResourceException("가용 리소스 정보 조회 에러.[" + namespace +"]");
+		}
 		
 		ResourceQuota hard = resource.getHard();
 		Integer cpuLimits = hard.getCpuLimits();
@@ -91,8 +96,10 @@ public class NamespaceResourceChecker {
 		int availableCpu = cpuLimits - usedCpuLimits;
 		int availableMemory = memLimits - usedMemLimits;
 		
-		int serviceRequestMemory = K8SUtil.convertToMemory(memory);
-		int serviceRequestCpu = K8SUtil.convertToCpu(cpu);
+		
+		
+		int serviceRequestMemory = memory;//K8SUtil.convertToMemory(memory);
+		int serviceRequestCpu = cpu;//K8SUtil.convertToCpu(cpu);
 		
 		if( availableCpu - serviceRequestCpu < 0) {
 			throw new ResourceException("가용 CPU 자원이 부족합니다. [가용CPU : " + availableCpu +"m]");
@@ -109,7 +116,7 @@ public class NamespaceResourceChecker {
 	public static void main(String[] args) {
 		try {
 			iamBaseUrl = "https://zcp-iam.cloudzcp.io:443";
-			boolean availableResource = isAvailableResource("ns-zdb-02", "5900Mi","1500m");
+			boolean availableResource = isAvailableResource("ns-zdb-02","userid", 5900,1500);
 			System.out.println(availableResource);
 		} catch (Exception e) {
 			e.printStackTrace();
