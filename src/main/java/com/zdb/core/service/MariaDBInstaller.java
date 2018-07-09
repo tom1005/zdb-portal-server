@@ -328,6 +328,13 @@ public class MariaDBInstaller implements ZDBInstaller {
 						log.error("{} > {} > {} 권한 변경 실패!", service.getNamespace(), service.getServiceName(), account.getUserId());
 					}
 					
+					
+					if(service.isBackupEnabled()) {
+						// TODO 백업 사용 초기화...
+						// 스케줄 등록...
+						
+					}
+					
 				} else {
 					event.setStatus(IResult.ERROR);
 					event.setResultMessage("DB 생성 오류");

@@ -418,6 +418,12 @@ public class RedisInstaller implements ZDBInstaller {
 					
 					exchange.setProperty(KubernetesConstants.KUBERNETES_SERVICE_NAME, service.getServiceName());
 					exchange.setProperty(KubernetesConstants.KUBERNETES_NAMESPACE_NAME, service.getNamespace());
+					
+					if(service.isBackupEnabled()) {
+						// TODO 백업 사용 초기화...
+						// 스케줄 등록...
+						
+					}
 				} else {
 					event.setStatus(IResult.ERROR);
 					event.setResultMessage("Redis Instance 생성 오류");
