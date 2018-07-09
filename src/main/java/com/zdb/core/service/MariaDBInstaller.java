@@ -33,6 +33,7 @@ import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
+import com.zdb.core.domain.ScheduleEntity;
 import com.zdb.core.domain.ServiceSpec;
 import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.ZDBEntity;
@@ -332,7 +333,14 @@ public class MariaDBInstaller implements ZDBInstaller {
 					if(service.isBackupEnabled()) {
 						// TODO 백업 사용 초기화...
 						// 스케줄 등록...
-						
+						ScheduleEntity schedule = new ScheduleEntity();
+						schedule.setNamespace(service.getNamespace());
+						schedule.setServiceType(service.getServiceType());
+						schedule.setServiceName(service.getServiceName());
+						schedule.setStartTime("01:00");
+						schedule.setStorePeriod(2);
+						schedule.setUseYn("Y");
+						mariadbBackupService.saveSchedule(exchange.getProperty(Exchange.TXID, String.class), schedule);
 					}
 					
 				} else {
