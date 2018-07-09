@@ -71,7 +71,7 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 			m.setUid(event.getInvolvedObject().getUid());
 			m.setName(event.getInvolvedObject().getName());
 			m.setNamespace(event.getInvolvedObject().getNamespace());
-			
+			log.info(new Gson().toJson(m));
 			try {
 				Namespace namespace = K8SUtil.getNamespace(event.getInvolvedObject().getNamespace());
 				Map<String, String> labels = namespace.getMetadata().getLabels();
@@ -101,7 +101,7 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 				if(event.getMessage().indexOf("Error on cloud load balancer") > -1) {
 					return;
 				}
-				log.info(new Gson().toJson(m));
+				
 				((EventRepository) metaRepo).save(m);
 			} 
 		} else {
