@@ -1056,7 +1056,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 								role = pod.getMetadata().getLabels().get("role");
 							}
 							
-							log.info(eventMetaData.getMetadata());
 							if (eventMetaData.getMessage().indexOf("Started container") > -1) {
 								if ("master".equals(role)) {
 									containerMasger = " 동작중";
