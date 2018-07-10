@@ -52,27 +52,26 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 			Event event = (Event) resource;
 			// EventRepository
 			EventMetaData m = new EventMetaData();
-			m = new EventMetaData();
 			
-			String firstTimestamp = event.getFirstTimestamp();
-			firstTimestamp = firstTimestamp.replace("T", " ").replace("Z", "");
-			
-			String lastTimestamp = event.getLastTimestamp();
-			lastTimestamp = lastTimestamp.replace("T", " ").replace("Z", "");
-			
-			m.setFirstTimestamp(firstTimestamp);
-			m.setKind(event.getInvolvedObject().getKind());
-
-			m.setLastTimestamp(lastTimestamp);
-			m.setMessage(event.getMessage());
-			m.setMetadata(metaToJon);
-			m.setReason(event.getReason());
-
-			m.setUid(event.getInvolvedObject().getUid());
-			m.setName(event.getInvolvedObject().getName());
-			m.setNamespace(event.getInvolvedObject().getNamespace());
-			log.info(new Gson().toJson(m));
 			try {
+				String firstTimestamp = event.getFirstTimestamp();
+				firstTimestamp = firstTimestamp.replace("T", " ").replace("Z", "");
+				
+				String lastTimestamp = event.getLastTimestamp();
+				lastTimestamp = lastTimestamp.replace("T", " ").replace("Z", "");
+				
+				m.setFirstTimestamp(firstTimestamp);
+				m.setKind(event.getInvolvedObject().getKind());
+	
+				m.setLastTimestamp(lastTimestamp);
+				m.setMessage(event.getMessage());
+				m.setMetadata(metaToJon);
+				m.setReason(event.getReason());
+	
+				m.setUid(event.getInvolvedObject().getUid());
+				m.setName(event.getInvolvedObject().getName());
+				m.setNamespace(event.getInvolvedObject().getNamespace());
+				log.info("1--------"+ event.getInvolvedObject().getNamespace() +" / " + event.getInvolvedObject().getName());
 				Namespace namespace = K8SUtil.getNamespace(event.getInvolvedObject().getNamespace());
 				Map<String, String> labels = namespace.getMetadata().getLabels();
 				if(labels != null) {
@@ -82,14 +81,14 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 						return;
 					}
 				} else {
-					log.debug(event.getInvolvedObject().getNamespace());
+					log.info(event.getInvolvedObject().getNamespace()+" / " + event.getInvolvedObject().getName());
 					return;
 				}
 			} catch (Exception e) {
-
+				log.error("2--------"+ metaToJon);
 				log.error(e.getMessage(), e);
 			}
-
+			log.info("3--------"+ event.getInvolvedObject().getNamespace()+" / " + event.getInvolvedObject().getName());
 //			log.info(m.getName()+" / "+m.getMessage()+" / "+m.getLastTimestamp());
 			EventMetaData findByNameAndMessageAndLastTimestamp = ((EventRepository) metaRepo).findByNameAndMessageAndLastTimestamp(m.getName(), m.getMessage(), m.getLastTimestamp());
 			if(findByNameAndMessageAndLastTimestamp == null) {
@@ -101,7 +100,7 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 				if(event.getMessage().indexOf("Error on cloud load balancer") > -1) {
 					return;
 				}
-				
+				log.info("4--------"+ metaToJon);
 				((EventRepository) metaRepo).save(m);
 			} 
 		} else {

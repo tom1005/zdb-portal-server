@@ -481,8 +481,17 @@ public class K8SService {
 		// 클러스터 사용 여부 
 		so.setClusterEnabled(isClusterEnabled(so));
 		
-		// 상태정보 
-		so.setStatus(getStatus(so));
+		// 태그 정보 
+
+		List<Tag> tagList = tagRepository.findByNamespaceAndReleaseName(namespace, serviceName);
+		so.getTags().addAll(tagList);
+		
+		if ("CREATING".equals(so.getDeploymentStatus())) {
+			so.setStatus(ZDBStatus.GRAY);
+		} else {
+			// 상태정보
+			so.setStatus(getStatus(so));
+		}
 		
 		so.setElapsedTime("");
 		String lastTransitionTime = null;
@@ -530,12 +539,7 @@ public class K8SService {
 			}
 		}
 		
-		// 태그 정보 
-		ReleaseMetaData findByReleaseName = releaseRepository.findByReleaseName(serviceName);
-		if (findByReleaseName != null) {
-			List<Tag> tagList = tagRepository.findByNamespaceAndReleaseName(namespace, serviceName);
-			so.getTags().addAll(tagList);
-		}
+
 		if (detail) {
 			List<ConfigMap> configMaps = new ArrayList<>();
 			List<PersistentVolumeClaim> persistentVolumeClaims = new ArrayList<>();

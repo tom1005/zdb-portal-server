@@ -32,15 +32,15 @@ public class ReleaseCollector {
 				ReleaseMetaData releaseMeta = repo.findByReleaseName(release.getName());
 				if (releaseMeta == null) {
 					releaseMeta = new ReleaseMetaData();
-				}
-
+					releaseMeta.setStatus(release.getInfo().getStatus().getCode().name());
+					releaseMeta.setAction("SYNC");
+				} 
 				releaseMeta.setApp(release.getChart().getMetadata().getName());
 				releaseMeta.setAppVersion(release.getChart().getMetadata().getAppVersion());
 				releaseMeta.setChartVersion(release.getChart().getMetadata().getVersion());
 				releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds() * 1000L));
 				releaseMeta.setNamespace(release.getNamespace());
 				releaseMeta.setReleaseName(release.getName());
-				releaseMeta.setStatus(release.getInfo().getStatus().getCode().name());
 				
 				String description = URLEncoder.encode(release.getInfo().getDescription(), "UTF-8");
 				releaseMeta.setDescription(description);

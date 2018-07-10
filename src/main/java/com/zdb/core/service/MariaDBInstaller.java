@@ -247,7 +247,11 @@ public class MariaDBInstaller implements ZDBInstaller {
 					releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds() * 1000L));
 					releaseMeta.setNamespace(service.getNamespace());
 					releaseMeta.setReleaseName(service.getServiceName());
-					releaseMeta.setStatus(release.getInfo().getStatus().getCode().name());
+					String status = release.getInfo().getStatus().getCode().name();
+					if("DEPLOYED".equals(status)) {
+						status = "CREATING";
+					} 
+					releaseMeta.setStatus(status);
 					releaseMeta.setDescription(release.getInfo().getDescription());
 					releaseMeta.setInputValues(valuesBuilder.getRaw());
 					releaseMeta.setNotes(release.getInfo().getStatus().getNotes());
@@ -304,14 +308,24 @@ public class MariaDBInstaller implements ZDBInstaller {
 									List<Pod> pods = k8sService.getPods(service.getNamespace(), service.getServiceName());
 									boolean isAllReady = true;
 									for(Pod pod : pods) {
-										boolean isReady = Readiness.isReady(pod);
+										boolean isReady = K8SUtil.IsReady(pod);
 										isAllReady = isAllReady && isReady;
 									}
 									
+									ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(service.getServiceName());
 									if(isAllReady) {
+										if(releaseMeta != null) {
+											releaseMeta.setStatus("CREATED");
+											releaseRepository.save(releaseMeta);
+										}
 										lacth.countDown();
 										System.out.println("------------------------------------------------- service create success! ------------------------------------------------- ");
 										break;
+									} else {
+										if(releaseMeta != null) {
+											releaseMeta.setStatus("CREATING");
+											releaseRepository.save(releaseMeta);
+										}
 									}
 								}
 							} catch (Exception e) {
@@ -325,22 +339,20 @@ public class MariaDBInstaller implements ZDBInstaller {
 					
 					if(lacth.getCount() == 0) {
 						MariaDBAccount.updateAdminPrivileges(service.getNamespace(), service.getServiceName(), account.getUserId());
+						
+						if(service.isBackupEnabled()) {
+							// 스케줄 등록...
+							ScheduleEntity schedule = new ScheduleEntity();
+							schedule.setNamespace(service.getNamespace());
+							schedule.setServiceType(service.getServiceType());
+							schedule.setServiceName(service.getServiceName());
+							schedule.setStartTime("01:00");
+							schedule.setStorePeriod(2);
+							schedule.setUseYn("Y");
+							mariadbBackupService.saveSchedule(exchange.getProperty(Exchange.TXID, String.class), schedule);
+						}
 					} else {
 						log.error("{} > {} > {} 권한 변경 실패!", service.getNamespace(), service.getServiceName(), account.getUserId());
-					}
-					
-					
-					if(service.isBackupEnabled()) {
-						// TODO 백업 사용 초기화...
-						// 스케줄 등록...
-						ScheduleEntity schedule = new ScheduleEntity();
-						schedule.setNamespace(service.getNamespace());
-						schedule.setServiceType(service.getServiceType());
-						schedule.setServiceName(service.getServiceName());
-						schedule.setStartTime("01:00");
-						schedule.setStorePeriod(2);
-						schedule.setUseYn("Y");
-						mariadbBackupService.saveSchedule(exchange.getProperty(Exchange.TXID, String.class), schedule);
 					}
 					
 				} else {

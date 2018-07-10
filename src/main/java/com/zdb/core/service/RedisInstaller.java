@@ -9,7 +9,9 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.microbean.helm.ReleaseManager;
 import org.microbean.helm.Tiller;
@@ -50,8 +52,10 @@ import hapi.services.tiller.Tiller.InstallReleaseResponse;
 import hapi.services.tiller.Tiller.UninstallReleaseRequest;
 import hapi.services.tiller.Tiller.UninstallReleaseResponse;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
+import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.internal.readiness.Readiness;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -71,6 +75,9 @@ public class RedisInstaller implements ZDBInstaller {
 	
 	@Autowired
 	private RedisBackupServiceImpl redisBackupService;
+	
+	@Autowired
+	private K8SService k8sService;
 	
 	/**
 	 * @param exchange
@@ -381,7 +388,11 @@ public class RedisInstaller implements ZDBInstaller {
 					releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds()*1000L));
 					releaseMeta.setNamespace(service.getNamespace());
 					releaseMeta.setReleaseName(service.getServiceName());
-					releaseMeta.setStatus(release.getInfo().getStatus().getCode().name());
+					String status = release.getInfo().getStatus().getCode().name();
+					if("DEPLOYED".equals(status)) {
+						status = "CREATING";
+					} 
+					releaseMeta.setStatus(status);
 					releaseMeta.setDescription(release.getInfo().getDescription());
 					releaseMeta.setInputValues(valuesBuilder.getRaw());
 					releaseMeta.setNotes(release.getInfo().getStatus().getNotes());
@@ -420,18 +431,63 @@ public class RedisInstaller implements ZDBInstaller {
 					exchange.setProperty(KubernetesConstants.KUBERNETES_SERVICE_NAME, service.getServiceName());
 					exchange.setProperty(KubernetesConstants.KUBERNETES_NAMESPACE_NAME, service.getNamespace());
 					
-					if(service.isBackupEnabled()) {
-						// TODO 백업 사용 초기화...
-						// 스케줄 등록...
-						ScheduleEntity schedule = new ScheduleEntity();
-						schedule.setNamespace(service.getNamespace());
-						schedule.setServiceType(service.getServiceType());
-						schedule.setServiceName(service.getServiceName());
-						schedule.setStartTime("01:00");
-						schedule.setStorePeriod(2);
-						schedule.setUseYn("Y");
-						redisBackupService.saveSchedule(exchange.getProperty(Exchange.TXID, String.class), schedule);
+					Thread.sleep(5000);
 					
+					final CountDownLatch lacth = new CountDownLatch(1);
+
+					new Thread(new Runnable() {
+
+						@Override
+						public void run() {
+							long s = System.currentTimeMillis();
+							
+							try {
+								while((System.currentTimeMillis() - s) < 10 * 60 * 1000) {
+									Thread.sleep(3000);
+									List<Pod> pods = k8sService.getPods(service.getNamespace(), service.getServiceName());
+									boolean isAllReady = true;
+									for(Pod pod : pods) {
+										boolean isReady = Readiness.isReady(pod);
+										isAllReady = isAllReady && isReady;
+									}
+									
+									ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(service.getServiceName());
+									if(isAllReady) {
+										if(releaseMeta != null) {
+											releaseMeta.setStatus("CREATED");
+											releaseRepository.save(releaseMeta);
+										}
+										lacth.countDown();
+										System.out.println("------------------------------------------------- service create success! ------------------------------------------------- ");
+										break;
+									} else {
+										if(releaseMeta != null) {
+											releaseMeta.setStatus("CREATING");
+											releaseRepository.save(releaseMeta);
+										}
+									}
+								}
+							} catch (Exception e) {
+								log.error(e.getMessage(), e);
+							}
+
+						}
+					}).start();
+					
+					lacth.await(600, TimeUnit.SECONDS);
+					
+					if (lacth.getCount() == 0) {
+						if (service.isBackupEnabled()) {
+							// 스케줄 등록...
+							ScheduleEntity schedule = new ScheduleEntity();
+							schedule.setNamespace(service.getNamespace());
+							schedule.setServiceType(service.getServiceType());
+							schedule.setServiceName(service.getServiceName());
+							schedule.setStartTime("01:00");
+							schedule.setStorePeriod(2);
+							schedule.setUseYn("Y");
+							redisBackupService.saveSchedule(exchange.getProperty(Exchange.TXID, String.class), schedule);
+						}
 					}
 				} else {
 					event.setStatus(IResult.ERROR);
