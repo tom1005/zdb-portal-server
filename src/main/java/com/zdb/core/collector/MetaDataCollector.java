@@ -110,26 +110,27 @@ public class MetaDataCollector {
 				String kind = metaData.getKind();
 				String namespace = metaData.getNamespace();
 				String name = metaData.getName();
+				String uid = metaData.getUid();
 				
 				boolean flag = false;
 				if("Deployment".equals(kind)) {
-					flag = exist(allDeployments, namespace, name);
+					flag = exist(allDeployments, uid, namespace, name);
 				} else if("Pod".equals(kind)) {
-					flag = exist(allPods, namespace, name);
+					flag = exist(allPods, uid, namespace, name);
 				} else if("ReplicaSet".equals(kind)) {
-					flag = exist(allReplicaaSets, namespace, name);
+					flag = exist(allReplicaaSets, uid, namespace, name);
 				} else if("StatefulSet".equals(kind)) {
-					flag = exist(allStatuefulSets, namespace, name);
+					flag = exist(allStatuefulSets, uid, namespace, name);
 				} else if("Service".equals(kind)) {
-					flag = exist(allServices, namespace, name);
+					flag = exist(allServices, uid, namespace, name);
 				} else if("ConfigMap".equals(kind)) {
-					flag = exist(allConfigMaps, namespace, name);
+					flag = exist(allConfigMaps, uid, namespace, name);
 				} else if("Secret".equals(kind)) {
-					flag = exist(allSecrets, namespace, name);
+					flag = exist(allSecrets, uid, namespace, name);
 				} else if("Namespace".equals(kind)) {
-					flag = exist(namespaces, name);
+					flag = exist(namespaces, uid, name);
 				} else if("PersistentVolumeClaim".equals(kind)) {
-					flag = exist(allPvcs, name);
+					flag = exist(allPvcs, uid, name);
 				}
 				
 				// not exist
@@ -156,10 +157,10 @@ public class MetaDataCollector {
 		}
 	}
 
-	private boolean exist(List<? extends HasMetadata> allSecrets, String namespace, String name) {
+	private boolean exist(List<? extends HasMetadata> allMetadata, String uid, String namespace, String name) {
 		boolean flag = false;
-		for (HasMetadata metaData : allSecrets) {
-			if(metaData.getMetadata().getNamespace().equals(namespace) && metaData.getMetadata().getName().equals(name)) {
+		for (HasMetadata metaData : allMetadata) {
+			if(metaData.getMetadata().getUid().equals(uid) && metaData.getMetadata().getNamespace().equals(namespace) && metaData.getMetadata().getName().equals(name)) {
 				flag = true;
 				break;
 			}
@@ -167,10 +168,10 @@ public class MetaDataCollector {
 		return flag;
 	}
 	
-	private boolean exist(List<? extends HasMetadata> allSecrets, String name) {
+	private boolean exist(List<? extends HasMetadata> allSecrets, String uid, String name) {
 		boolean flag = false;
 		for (HasMetadata metaData : allSecrets) {
-			if(metaData.getMetadata().getName().equals(name)) {
+			if(metaData.getMetadata().getUid().equals(uid) && metaData.getMetadata().getName().equals(name)) {
 				flag = true;
 				break;
 			}
