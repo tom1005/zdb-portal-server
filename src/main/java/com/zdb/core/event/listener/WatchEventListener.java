@@ -51,7 +51,7 @@ public class WatchEventListener {
 					public void run() {
 						Watch eventsWatcher;
 						try {
-							eventsWatcher = K8SUtil.kubernetesClient().events().watch(new MetaDataWatcher<Event>(eventRepo));
+							eventsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().events().watch(new MetaDataWatcher<Event>(eventRepo));
 							watchList.add(eventsWatcher);
 						} catch (Exception e) {
 							e.printStackTrace();
@@ -65,7 +65,7 @@ public class WatchEventListener {
 					public void run() {
 						Watch statefulSetsWatcher;
 						try {
-							statefulSetsWatcher = K8SUtil.kubernetesClient().apps().statefulSets().watch(new MetaDataWatcher<StatefulSet>(metaRepo));
+							statefulSetsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().apps().statefulSets().watch(new MetaDataWatcher<StatefulSet>(metaRepo));
 							watchList.add(statefulSetsWatcher);
 						} catch (Exception e) {
 							e.printStackTrace();
@@ -80,7 +80,7 @@ public class WatchEventListener {
 					public void run() {
 						Watch configMapWatcher;
 						try {
-							configMapWatcher = K8SUtil.kubernetesClient().configMaps().watch(new MetaDataWatcher<ConfigMap>(metaRepo));
+							configMapWatcher = K8SUtil.kubernetesClient().inAnyNamespace().configMaps().watch(new MetaDataWatcher<ConfigMap>(metaRepo));
 							watchList.add(configMapWatcher);
 						} catch (Exception e) {
 							e.printStackTrace();
@@ -94,7 +94,7 @@ public class WatchEventListener {
 					public void run() {
 						Watch persistentVolumeClaimsWatcher;
 						try {
-							persistentVolumeClaimsWatcher = K8SUtil.kubernetesClient().persistentVolumeClaims().watch(new MetaDataWatcher<PersistentVolumeClaim>(metaRepo));
+							persistentVolumeClaimsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().persistentVolumeClaims().watch(new MetaDataWatcher<PersistentVolumeClaim>(metaRepo));
 							watchList.add(persistentVolumeClaimsWatcher);
 						} catch (Exception e) {
 							e.printStackTrace();
@@ -108,7 +108,7 @@ public class WatchEventListener {
 					public void run() {
 						Watch servicesWatcher;
 						try {
-							servicesWatcher = K8SUtil.kubernetesClient().services().watch(new MetaDataWatcher<Service>(metaRepo));
+							servicesWatcher = K8SUtil.kubernetesClient().inAnyNamespace().services().watch(new MetaDataWatcher<Service>(metaRepo));
 							watchList.add(servicesWatcher);
 						} catch (Exception e) {
 							e.printStackTrace();
@@ -122,7 +122,7 @@ public class WatchEventListener {
 					public void run() {
 						Watch namesapcesWatcher;
 						try {
-							namesapcesWatcher = K8SUtil.kubernetesClient().namespaces().watch(new MetaDataWatcher<Namespace>(metaRepo));
+							namesapcesWatcher = K8SUtil.kubernetesClient().inAnyNamespace().namespaces().watch(new MetaDataWatcher<Namespace>(metaRepo));
 							watchList.add(namesapcesWatcher);
 						} catch (Exception e) {
 							e.printStackTrace();
@@ -136,7 +136,7 @@ public class WatchEventListener {
 					public void run() {
 						Watch deploymentsWatcher;
 						try {
-							deploymentsWatcher = K8SUtil.kubernetesClient().extensions().deployments().watch(new MetaDataWatcher<Deployment>(metaRepo));
+							deploymentsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().extensions().deployments().watch(new MetaDataWatcher<Deployment>(metaRepo));
 							watchList.add(deploymentsWatcher);
 						} catch (Exception e) {
 							e.printStackTrace();
@@ -150,7 +150,7 @@ public class WatchEventListener {
 					public void run() {
 						Watch podsWatcher;
 						try {
-							podsWatcher = K8SUtil.kubernetesClient().pods().watch(new MetaDataWatcher<Pod>(metaRepo));
+							podsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().pods().watch(new MetaDataWatcher<Pod>(metaRepo));
 							watchList.add(podsWatcher);
 						} catch (Exception e) {
 							e.printStackTrace();
@@ -164,7 +164,7 @@ public class WatchEventListener {
 					public void run() {
 						Watch replicaSetsWatcher;
 						try {
-							replicaSetsWatcher = K8SUtil.kubernetesClient().extensions().replicaSets().watch(new MetaDataWatcher<ReplicaSet>(metaRepo));
+							replicaSetsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().extensions().replicaSets().watch(new MetaDataWatcher<ReplicaSet>(metaRepo));
 							watchList.add(replicaSetsWatcher);
 						} catch (Exception e) {
 							e.printStackTrace();
