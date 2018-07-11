@@ -48,9 +48,6 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 		String metaToJon = new Gson().toJson(resource);
 		HasMetadata metaObj = (HasMetadata) resource;
 		
-		Event event_temp = (Event) resource;
-		log.info("Event Received...." + resource.getClass().getName() + "| namespace : " + event_temp.getInvolvedObject().getNamespace());
-		
 		if (resource instanceof Event) {
 			Event event = (Event) resource;
 			// EventRepository
