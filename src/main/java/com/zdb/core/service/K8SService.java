@@ -21,12 +21,14 @@ import com.zdb.core.domain.PersistenceSpec;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.ResourceSpec;
+import com.zdb.core.domain.ScheduleEntity;
 import com.zdb.core.domain.ServiceOverview;
 import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.ZDBStatus;
 import com.zdb.core.domain.ZDBType;
 import com.zdb.core.repository.DiskUsageRepository;
 import com.zdb.core.repository.MetadataRepository;
+import com.zdb.core.repository.ScheduleEntityRepository;
 import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.util.K8SUtil;
@@ -64,12 +66,8 @@ public class K8SService {
 	@Autowired
 	protected DiskUsageRepository diskRepository;
 	
-//	'ConfigMap'
-//	'Service'
-//	'StatefulSet'
-//	'PersistentVolumeClaim'
-//	'Pod'
-//	'Deployment'
+	@Autowired
+	private ScheduleEntityRepository scheduleEntity;
 	
 	/**
 	 * @param namespace
@@ -283,6 +281,8 @@ public class K8SService {
 			releaseList = releaseRepository.findByNamespace(namespace);
 		}
 
+		List<ScheduleEntity> scheduleEntityList = scheduleEntity.findAll();
+		
 		for (ReleaseMetaData release : releaseList) {
 			if("DELETED".equals(release.getStatus()) || "DELETING".equals(release.getStatus())) {
 				continue;
@@ -291,6 +291,20 @@ public class K8SService {
 			String svcName = release.getReleaseName();
 			String svcType = release.getApp();
 			if (apps.contains(serviceType) && serviceType.equals(svcType) && serviceName.equals(svcName)) {
+//				ServiceOverview so = new ServiceOverview();
+//
+//				so.setServiceName(serviceName);
+//				so.setNamespace(namespace);
+//				so.setPurpose(release.getPurpose());
+//				
+//				String version = release.getAppVersion();
+//
+//				so.setServiceType(serviceType);
+//				so.setVersion(version);
+//				so.setDeploymentStatus(release.getStatus());
+//
+//				setServiceOverview(so, true);
+				
 				ServiceOverview so = new ServiceOverview();
 
 				so.setServiceName(serviceName);
@@ -298,11 +312,26 @@ public class K8SService {
 				so.setPurpose(release.getPurpose());
 				
 				String version = release.getAppVersion();
-
+				
 				so.setServiceType(serviceType);
 				so.setVersion(version);
+				
+				for (ScheduleEntity scheduleEntity : scheduleEntityList) {
+					String sn = scheduleEntity.getServiceName();
+					if(serviceName.equals(sn) && release.getNamespace().equals(namespace)) {
+						String useYn = scheduleEntity.getUseYn();
+						if(useYn != null && useYn.equals("Y")) {
+							so.setBackupEnabled(true);
+						} else {
+							so.setBackupEnabled(false);
+						}
+						break;
+					}
+				}
+				so.setPublicEnabled(release.getPublicEnabled());
+				
 				so.setDeploymentStatus(release.getStatus());
-
+				
 				setServiceOverview(so, true);
 
 				serviceList.add(so);
@@ -368,6 +397,8 @@ public class K8SService {
 			nsNameList.add(ns.getMetadata().getName());
 		}
 		
+		List<ScheduleEntity> scheduleEntityList = scheduleEntity.findAll();
+		
 		for (ReleaseMetaData release : releaseListWithNamespaces) {
 			if ("DELETED".equals(release.getStatus()) || "DELETING".equals(release.getStatus())) {
 				continue;
@@ -387,6 +418,21 @@ public class K8SService {
 			
 			so.setServiceType(serviceType);
 			so.setVersion(version);
+			
+			for (ScheduleEntity scheduleEntity : scheduleEntityList) {
+				String serviceName = scheduleEntity.getServiceName();
+				String namespace = scheduleEntity.getNamespace();
+				if(release.getReleaseName().equals(serviceName) && release.getNamespace().equals(namespace)) {
+					String useYn = scheduleEntity.getUseYn();
+					if(useYn != null && useYn.equals("Y")) {
+						so.setBackupEnabled(true);
+					} else {
+						so.setBackupEnabled(false);
+					}
+					break;
+				}
+			}
+			so.setPublicEnabled(release.getPublicEnabled());
 			
 			so.setDeploymentStatus(release.getStatus());
 			
@@ -421,21 +467,52 @@ public class K8SService {
 			releaseList = releaseRepository.findByNamespace(namespace);
 		}
 
+		List<ScheduleEntity> scheduleEntityList = scheduleEntity.findAll();
+		
 		for (ReleaseMetaData release : releaseList) {
 			if("DELETED".equals(release.getStatus()) || "DELETING".equals(release.getStatus())) {
 				continue;
 			}
 			String svcType = release.getApp();
 			if (apps.contains(serviceType) && serviceType.equals(svcType)) {
+//				ServiceOverview so = new ServiceOverview();
+//
+//				so.setServiceName(release.getReleaseName());
+//				so.setNamespace(release.getNamespace());
+//				so.setServiceType(serviceType);
+//				so.setVersion(release.getAppVersion());
+//				so.setDeploymentStatus(release.getStatus());
+//				so.setPurpose(release.getPurpose());
+//
+//				setServiceOverview(so, false);
+				
 				ServiceOverview so = new ServiceOverview();
 
 				so.setServiceName(release.getReleaseName());
 				so.setNamespace(release.getNamespace());
-				so.setServiceType(serviceType);
-				so.setVersion(release.getAppVersion());
-				so.setDeploymentStatus(release.getStatus());
 				so.setPurpose(release.getPurpose());
-
+				
+				String version = release.getAppVersion();
+				
+				so.setServiceType(serviceType);
+				so.setVersion(version);
+				
+				for (ScheduleEntity scheduleEntity : scheduleEntityList) {
+					String serviceName = scheduleEntity.getServiceName();
+					if(release.getReleaseName().equals(serviceName) && release.getNamespace().equals(namespace)) {
+						String useYn = scheduleEntity.getUseYn();
+						if(useYn != null && useYn.equals("Y")) {
+							so.setBackupEnabled(true);
+						} else {
+							so.setBackupEnabled(false);
+						}
+						break;
+					}
+				}
+				so.setPublicEnabled(release.getPublicEnabled());
+				
+				so.setDeploymentStatus(release.getStatus());
+				
 				setServiceOverview(so, false);
 
 				serviceList.add(so);

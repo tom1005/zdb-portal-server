@@ -52,6 +52,10 @@ public class ServiceOverview {
 
 	private String purpose;
 	
+	private boolean publicEnabled;
+	
+	private boolean backupEnabled;
+	
 	private List<PersistentVolumeClaim> persistentVolumeClaims = new ArrayList<>();
 	
 	private List<Deployment> deployments = new ArrayList<>();
