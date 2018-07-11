@@ -259,6 +259,7 @@ public class MariaDBInstaller implements ZDBInstaller {
 					releaseMeta.setManifest(release.getManifest());
 					releaseMeta.setUpdateTime(new Date(System.currentTimeMillis()));
 					releaseMeta.setPublicEnabled(isPublicEnabled);
+					releaseMeta.setUserId(service.getRequestUserId());
 
 					log.info(new Gson().toJson(releaseMeta));
 

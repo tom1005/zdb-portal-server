@@ -26,6 +26,9 @@ public class ReleaseMetaData {
 	@Column(name = "id")
 	String uid;
 
+	@Column(name = "userId")
+	String userId;
+	
 	@Column(name = "createTime")
 	Date createTime;
 	

@@ -400,6 +400,7 @@ public class RedisInstaller implements ZDBInstaller {
 					releaseMeta.setPublicEnabled(isPublicEnabled);
 					releaseMeta.setPurpose(service.getPurpose());   // SESSION or DATA
 					releaseMeta.setUpdateTime(new Date(System.currentTimeMillis()));
+					releaseMeta.setUserId(service.getRequestUserId());
 					
 					log.info(new Gson().toJson(releaseMeta));
 					

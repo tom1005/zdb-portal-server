@@ -211,7 +211,8 @@ public class ZDBRestController {
 			log.info("{}, {}, {}", userInfo.getUserId(), userInfo.getUserName(), userInfo.getAccessRole());
 
 			com.zdb.core.domain.Result result = null;
-
+			entity.setRequestUserId(userInfo.getUserId());
+			
 			switch (dbType) {
 			case MariaDB:
 				result = mariadbService.createDeployment(txId, entity, userInfo);
