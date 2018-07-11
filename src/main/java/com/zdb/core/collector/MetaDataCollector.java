@@ -41,7 +41,7 @@ public class MetaDataCollector {
 	MetadataRepository metaRepo;
 	
 	// @Scheduled(initialDelayString = "${collector.period.initial-delay}", fixedRateString = "${collector.period.fixed-rate}")
-	@Scheduled(initialDelayString = "20000", fixedRateString = "120000")
+	@Scheduled(initialDelayString = "20000", fixedRateString = "90000")
 	public void collect() {
 		try {
 			long s = System.currentTimeMillis();
