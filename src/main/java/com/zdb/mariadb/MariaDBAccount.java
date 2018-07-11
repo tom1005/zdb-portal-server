@@ -219,10 +219,13 @@ public class MariaDBAccount {
 		try {
 			connection = MariaDBConnection.getRootMariaDBConnection(namespace, releaseName);
 			Statement statement = connection.getStatement();
-			String query = "GRANT all ON *.* TO '" + userId + "'@'%'";
-			logger.debug("query: {}", query);
+			String grantAllQuery = "GRANT ALL PRIVILEGES ON *.* TO '" + userId + "'@'%' with grant option";
+			String createUserQuery = "GRANT CREATE USER ON *.* TO '" + userId + "'@'%'";
+			logger.debug("query: {}", grantAllQuery);
+			logger.debug("query: {}", createUserQuery);
 
-			statement.executeUpdate(query);
+			statement.executeUpdate(grantAllQuery);
+			statement.executeUpdate(createUserQuery);
 		} catch (Exception e) {
 			logger.error("Exception.", e);
 		} finally {
