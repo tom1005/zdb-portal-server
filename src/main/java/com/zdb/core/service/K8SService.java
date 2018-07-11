@@ -432,7 +432,7 @@ public class K8SService {
 					break;
 				}
 			}
-			so.setPublicEnabled(release.getPublicEnabled());
+			so.setPublicEnabled(release.getPublicEnabled() == null ? false : release.getPublicEnabled());
 			
 			so.setDeploymentStatus(release.getStatus());
 			
