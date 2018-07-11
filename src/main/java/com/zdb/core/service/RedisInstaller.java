@@ -455,7 +455,7 @@ public class RedisInstaller implements ZDBInstaller {
 									ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(service.getServiceName());
 									if(isAllReady) {
 										if(releaseMeta != null) {
-											releaseMeta.setStatus("CREATED");
+											releaseMeta.setStatus("DEPLOYED");
 											releaseRepository.save(releaseMeta);
 										}
 										lacth.countDown();

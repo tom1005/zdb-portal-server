@@ -316,7 +316,7 @@ public class MariaDBInstaller implements ZDBInstaller {
 									ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(service.getServiceName());
 									if(isAllReady) {
 										if(releaseMeta != null) {
-											releaseMeta.setStatus("CREATED");
+											releaseMeta.setStatus("DEPLOYED");
 											releaseRepository.save(releaseMeta);
 										}
 										lacth.countDown();
@@ -339,6 +339,7 @@ public class MariaDBInstaller implements ZDBInstaller {
 					lacth.await(600, TimeUnit.SECONDS);
 					
 					if(lacth.getCount() == 0) {
+						log.info("update admin grant option.");
 						MariaDBAccount.updateAdminPrivileges(service.getNamespace(), service.getServiceName(), account.getUserId());
 						
 						if(service.isBackupEnabled()) {
