@@ -42,10 +42,10 @@ public class DiskUsageChecker {
 		return instance;
 	}
 	
-	static String[] commands = new String[] { "/bin/sh", "-c", "df -P | grep bitnami | awk '{size = $2} {used = $3} {avail=$4} {use=$5} END { print size \" \"used \" \" avail \" \" use }'" };
 
 
 	public List<DiskUsage> getAllDiskUsage() throws Exception {
+		String[] commands = new String[] { "/bin/sh", "-c", "df -P | grep bitnami | awk '{size = $2} {used = $3} {avail=$4} {use=$5} END { print size \" \"used \" \" avail \" \" use }'" };
 		long s = System.currentTimeMillis();
 
 		List<DiskUsage> list = new ArrayList<>();
