@@ -708,7 +708,32 @@ public class ZDBRestController {
 	@RequestMapping(value = "/namespaces", method = RequestMethod.GET)
 	public ResponseEntity<String> getNamespaces() {
 		try {
+			UserInfo userInfo = getUserInfo();
+			String namespaces = userInfo.getNamespaces();
+			List<String> userNamespaces = new ArrayList<>();
+			if(namespaces != null) {
+				String[] split = namespaces.split(",");
+				for (String ns : split) {
+					userNamespaces.add(ns.trim());
+				}
+			}
 			
+			Result result = mariadbService.getNamespaces(userNamespaces);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+			
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+
+	@RequestMapping(value = "/updateUserNamespaces", method = RequestMethod.POST)
+	public ResponseEntity<String> updateUserNamespace(final UriComponentsBuilder ucBuilder) {
+
+		String txId = txId();
+		try {
 			UserInfo userInfo = getUserInfo();
 			String namespaces = userInfo.getNamespaces();
 			List<String> userNamespaces = new ArrayList<>();
@@ -739,18 +764,14 @@ public class ZDBRestController {
 					}
 				}
 			}
-			
-			Result result = mariadbService.getNamespaces(userNamespaces);
-			return new ResponseEntity<String>(result.toJson(), result.status());
-			
+
+			return new ResponseEntity<String>("", HttpStatus.OK);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
-
 	
 	@RequestMapping(value = "/service/services", method = RequestMethod.GET)
 	public ResponseEntity<String> getServices() throws Exception {
