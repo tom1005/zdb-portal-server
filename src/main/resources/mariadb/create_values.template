@@ -16,7 +16,7 @@ rootUser:
 db:
   ## MariaDB username and password
   user: ${db.user}
-  password: ${db.password}
+  password: 
   name: ${db.name}
   forcePassword: false
 
