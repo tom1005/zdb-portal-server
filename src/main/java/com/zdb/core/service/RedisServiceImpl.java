@@ -40,6 +40,7 @@ import com.zdb.core.repository.ZDBRedisConfigRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
 import com.zdb.core.util.K8SUtil;
+import com.zdb.core.util.NamespaceResourceChecker;
 import com.zdb.redis.RedisConfiguration;
 import com.zdb.redis.RedisConnection;
 
@@ -534,9 +535,42 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 				return new Result(txId, IResult.ERROR, msg);
 			}
 
+			int slaveCount = service.getClusterSlaveCount();
+			
+			// 가용 리소스 체크
+			ZDBEntity podResources = K8SUtil.getPodResources(service.getNamespace(), service.getServiceType(), service.getServiceName());
+			PodSpec[] currentPodSpecs = podResources.getPodSpec();
+			
+			// scale out 의 경우에만 체크 
+			if ((currentPodSpecs.length - 1) < slaveCount) {
+				int reqCpu = 0;
+				int reqMem = 0;
+
+				if (currentPodSpecs != null && currentPodSpecs.length > 0) {
+					ResourceSpec[] resourceSpec = currentPodSpecs[0].getResourceSpec();
+					String currentCpu = resourceSpec[0].getCpu();
+					String currentMemory = resourceSpec[0].getMemory();
+
+					try {
+						reqCpu = K8SUtil.convertToCpu(currentCpu);
+						reqMem = K8SUtil.convertToMemory(currentMemory);
+
+						boolean availableResource = NamespaceResourceChecker.isAvailableResource(service.getNamespace(),
+								service.getRequestUserId(), reqCpu, reqMem);
+						if (!availableResource) {
+							result.setCode(IResult.ERROR);
+							result.setMessage("가용 리소스가 부족합니다.");
+
+							return result;
+						}
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			}
+			
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
  		
-			int slaveCount = service.getClusterSlaveCount();
 			//String deploymentName = service.getServiceName() + "-slave";
 			
 			List<Deployment> deployments = client.extensions().deployments().inNamespace(service.getNamespace()).withLabel("release", service.getServiceName()).list().getItems();

@@ -1731,9 +1731,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	protected boolean isAvailableScaleUp(final ZDBEntity service) throws Exception {
 		PodSpec[] podSpec = service.getPodSpec();
 		
-		String master = podSpec[0].getPodType();
 		ResourceSpec masterSpec = podSpec[0].getResourceSpec()[0];
-		String masterResourceType = masterSpec.getResourceType();
 		String masterCpu = masterSpec.getCpu();
 		String masterMemory = masterSpec.getMemory();
 		

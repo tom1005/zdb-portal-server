@@ -319,6 +319,8 @@ public class ZDBRestController {
 
 			com.zdb.core.domain.Result result = null;
 
+			UserInfo userInfo = getUserInfo();
+			service.setRequestUserId(userInfo.getUserId());
 			switch (dbType) {
 			case Redis:
 				result = redisService.updateScaleOut(txId, service);

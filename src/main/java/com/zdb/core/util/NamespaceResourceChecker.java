@@ -58,6 +58,14 @@ public class NamespaceResourceChecker {
         return new RestTemplate(httpRequestFactory);
 	}
 	
+	/**
+	 * @param namespace
+	 * @param userId
+	 * @param memory
+	 * @param cpu
+	 * @return
+	 * @throws Exception
+	 */
 	public static boolean isAvailableResource(String namespace, String userId, int memory, int cpu) throws Exception {
 		NamespaceResource resource = getNamespaceResource(namespace, userId);
 		
