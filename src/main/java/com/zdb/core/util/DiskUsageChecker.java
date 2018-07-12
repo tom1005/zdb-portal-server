@@ -104,7 +104,7 @@ public class DiskUsageChecker {
 						log.error("{} > {} > {} is not running.", namespace, releaseName, podName);
 						continue;
 					}
-
+					log.info("{} > {} > {}.", namespace, releaseName, podName);
 					List<Container> containers = client.inNamespace(namespace).pods().withName(pod.getMetadata().getName()).get().getSpec().getContainers();
 					if (containers.size() > 0) {
 						containerName = containers.get(0).getName();
@@ -182,6 +182,7 @@ public class DiskUsageChecker {
 		public void call(byte[] input) {
 			try {
 				result = new String(input, "UTF-8");
+				log.info(">>> "+result);
 			} catch (Exception e) {
 				log.error(e.getMessage(), e);
 			}

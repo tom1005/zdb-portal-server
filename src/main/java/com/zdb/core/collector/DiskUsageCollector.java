@@ -26,6 +26,7 @@ public class DiskUsageCollector {
 			List<DiskUsage> diskUsage = DiskUsageChecker.getInstance().getAllDiskUsage();
 			for (DiskUsage usage : diskUsage) {
 				try {
+					log.info("{} {} {} {}", usage.getPodName(), usage.getSize(), usage.getUsed(), usage.getUpdateTime());
 					repo.save(usage);
 				} catch (Exception e) {
 					log.error(e.getMessage(), e);
