@@ -20,7 +20,7 @@ public class DiskUsageCollector {
 	DiskUsageRepository repo;
 
 	// @Scheduled(initialDelayString = "${collector.period.initial-delay}", fixedRateString = "${collector.period.fixed-rate}")
-	@Scheduled(initialDelayString = "60000", fixedRateString = "300000")
+	@Scheduled(initialDelayString = "60000", fixedRateString = "120000")
 	public void collect() {
 		try {
 			List<DiskUsage> diskUsage = DiskUsageChecker.getInstance().getAllDiskUsage();

@@ -29,7 +29,7 @@ public class ReleaseCollector {
 	K8SService k8sService;
 
 	// @Scheduled(initialDelayString = "${collector.period.initial-delay}", fixedRateString = "${collector.period.fixed-rate}")
-	@Scheduled(initialDelayString = "30000", fixedRateString = "300000")
+	@Scheduled(initialDelayString = "30000", fixedRateString = "120000")
 	public void collect() {
 		try {
 			List<Release> releaseAllList = K8SUtil.getReleaseAllList();

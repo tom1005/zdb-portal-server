@@ -40,7 +40,6 @@ import io.fabric8.kubernetes.api.model.Event;
 import io.fabric8.kubernetes.api.model.LoadBalancerIngress;
 import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.NamespaceBuilder;
-import io.fabric8.kubernetes.api.model.Node;
 import io.fabric8.kubernetes.api.model.NodeList;
 import io.fabric8.kubernetes.api.model.ObjectReference;
 import io.fabric8.kubernetes.api.model.PersistentVolume;
@@ -66,7 +65,6 @@ import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
 import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.ConfigBuilder;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
-import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.dsl.LogWatch;
 import io.fabric8.kubernetes.client.dsl.PrettyLoggable;
@@ -135,11 +133,11 @@ public class K8SUtil {
 	 */
 	public static List<Namespace> getNamespaces() throws Exception {
 		// zdb namespace label
-		return kubernetesClient().namespaces().withLabel("cloudzdb.io/zdb-system", "true").list().getItems();
+		return kubernetesClient().inAnyNamespace().namespaces().withLabel("cloudzdb.io/zdb-system", "true").list().getItems();
 	}
 
 	public static Namespace getNamespace(String namespace) throws Exception {
-		return kubernetesClient().namespaces().withName(namespace).get();
+		return kubernetesClient().inAnyNamespace().namespaces().withName(namespace).get();
 	}
 
 	/**
@@ -211,7 +209,7 @@ public class K8SUtil {
 	 * @throws KubernetesClientException
 	 */
 	public static Namespace doCreateNamespace(String namespaceName) throws Exception {
-		KubernetesClient client = kubernetesClient();
+		DefaultKubernetesClient client = kubernetesClient();
 
 		if (isNamespaceExist(namespaceName)) {
 			throw new DuplicateException("exist namespace");
@@ -220,7 +218,7 @@ public class K8SUtil {
 			Map<String, String> labels = new HashMap<>();
 
 			Namespace ns = new NamespaceBuilder().withNewMetadata().withName(namespaceName).withLabels(labels).endMetadata().build();
-			Namespace namespace = client.namespaces().create(ns);
+			Namespace namespace = client.inAnyNamespace().namespaces().create(ns);
 
 			return namespace;
 		}
@@ -832,7 +830,7 @@ public class K8SUtil {
 	public static boolean isNamespaceExist(final String namespaceName) throws Exception {
 
 		if (namespaceName != null) {
-			Namespace namespace = kubernetesClient().namespaces().withName(namespaceName).get();
+			Namespace namespace = kubernetesClient().inAnyNamespace().namespaces().withName(namespaceName).get();
 
 			if (namespace != null) {
 				return true;
