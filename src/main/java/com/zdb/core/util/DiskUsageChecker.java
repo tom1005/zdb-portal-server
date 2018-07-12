@@ -171,7 +171,7 @@ public class DiskUsageChecker {
 			if (executorService != null) {
 				executorService.shutdown();
 			}
-			System.out.println("---------------> Disk usage update : " + (System.currentTimeMillis() - s));
+			log.info("---------------> Disk usage update : " + (System.currentTimeMillis() - s));
 		}
 
 	}

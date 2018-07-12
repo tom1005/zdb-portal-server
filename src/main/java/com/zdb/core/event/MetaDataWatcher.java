@@ -81,7 +81,6 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 						return;
 					}
 				} else {
-					log.info(event.getInvolvedObject().getNamespace()+" / " + event.getInvolvedObject().getName());
 					return;
 				}
 			} catch (Exception e) {
