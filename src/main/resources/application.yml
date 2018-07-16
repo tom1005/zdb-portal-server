@@ -11,14 +11,24 @@ spring:
 management:
  security:
   enabled: false
-
+  endpoints:
+    enabled-by-default: true
+    web:
+      exposure:
+        include: info, health, metrics
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    enable:
+      jvm: true
+      
 ---
 spring:
   profiles: local
   datasource:
 #    url: jdbc:mariadb://169.56.94.12:3306/zdb
     url: jdbc:mariadb://169.56.80.186:3306/zdb
-    platform: h2
     username: zdb
     password: 1111
     driverClassName: org.mariadb.jdbc.Driver
@@ -36,10 +46,6 @@ logging:
   config: classpath:logback-local.xml
 
 k8s:
-  region: seo01
-  cluster: zdb-dev
-  privatelb: 10.178.191.134
-  publiclb: 169.56.70.222
 #  masterUrl: "https://169.56.69.242:23078"    
   masterUrl: "https://169.56.69.242:30134"    
   daemonUrl: "http://localhost:8090" 
@@ -97,10 +103,6 @@ logging:
   config: classpath:logback-prod.xml
           
 k8s:
-  region: seo01
-  cluster: zdb-dev
-  privatelb: 10.178.191.134
-  publiclb: 169.56.70.222
   masterUrl: ${MASTER_URL}
   daemonUrl: ${DAEMON_URL}
   

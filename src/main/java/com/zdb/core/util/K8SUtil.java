@@ -78,45 +78,16 @@ public class K8SUtil {
 
 	private static String masterUrl;
 
-
-	public static String publiclb;
-
-	public static String privatelb;
-
 	public static String daemonUrl;
-
-//	private static String cluster;
-//
-//	private static String region;
-
-//	@Value("${k8s.cluster}")
-//	public void setClusterValue(String c) {
-//		cluster = c;
-//	}
-//
-//	@Value("${k8s.region}")
-//	public void setRegionValue(String r) {
-//		region = r;
-//	}
-
-	@Value("${k8s.masterUrl}")
-	public void setMasterUrl(String url) {
-		masterUrl = url;
-	}
-
+	
 	@Value("${spring.profiles.active}")
 	public void setProfileValue(String activeProfile) {
 		profile = activeProfile;
 	}
 
-	@Value("${k8s.publiclb}")
-	public void setPubliclbValue(String addr) {
-		publiclb = addr;
-	}
-
-	@Value("${k8s.privatelb}")
-	public void setPrivatelbValue(String addr) {
-		privatelb = addr;
+	@Value("${k8s.masterUrl}")
+	public void setMasterUrl(String url) {
+		masterUrl = url;
 	}
 
 	@Value("${k8s.daemonUrl}")
