@@ -1,8 +1,14 @@
 package com.zdb.core.domain;
 
+import java.util.Date;
+
+import javax.persistence.Basic;
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
 
 import org.hibernate.annotations.GenericGenerator;
 
@@ -26,4 +32,5 @@ public class ScheduleEntity {
 	private String startTime;
 	private int storePeriod;
 	private String useYn;
+	private Date registerDate;
 }

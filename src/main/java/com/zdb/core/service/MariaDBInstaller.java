@@ -17,6 +17,7 @@ import org.microbean.helm.ReleaseManager;
 import org.microbean.helm.Tiller;
 import org.microbean.helm.chart.URLChartLoader;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
@@ -88,8 +89,9 @@ public class MariaDBInstaller implements ZDBInstaller {
 	private DiskUsageRepository diskUsageRepository;
 	
 	@Autowired
-	private MariaDBBackupServiceImpl mariadbBackupService;
-	
+	@Qualifier("backupProvider")
+	private BackupProviderImpl backupProvider;
+		
 	private static final String DEFAULT_ROOT_PASSWORD = "zdb12#$";
 	private static final String DEFAULT_USER = "admin";
 	private static final String DEFAULT_USER_PASSWORD = "zdbadmin12#$";
@@ -350,7 +352,7 @@ public class MariaDBInstaller implements ZDBInstaller {
 							schedule.setStartTime("01:00");
 							schedule.setStorePeriod(2);
 							schedule.setUseYn("Y");
-							mariadbBackupService.saveSchedule(exchange.getProperty(Exchange.TXID, String.class), schedule);
+							backupProvider.saveSchedule(exchange.getProperty(Exchange.TXID, String.class), schedule);
 						}
 					} else {
 						log.error("{} > {} > {} 권한 변경 실패!", service.getNamespace(), service.getServiceName(), account.getUserId());
@@ -556,7 +558,7 @@ public class MariaDBInstaller implements ZDBInstaller {
 				tagRepository.deleteByNamespaceAndReleaseName(namespace, serviceName);
 				
 				// Backup Resource 삭제 요청
-				mariadbBackupService.removeServiceResource(txId, namespace, ZDBType.MariaDB.getName(), serviceName);
+				backupProvider.removeServiceResource(txId, namespace, ZDBType.MariaDB.getName(), serviceName);
 			} else {
 				String msg = "설치된 서비스가 존재하지 않습니다.";
 				event.setResultMessage(msg);
