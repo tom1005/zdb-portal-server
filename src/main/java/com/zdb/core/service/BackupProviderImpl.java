@@ -6,9 +6,11 @@ import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.zdb.core.domain.BackupEntity;
+import com.zdb.core.domain.BackupStatus;
 import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.RequestEvent;
@@ -23,23 +25,23 @@ import io.fabric8.kubernetes.client.KubernetesClientException;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
+@Service("backupProvider")
 @Configuration
-public class AbstractBackupServiceImpl implements ZDBBackupService {
+public class BackupProviderImpl implements ZDBBackupProvider {
 
 	@Autowired
 	protected ZDBRepository zdbRepository;
 	
 	@Autowired
-	protected  ScheduleEntityRepository scheduleRepository;
-	
-	@Autowired
 	BackupEntityRepository backupRepository;
+
+	@Autowired
+	ScheduleEntityRepository scheduleRepository;
 	
 	@Override
 	public Result saveSchedule(String txid, ScheduleEntity entity) throws Exception {
-		String serviceName = entity.getServiceName();//String.format("%s-%s-%s", cluster, service.getNamespace(), service.getServiceName());
+		Result result = null;
 
-		// 占쎈쐻占쎈윞占쎈쭓�뜝�럥�몡�넭怨ｋ쳳獒뺧옙 占쎈쐻占쎈윪占쎈�듸┼�슪�맔占쎌굲 占쎈쐻占쎈윪占쎌젳占쎌녃域밟뫁�굲 占쎈섀饔낅챸占썩뼺鍮녑뜝占�
 		RequestEvent event = new RequestEvent();
 
 		event.setTxId(txid);
@@ -48,42 +50,23 @@ public class AbstractBackupServiceImpl implements ZDBBackupService {
 		event.setEventType(EventType.BackupSchedule.name());
 		event.setNamespace(entity.getNamespace());
 		event.setStartTime(new Date(System.currentTimeMillis()));
+		
 		try {			
 			log.debug("save : "+entity);
-			ScheduleEntity oldSche = scheduleRepository.findScheduleByName(entity.getNamespace(), entity.getServiceType(), entity.getServiceName());
+			
+			ScheduleEntity oldSche = scheduleRepository.findScheduleByName(entity.getNamespace()
+								, entity.getServiceType()
+								, entity.getServiceName());
 			if (oldSche != null) {
 				log.debug("update : "+entity);
 				scheduleRepository.modify(entity.getStartTime(), entity.getStorePeriod(), entity.getUseYn(), oldSche.getScheduleId());
+				entity.setScheduleId(oldSche.getScheduleId());
 			} else {
-				scheduleRepository.save(entity);
+				entity.setRegisterDate(new Date(System.currentTimeMillis()));
+				entity = scheduleRepository.save(entity);
 			}
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-			event.setResultMessage(e.getMessage());
-			event.setStatus(IResult.ERROR);
+			result = new Result(txid, IResult.OK).putValue(EventType.BackupSchedule.name(), entity);
 			event.setEndTIme(new Date(System.currentTimeMillis()));
-			return Result.RESULT_FAIL(txid, e);
-		} finally {
-			zdbRepository.save(event);
-		}
-		return new Result(txid, Result.OK).putValue("backupSchedule", entity);
-	}
-	
-	@Override
-	public Result getSchedule(String txid, String namespace, String serviceName, String serviceType) throws Exception {
-		RequestEvent event = new RequestEvent();
-		Result result = null;
-		event.setTxId(txid);
-		event.setServiceName(serviceName);
-		event.setServiceType(serviceType);
-		event.setEventType(EventType.BackupSchedule.name());
-		event.setNamespace(namespace);
-		event.setStartTime(new Date(System.currentTimeMillis()));
-		try {			
-			log.debug("namespace : "+namespace+", serviceName : "+serviceName+", serviceType : "+serviceType);
-			ScheduleEntity schedule = scheduleRepository.findScheduleByName(namespace, serviceType, serviceName);
-			log.debug("schedule : "+ schedule);
-			result = new Result(txid, Result.OK).putValue("getSchedule", schedule);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			event.setResultMessage(e.getMessage());
@@ -97,57 +80,111 @@ public class AbstractBackupServiceImpl implements ZDBBackupService {
 	}
 	
 	@Override
-	public Result backupService(String txid, BackupEntity backupEntity) throws Exception {
-		RequestEvent event = new RequestEvent();
+	public Result getSchedule(String txid
+				, String namespace
+				, String serviceName
+				, String serviceType) throws Exception {
 		Result result = null;
+		
+		
+		RequestEvent event = new RequestEvent();
+		event.setTxId(txid);
+		event.setServiceName(serviceName);
+		event.setServiceType(serviceType);
+		event.setEventType(EventType.BackupSchedule.name());
+		event.setNamespace(namespace);
+		event.setStartTime(new Date(System.currentTimeMillis()));
+		
+		try {			
+			log.debug("namespace : "+namespace+", serviceName : "+serviceName+", serviceType : "+serviceType);
+			ScheduleEntity schedule = scheduleRepository.findScheduleByName(namespace, serviceType, serviceName);
+			result = new Result(txid, IResult.OK).putValue(EventType.BackupDetail.name(), schedule);
+			event.setStatus(Result.OK);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			event.setResultMessage(e.getMessage());
+			event.setStatus(IResult.ERROR);
+			result = Result.RESULT_FAIL(txid, e);
+		} finally {
+			event.setEndTIme(new Date(System.currentTimeMillis()));
+			zdbRepository.save(event);
+		}
+		return result;
+	}
+	
+	@Override
+	public Result backupService(String txid
+				, BackupEntity backupEntity) throws Exception {
 		RestTemplate restTemplate = new RestTemplate();
+		Result result = null;
+		RequestEvent event = new RequestEvent();
 		event.setTxId(txid);
 		event.setServiceName(backupEntity.getServiceName());
 		event.setServiceType(backupEntity.getServiceType());
 		event.setEventType(EventType.Backup.name());
 		event.setNamespace(backupEntity.getNamespace());
 		event.setStartTime(new Date(System.currentTimeMillis()));
-		log.debug("namespace : "+backupEntity.getNamespace()
-			+", serviceName : "+backupEntity.getServiceName()
-			+", serviceType : "+backupEntity.getServiceType());
-		event.setResultMessage("Acceptiong");
-		event.setEndTIme(new Date(System.currentTimeMillis()));
-		
-		StringBuilder sb = new StringBuilder();
-		sb.append(K8SUtil.daemonUrl)
-				.append("/api/v1/")
-				.append(backupEntity.getNamespace()).append("/")
-				.append(backupEntity.getServiceType())
-				.append("/service/")
-				.append("/backup/")
-				.append(txid);
-		
-		log.info(">>>>>>> uri : "+sb.toString());
-		
-		zdbRepository.save(event);
-		return restTemplate.postForObject(sb.toString(), backupEntity, Result.class);
+		try {
+			log.debug("namespace : "+backupEntity.getNamespace()
+				+", serviceName : "+backupEntity.getServiceName()
+				+", serviceType : "+backupEntity.getServiceType());
+			event.setResultMessage("Acceptiong");
+			event.setEndTIme(new Date(System.currentTimeMillis()));
+			
+			StringBuilder sb = new StringBuilder();
+			sb.append(K8SUtil.daemonUrl)
+					.append("/api/v1/")
+					.append(backupEntity.getNamespace()).append("/")
+					.append(backupEntity.getServiceType())
+					.append("/service/")
+					.append(backupEntity.getServiceName())
+					.append("/backup/")
+					.append(txid);
+			
+			log.info(">>>>>>> uri : "+sb.toString());
+			result = restTemplate.postForObject(sb.toString(), backupEntity, Result.class);
+			event.setStatus(result.getCode());
+		} catch(Exception e) {
+			log.error(e.getMessage(), e);
+			event.setResultMessage(e.getMessage());
+			event.setStatus(IResult.ERROR);
+			event.setEndTIme(new Date(System.currentTimeMillis()));
+			backupEntity.setAcceptedDatetime(new Date(System.currentTimeMillis()));
+			backupEntity.setStartDatetime(new Date(System.currentTimeMillis()));
+			backupEntity.setCompleteDatetime(new Date(System.currentTimeMillis()));
+			backupEntity.setStatus(BackupStatus.FAILED.name());
+			backupEntity.setReason(e.getMessage());
+			backupRepository.save(backupEntity);
+			result = Result.RESULT_FAIL(txid, e);			
+		} finally {
+			zdbRepository.save(event);
+		}
+		return result;
 	}
 	
 	@Override
 	public Result getBackupList(String txid, String namespace, String serviceName, String serviceType) throws Exception {
-		RequestEvent event = new RequestEvent();
 		Result result = null;
+		RequestEvent event = new RequestEvent();
 		event.setTxId(txid);
 		event.setServiceName(serviceName);
 		event.setServiceType(serviceType);
 		event.setEventType(EventType.BackupList.name());
 		event.setNamespace(namespace);
 		event.setStartTime(new Date(System.currentTimeMillis()));
+		
 		try {
 			log.debug("namespace : "+namespace+", serviceName : "+serviceName+", serviceType : "+serviceType);
 			event.setResultMessage("Not supperted method requested");
 			event.setEndTIme(new Date(System.currentTimeMillis()));
+			///{namespace}/{serviceType}/service/{serviceName}/backup-list/txId
 			List<BackupEntity> list = backupRepository.findBackupByService(serviceType, serviceName);
-			if (list != null) {
-				result = new Result(txid, Result.OK).putValue("backupList", list);
-			}
+			result = new Result(txid, IResult.OK).putValue(EventType.BackupList.name(), list);
+			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setStatus(IResult.OK);
 		} catch (KubernetesClientException e) {
 			log.error(e.getMessage(), e);
+			event.setStatus(IResult.ERROR);
 			event.setEndTIme(new Date(System.currentTimeMillis()));
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
 				result = new Result(txid, Result.UNAUTHORIZED, "Unauthorized", null);
@@ -156,6 +193,7 @@ public class AbstractBackupServiceImpl implements ZDBBackupService {
 			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
+			event.setStatus(IResult.ERROR);
 			event.setEndTIme(new Date(System.currentTimeMillis()));
 			result = new Result(txid, Result.ERROR, e.getMessage(), e);
 		} finally {
@@ -171,8 +209,10 @@ public class AbstractBackupServiceImpl implements ZDBBackupService {
 				, String serviceName
 				, String backupId) throws Exception {
 
-		RequestEvent event = new RequestEvent();
 		Result result = null;
+		RestTemplate restTemplate = new RestTemplate();
+		
+		RequestEvent event = new RequestEvent();
 		event.setTxId(txid);
 		event.setServiceName(serviceName);
 		event.setServiceType(serviceType);
@@ -180,64 +220,64 @@ public class AbstractBackupServiceImpl implements ZDBBackupService {
 		event.setNamespace(namespace);
 		event.setStartTime(new Date(System.currentTimeMillis()));
 		event.setEndTIme(new Date(System.currentTimeMillis()));
-		BackupEntity backup = backupRepository.findBackup(backupId);
 		
-		if (backup != null) {
-			log.debug("namespace : "+namespace
-					+", serviceName : "+serviceName
-					+", serviceType : "+serviceType);
-			event.setResultMessage("Delete Backup requested");
-			StringBuilder sb = new StringBuilder();
+		StringBuilder sb = new StringBuilder();
+		try {
+			//service/backup/delete/{txId}
+			BackupEntity backup = backupRepository.findBackup(backupId);
 			sb.append(K8SUtil.daemonUrl)
-					.append("/api/v1/service/backup/delete/")
-					.append(txid);
-			RestTemplate restTemplate = new RestTemplate();
-			log.info(">>>> uri : "+sb.toString());
+				.append("/api/v1/service/backup/delete/")
+				.append(txid);
 			result = restTemplate.postForObject(sb.toString(), backup, Result.class);
+			event.setEndTIme(new Date(System.currentTimeMillis()));
+			if (result.isOK()) {
+				event.setStatus(IResult.OK);
+			} else {
+				event.setStatusMessage(result.getMessage());
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			event.setEndTIme(new Date(System.currentTimeMillis()));
+			result = new Result(txid, Result.ERROR, e.getMessage(), e);
+		} finally {
 			zdbRepository.save(event);
-		} else {
-			result = new Result(txid, IResult.ERROR).putValue("DeleteBackup", backupId+" not found");
 		}
 		return result;
 	}
 	
 	@Override
 	public Result restoreFromBackup(String txId, String namespace, String serviceType, String serviceName, String backupId) throws Exception {
-		RequestEvent event = new RequestEvent();
 		Result result = null;
+		RestTemplate restTemplate = new RestTemplate();
+		
+		RequestEvent event = new RequestEvent();
 		event.setTxId(txId);
 		event.setServiceName(serviceName);
 		event.setServiceType(serviceType);
 		event.setEventType(EventType.Restore.name());
 		event.setNamespace(namespace);
 		event.setStartTime(new Date(System.currentTimeMillis()));
-		BackupEntity backup = backupRepository.findBackup(backupId);
-		if (backup != null) {
-			event.setResultMessage("Accepted");
-			
-			StringBuilder sb = new StringBuilder();
+		
+		StringBuilder sb = new StringBuilder();
+		try {
+			BackupEntity backup = backupRepository.findBackup(backupId);
+			//service/restore/{txId}
 			sb.append(K8SUtil.daemonUrl)
-					.append("/api/v1/")
-					.append(namespace).append("/")
-					.append(serviceType)
-					.append("/service/")
-					.append(serviceName)
-					.append("/restore/")
-					.append(txId);
-			RestTemplate restTemplate = new RestTemplate();
-			log.info(">>>> uri : "+sb.toString());
-			
-			result = restTemplate.postForObject(sb.toString()
-					, backup
-					, Result.class);
-			log.debug("restoreBackup accepted {namespace : "+namespace+", serviceName : "+serviceName+", serviceType : "+serviceType+"}");
-		} else {
-			event.setResultMessage(backupId+" not found");
-			result = new Result(txId, IResult.ERROR).putValue("restore", backupId+" not found");
-			log.debug("restoreBackup not found {namespace : "+namespace+", serviceName : "+serviceName+", serviceType : "+serviceType+"}");
+				.append("/api/v1/service/restore/")
+				.append(txId);
+			result = restTemplate.postForObject(sb.toString(), backup, Result.class);
+			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setStatus(result.getCode());
+			if (!result.isOK()) {
+				event.setStatusMessage(result.getMessage());
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			event.setEndTIme(new Date(System.currentTimeMillis()));
+			result = new Result(txId, Result.ERROR, e.getMessage(), e);
+		} finally {
+			zdbRepository.save(event);
 		}
-		event.setEndTIme(new Date(System.currentTimeMillis()));
-		zdbRepository.save(event);
 		return result;
 	}
 	
@@ -258,7 +298,13 @@ public class AbstractBackupServiceImpl implements ZDBBackupService {
 			event.setResultMessage("ServiceResource("+serviceName+") to delete");
 			StringBuilder sb = new StringBuilder();
 			sb.append(K8SUtil.daemonUrl)
-					.append("/api/v1/").append(namespace).append("/").append(serviceType).append("/service/").append(serviceName).append("/delete");
+					.append("/api/v1/")
+					.append(namespace).append("/")
+					.append(serviceType)
+					.append("/service/")
+					.append(serviceName)
+					.append("/delete/")
+					.append(txId);
 			RestTemplate restTemplate = new RestTemplate();
 			log.info(">>>> uri : "+sb.toString());
 			event.setStatus(IResult.RUNNING);

@@ -3,15 +3,12 @@ package com.zdb.core.service;
 import com.zdb.core.domain.BackupEntity;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ScheduleEntity;
-import com.zdb.core.domain.ZDBEntity;
-import com.zdb.core.domain.ZDBMariaDBAccount;
-import com.zdb.core.domain.ZDBMariaDBConfig;
 
 /**
  * ZDBRestService interface
  * 
  */
-public interface ZDBBackupService {
+public interface ZDBBackupProvider {
 	
 	static final int MAX_QUEUE_SIZE = 10;
 	

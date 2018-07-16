@@ -17,6 +17,7 @@ import org.microbean.helm.ReleaseManager;
 import org.microbean.helm.Tiller;
 import org.microbean.helm.chart.URLChartLoader;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
@@ -74,8 +75,9 @@ public class RedisInstaller implements ZDBInstaller {
 	private DiskUsageRepository diskUsageRepository;
 	
 	@Autowired
-	private RedisBackupServiceImpl redisBackupService;
-	
+	@Qualifier("backupProvider")
+	private BackupProviderImpl backupProvider;
+		
 	@Autowired
 	private K8SService k8sService;
 	
@@ -487,7 +489,7 @@ public class RedisInstaller implements ZDBInstaller {
 							schedule.setStartTime("01:00");
 							schedule.setStorePeriod(2);
 							schedule.setUseYn("Y");
-							redisBackupService.saveSchedule(exchange.getProperty(Exchange.TXID, String.class), schedule);
+							backupProvider.saveSchedule(exchange.getProperty(Exchange.TXID, String.class), schedule);
 						}
 					}
 				} else {
@@ -661,7 +663,7 @@ public class RedisInstaller implements ZDBInstaller {
 				tagRepository.deleteByNamespaceAndReleaseName(namespace, serviceName);
 				
 				// backup resource 삭제 요청
-				redisBackupService.removeServiceResource(txId, namespace, ZDBType.Redis.getName(), serviceName);
+				backupProvider.removeServiceResource(txId, namespace, ZDBType.Redis.getName(), serviceName);
 			} else {
 				String msg = "설치된 서비스가 존재하지 않습니다.";
 				event.setResultMessage(msg);
