@@ -2,6 +2,7 @@ package com.zdb.core;
 
 import java.util.List;
 
+import com.zdb.core.domain.CommonConstants;
 import com.zdb.core.util.K8SUtil;
 
 import io.fabric8.kubernetes.api.model.Namespace;
@@ -28,7 +29,7 @@ public class UpdateNamespace {
 			}
 			
 //			Namespace ns = new NamespaceBuilder().withNewMetadata().withName("zdb-system").removeFromLabels("name").endMetadata().build();
-			Namespace ns = new NamespaceBuilder().withNewMetadata().withName("zdb").addToLabels("cloudzdb.io/zdb-system", "true").endMetadata().build();
+			Namespace ns = new NamespaceBuilder().withNewMetadata().withName("zdb").addToLabels(CommonConstants.ZDB_LABEL, "true").endMetadata().build();
 			client.namespaces().createOrReplace(ns);
 
 		} catch (Exception e) {

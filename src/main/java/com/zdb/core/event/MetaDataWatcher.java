@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.gson.Gson;
+import com.zdb.core.domain.CommonConstants;
 import com.zdb.core.domain.EventMetaData;
 import com.zdb.core.domain.MetaData;
 import com.zdb.core.repository.EventRepository;
@@ -76,7 +77,7 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 				Map<String, String> labels = namespace.getMetadata().getLabels();
 				if(labels != null) {
 					// zdb namespace label
-					String key = labels.get("cloudzdb.io/zdb-system");
+					String key = labels.get(CommonConstants.ZDB_LABEL);
 					if(!"true".equals(key)) {
 						return;
 					}
@@ -169,7 +170,7 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 			Map<String, String> labels = resource.getMetadata().getLabels();
 			if(labels != null) {
 				// zdb namespace label
-				String key = labels.get("cloudzdb.io/zdb-system");
+				String key = labels.get(CommonConstants.ZDB_LABEL);
 				if("true".equals(key)) {
 					return true;
 				}
@@ -181,7 +182,7 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 				Map<String, String> labels = namespace.getMetadata().getLabels();
 				if(labels != null) {
 					// zdb namespace label
-					String key = labels.get("cloudzdb.io/zdb-system");
+					String key = labels.get(CommonConstants.ZDB_LABEL);
 					if("true".equals(key)) {
 						return true;
 					}

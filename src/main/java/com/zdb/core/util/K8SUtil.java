@@ -18,6 +18,7 @@ import org.microbean.helm.Tiller;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
+import com.zdb.core.domain.CommonConstants;
 import com.zdb.core.domain.Exchange;
 import com.zdb.core.domain.KubernetesConstants;
 import com.zdb.core.domain.PersistenceSpec;
@@ -104,7 +105,7 @@ public class K8SUtil {
 	 */
 	public static List<Namespace> getNamespaces() throws Exception {
 		// zdb namespace label
-		return kubernetesClient().inAnyNamespace().namespaces().withLabel("cloudzdb.io/zdb-system", "true").list().getItems();
+		return kubernetesClient().inAnyNamespace().namespaces().withLabel(CommonConstants.ZDB_LABEL, "true").list().getItems();
 	}
 
 	public static Namespace getNamespace(String namespace) throws Exception {

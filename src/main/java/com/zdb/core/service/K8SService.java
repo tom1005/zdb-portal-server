@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
 
 import com.google.gson.Gson;
+import com.zdb.core.domain.CommonConstants;
 import com.zdb.core.domain.DiskUsage;
 import com.zdb.core.domain.MetaData;
 import com.zdb.core.domain.PersistenceSpec;
@@ -1204,7 +1205,7 @@ public class K8SService {
 			Map<String, String> labels = pvc.getMetadata().getLabels();
 			if (labels != null) {
 				// zdb namespace label
-				String name = labels.get("cloudzdb.io/zdb-system");
+				String name = labels.get(CommonConstants.ZDB_LABEL);
 				if ("true".equals(name)) {
 					list.add(pvc);
 				}

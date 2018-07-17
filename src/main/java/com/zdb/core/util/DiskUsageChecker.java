@@ -10,6 +10,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import com.zdb.core.domain.CommonConstants;
 import com.zdb.core.domain.DiskUsage;
 
 import io.fabric8.kubernetes.api.model.Container;
@@ -60,7 +61,7 @@ public class DiskUsageChecker {
 
 			List<Pod> items = new ArrayList<>();
 			// zdb namespace label
-			List<Namespace> nsList = client.inAnyNamespace().namespaces().withLabel("cloudzdb.io/zdb-system", "true").list().getItems();
+			List<Namespace> nsList = client.inAnyNamespace().namespaces().withLabel(CommonConstants.ZDB_LABEL, "true").list().getItems();
 			for (Namespace namespace : nsList) {
 				items.addAll(client.inNamespace(namespace.getMetadata().getName()).pods().list().getItems());
 			}
