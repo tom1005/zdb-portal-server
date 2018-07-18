@@ -4,7 +4,6 @@ import java.util.Date;
 
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
 import javax.persistence.Id;
 
 import org.hibernate.annotations.GenericGenerator;
@@ -34,6 +33,7 @@ public class BackupEntity {
 	private Date createdDatetime;
 	private Date archivedDatetime;
 	private Date completeDatetime;
+	private Date deleteDatetime;
 	private String status;
 	private String reason;
 	private String filePath;
