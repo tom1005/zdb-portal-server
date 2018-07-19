@@ -68,15 +68,16 @@ public class WatchEventListener {
 							eventsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().events().watch(new EventWatcher<Event>(eventRepo, metaRepo, messageSender) {
 								protected void sendWebSocket() {
 									try {
-										Result result = commonService.getServicesWithNamespaces(null, false);
+										Result result = commonService.getServicesWithNamespaces(null, true);
 										if(result.isOK()) {
 											Object object = result.getResult().get(IResult.SERVICEOVERVIEWS);
 											if(object != null) {
-												messageSender.convertAndSend("/services", object);
+												messageSender.convertAndSend("/services", result);
 												
 												List<ServiceOverview> overviews = (List<ServiceOverview>) object;
 												for (ServiceOverview serviceOverview : overviews) {
-													messageSender.convertAndSend("/service/"+serviceOverview.getServiceName(), serviceOverview);
+													Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
+													messageSender.convertAndSend("/service/"+serviceOverview.getServiceName(), r);
 												}
 											}
 										}
@@ -132,15 +133,16 @@ public class WatchEventListener {
 							persistentVolumeClaimsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().persistentVolumeClaims().watch(new MetaDataWatcher<PersistentVolumeClaim>(metaRepo) {
 								protected void sendWebSocket() {
 									try {
-										Result result = commonService.getServicesWithNamespaces(null, false);
+										Result result = commonService.getServicesWithNamespaces(null, true);
 										if(result.isOK()) {
 											Object object = result.getResult().get(IResult.SERVICEOVERVIEWS);
 											if(object != null) {
-												messageSender.convertAndSend("/services", object);
+												messageSender.convertAndSend("/services", result);
 												
 												List<ServiceOverview> overviews = (List<ServiceOverview>) object;
 												for (ServiceOverview serviceOverview : overviews) {
-													messageSender.convertAndSend("/service/"+serviceOverview.getServiceName(), serviceOverview);
+													Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
+													messageSender.convertAndSend("/service/"+serviceOverview.getServiceName(), r);
 												}
 											}
 										}
@@ -213,11 +215,12 @@ public class WatchEventListener {
 										if(result.isOK()) {
 											Object object = result.getResult().get(IResult.SERVICEOVERVIEWS);
 											if(object != null) {
-												messageSender.convertAndSend("/services", object);
+												messageSender.convertAndSend("/services", result);
 												
 												List<ServiceOverview> overviews = (List<ServiceOverview>) object;
 												for (ServiceOverview serviceOverview : overviews) {
-													messageSender.convertAndSend("/service/"+serviceOverview.getServiceName(), serviceOverview);
+													Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
+													messageSender.convertAndSend("/service/"+serviceOverview.getServiceName(), r);
 												}
 											}
 										}
