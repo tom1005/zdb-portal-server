@@ -4,14 +4,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
+import com.zdb.core.domain.IResult;
+import com.zdb.core.domain.Result;
+import com.zdb.core.domain.ServiceOverview;
+import com.zdb.core.event.EventWatcher;
 import com.zdb.core.event.MetaDataWatcher;
 import com.zdb.core.repository.EventRepository;
 import com.zdb.core.repository.MetadataRepository;
+import com.zdb.core.service.ZDBRestService;
 import com.zdb.core.util.K8SUtil;
 
 import io.fabric8.kubernetes.api.model.ConfigMap;
@@ -37,6 +44,13 @@ public class WatchEventListener {
 
 	@Autowired
 	EventRepository eventRepo;
+	
+	@Autowired
+	private SimpMessagingTemplate messageSender;
+	
+	@Autowired
+	@Qualifier("commonService")
+	private ZDBRestService commonService;
 
 	@EventListener
 	public void handleEvent(Object event) {
@@ -51,7 +65,28 @@ public class WatchEventListener {
 					public void run() {
 						Watch eventsWatcher;
 						try {
-							eventsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().events().watch(new MetaDataWatcher<Event>(eventRepo));
+							eventsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().events().watch(new EventWatcher<Event>(eventRepo, metaRepo, messageSender) {
+								protected void sendWebSocket() {
+									try {
+										Result result = commonService.getServicesWithNamespaces(null, false);
+										if(result.isOK()) {
+											Object object = result.getResult().get(IResult.SERVICEOVERVIEWS);
+											if(object != null) {
+												messageSender.convertAndSend("/services", object);
+												
+												List<ServiceOverview> overviews = (List<ServiceOverview>) object;
+												for (ServiceOverview serviceOverview : overviews) {
+													messageSender.convertAndSend("/service/"+serviceOverview.getServiceName(), serviceOverview);
+												}
+											}
+										}
+//										
+									} catch (Exception e) {
+										// TODO Auto-generated catch block
+										e.printStackTrace();
+									}
+								}
+							});
 							watchList.add(eventsWatcher);
 						} catch (Exception e) {
 							e.printStackTrace();
@@ -94,7 +129,28 @@ public class WatchEventListener {
 					public void run() {
 						Watch persistentVolumeClaimsWatcher;
 						try {
-							persistentVolumeClaimsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().persistentVolumeClaims().watch(new MetaDataWatcher<PersistentVolumeClaim>(metaRepo));
+							persistentVolumeClaimsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().persistentVolumeClaims().watch(new MetaDataWatcher<PersistentVolumeClaim>(metaRepo) {
+								protected void sendWebSocket() {
+									try {
+										Result result = commonService.getServicesWithNamespaces(null, false);
+										if(result.isOK()) {
+											Object object = result.getResult().get(IResult.SERVICEOVERVIEWS);
+											if(object != null) {
+												messageSender.convertAndSend("/services", object);
+												
+												List<ServiceOverview> overviews = (List<ServiceOverview>) object;
+												for (ServiceOverview serviceOverview : overviews) {
+													messageSender.convertAndSend("/service/"+serviceOverview.getServiceName(), serviceOverview);
+												}
+											}
+										}
+//										
+									} catch (Exception e) {
+										// TODO Auto-generated catch block
+										e.printStackTrace();
+									}
+								}
+							});
 							watchList.add(persistentVolumeClaimsWatcher);
 						} catch (Exception e) {
 							e.printStackTrace();
@@ -150,7 +206,28 @@ public class WatchEventListener {
 					public void run() {
 						Watch podsWatcher;
 						try {
-							podsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().pods().watch(new MetaDataWatcher<Pod>(metaRepo));
+							podsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().pods().watch(new MetaDataWatcher<Pod>(metaRepo) {
+								protected void sendWebSocket() {
+									try {
+										Result result = commonService.getServicesWithNamespaces(null, true);
+										if(result.isOK()) {
+											Object object = result.getResult().get(IResult.SERVICEOVERVIEWS);
+											if(object != null) {
+												messageSender.convertAndSend("/services", object);
+												
+												List<ServiceOverview> overviews = (List<ServiceOverview>) object;
+												for (ServiceOverview serviceOverview : overviews) {
+													messageSender.convertAndSend("/service/"+serviceOverview.getServiceName(), serviceOverview);
+												}
+											}
+										}
+//										
+									} catch (Exception e) {
+										// TODO Auto-generated catch block
+										e.printStackTrace();
+									}
+								}
+							});
 							watchList.add(podsWatcher);
 						} catch (Exception e) {
 							e.printStackTrace();

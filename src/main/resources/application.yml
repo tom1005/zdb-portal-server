@@ -22,7 +22,11 @@ management:
   metrics:
     enable:
       jvm: true
-      
+
+security:
+  basic:
+    enabled: false
+          
 ---
 spring:
   profiles: local
