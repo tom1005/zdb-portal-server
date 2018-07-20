@@ -133,10 +133,8 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 	@Query("UPDATE BackupEntity t SET"
 			+ " t.deleteDatetime=:deleteDatetime"
 			+ ", t.status='DELETED' "
-			+ ", t.reason=:reason "
 			+ "WHERE t.backupId=:backupId")
 	int modify2Deleted(@Param("deleteDatetime") Date deleteDatetime
-			, @Param("reason") String reason
 			, @Param("backupId") String backupId);
 	
 	@Modifying(clearAutomatically = true)
