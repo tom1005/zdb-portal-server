@@ -18,6 +18,7 @@ import org.microbean.helm.Tiller;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
+import com.zdb.core.domain.CommonConstants;
 import com.zdb.core.domain.Exchange;
 import com.zdb.core.domain.KubernetesConstants;
 import com.zdb.core.domain.PersistenceSpec;
@@ -104,7 +105,7 @@ public class K8SUtil {
 	 */
 	public static List<Namespace> getNamespaces() throws Exception {
 		// zdb namespace label
-		return kubernetesClient().inAnyNamespace().namespaces().withLabel("cloudzdb.io/zdb-system", "true").list().getItems();
+		return kubernetesClient().inAnyNamespace().namespaces().withLabel(CommonConstants.ZDB_LABEL, "true").list().getItems();
 	}
 
 	public static Namespace getNamespace(String namespace) throws Exception {
@@ -153,14 +154,6 @@ public class K8SUtil {
 	
 	public static Pod getPodWithName(String namespace, String serviceName, String podName) throws Exception {
 		DefaultKubernetesClient client = kubernetesClient();
-
-//		Pod pod = client.pods().inNamespace(namespace).withName(podName).get();
-//
-//		if (pod != null) {
-//			if (serviceName.equals(pod.getMetadata().getLabels().get("release"))) {
-//				return pod;
-//			}		
-//		}	
 		
 		List<Pod> items = client.inNamespace(namespace).pods().list().getItems();
 		for (Pod pod : items) {
@@ -172,6 +165,18 @@ public class K8SUtil {
 		return null;
 	}
 	
+	public static Pod getPodWithName(String namespace, String podName) throws Exception {
+		DefaultKubernetesClient client = kubernetesClient();
+		
+		List<Pod> items = client.inNamespace(namespace).pods().list().getItems();
+		for (Pod pod : items) {
+			if (podName.equals(pod.getMetadata().getName())) {
+				return pod;
+			}
+		}		
+		
+		return null;
+	}
 	
 	/**
 	 * @param namespaceName

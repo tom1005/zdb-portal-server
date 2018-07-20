@@ -22,7 +22,11 @@ management:
   metrics:
     enable:
       jvm: true
-      
+
+security:
+  basic:
+    enabled: false
+          
 ---
 spring:
   profiles: local
@@ -48,7 +52,7 @@ logging:
 k8s:
 #  masterUrl: "https://169.56.69.242:23078"    
   masterUrl: "https://169.56.69.242:30134"    
-  daemonUrl: "http://zdb.daemon.sk.com:8080" 
+  daemonUrl: "http://localhost:8090" 
   
 chart:
   mariadb:
@@ -58,14 +62,36 @@ chart:
   
 iam:
     baseUrl: https://zcp-iam.cloudzcp.io:443
+      
+storage:
+  storageType: AWS_S3
+  accessKey: "6bf48d42eb304e1292f178bf69034f12"
+  secretKey: "0c61052e1bd30002a96cc57c8589d7521efef440f0471873"
+  endpointUrl: "s3-api.us-geo.objectstorage.softlayer.net"
+  apiKey: "na"
+  serviceInstanceId: "na"
+  location: "us"
 
+backup:
+  backupShell: "/zdb/shell/backup_mariadb.sh"
+  restoreShell: "/zdb/shell/restore_mariadb.sh"
+  prepareShell: "/zdb/shell/dump_master.sh"
+  masterInfo: "/zdb/shell/master_info.sh"
+  filemeta: "/zdb/shell/parse_filemeta.sh"
+  cleanShell: "/zdb/shell/clean.sh"
+  workingDir: "C:\\zdb\\work"
+  target: "slave"
+  type: "public"
+  redisDumpPath: "bitnami/redis/data"
+  redisDumpFile: "dump.rdb"
+  
 ---
 spring:
   profiles: prod
   datasource:
     url: ${datasource.url}
     username: zdb
-    password: 1111
+    password: 24cmdshvek!
     driverClassName: org.mariadb.jdbc.Driver
   jpa:
     database-platform: org.hibernate.dialect.MySQLDialect
@@ -92,4 +118,26 @@ chart:
       
 iam:
     baseUrl: ${iam.baseUrl}
-  
+          
+storage:
+  storageType: AWS_S3
+  accessKey: "6bf48d42eb304e1292f178bf69034f12"
+  secretKey: "0c61052e1bd30002a96cc57c8589d7521efef440f0471873"
+  endpointUrl: "s3-api.us-geo.objectstorage.softlayer.net"
+  apiKey: "na"
+  serviceInstanceId: "na"
+  location: "us"
+ 
+backup:
+  backupShell: "/zdb/shell/backup_mariadb.sh"
+  restoreShell: "/zdb/shell/restore_mariadb.sh"
+  prepareShell: "/zdb/shell/dump_master.sh"
+  masterInfo: "/zdb/shell/master_info.sh"
+  filemeta: "/zdb/shell/parse_filemeta.sh"
+  cleanShell: "/zdb/shell/clean.sh"
+  workingDir: "/zdb/work"
+  target: "slave"
+  type: "public"
+  redisDumpPath: "bitnami/redis/data"
+  redisDumpFile: "dump.rdb"
+ 

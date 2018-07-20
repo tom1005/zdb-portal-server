@@ -21,10 +21,10 @@ import com.zdb.core.domain.RequestEvent;
 @Repository
 public interface ZDBRepository extends CrudRepository<RequestEvent, String> {
 	
-	@Query("select t from RequestEvent t where tx_id=:tx_id" )
+	@Query(value = "select * from zdb.request_event where tx_id=:tx_id limit 1", nativeQuery = true)
 	RequestEvent findByTxId(@Param("tx_id") String tx_id);
 
-	@Query("select t from RequestEvent t where serviceName=:serviceName and eventType=:eventType and startTime = (select max(d.startTime) from RequestEvent d where serviceName=:serviceName and event_type=:eventType)" )
+	@Query(value = "select * from zdb.request_event where serviceName=:serviceName and eventType=:eventType and startTime = (select max(d.startTime) from zdb.request_event d where serviceName=:serviceName and event_type=:eventType) limit 1", nativeQuery = true)
 	RequestEvent findRequestEvent(@Param("serviceName") String serviceName, @Param("eventType") String eventType);
 
 	@Query("select count(tx_id) from RequestEvent t where tx_id=:tx_id" )

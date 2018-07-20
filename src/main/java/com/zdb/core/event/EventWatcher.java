@@ -1,15 +1,17 @@
 package com.zdb.core.event;
 
-import java.util.Date;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import com.google.gson.Gson;
 import com.zdb.core.collector.MetaDataCollector;
 import com.zdb.core.domain.CommonConstants;
-import com.zdb.core.domain.MetaData;
+import com.zdb.core.domain.EventMetaData;
+import com.zdb.core.repository.EventRepository;
 import com.zdb.core.repository.MetadataRepository;
-import com.zdb.core.util.DateUtil;
 import com.zdb.core.util.K8SUtil;
 
 import io.fabric8.kubernetes.api.model.ConfigMap;
@@ -36,16 +38,22 @@ import lombok.extern.slf4j.Slf4j;
  * @param <T>
  */
 @Slf4j
-public class MetaDataWatcher<T> implements Watcher<T> {
+public class EventWatcher<T> implements Watcher<T> {
+	
+	private SimpMessagingTemplate messageSender;
+	
+	EventRepository eventRepo;
 	
 	MetadataRepository metaRepo;
 
-	public MetaDataWatcher(MetadataRepository metaRepo) {
+	public EventWatcher(EventRepository eventRepo, MetadataRepository metaRepo, SimpMessagingTemplate messageSender) {
+		this.eventRepo = eventRepo;
 		this.metaRepo = metaRepo;
+		this.messageSender = messageSender;
 	}
 	
 	protected void sendWebSocket() {
-
+		
 	}
 	
 	@Override
@@ -53,147 +61,99 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 		String metaToJon = new Gson().toJson(resource);
 		HasMetadata metaObj = (HasMetadata) resource;
 		
-		if ("kube-system".equals(metaObj.getMetadata().getNamespace()) || "ibm-system".equals(metaObj.getMetadata().getNamespace())) {
-			return;
-		}
-
-		String releaseName = null;
-		String app = null;
-		Map<String, String> labels = metaObj.getMetadata().getLabels();
-		if (labels != null) {
-			releaseName = labels.get("release");
-			app = labels.get("app");
-		} else {
-			if (!metaObj.getKind().equals("Namespace")) {
-				return;
-			}
-		}
-		
-		boolean pushData = false;
-
-		//2018-06-19T13:12:54Z
-		MetaData m = metaRepo.findNamespaceAndNameAndKind(metaObj.getMetadata().getNamespace(), metaObj.getMetadata().getName(), metaObj.getKind());
-		if (m == null) {
-			// send websocket
-			pushData = true;
+		if (resource instanceof Event) {
+			Event event = (Event) resource;
+			// EventRepository
+			EventMetaData m = new EventMetaData();
 			
-			//System.out.println("DB MetaData is null. " + metaObj.getMetadata().getName());
-			
-			m = new MetaData();
 			try {
-				String ct = metaObj.getMetadata().getCreationTimestamp();
-				ct = ct.replace("T", " ").replace("Z", "");
-				
-				m.setCreateTime(DateUtil.parseDate(ct));
-				m.setKind(metaObj.getKind());
-				m.setNamespace(metaObj.getMetadata().getNamespace());
-				m.setName(metaObj.getMetadata().getName());
-				m.setReleaseName(releaseName);
-			} catch (Exception e) {
-				log.error(e.getMessage(), e);
-			}
-		} else {
-			String meta = m.getMetadata();
-			HasMetadata hasMetadata = MetaDataCollector.METADATA_CACHE.get(metaObj.getMetadata().getUid());
-			if (resource instanceof Pod) {
-				if(hasMetadata == null) {
-					// send websocket
-					pushData = true;
-					//System.out.println("Cached Pod metadata is null. " + metaObj.getMetadata().getName());
-				} else {
-					try {
-						Pod newPod = (Pod) resource;
-						boolean newPodIsReady = isReady(newPod);
-						
-						Pod oldPod = new Gson().fromJson(meta, Pod.class);
-						boolean oldPodIsReady = isReady(oldPod);
-						
-						if(newPodIsReady != oldPodIsReady) {
-							// send websocket
-							pushData = true;
-							
-							//System.out.println("Pod metadata is changed." + oldPodIsReady +" -> "+newPodIsReady);
-						}
-					} catch (Exception e) {
-						log.error(e.getMessage(), e);
-					}
+				if( "PersistentVolume".equals(event.getInvolvedObject().getKind())) {
+					return;
 				}
+				String firstTimestamp = event.getFirstTimestamp();
+				firstTimestamp = firstTimestamp.replace("T", " ").replace("Z", "");
 				
-			} else if (resource instanceof PersistentVolumeClaim) {
-				if(hasMetadata == null) {
-					// send websocket
-					pushData = true;
-					//System.out.println("Cached PersistentVolumeClaim metadata is null. " + metaObj.getMetadata().getName());
-				} else {
-					try {
-						PersistentVolumeClaim newPvc = (PersistentVolumeClaim) resource;
-						String newPVCStatus = getStatus(newPvc);
-						
-						PersistentVolumeClaim oldPvc = new Gson().fromJson(meta, PersistentVolumeClaim.class);
-						String oldPVCStatus = getStatus(oldPvc);
-						
-						if(!newPVCStatus.equals(oldPVCStatus)) {
-							// send websocket
-							//System.out.println("PersistentVolumeClaim metadata is changed." + oldPVCStatus +" -> "+newPVCStatus);
-							pushData = true;
-						}
-					} catch (Exception e) {
-						log.error(e.getMessage(), e);
-					}
-				}
-			}
-		}
-
-		m.setApp(app);
-		m.setUid(metaObj.getMetadata().getUid());
-		m.setStatus(getStatus(metaObj));
-		m.setMetadata(metaToJon);
-		m.setUpdateTime(new Date(System.currentTimeMillis()));
-		m.setAction(action.name());
-
-		if (isZDBResource(metaObj)) {
-			metaRepo.save(m);
-			
-			MetaDataCollector.putMetaData(metaObj.getMetadata().getUid(), metaObj);
-			
-			// send websocket		
-			if(pushData) {
-				long s = System.currentTimeMillis();
-				sendWebSocket();
-				log.warn("meta send websocket --> " + (System.currentTimeMillis() - s));
-			}
-		}
-
-	}
+				String lastTimestamp = event.getLastTimestamp();
+				lastTimestamp = lastTimestamp.replace("T", " ").replace("Z", "");
+				
+				m.setFirstTimestamp(firstTimestamp);
+				m.setKind(event.getInvolvedObject().getKind());
 	
-	private boolean isZDBResource(HasMetadata resource) {
-		if (resource instanceof Namespace) {
-			Map<String, String> labels = resource.getMetadata().getLabels();
-			if(labels != null) {
-				// zdb namespace label
-				String key = labels.get(CommonConstants.ZDB_LABEL);
-				if("true".equals(key)) {
-					return true;
+				m.setLastTimestamp(lastTimestamp);
+				m.setMessage(event.getMessage());
+				m.setMetadata(metaToJon);
+				m.setReason(event.getReason());
+	
+				m.setUid(event.getInvolvedObject().getUid());
+				m.setName(event.getInvolvedObject().getName());
+				String ns = event.getInvolvedObject().getNamespace();
+				
+				if(ns == null) {
+					ns = event.getInvolvedObject().getName();
+				} else {
+					m.setNamespace(ns);
 				}
-			}
-		} else {
-			try {
-				String name = resource.getMetadata().getNamespace();
-				Namespace namespace = K8SUtil.getNamespace(name);
+				
+				Namespace namespace = K8SUtil.getNamespace(ns);
+				if(namespace == null) {
+					System.out.println();
+				}
 				Map<String, String> labels = namespace.getMetadata().getLabels();
 				if(labels != null) {
 					// zdb namespace label
 					String key = labels.get(CommonConstants.ZDB_LABEL);
-					if("true".equals(key)) {
-						return true;
+					if(!"true".equals(key)) {
+						return;
+					}
+				} else {
+					return;
+				}
+				
+				if(EVENT_KEYWORD.contains(event.getReason())) {
+					long s = System.currentTimeMillis();
+					sendWebSocket();
+					log.warn("event send websocket --> " + (System.currentTimeMillis() - s));
+					try {
+						if (event.getInvolvedObject().getKind().equals("Pod")) {
+							Pod pod = K8SUtil.getPodWithName(ns, event.getInvolvedObject().getName());
+							if (pod != null)
+								MetaDataCollector.putMetaData(pod.getMetadata().getUid(), pod);
+						} else if (event.getInvolvedObject().getKind().equals("PersistentVolumeClaim")) {
+							PersistentVolumeClaim pvc = K8SUtil.getPersistentVolumeClaim(ns, event.getInvolvedObject().getName());
+							if (pvc != null)
+								MetaDataCollector.putMetaData(pvc.getMetadata().getUid(), pvc);
+						}
+					} finally {
 					}
 				}
+				
+				
 			} catch (Exception e) {
 				log.error(e.getMessage(), e);
 			}
-		}
-		
-		return false;
+			EventMetaData findByNameAndMessageAndLastTimestamp = eventRepo.findByNameAndMessageAndLastTimestamp(m.getName(), m.getMessage(), m.getLastTimestamp());
+			if(findByNameAndMessageAndLastTimestamp == null) {
+
+				// TODO 아래 메세지에 대해 어떻게 처리 할지 결정필요....
+				if(event.getMessage().indexOf("Ensuring load balancer") > -1) {
+					return;
+				}
+				if(event.getMessage().indexOf("Error on cloud load balancer") > -1) {
+					return;
+				}
+				eventRepo.save(m);
+			} 
+		} 
+	}
+	
+	static List<String> EVENT_KEYWORD = new ArrayList<>();
+	static {
+		EVENT_KEYWORD.add("Provisioning");
+		EVENT_KEYWORD.add("ExternalProvisioning");
+		EVENT_KEYWORD.add("ProvisioningSucceeded");
+		EVENT_KEYWORD.add("FailedScheduling");
+		EVENT_KEYWORD.add("SuccessfulMountVolume");
+		EVENT_KEYWORD.add("Unhealthy");
 	}
 	
 	private String getStatus(HasMetadata resource) {

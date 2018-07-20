@@ -2,6 +2,7 @@ package com.zdb.core.collector;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -40,7 +41,21 @@ public class MetaDataCollector {
 	@Autowired
 	MetadataRepository metaRepo;
 	
-	// @Scheduled(initialDelayString = "${collector.period.initial-delay}", fixedRateString = "${collector.period.fixed-rate}")
+	/**
+	 * 마지막으로 전송한 메세지를 담는 공간...
+	 */
+	public static LinkedHashMap<String, HasMetadata> METADATA_CACHE = new LinkedHashMap<String, HasMetadata>() {
+		private static final long serialVersionUID = -1L;
+
+		protected boolean removeEldestEntry(java.util.Map.Entry<String, HasMetadata> eldest) {
+			return size() > 1;
+		};
+	};
+	
+    public static void putMetaData(String key, HasMetadata value) {
+    	METADATA_CACHE.put(key, value);
+    }
+	
 	@Scheduled(initialDelayString = "20000", fixedRateString = "90000")
 	public void collect() {
 		try {
@@ -143,7 +158,6 @@ public class MetaDataCollector {
 				} else {
 					metaData.setAction("AUTO_SYNC");
 					metaData.setUpdateTime(DateUtil.currentDate());
-					metaData.setStatus("");
 					metaRepo.save(metaData);
 				}
 				
@@ -181,6 +195,9 @@ public class MetaDataCollector {
 	
 	private void save(List<? extends HasMetadata> metadataList) {
 		for (HasMetadata metaObj : metadataList) {
+			
+			putMetaData(metaObj.getMetadata().getUid(), metaObj);
+			
 			MetaData m = null;
 			if (metaObj instanceof Namespace) {
 				m = ((MetadataRepository) metaRepo).findNamespace(metaObj.getMetadata().getName());
