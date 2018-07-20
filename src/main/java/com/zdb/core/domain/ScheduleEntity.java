@@ -2,16 +2,9 @@ package com.zdb.core.domain;
 
 import java.util.Date;
 
-<<<<<<< HEAD
-import javax.persistence.Basic;
-import javax.persistence.Column;
-=======
->>>>>>> refs/remotes/origin/master
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
 
 import org.hibernate.annotations.GenericGenerator;
 
