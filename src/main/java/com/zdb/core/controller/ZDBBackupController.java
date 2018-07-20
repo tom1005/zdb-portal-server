@@ -1,5 +1,7 @@
 package com.zdb.core.controller;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +20,9 @@ import com.zdb.core.domain.BackupEntity;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ScheduleEntity;
+import com.zdb.core.exception.BackupException;
 import com.zdb.core.service.BackupProviderImpl;
+import com.zdb.core.util.K8SUtil;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -65,15 +69,24 @@ public class ZDBBackupController {
 					+",serviceName:"+scheduleEntity.getServiceName()+"}");
 		}
 		String txId = txId();
+		Result result = null;
 
 		try {
-			Result result = backupProvider.saveSchedule(txId, scheduleEntity);
-			return new ResponseEntity<String>(result.toJson(), result.status());
+			verifyParameters(scheduleEntity);
+			verifyService(scheduleEntity.getNamespace(), scheduleEntity.getServiceName());
+			
+			result = backupProvider.saveSchedule(txId, scheduleEntity);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, "").putValue("error", e);
-			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
-		}
+			if (e instanceof BackupException) {
+				result = new Result(txId, IResult.ERROR, e.getMessage());
+				result.setCode(((BackupException)e).getStatusCode());
+			} else {
+				result = new Result(txId, IResult.ERROR, "").putValue("error", e);
+				result.setCode(HttpStatus.EXPECTATION_FAILED.value());
+			}
+		} 
+		return new ResponseEntity<String>(result.toJson(), result.status());
 	}
 
 	/**
@@ -87,8 +100,8 @@ public class ZDBBackupController {
 	 */
 	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/schedule", method = RequestMethod.GET)
 	public ResponseEntity<String> getSchedule(
-					@PathVariable("serviceType") String serviceType
-					, @PathVariable("namespace") final String namespace
+					@PathVariable("namespace") final String namespace
+					, @PathVariable("serviceType") String serviceType
 					, @PathVariable("serviceName") final String serviceName) {
 
 		if (log.isInfoEnabled()) {
@@ -99,17 +112,24 @@ public class ZDBBackupController {
 		}
 
 		String txId = txId();
+		Result result = null;
 
 		try {
-			Result result = backupProvider.getSchedule(txId, namespace, serviceName, serviceType);
-
-			return new ResponseEntity<String>(result.toJson(), result.status());
+			verifyParameters(namespace, serviceType, serviceName);
+			verifyService(namespace, serviceName);
+			
+			result = backupProvider.getSchedule(txId, namespace, serviceName, serviceType);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, "").putValue("error", e);
-			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
-		}
-
+			if (e instanceof BackupException) {
+				result = new Result(txId, IResult.ERROR, e.getMessage());
+				result.setCode(((BackupException)e).getStatusCode());
+			} else {
+				result = new Result(txId, IResult.ERROR, "").putValue("error", e);
+				result.setCode(HttpStatus.EXPECTATION_FAILED.value());
+			}
+		} 
+		return new ResponseEntity<String>(result.toJson(), result.status());
 	}
 
 	/**
@@ -136,23 +156,25 @@ public class ZDBBackupController {
 		Result result = null;
 
 		try {
+			verifyParameters(namespace, serviceType, backupEntity.getServiceName());
+			verifyService(namespace, backupEntity.getServiceName());
+			
 			result = backupProvider.backupService(txId, backupEntity);
 			log.info("===========> backupService returns!  serviceType : "
 					+serviceType
 					+", namespace : "
 					+namespace+",serviceName : "+backupEntity.getServiceName());
-
-			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			if (e instanceof NullPointerException) {
-				return new ResponseEntity<String>(HttpStatus.EXPECTATION_FAILED);
+			if (e instanceof BackupException) {
+				result = new Result(txId, IResult.ERROR, e.getMessage());
+				result.setCode(((BackupException)e).getStatusCode());
 			} else {
 				result = new Result(txId, IResult.ERROR, "").putValue("error", e);
-				return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+				result.setCode(HttpStatus.EXPECTATION_FAILED.value());
 			}
-		}
-
+		} 
+		return new ResponseEntity<String>(result.toJson(), result.status());
 	}
 
 	/**
@@ -164,8 +186,8 @@ public class ZDBBackupController {
 	 */
 	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/backup-list", method = RequestMethod.GET)
 	public ResponseEntity<String> getBackupList(
-					@PathVariable("serviceType") String serviceType
-					, @PathVariable("namespace") final String namespace
+					@PathVariable("namespace") final String namespace
+					, @PathVariable("serviceType") String serviceType
 					, @PathVariable("serviceName") final String serviceName) {
 		if (log.isInfoEnabled()) {
 			log.info(">>>> getBackupList Interface :GET /{namespace}/{serviceType}/service/{serviceName}/backup-list {"
@@ -178,14 +200,21 @@ public class ZDBBackupController {
 		String txId = txId();
 
 		try {
+			verifyParameters(namespace, serviceType, serviceName);
+			verifyService(namespace, serviceName);
 
 			result = backupProvider.getBackupList(txId, namespace, serviceName, serviceType);
-			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, "").putValue("error", e);
-			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
-		}
+			if (e instanceof BackupException) {
+				result = new Result(txId, IResult.ERROR, e.getMessage());
+				result.setCode(((BackupException)e).getStatusCode());
+			} else {
+				result = new Result(txId, IResult.ERROR, "").putValue("error", e);
+				result.setCode(HttpStatus.EXPECTATION_FAILED.value());
+			}
+		} 
+		return new ResponseEntity<String>(result.toJson(), result.status());
 	}
 
 	
@@ -207,14 +236,21 @@ public class ZDBBackupController {
 		String txId = txId();
 
 		try {
-
+			verifyParameters(namespace, serviceType, serviceName);
+			verifyService(namespace, serviceName);
+			
 			result = backupProvider.deleteBackup(txId, namespace, serviceType, serviceName, backupId);
-			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, "").putValue("error", e);
-			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
-		}
+			if (e instanceof BackupException) {
+				result = new Result(txId, IResult.ERROR, e.getMessage());
+				result.setCode(((BackupException)e).getStatusCode());
+			} else {
+				result = new Result(txId, IResult.ERROR, "").putValue("error", e);
+				result.setCode(HttpStatus.EXPECTATION_FAILED.value());
+			}
+		} 
+		return new ResponseEntity<String>(result.toJson(), result.status());
 	}
 
 	////{namespace}/{serviceType}/service/{serviceName}/restore/{txId}
@@ -233,15 +269,110 @@ public class ZDBBackupController {
 		}
 
 		String txId = txId();
+		Result result = null;
 
 		try {
-			com.zdb.core.domain.Result result = null;
+			verifyParameters(namespace, serviceType, serviceName);
+			verifyService(namespace, serviceName);
 			result = backupProvider.restoreFromBackup(txId, namespace, serviceName, serviceType, backupId);
-			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, "").putValue("error", e);
-			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+			if (e instanceof BackupException) {
+				result = new Result(txId, IResult.ERROR, e.getMessage());
+				result.setCode(((BackupException)e).getStatusCode());
+			} else {
+				result = new Result(txId, IResult.ERROR, "").putValue("error", e);
+				result.setCode(HttpStatus.EXPECTATION_FAILED.value());
+			}
+		} 
+		return new ResponseEntity<String>(result.toJson(), result.status());
+	}
+
+
+	private void verifyService(String namespace, String serviceName) throws BackupException {
+		StringBuilder sb = new StringBuilder();
+		try {
+			if (K8SUtil.isNamespaceExist(namespace) == false) {
+				sb.append("namespace(namespace:"+namespace+",serviceName:"+serviceName+") does not exits").append(",");
+				throw new BackupException(sb.toString(), BackupException.NOT_FOUND);
+			} else {
+				if (K8SUtil.isServiceExist(namespace, serviceName) == false) {
+					sb.append("Service(namespace:"+namespace+",serviceName:"+serviceName+") does not exits").append(",");
+					throw new BackupException(sb.toString(), BackupException.NOT_FOUND);
+				}
+			}
+		} catch (Exception e) {
+			if (e instanceof BackupException) {
+				throw (BackupException)e;
+			} else {
+				sb.append("Service(namespace:"+namespace+",serviceName:"+serviceName+" has errors ").append(",");
+				throw new BackupException(e);
+			}
+		}
+	}
+	
+	private void verifyParameters(String namespace, String serviceType) throws BackupException {
+		boolean result = true;
+		StringBuilder sb = new StringBuilder();
+		if ("".equals(namespace) || namespace == null) {
+			result = false;
+			sb.append("namespace empty or null");
+		} else if("".equals(serviceType) || serviceType == null) {
+			result = false;
+			sb.append("serviceType empty or null");
+		} else {
+			if (log.isInfoEnabled()) {
+				sb.append("Parameters OK {namespace:"+namespace
+							+",serviceType:"+serviceType+"}");
+				log.info(sb.toString());
+			}
+		}
+		if (result == false) {
+			throw new BackupException(sb.toString(), BackupException.BAD_REQUEST);
+		}
+	}
+	
+	private void verifyParameters(String namespace, String serviceType, String serviceName) throws BackupException {
+		boolean result = true;
+		StringBuilder sb = new StringBuilder();
+		verifyParameters(namespace, serviceType);
+		if ("".equals(serviceName) || serviceName == null) {
+			result = false;
+			sb.append("serviceName empty or null");
+		}
+		if (result == false) {
+			throw new BackupException(sb.toString(), BackupException.BAD_REQUEST);
+		}
+	}
+	private void verifyParameters(ScheduleEntity schedule) throws BackupException {
+		boolean result = true;
+		StringBuilder sb = new StringBuilder();
+		if (schedule == null) {
+			result = false;
+			sb.append("scheduleEntity is null,");
+		} else if("".equals(schedule.getStartTime()) || schedule.getStartTime() == null) {
+			result = false;
+			sb.append("startTime empty or null");
+		} else if(schedule.getStorePeriod() < 1 || schedule.getStorePeriod() > 6) {
+			result = false;
+			sb.append("storePeriod more then 0 and less then 8 : "+schedule.getStorePeriod());
+		} else if ("".equals(schedule.getUseYn()) || schedule.getUseYn()==null) {
+			result = false;
+			sb.append("useYn is empty or null : "+schedule.getStorePeriod());
+		} else {
+			verifyParameters(schedule.getNamespace(), schedule.getServiceType(), schedule.getServiceName());
+			try {
+				Date date = new SimpleDateFormat("HH:mm").parse(schedule.getStartTime());
+				if (log.isInfoEnabled()) {
+					log.info("Schedule requested to change to startTime("+date+")");
+				}
+			} catch (Exception e) {
+				sb.append("startTime is unknown format :"+schedule.getStartTime());
+				result = false;
+			}
+		}
+		if (result == false) {
+			throw new BackupException(sb.toString(), BackupException.BAD_REQUEST);
 		}
 	}
 }

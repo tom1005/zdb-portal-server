@@ -40,17 +40,17 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			, @Param("serviceType") String serviceType
 			, @Param("serviceName") String serviceName
 			, @Param("expiredDate") Date expiredDate);
-	
-	@Modifying(clearAutomatically = true)
-	@Transactional
-	@Query("UPDATE BackupEntity t SET t.completeDatetime=:completeDatetime, t.reason=:reason, t.status=:status WHERE t.backupId=:backupId")
-	int modify(@Param("completeDatetime") Date completeDatetime, @Param("reason") String reason, @Param("status") String status, @Param("backupId") String backupId);
 
 	@Modifying(clearAutomatically = true)
 	@Transactional
-	@Query("UPDATE BackupEntity t SET t.acceptedDatetime=:acceptedDatetime, t.status=:status WHERE t.backupId=:backupId")
+	@Query("UPDATE BackupEntity t SET"
+			+ " t.acceptedDatetime=:acceptedDatetime"
+			+ ", t.status=:status"
+			+ ", t.reason=:reason "
+			+ "WHERE t.backupId=:backupId")
 	int modify2Accepted(@Param("acceptedDatetime") Date acceptedDatetime
 			, @Param("status") String status
+			, @Param("reason") String reason
 			, @Param("backupId") String backupId);
 	
 	@Modifying(clearAutomatically = true)
@@ -98,18 +98,48 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 	
 	@Modifying(clearAutomatically = true)
 	@Transactional
-	@Query("UPDATE BackupEntity t SET t.completeDatetime=:completeDatetime, t.status=:status WHERE t.backupId=:backupId")
+	@Query("UPDATE BackupEntity t SET"
+			+ " t.completeDatetime=:completeDatetime"
+			+ ", t.status=:status "
+			+ ", t.reason=:reason "
+			+ "WHERE t.backupId=:backupId")
 	int modify2Completed(@Param("completeDatetime") Date completeDatetime
 			, @Param("status") String status
+			, @Param("reason") String reason
 			, @Param("backupId") String backupId);
 	
 	@Modifying(clearAutomatically = true)
 	@Transactional
-	@Query("UPDATE BackupEntity t SET t.completeDatetime=:completeDatetime, t.status=:status, t.reason=:reason WHERE t.namespace=:namespace"
+	@Query("UPDATE BackupEntity t SET"
+			+ " t.deleteDatetime=:deleteDatetime"
+			+ ", t.status='DELETED' "
+			+ "WHERE t.namespace=:namespace"
+			+ " and t.serviceType=:serviceType"
+			+ " and t.serviceName=:serviceName"
+			+ " and t.archiveName=:archiveName")
+	int modify2Deleted(@Param("deleteDatetime") Date deleteDatetime
+			, @Param("namespace") String namespace
+			, @Param("serviceType") String serviceType
+			, @Param("serviceName") String serviceName
+			, @Param("archiveName") String archiveName);
+	
+	@Modifying(clearAutomatically = true)
+	@Transactional
+	@Query("UPDATE BackupEntity t SET"
+			+ " t.deleteDatetime=:deleteDatetime"
+			+ ", t.status='DELETED' "
+			+ ", t.reason=:reason "
+			+ "WHERE t.backupId=:backupId")
+	int modify2Deleted(@Param("deleteDatetime") Date deleteDatetime
+			, @Param("reason") String reason
+			, @Param("backupId") String backupId);
+	
+	@Modifying(clearAutomatically = true)
+	@Transactional
+	@Query("UPDATE BackupEntity t SET t.acceptedDatetime=:acceptedDatetime, t.status='ACCEPTED', t.reason=:reason WHERE t.namespace=:namespace"
 			+ " and t.serviceType=:serviceType"
 			+ " and t.serviceName=:serviceName")
-	int modifyAllbyService(@Param("completeDatetime") Date completeDatetime
-			, @Param("status") String status
+	int modifyServiceDeleting(@Param("acceptedDatetime") Date acceptedDatetime
 			, @Param("reason") String reason
 			, @Param("namespace") String namespace
 			, @Param("serviceType") String serviceType

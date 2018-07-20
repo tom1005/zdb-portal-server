@@ -91,7 +91,7 @@ public class MariaDBInstaller implements ZDBInstaller {
 	@Autowired
 	@Qualifier("backupProvider")
 	private BackupProviderImpl backupProvider;
-	
+		
 	private static final String DEFAULT_ROOT_PASSWORD = "zdb12#$";
 	private static final String DEFAULT_USER = "admin";
 	private static final String DEFAULT_USER_PASSWORD = "zdbadmin12#$";
