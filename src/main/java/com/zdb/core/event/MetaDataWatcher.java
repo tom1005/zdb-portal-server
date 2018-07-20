@@ -53,7 +53,7 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 		String metaToJon = new Gson().toJson(resource);
 		HasMetadata metaObj = (HasMetadata) resource;
 		
-		if ("kube-system".equals(metaObj.getMetadata().getNamespace())) {
+		if ("kube-system".equals(metaObj.getMetadata().getNamespace()) || "ibm-system".equals(metaObj.getMetadata().getNamespace())) {
 			return;
 		}
 
@@ -72,10 +72,12 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 		boolean pushData = false;
 
 		//2018-06-19T13:12:54Z
-		MetaData m = ((MetadataRepository) metaRepo).findNamespaceAndNameAndKind(metaObj.getMetadata().getNamespace(), metaObj.getMetadata().getName(), metaObj.getKind());
+		MetaData m = metaRepo.findNamespaceAndNameAndKind(metaObj.getMetadata().getNamespace(), metaObj.getMetadata().getName(), metaObj.getKind());
 		if (m == null) {
 			// send websocket
 			pushData = true;
+			
+			//System.out.println("DB MetaData is null. " + metaObj.getMetadata().getName());
 			
 			m = new MetaData();
 			try {
@@ -97,6 +99,7 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 				if(hasMetadata == null) {
 					// send websocket
 					pushData = true;
+					//System.out.println("Cached Pod metadata is null. " + metaObj.getMetadata().getName());
 				} else {
 					try {
 						Pod newPod = (Pod) resource;
@@ -108,6 +111,8 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 						if(newPodIsReady != oldPodIsReady) {
 							// send websocket
 							pushData = true;
+							
+							//System.out.println("Pod metadata is changed." + oldPodIsReady +" -> "+newPodIsReady);
 						}
 					} catch (Exception e) {
 						log.error(e.getMessage(), e);
@@ -118,6 +123,7 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 				if(hasMetadata == null) {
 					// send websocket
 					pushData = true;
+					//System.out.println("Cached PersistentVolumeClaim metadata is null. " + metaObj.getMetadata().getName());
 				} else {
 					try {
 						PersistentVolumeClaim newPvc = (PersistentVolumeClaim) resource;
@@ -128,6 +134,7 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 						
 						if(!newPVCStatus.equals(oldPVCStatus)) {
 							// send websocket
+							//System.out.println("PersistentVolumeClaim metadata is changed." + oldPVCStatus +" -> "+newPVCStatus);
 							pushData = true;
 						}
 					} catch (Exception e) {

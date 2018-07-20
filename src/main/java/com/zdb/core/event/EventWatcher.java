@@ -67,6 +67,9 @@ public class EventWatcher<T> implements Watcher<T> {
 			EventMetaData m = new EventMetaData();
 			
 			try {
+				if( "PersistentVolume".equals(event.getInvolvedObject().getKind())) {
+					return;
+				}
 				String firstTimestamp = event.getFirstTimestamp();
 				firstTimestamp = firstTimestamp.replace("T", " ").replace("Z", "");
 				
@@ -83,9 +86,18 @@ public class EventWatcher<T> implements Watcher<T> {
 	
 				m.setUid(event.getInvolvedObject().getUid());
 				m.setName(event.getInvolvedObject().getName());
-				m.setNamespace(event.getInvolvedObject().getNamespace());
-				//log.info("1--------"+ event.getInvolvedObject().getNamespace() +" / " + event.getInvolvedObject().getName());
-				Namespace namespace = K8SUtil.getNamespace(event.getInvolvedObject().getNamespace());
+				String ns = event.getInvolvedObject().getNamespace();
+				
+				if(ns == null) {
+					ns = event.getInvolvedObject().getName();
+				} else {
+					m.setNamespace(ns);
+				}
+				
+				Namespace namespace = K8SUtil.getNamespace(ns);
+				if(namespace == null) {
+					System.out.println();
+				}
 				Map<String, String> labels = namespace.getMetadata().getLabels();
 				if(labels != null) {
 					// zdb namespace label
@@ -97,38 +109,19 @@ public class EventWatcher<T> implements Watcher<T> {
 					return;
 				}
 				
-//				MetaData meta = metaRepo.findNamespaceAndNameAndKind(metaObj.getMetadata().getNamespace(), metaObj.getMetadata().getName(), metaObj.getKind());
-//				String uid = meta.getUid();
-//				HasMetadata cachedMetaData = MetaDataCollector.METADATA_CACHE.get(uid);
-//				String kind = event.getInvolvedObject().getKind();
-//				
-//				// send websocket		
-//				if (resource instanceof PersistentVolumeClaim) {
-//					// 'Provisioning'
-//					// 'ExternalProvisioning'
-//					// 'ProvisioningSucceeded'
-//					
-//				} else if (resource instanceof Pod) {
-//					// 'FailedScheduling'
-//					// 'Scheduled'
-//					// 'SuccessfulMountVolume'
-//					// 'Pulling'
-//					// 'Started'
-//					// 'Created'
-//					// 'Pulled'
-//					// 'Unhealthy'
-//				}
 				if(EVENT_KEYWORD.contains(event.getReason())) {
 					long s = System.currentTimeMillis();
 					sendWebSocket();
 					log.warn("event send websocket --> " + (System.currentTimeMillis() - s));
 					try {
-						if(event.getInvolvedObject().getKind().equals("Pod")) {
-							Pod pod = K8SUtil.getPodWithName(event.getInvolvedObject().getNamespace(), event.getInvolvedObject().getName());
-							MetaDataCollector.putMetaData(pod.getMetadata().getUid(), pod);
-						} else if(event.getInvolvedObject().getKind().equals("PersistentVolumeClaim")) {
-							PersistentVolumeClaim pvc = K8SUtil.getPersistentVolumeClaim(event.getInvolvedObject().getNamespace(), event.getInvolvedObject().getName());
-							MetaDataCollector.putMetaData(pvc.getMetadata().getUid(), pvc);
+						if (event.getInvolvedObject().getKind().equals("Pod")) {
+							Pod pod = K8SUtil.getPodWithName(ns, event.getInvolvedObject().getName());
+							if (pod != null)
+								MetaDataCollector.putMetaData(pod.getMetadata().getUid(), pod);
+						} else if (event.getInvolvedObject().getKind().equals("PersistentVolumeClaim")) {
+							PersistentVolumeClaim pvc = K8SUtil.getPersistentVolumeClaim(ns, event.getInvolvedObject().getName());
+							if (pvc != null)
+								MetaDataCollector.putMetaData(pvc.getMetadata().getUid(), pvc);
 						}
 					} finally {
 					}

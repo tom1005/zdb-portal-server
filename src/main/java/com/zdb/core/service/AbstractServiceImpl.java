@@ -957,34 +957,20 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 					isPodReady = false;
 					break;
 				}
-				
 			}
 			
 			// 15분이내 생성된 서버 1529453558000
 			if((System.currentTimeMillis() - createTime) < 150 * 60 * 1000 || !isPodReady) {
 				// kind, name, reason
-//				'PersistentVolumeClaim', 'data-zdb-116-mariadb-master-0', '2018-06-01T09:56:59Z', '2018-06-01T09:56:59Z', 'Successfully provisioned volume pvc-f941d085-6581-11e8-bddb-ea6741069087', 'ProvisioningSucceeded'
-//				'Pod', 'zdb-116-mariadb-master-0', '2018-06-01T09:58:53Z', '2018-06-01T09:58:53Z', 'MountVolume.SetUp succeeded for volume \"pvc-f941d085-6581-11e8-bddb-ea6741069087\" ', 'SuccessfulMountVolume'
-//				'Pod', 'zdb-116-mariadb-master-0', '2018-06-01T09:58:59Z', '2018-06-01T09:58:59Z', 'Started container', 'Startedq
 				List<EventMetaData> pvcStatus = eventRepository.findByKindAndNameAndReason("PersistentVolumeClaim", "%"+serviceName+"%", "ProvisioningSucceeded");
 				
-				// Storage status : 생성중, 생성완료, mount
-				// Container status: start, ready 
-				
-//				String statusMessage = String.format("Storage[master:%s, slave:%s], Container[master:%s, slave:%s]", "", "", "", "");
-//				if(!overview.isClusterEnabled()) {
-//					statusMessage = String.format("Storage[master:%s], Container[master:%s]", "", "");
-//				}
-				String statusMessage = "Storage[master:%s, slave:%s], Container[master:%s, slave:%s]";
-				if(!overview.isClusterEnabled()) {
-					statusMessage = "Storage[master:%s], Container[master:%s]";
-				}
+				String statusMessage = "";
 				
 		        String storageMaster = "-";
 		        String storageSlave = "-";
-		        String containerMasger = "-";
+		        String containerMaster = " 생성요청";
 		        String containerSlave = "-";
-		        String isReadyMaster = "-";
+		        String isReadyMaster = " 생성중";
 		        String isReadySlave = "-";
 		        Set<String> eventMessageSet = new HashSet<>();
 		        
@@ -1036,11 +1022,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				if (!podContainerStatus.isEmpty()) {
 					for (EventMetaData eventMetaData : podContainerStatus) {
 						try {
-//							Pod pod = K8SUtil.getPodWithName(eventMetaData.getNamespace(), serviceName, eventMetaData.getName());
 							Pod pod = null;
-//							List<Pod> pods = k8sService.getPods(eventMetaData.getNamespace(), serviceName);
 							for(Pod p : pods) {
-//								System.out.println(p.getMetadata().getName() +" / "+eventMetaData.getName() +" ==> "+p.getMetadata().getName().equals( eventMetaData.getName()));
 								if(p.getMetadata().getName().equals( eventMetaData.getName())) {
 									pod = p;
 									break;
@@ -1058,7 +1041,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 							
 							if (eventMetaData.getMessage().indexOf("Started container") > -1) {
 								if ("master".equals(role)) {
-									containerMasger = " 동작중";
+									containerMaster = " 동작중";
 								} else {
 									containerSlave = " 동작중";
 								}
@@ -1109,10 +1092,15 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				}
 				
 				if (overview.isClusterEnabled()) {
-					statusMessage = String.format("%s‣컨테이너[M: %s, S: %s]</br>‣상태[M: %s, S: %s]", storageMsg, containerMasger, containerSlave,
-							isReadyMaster, isReadySlave);
+					statusMessage = String.format("%s‣컨테이너[M: %s, S: %s]</br>‣상태[M: %s, S: %s]", storageMsg, containerMaster, containerSlave, isReadyMaster, isReadySlave);
+					if("OK".equals(isReadyMaster) && "OK".equals(isReadySlave)) {
+						overview.setStatus(ZDBStatus.GREEN);
+					}
 				} else {
-					statusMessage = String.format("%s‣컨테이너[M: %s]</br>‣상태[M: %s]", storageMsg, containerMasger, isReadyMaster);
+					statusMessage = String.format("%s‣컨테이너[M: %s]</br>‣상태[M: %s]", storageMsg, containerMaster, isReadyMaster);
+					if("OK".equals(isReadyMaster)) {
+						overview.setStatus(ZDBStatus.GREEN);
+					}
 				}
 				
 				if(!eventMessageSet.isEmpty()) {
@@ -1122,7 +1110,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 						statusMessage += "</br>&nbsp; &nbsp; &nbsp;&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;" + m;
 					}
 				}
-				
 				overview.setStatusMessage(statusMessage);
 			}
 		}

@@ -292,20 +292,6 @@ public class K8SService {
 			String svcName = release.getReleaseName();
 			String svcType = release.getApp();
 			if (apps.contains(serviceType) && serviceType.equals(svcType) && serviceName.equals(svcName)) {
-//				ServiceOverview so = new ServiceOverview();
-//
-//				so.setServiceName(serviceName);
-//				so.setNamespace(namespace);
-//				so.setPurpose(release.getPurpose());
-//				
-//				String version = release.getAppVersion();
-//
-//				so.setServiceType(serviceType);
-//				so.setVersion(version);
-//				so.setDeploymentStatus(release.getStatus());
-//
-//				setServiceOverview(so, true);
-				
 				ServiceOverview so = new ServiceOverview();
 
 				so.setServiceName(serviceName);
@@ -476,17 +462,6 @@ public class K8SService {
 			}
 			String svcType = release.getApp();
 			if (apps.contains(serviceType) && serviceType.equals(svcType)) {
-//				ServiceOverview so = new ServiceOverview();
-//
-//				so.setServiceName(release.getReleaseName());
-//				so.setNamespace(release.getNamespace());
-//				so.setServiceType(serviceType);
-//				so.setVersion(release.getAppVersion());
-//				so.setDeploymentStatus(release.getStatus());
-//				so.setPurpose(release.getPurpose());
-//
-//				setServiceOverview(so, false);
-				
 				ServiceOverview so = new ServiceOverview();
 
 				so.setServiceName(release.getReleaseName());
@@ -564,7 +539,7 @@ public class K8SService {
 		List<Tag> tagList = tagRepository.findByNamespaceAndReleaseName(namespace, serviceName);
 		so.getTags().addAll(tagList);
 		
-		if ("CREATING".equals(so.getDeploymentStatus())) {
+		if ("CREATING".equals(so.getDeploymentStatus()) || "REQUEST".equals(so.getDeploymentStatus())) {
 			so.setStatus(ZDBStatus.GRAY);
 		} else {
 			// 상태정보
@@ -1085,7 +1060,6 @@ public class K8SService {
 		boolean masterStatus = false;
 		boolean slaveStatus = false;
 		
-		
 		for(Pod pod : so.getPods()) {
 			app = pod.getMetadata().getLabels().get("app");
 			
@@ -1141,9 +1115,9 @@ public class K8SService {
 		
 		for (MetaData metaData : metaList) {
 			String meta = metaData.getMetadata();
-			ReplicaSet pvc = new Gson().fromJson(meta, ReplicaSet.class);
+			ReplicaSet replicaSet = new Gson().fromJson(meta, ReplicaSet.class);
 			
-			list.add(pvc);
+			list.add(replicaSet);
 		}
 		
 		return list;
@@ -1163,9 +1137,9 @@ public class K8SService {
 		
 		for (MetaData metaData : metaList) {
 			String meta = metaData.getMetadata();
-			Pod pvc = new Gson().fromJson(meta, Pod.class);
+			Pod pod = new Gson().fromJson(meta, Pod.class);
 			
-			list.add(pvc);
+			list.add(pod);
 		}
 		
 		return list;
@@ -1185,9 +1159,9 @@ public class K8SService {
 		
 		for (MetaData metaData : metaList) {
 			String meta = metaData.getMetadata();
-			Deployment pvc = new Gson().fromJson(meta, Deployment.class);
+			Deployment deployment = new Gson().fromJson(meta, Deployment.class);
 			
-			list.add(pvc);
+			list.add(deployment);
 		}
 		
 		return list;
@@ -1200,14 +1174,14 @@ public class K8SService {
 		
 		for (MetaData metaData : metaList) {
 			String meta = metaData.getMetadata();
-			Namespace pvc = new Gson().fromJson(meta, Namespace.class);
+			Namespace namespace = new Gson().fromJson(meta, Namespace.class);
 
-			Map<String, String> labels = pvc.getMetadata().getLabels();
+			Map<String, String> labels = namespace.getMetadata().getLabels();
 			if (labels != null) {
 				// zdb namespace label
 				String name = labels.get(CommonConstants.ZDB_LABEL);
 				if ("true".equals(name)) {
-					list.add(pvc);
+					list.add(namespace);
 				}
 			}
 		}

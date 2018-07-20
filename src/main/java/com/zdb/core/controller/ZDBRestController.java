@@ -815,19 +815,6 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
-	
-//	@RequestMapping(value = "/{serviceType}/service/services", method = RequestMethod.GET)
-//	public ResponseEntity<String> getServicesOfServiceType(@PathVariable("serviceType") String serviceType) throws Exception {
-//		try {
-//			Result result = mariadbService.getServicesOfServiceType(serviceType);
-//			return new ResponseEntity<String>(result.toJson(), result.status());
-//		} catch (Exception e) {
-//			log.error(e.getMessage(), e);
-//
-//			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
-//			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
-//		}
-//	}
 
 	@RequestMapping(value = "/{namespace}/{serviceType}/service/services", method = RequestMethod.GET)
 	public ResponseEntity<String> getServices(@PathVariable("namespace") String namespace, @PathVariable("serviceType") String serviceType) throws Exception {
@@ -841,23 +828,6 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
-
-//	@RequestMapping(value = "/{serviceType}/service/services/{serviceName}", method = RequestMethod.GET)
-//	public ResponseEntity<String> getService(@PathVariable("serviceType") String serviceType, @PathVariable("serviceName") String serviceName) throws Exception {
-//		try {
-//			long s = System.currentTimeMillis();
-//			
-//			
-//			Result result = mariadbService.getService(serviceType, serviceName);
-//			System.out.println(("getService : " + (System.currentTimeMillis() - s)));
-//			return new ResponseEntity<String>(result.toJson(), result.status());
-//		} catch (Exception e) {
-//			log.error(e.getMessage(), e);
-//
-//			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
-//			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
-//		}
-//	}
 	
 	/**
 	 * Retrieve All Pods

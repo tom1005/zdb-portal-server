@@ -1,7 +1,10 @@
 package com.zdb.core.event.listener;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -9,7 +12,10 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.messaging.SessionConnectedEvent;
+import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.Result;
@@ -67,30 +73,12 @@ public class WatchEventListener {
 						try {
 							eventsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().events().watch(new EventWatcher<Event>(eventRepo, metaRepo, messageSender) {
 								protected void sendWebSocket() {
-									try {
-										Result result = commonService.getServicesWithNamespaces(null, true);
-										if(result.isOK()) {
-											Object object = result.getResult().get(IResult.SERVICEOVERVIEWS);
-											if(object != null) {
-												messageSender.convertAndSend("/services", result);
-												
-												List<ServiceOverview> overviews = (List<ServiceOverview>) object;
-												for (ServiceOverview serviceOverview : overviews) {
-													Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
-													messageSender.convertAndSend("/service/"+serviceOverview.getServiceName(), r);
-												}
-											}
-										}
-//										
-									} catch (Exception e) {
-										// TODO Auto-generated catch block
-										e.printStackTrace();
-									}
+									sendToClient("events");
 								}
 							});
 							watchList.add(eventsWatcher);
 						} catch (Exception e) {
-							e.printStackTrace();
+							log.error(e.getMessage(), e);
 						}
 					}
 				}).start();
@@ -104,7 +92,7 @@ public class WatchEventListener {
 							statefulSetsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().apps().statefulSets().watch(new MetaDataWatcher<StatefulSet>(metaRepo));
 							watchList.add(statefulSetsWatcher);
 						} catch (Exception e) {
-							e.printStackTrace();
+							log.error(e.getMessage(), e);
 						}
 
 					}
@@ -119,7 +107,7 @@ public class WatchEventListener {
 							configMapWatcher = K8SUtil.kubernetesClient().inAnyNamespace().configMaps().watch(new MetaDataWatcher<ConfigMap>(metaRepo));
 							watchList.add(configMapWatcher);
 						} catch (Exception e) {
-							e.printStackTrace();
+							log.error(e.getMessage(), e);
 						}
 					}
 				}).start();
@@ -132,30 +120,12 @@ public class WatchEventListener {
 						try {
 							persistentVolumeClaimsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().persistentVolumeClaims().watch(new MetaDataWatcher<PersistentVolumeClaim>(metaRepo) {
 								protected void sendWebSocket() {
-									try {
-										Result result = commonService.getServicesWithNamespaces(null, true);
-										if(result.isOK()) {
-											Object object = result.getResult().get(IResult.SERVICEOVERVIEWS);
-											if(object != null) {
-												messageSender.convertAndSend("/services", result);
-												
-												List<ServiceOverview> overviews = (List<ServiceOverview>) object;
-												for (ServiceOverview serviceOverview : overviews) {
-													Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
-													messageSender.convertAndSend("/service/"+serviceOverview.getServiceName(), r);
-												}
-											}
-										}
-//										
-									} catch (Exception e) {
-										// TODO Auto-generated catch block
-										e.printStackTrace();
-									}
+									sendToClient("persistentVolumeClaims");
 								}
 							});
 							watchList.add(persistentVolumeClaimsWatcher);
 						} catch (Exception e) {
-							e.printStackTrace();
+							log.error(e.getMessage(), e);
 						}
 					}
 				}).start();
@@ -169,7 +139,7 @@ public class WatchEventListener {
 							servicesWatcher = K8SUtil.kubernetesClient().inAnyNamespace().services().watch(new MetaDataWatcher<Service>(metaRepo));
 							watchList.add(servicesWatcher);
 						} catch (Exception e) {
-							e.printStackTrace();
+							log.error(e.getMessage(), e);
 						}
 					}
 				}).start();
@@ -183,7 +153,7 @@ public class WatchEventListener {
 							namesapcesWatcher = K8SUtil.kubernetesClient().inAnyNamespace().namespaces().watch(new MetaDataWatcher<Namespace>(metaRepo));
 							watchList.add(namesapcesWatcher);
 						} catch (Exception e) {
-							e.printStackTrace();
+							log.error(e.getMessage(), e);
 						}
 					}
 				}).start();
@@ -197,7 +167,7 @@ public class WatchEventListener {
 							deploymentsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().extensions().deployments().watch(new MetaDataWatcher<Deployment>(metaRepo));
 							watchList.add(deploymentsWatcher);
 						} catch (Exception e) {
-							e.printStackTrace();
+							log.error(e.getMessage(), e);
 						}
 					}
 				}).start();
@@ -210,30 +180,12 @@ public class WatchEventListener {
 						try {
 							podsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().pods().watch(new MetaDataWatcher<Pod>(metaRepo) {
 								protected void sendWebSocket() {
-									try {
-										Result result = commonService.getServicesWithNamespaces(null, true);
-										if(result.isOK()) {
-											Object object = result.getResult().get(IResult.SERVICEOVERVIEWS);
-											if(object != null) {
-												messageSender.convertAndSend("/services", result);
-												
-												List<ServiceOverview> overviews = (List<ServiceOverview>) object;
-												for (ServiceOverview serviceOverview : overviews) {
-													Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
-													messageSender.convertAndSend("/service/"+serviceOverview.getServiceName(), r);
-												}
-											}
-										}
-//										
-									} catch (Exception e) {
-										// TODO Auto-generated catch block
-										e.printStackTrace();
-									}
+									sendToClient("pods");
 								}
 							});
 							watchList.add(podsWatcher);
 						} catch (Exception e) {
-							e.printStackTrace();
+							log.error(e.getMessage(), e);
 						}
 					}
 				}).start();
@@ -247,7 +199,7 @@ public class WatchEventListener {
 							replicaSetsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().extensions().replicaSets().watch(new MetaDataWatcher<ReplicaSet>(metaRepo));
 							watchList.add(replicaSetsWatcher);
 						} catch (Exception e) {
-							e.printStackTrace();
+							log.error(e.getMessage(), e);
 						}
 					}
 				}).start();
@@ -262,5 +214,51 @@ public class WatchEventListener {
 				watch.close();
 			}
 		}
+	}
+	
+	/**
+	 * websocket send
+	 */
+	private synchronized void sendToClient(String eventType) {
+		try {
+			log.info(eventType);
+			if (getSessionCount() > 0) {
+				Result result = commonService.getServicesWithNamespaces(null, true);
+				if (result.isOK()) {
+					Object object = result.getResult().get(IResult.SERVICEOVERVIEWS);
+					if (object != null) {
+						messageSender.convertAndSend("/services", result);
+
+						List<ServiceOverview> overviews = (List<ServiceOverview>) object;
+						for (ServiceOverview serviceOverview : overviews) {
+							Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
+							messageSender.convertAndSend("/service/" + serviceOverview.getServiceName(), r);
+						}
+					}
+				}
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
+	}
+	
+	Set<String> mySet = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
+	
+	public int getSessionCount() {
+		return mySet.size();
+	}
+
+	@EventListener
+	private void onSessionConnectedEvent(SessionConnectedEvent event) {
+	    StompHeaderAccessor sha = StompHeaderAccessor.wrap(event.getMessage());
+	    System.out.println("onSessionConnectedEvent : "+  sha.getSessionId());
+	    mySet.add(sha.getSessionId());
+	}
+
+	@EventListener
+	private void onSessionDisconnectEvent(SessionDisconnectEvent event) {
+	    StompHeaderAccessor sha = StompHeaderAccessor.wrap(event.getMessage());
+	    System.out.println("onSessionDisconnectEvent : "+  sha.getSessionId());
+	    mySet.remove(sha.getSessionId());
 	}
 }
