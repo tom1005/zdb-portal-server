@@ -29,7 +29,8 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			+ " and serviceName=:serviceName"
 			+ " and start_datetime is not null"
 			+ " order by start_datetime desc" )
-	List<BackupEntity> findBackupByService(@Param("serviceType") String serviceType, @Param("serviceName") String serviceName);
+	List<BackupEntity> findBackupByService(@Param("serviceType") String serviceType
+			, @Param("serviceName") String serviceName);
 	
 	@Query("select t from BackupEntity t where namespace=:namespace"
 			+ " and serviceType=:serviceType"
@@ -55,8 +56,12 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 	
 	@Modifying(clearAutomatically = true)
 	@Transactional
-	@Query("UPDATE BackupEntity t SET t.startDatetime=:startDatetime, t.status=:status WHERE t.backupId=:backupId")
-	int modify2Started(@Param("startDatetime") Date startDatetime, @Param("status") String status, @Param("backupId") String backupId);
+	@Query("UPDATE BackupEntity t SET "
+			+ "t.startDatetime=:startDatetime"
+			+ ", t.status=:status WHERE t.backupId=:backupId")
+	int modify2Started(@Param("startDatetime") Date startDatetime
+			, @Param("status") String status
+			, @Param("backupId") String backupId);
 	
 	@Modifying(clearAutomatically = true)
 	@Transactional
