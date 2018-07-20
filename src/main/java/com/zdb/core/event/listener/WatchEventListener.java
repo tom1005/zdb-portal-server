@@ -251,14 +251,12 @@ public class WatchEventListener {
 	@EventListener
 	private void onSessionConnectedEvent(SessionConnectedEvent event) {
 	    StompHeaderAccessor sha = StompHeaderAccessor.wrap(event.getMessage());
-	    System.out.println("onSessionConnectedEvent : "+  sha.getSessionId());
 	    mySet.add(sha.getSessionId());
 	}
 
 	@EventListener
 	private void onSessionDisconnectEvent(SessionDisconnectEvent event) {
 	    StompHeaderAccessor sha = StompHeaderAccessor.wrap(event.getMessage());
-	    System.out.println("onSessionDisconnectEvent : "+  sha.getSessionId());
 	    mySet.remove(sha.getSessionId());
 	}
 }
