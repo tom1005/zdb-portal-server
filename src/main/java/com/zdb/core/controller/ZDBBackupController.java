@@ -350,14 +350,9 @@ public class ZDBBackupController {
 	private void verifyService(String namespace, String serviceName) throws BackupException {
 		StringBuilder sb = new StringBuilder();
 		try {
-			if (K8SUtil.isNamespaceExist(namespace) == false) {
-				sb.append("namespace(namespace:"+namespace+",serviceName:"+serviceName+") does not exits").append(",");
+			if (K8SUtil.isServiceExist(namespace, serviceName) == false) {
+				sb.append("Service(namespace:"+namespace+",serviceName:"+serviceName+") does not exits").append(",");
 				throw new BackupException(sb.toString(), BackupException.NOT_FOUND);
-			} else {
-				if (K8SUtil.isServiceExist(namespace, serviceName) == false) {
-					sb.append("Service(namespace:"+namespace+",serviceName:"+serviceName+") does not exits").append(",");
-					throw new BackupException(sb.toString(), BackupException.NOT_FOUND);
-				}
 			}
 		} catch (Exception e) {
 			if (e instanceof BackupException) {
