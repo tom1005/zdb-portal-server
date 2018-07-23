@@ -72,7 +72,16 @@ public class ZDBBackupController {
 		Result result = null;
 
 		try {
+			/*
+			1) verifyParameters
+			아규먼트로 전달받은 scheduleEntity의 namespace, serviceType, serviceName은 null이거나 공백이면 안되므로 verify를 수행합니다.
+			*/
 			verifyParameters(scheduleEntity);
+			/*
+			2) verifyService
+			아규먼트로 전달받은 scheduleEntity의 namespace, serviceType, serviceName에 해당하는 서비스가 존재하는지 검증합니다.
+			이때 검증 오류가 발생하면 BackupException 발생시켜 오류를 리턴합니다.
+			*/
 			verifyService(scheduleEntity.getNamespace(), scheduleEntity.getServiceName());
 			
 			result = backupProvider.saveSchedule(txId, scheduleEntity);
@@ -115,7 +124,16 @@ public class ZDBBackupController {
 		Result result = null;
 
 		try {
+			/*
+			1) verifyParameters
+			아규먼트로 전달받은 namespace, serviceType, serviceName은 null이거나 공백이면 안되므로 verify를 수행합니다.
+			*/
 			verifyParameters(namespace, serviceType, serviceName);
+			/*
+			2) verifyService
+			아규먼트로 전달받은 namespace, serviceType, serviceName에 해당하는 서비스가 존재하는지 검증합니다.
+			이때 검증 오류가 발생하면 BackupException 발생시켜 오류를 리턴합니다.
+			*/
 			verifyService(namespace, serviceName);
 			
 			result = backupProvider.getSchedule(txId, namespace, serviceName, serviceType);
@@ -156,7 +174,17 @@ public class ZDBBackupController {
 		Result result = null;
 
 		try {
+			/*
+			1) verifyParameters
+			아규먼트로 전달받은 namespace, serviceType, serviceName은 null이거나 공백이면 안되므로 verify를 수행합니다.
+			이때 검증 오류가 발생하면 BackupException 발생시켜 오류를 리턴합니다.
+			*/
 			verifyParameters(namespace, serviceType, backupEntity.getServiceName());
+			/*
+			2) verifyService
+			아규먼트로 전달받은 namespace, serviceType, serviceName에 해당하는 서비스가 존재하는지 검증합니다.
+			이때 검증 오류가 발생하면 BackupException 발생시켜 오류를 리턴합니다.
+			*/
 			verifyService(namespace, backupEntity.getServiceName());
 			
 			result = backupProvider.backupService(txId, backupEntity);
@@ -200,7 +228,17 @@ public class ZDBBackupController {
 		String txId = txId();
 
 		try {
+			/*
+			1) verifyParameters
+			아규먼트로 전달받은 namespace, serviceType, serviceName은 null이거나 공백이면 안되므로 verify를 수행합니다.
+			이때 검증 오류가 발생하면 BackupException 발생시켜 오류를 리턴합니다.
+			*/
 			verifyParameters(namespace, serviceType, serviceName);
+			/*
+			2) verifyService
+			아규먼트로 전달받은 namespace, serviceType, serviceName에 해당하는 서비스가 존재하는지 검증합니다.
+			이때 검증 오류가 발생하면 BackupException 발생시켜 오류를 리턴합니다.
+			*/
 			verifyService(namespace, serviceName);
 
 			result = backupProvider.getBackupList(txId, namespace, serviceName, serviceType);
@@ -236,7 +274,17 @@ public class ZDBBackupController {
 		String txId = txId();
 
 		try {
+			/*
+			1) verifyParameters
+			아규먼트로 전달받은 namespace, serviceType, serviceName은 null이거나 공백이면 안되므로 verify를 수행합니다.
+			이때 검증 오류가 발생하면 BackupException 발생시켜 오류를 리턴합니다.
+			*/
 			verifyParameters(namespace, serviceType, serviceName);
+			/*
+			2) verifyService
+			아규먼트로 전달받은 namespace, serviceType, serviceName에 해당하는 서비스가 존재하는지 검증합니다.
+			이때 검증 오류가 발생하면 BackupException 발생시켜 오류를 리턴합니다.
+			*/
 			verifyService(namespace, serviceName);
 			
 			result = backupProvider.deleteBackup(txId, namespace, serviceType, serviceName, backupId);
@@ -272,7 +320,17 @@ public class ZDBBackupController {
 		Result result = null;
 
 		try {
+			/*
+			1) verifyParameters
+			아규먼트로 전달받은 namespace, serviceType, serviceName은 null이거나 공백이면 안되므로 verify를 수행합니다.
+			이때 검증 오류가 발생하면 BackupException 발생시켜 오류를 리턴합니다.
+			*/
 			verifyParameters(namespace, serviceType, serviceName);
+			/*
+			2) verifyService
+			아규먼트로 전달받은 namespace, serviceType, serviceName에 해당하는 서비스가 존재하는지 검증합니다.
+			이때 검증 오류가 발생하면 BackupException 발생시켜 오류를 리턴합니다.
+			*/
 			verifyService(namespace, serviceName);
 			result = backupProvider.restoreFromBackup(txId, namespace, serviceName, serviceType, backupId);
 		} catch (Exception e) {
@@ -353,7 +411,7 @@ public class ZDBBackupController {
 		} else if("".equals(schedule.getStartTime()) || schedule.getStartTime() == null) {
 			result = false;
 			sb.append("startTime empty or null");
-		} else if(schedule.getStorePeriod() < 1 || schedule.getStorePeriod() > 6) {
+		} else if(schedule.getStorePeriod() < 1 || schedule.getStorePeriod() > 7) {
 			result = false;
 			sb.append("storePeriod more then 0 and less then 8 : "+schedule.getStorePeriod());
 		} else if ("".equals(schedule.getUseYn()) || schedule.getUseYn()==null) {

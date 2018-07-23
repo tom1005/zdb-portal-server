@@ -54,6 +54,9 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 		try {			
 			log.debug("save : "+entity);
 			
+			/*
+			메타디비에서 기존에 저장된 ScheduleEntity를 조회하여 있으면 schedule를 갱신하고, 없으면 새로 저장합니다.
+			 */
 			ScheduleEntity oldSche = scheduleRepository.findScheduleByName(entity.getNamespace()
 								, entity.getServiceType()
 								, entity.getServiceName());
@@ -97,6 +100,9 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 		
 		try {			
 			log.debug("namespace : "+namespace+", serviceName : "+serviceName+", serviceType : "+serviceType);
+			/*
+			Meta DB에서 아규먼트로 받은 namespace, serviceType, serviceName에 해당하는 스케줄을 조회하여 결과로 반환합니다.
+			 */
 			ScheduleEntity schedule = scheduleRepository.findScheduleByName(namespace, serviceType, serviceName);
 			result = new Result(txid, IResult.OK).putValue(EventType.BackupDetail.name(), schedule);
 			event.setStatus(Result.OK);
@@ -112,9 +118,17 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 		return result;
 	}
 	
+/*
+backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 전달합니다.
+*/
 	@Override
 	public Result backupService(String txid
 				, BackupEntity backupEntity) throws Exception {
+		/*
+		ZDB-BACKUP-AGENT에 Backup 요청을 위임하기 위해 RestTemplate을 생성하여
+		/api/v1/{namespace}/{serviceType}/service/{serviceName}/backup/{txId}를 
+		RestAPI URL로 설정하고 POST로 실행합니다.
+		*/
 		RestTemplate restTemplate = new RestTemplate();
 		Result result = null;
 		RequestEvent event = new RequestEvent();
@@ -149,6 +163,10 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 			event.setResultMessage(e.getMessage());
 			event.setStatus(IResult.ERROR);
 			event.setEndTIme(new Date(System.currentTimeMillis()));
+			/*
+			zdb-backup-agent의 요청 오류가 발생하면 해당 backup의 오류 상태를 DB에 
+			저장하고 오류를 리턴합니다.
+			*/
 			backupEntity.setAcceptedDatetime(new Date(System.currentTimeMillis()));
 			backupEntity.setStartDatetime(new Date(System.currentTimeMillis()));
 			backupEntity.setCompleteDatetime(new Date(System.currentTimeMillis()));
@@ -164,6 +182,9 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 	
 	@Override
 	public Result getBackupList(String txid, String namespace, String serviceName, String serviceType) throws Exception {
+		/*
+		ZDB META DB에서  namespace, serviceName, serviceType에 해당하는 백업 목록을 조회하여 회신합니다.
+		 */
 		Result result = null;
 		RequestEvent event = new RequestEvent();
 		event.setTxId(txid);
@@ -176,8 +197,7 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 		try {
 			log.debug("namespace : "+namespace+", serviceName : "+serviceName+", serviceType : "+serviceType);
 			event.setResultMessage("Not supperted method requested");
-			event.setEndTIme(new Date(System.currentTimeMillis()));
-			///{namespace}/{serviceType}/service/{serviceName}/backup-list/txId
+			
 			List<BackupEntity> list = backupRepository.findBackupByService(serviceType, serviceName);
 			result = new Result(txid, IResult.OK).putValue(EventType.BackupList.name(), list);
 			event.setEndTIme(new Date(System.currentTimeMillis()));
@@ -209,6 +229,11 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 				, String serviceName
 				, String backupId) throws Exception {
 
+		/*
+		ZDB-BACKUP-AGENT에 Delete Backup 요청을 위임하기 위해 RestTemplate을 생성하여
+		/api/v1/api/v1/service/backup/delete/{txId}를 
+		RestAPI URL로 설정하고 POST로 실행합니다.
+		*/
 		Result result = null;
 		RestTemplate restTemplate = new RestTemplate();
 		
@@ -247,6 +272,11 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 	
 	@Override
 	public Result restoreFromBackup(String txId, String namespace, String serviceType, String serviceName, String backupId) throws Exception {
+		/*
+		ZDB-BACKUP-AGENT에 Restore Backup을 전달하기 위해 RestTemplate을 생성하여
+		/api/v1/api/v1/service/restore/{txId}를 
+		RestAPI URL로 설정하고 POST으로 실행합니다.
+		*/
 		Result result = null;
 		RestTemplate restTemplate = new RestTemplate();
 		
@@ -260,6 +290,9 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 		
 		StringBuilder sb = new StringBuilder();
 		try {
+			/*
+			전달 받은 backupId에 해당하는 BackupEntity를 조회하여 POST의 Request Body로 전달합니다.
+			*/
 			BackupEntity backup = backupRepository.findBackup(backupId);
 			//service/restore/{txId}
 			sb.append(K8SUtil.daemonUrl)
@@ -282,6 +315,11 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 	}
 	
 	public Result removeServiceResource(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+		/*
+		ZDB-BACKUP-AGENT에 Service Resource를 삭제하기 위해 RestTemplate을 생성하여
+		/api/v1/api/v1/{namespace}/{serviceType}/service/{serviceName}/delete/{txId}를 
+		RestAPI URL로 설정하고 GET으로 실행합니다.
+		*/
 		RequestEvent event = new RequestEvent();
 		Result result = null;
 		try {
