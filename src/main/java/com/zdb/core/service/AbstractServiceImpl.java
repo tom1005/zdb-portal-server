@@ -944,7 +944,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		if(overview.getStatus() != ZDBStatus.GREEN ) {
 			ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(serviceName);
 			if(releaseMetaData == null) {
-				log.warn("{} 는 release_meta_data 테이블에 등록되지 않은 서비스 입니다.", serviceName);
+				log.warn("{} 는 ZDB 관리 목록에 등록되지 않은 서비스 입니다.", serviceName);
 				return;
 			}
 			long createTime = releaseMetaData.getCreateTime().getTime();
