@@ -18,6 +18,7 @@ import org.microbean.helm.Tiller;
 import org.microbean.helm.chart.URLChartLoader;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
@@ -80,6 +81,13 @@ public class RedisInstaller implements ZDBInstaller {
 		
 	@Autowired
 	private K8SService k8sService;
+	
+	private static String storageClass;
+
+	@Value("${chart.redis.storageClass:ibmc-block-silver}")
+	public void setStorageClass(String storageType) {
+		storageClass = storageType;
+	}
 	
 	/**
 	 * @param exchange
@@ -333,7 +341,7 @@ public class RedisInstaller implements ZDBInstaller {
 		        	
 		        	masterPersistence.put("path"			, "/bitnami/redis/data");
 					masterPersistence.put("subPath"			, "redis/data");
-					masterPersistence.put("storageClass"	, "ibmc-block-silver");
+					masterPersistence.put("storageClass"	, storageClass);
 					masterPersistence.put("size"			, pvSize);
 		        }
 		        
