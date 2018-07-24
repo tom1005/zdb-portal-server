@@ -218,7 +218,6 @@ public class ZDBRestController {
 				result = mariadbService.createDeployment(txId, entity, userInfo);
 				break;
 			case Redis:
-				entity.setClusterEnabled(true);
 				result = redisService.createDeployment(txId, entity, userInfo);
 				break;
 			case PostgreSQL:
