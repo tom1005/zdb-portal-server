@@ -938,53 +938,58 @@ public class K8SUtil {
 	 * @return
 	 */
 	public static boolean IsReady(Pod pod) {
-		PodStatus status = pod.getStatus();
-		String name = pod.getMetadata().getName();
-		String phase = status.getPhase();
-
-		String reason = status.getReason();
-		String message = status.getMessage();
-
-		boolean isInitialized = false;
-		boolean isReady = false;
-		boolean isPodScheduled = false;
-
-		List<PodCondition> conditions = status.getConditions();
-		for (PodCondition condition : conditions) {
-			String podConditionMessage = condition.getMessage();
-			String podConditionReason = condition.getReason();
-
-			if ("Initialized".equals(condition.getType())) {
-				isInitialized = Boolean.valueOf(condition.getStatus());
-			}
-
-			if ("Ready".equals(condition.getType())) {
-				isReady = Boolean.valueOf(condition.getStatus());
-			}
-
-			if ("PodScheduled".equals(condition.getType())) {
-				isPodScheduled = Boolean.valueOf(condition.getStatus());
-			}
-		}
-
-		List<ContainerStatus> containerStatuses = status.getContainerStatuses();
-
-		boolean isContainerReady = false;
-		for (ContainerStatus containerStatus : containerStatuses) {
-			Boolean ready = containerStatus.getReady();
-			if (!ready.booleanValue()) {
-				isContainerReady = false;
-				break;
-			} else {
-				isContainerReady = true;
-			}
-		}
-
 		boolean isSuccess = false;
-		if (isInitialized && isReady && isPodScheduled && isContainerReady) {
-			isSuccess = true;
-		} else {
-			log.info("Name : {}, Initialized : {}, Ready : {}, PodScheduled : {}, isContainerReady : {}, reason : {}, message : {}", name, isInitialized, isReady, isPodScheduled, isContainerReady, reason, message);
+		
+		try {
+			PodStatus status = pod.getStatus();
+			String name = pod.getMetadata().getName();
+			String phase = status.getPhase();
+			
+			String reason = status.getReason();
+			String message = status.getMessage();
+			
+			boolean isInitialized = false;
+			boolean isReady = false;
+			boolean isPodScheduled = false;
+			
+			List<PodCondition> conditions = status.getConditions();
+			for (PodCondition condition : conditions) {
+				String podConditionMessage = condition.getMessage();
+				String podConditionReason = condition.getReason();
+				
+				if ("Initialized".equals(condition.getType())) {
+					isInitialized = Boolean.parseBoolean(condition.getStatus());
+				}
+				
+				if ("Ready".equals(condition.getType())) {
+					isReady = Boolean.parseBoolean(condition.getStatus());
+				}
+				
+				if ("PodScheduled".equals(condition.getType())) {
+					isPodScheduled = Boolean.parseBoolean(condition.getStatus());
+				}
+			}
+			
+			List<ContainerStatus> containerStatuses = status.getContainerStatuses();
+			
+			boolean isContainerReady = false;
+			for (ContainerStatus containerStatus : containerStatuses) {
+				Boolean ready = containerStatus.getReady();
+				if (!ready.booleanValue()) {
+					isContainerReady = false;
+					break;
+				} else {
+					isContainerReady = true;
+				}
+			}
+			
+			if (isInitialized && isReady && isPodScheduled && isContainerReady) {
+				isSuccess = true;
+			} else {
+				log.info("Name : {}, Initialized : {}, Ready : {}, PodScheduled : {}, isContainerReady : {}, reason : {}, message : {}", name, isInitialized, isReady, isPodScheduled, isContainerReady, reason, message);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
 		}
 
 		return isSuccess;
