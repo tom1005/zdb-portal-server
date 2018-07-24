@@ -5,8 +5,10 @@ service:
   ## Kubernetes service type
   type: LoadBalancer
   port: 3306
-  publicip:
+  master: 
     enabled: true
+  slave:
+    enabled: false
 
 rootUser:
   ## MariaDB admin password
@@ -21,7 +23,7 @@ db:
   forcePassword: false
 
 replication:
-  enabled: true
+  enabled: false
   user: replicator
   password: zdbroot!@34
   forcePassword: false

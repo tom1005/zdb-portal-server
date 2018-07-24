@@ -5,13 +5,10 @@ service:
   ## Kubernetes service type
   type: LoadBalancer
   port: 3306
-  master:
-    publicip:
-      enabled: ${service.master.publicip.enabled}
+  master: 
+    enabled: ${service.master.publicip.enabled}
   slave:
-    publicip:
-      enabled: ${service.slave.publicip.enabled}
-      
+    enabled: ${service.slave.publicip.enabled}      
 rootUser:
   ## MariaDB admin password
   password: ${rootUser.password}
