@@ -182,7 +182,7 @@ public class MariaDBInstaller implements ZDBInstaller {
 				// service expose type : public or private
 				boolean isPublicEnabled = false;
 				ServiceSpec[] serviceSpec = service.getServiceSpec();
-				if(isClusterEnabled && serviceSpec != null && serviceSpec.length > 0) {
+				if(serviceSpec != null && serviceSpec.length > 0) {
 					String loadBalancerType = serviceSpec[0].getLoadBalancerType();
 					if("public".equals(loadBalancerType)) {
 						isPublicEnabled = true;
@@ -236,7 +236,13 @@ public class MariaDBInstaller implements ZDBInstaller {
 				inputJson = inputJson.replace("${slave.resources.limits.cpu}", slaveCpu);// input*******   필수값 
 				inputJson = inputJson.replace("${slave.resources.limits.memory}", slaveMemory);// input *******   필수값 
 				inputJson = inputJson.replace("${slave.replicas}", clusterSlaveCount+"");// input *******   필수값 
-				inputJson = inputJson.replace("${service.publicip.enabled}", isPublicEnabled+"");// input *******   필수값 
+				inputJson = inputJson.replace("${service.master.publicip.enabled}", isPublicEnabled+"");// input *******   필수값 
+				if(isClusterEnabled) {
+					inputJson = inputJson.replace("${service.slave.publicip.enabled}", isPublicEnabled+"");// input *******   필수값 
+				} else {
+					inputJson = inputJson.replace("${service.slave.publicip.enabled}", "false");// input *******   필수값 
+					
+				}
 				inputJson = inputJson.replace("${buffer.pool.size}", K8SUtil.getBufferSize(masterMemory));// 자동계산 *******   필수값 
 				
 				String characterSet = service.getCharacterSet();
