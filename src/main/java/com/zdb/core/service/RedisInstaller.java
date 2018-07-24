@@ -158,7 +158,13 @@ public class RedisInstaller implements ZDBInstaller {
 				// Set Redis Version
 				Map<String, Object> imageMap = new HashMap<String, Object>();
 				imageMap.put("tag", service.getVersion());
-				
+
+				// cluster: enabled: true
+				Map<String, Object> clusterMap = new HashMap<String, Object>();
+				clusterMap.put("enabled", service.isClusterEnabled());
+				if(service.isClusterEnabled()) {
+					clusterMap.put("slaveCount", 0);
+				}
 				Map<String, Object> master 					 = new HashMap<String, Object>();
 				Map<String, Object> masterPodLabels 		 = new HashMap<String, Object>();
 				Map<String, Object> masterPersistence 		 = new HashMap<String, Object>();
@@ -353,6 +359,7 @@ public class RedisInstaller implements ZDBInstaller {
 		        slave.put("service"  	, slaveService);
 
 				values.put("image" , imageMap);
+				values.put("cluster" , clusterMap);
 				values.put("master", master);				
 				values.put("slave" , slave);				
 				
