@@ -1129,27 +1129,29 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	}
 	
 	private String getEventMessage(String m) {
-		
-		if(m.startsWith("pod has unbound PersistentVolumeClaims")) {
+
+		if (m.startsWith("pod has unbound PersistentVolumeClaims")) {
 			return "서비스 준비중...";
-		} else if(m.startsWith("Readiness probe failed:")) {
+		} else if (m.startsWith("Readiness probe failed:")) {
 			return "서비스 상태 점검중...";
-		} else if(m.startsWith("Liveness probe failed:")) {
+		} else if (m.startsWith("Liveness probe failed:")) {
 			return "서비스 상태 점검중...";
-		} else if(m.startsWith("Successfully pulled image")) {
+		} else if (m.startsWith("Successfully pulled image")) {
 			return "서비스 준비중...";
-		} else if(m.startsWith("Started container")) {
+		} else if (m.startsWith("Started container")) {
 			return "컨테이너 생성중...";
-		} else if(m.startsWith("MountVolume.SetUp succeeded")) {
+		} else if (m.startsWith("MountVolume.SetUp succeeded")) {
 			return "볼륨 마운트 성공";
-		} else if(m.startsWith("Created container")) {
+		} else if (m.startsWith("Created container")) {
 			return "컨테이너 생성 성공";
-		} else if(m.startsWith("Container image")) {
+		} else if (m.startsWith("Container image")) {
 			return "서비스 준비중...";
-		} else if(m.startsWith("pulling image")) {
+		} else if (m.startsWith("pulling image")) {
 			return "서비스 준비중...";
-		} 
-		
+		} else if (m.startsWith("PersistentVolumeClaim is not bound")) {
+			return "스토리지 생성중...";
+		}
+
 		return m;
 	}
 	
@@ -1661,9 +1663,10 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	public Result getTags(List<String> namespaceList) throws Exception {
 		Iterable<Tag> tagList = tagRepository.findAll();
 		
-		for (Iterator iterator = tagList.iterator(); iterator.hasNext();) {
-			String ns = (String) iterator.next();
-			if(!namespaceList.contains(ns)) {
+		for (Iterator<Tag> iterator = tagList.iterator(); iterator.hasNext();) {
+			Tag ns = (Tag) iterator.next();
+			String namespace = ns.getNamespace();
+			if(!namespaceList.contains(namespace)) {
 				iterator.remove();
 			}
 		}

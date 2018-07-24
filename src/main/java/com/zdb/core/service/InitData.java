@@ -13,12 +13,12 @@ public class InitData {
 		defaultConfigMap.put("back_log", "200|범위 : 100이상|false|number");
 		defaultConfigMap.put("binlog_cache_size", "1M|범위 : 4096 to 18446744073709547520|true|numeric");
 		defaultConfigMap.put("bulk_insert_buffer_size", "16M|범위 : 0 ~ 18446744073709547520|true|numeric");
-		defaultConfigMap.put("character_set_server", "utf8|범위 : utf8,euckr|true|string");
+		defaultConfigMap.put("character_set_server", "utf8||true|string");
 		defaultConfigMap.put("collation-server", "utf8_general_ci||true|string");
 		defaultConfigMap.put("connect_timeout", "10|범위 : 2이상|true|numeric");
 		defaultConfigMap.put("innodb_buffer_pool_instances", "4|범위 : 1,2,4,8|false|numeric");
 		defaultConfigMap.put("innodb_buffer_pool_size", "256M|범위 : 5M ~ 8192PB|false|numeric");
-		defaultConfigMap.put("innodb_flush_method", "O_DIRECT|범위 : fsync, O_DSYNC, O_DIRECT, O_DIRECT_NO_FSYNC (>=MariaDB 10.0)|false|numeric");
+		defaultConfigMap.put("innodb_flush_method", "O_DIRECT||false|numeric");
 		defaultConfigMap.put("innodb_lock_wait_timeout", "15|범위 : 1 to 1073741824 (<= MariaDB 10.2)|true|numeric");
 		defaultConfigMap.put("innodb_log_file_size", "100M|범위 : 1048576 to 512GB|false|numeric");
 		defaultConfigMap.put("innodb_log_files_in_group", "4|범위 : 2 to 100|false|numeric");
@@ -35,16 +35,16 @@ public class InitData {
 		defaultConfigMap.put("myisam_sort_buffer_size", "16M|범위 : 4096 ~ 18446744073709547520|true|numeric");
 		defaultConfigMap.put("query_cache_limit", "0|범위 : 0 ~ 4294967295|true|numeric");
 		defaultConfigMap.put("query_cache_size", "0|범위 : 1024 단위의 0보다 큰값|true|numeric");
-		defaultConfigMap.put("query_cache_type", "0|범위 : O or OFF, 1 or ON, 2 or DEMAND|true|-");
+		defaultConfigMap.put("query_cache_type", "0||true|-");
 		defaultConfigMap.put("read_buffer_size", "1M|범위 : 8200 ~ 2147479552|true|numeric");
 		defaultConfigMap.put("read_rnd_buffer_size", "1M|범위 : 8200 ~ 2147483647|true|numeric");
 		defaultConfigMap.put("sort_buffer_size", "64k||true|numeric");
 		defaultConfigMap.put("table_open_cache", "4000|범위 : 1 ~ 1048576 (>= MariaDB 10.1.20)|true|numeric");
-		defaultConfigMap.put("thread_handling", "pool-of-threads|범위 : no-threads, one-thread-per-connection, pool-of-threads|false|-");
+		defaultConfigMap.put("thread_handling", "pool-of-threads||false|-");
 		defaultConfigMap.put("thread_pool_idle_timeout", "120||true|numeric");
 		defaultConfigMap.put("thread_pool_stall_limit", "60|범위 : 4 to 600|true|numeric");
 		defaultConfigMap.put("tmp_table_size", "64M|범위 : 1K ~ 409M|true|numeric");
-		defaultConfigMap.put("transaction-isolation", "READ-COMMITTED|범위 : READ-UNCOMMITTED, READ-COMMITTED, REPEATABLE-READ, SERIALIZABLE|true|-");
+		defaultConfigMap.put("transaction-isolation", "READ-COMMITTED||true|-");
 		defaultConfigMap.put("wait_timeout", "3600|범위 : 1 ~ 31536000|true|numeric");
 
 	}

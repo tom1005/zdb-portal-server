@@ -182,7 +182,7 @@ public class MariaDBInstaller implements ZDBInstaller {
 				// service expose type : public or private
 				boolean isPublicEnabled = false;
 				ServiceSpec[] serviceSpec = service.getServiceSpec();
-				if(serviceSpec != null && serviceSpec.length > 0) {
+				if(isClusterEnabled && serviceSpec != null && serviceSpec.length > 0) {
 					String loadBalancerType = serviceSpec[0].getLoadBalancerType();
 					if("public".equals(loadBalancerType)) {
 						isPublicEnabled = true;
