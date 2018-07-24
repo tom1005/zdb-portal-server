@@ -18,6 +18,7 @@ import org.microbean.helm.Tiller;
 import org.microbean.helm.chart.URLChartLoader;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
@@ -91,6 +92,14 @@ public class MariaDBInstaller implements ZDBInstaller {
 	@Autowired
 	@Qualifier("backupProvider")
 	private BackupProviderImpl backupProvider;
+	
+	private static String storageClass;
+
+	@Value("${chart.mariadb.storageClass:ibmc-block-silver}")
+	public void setStorageClass(String storageType) {
+		storageClass = storageType;
+	}
+	
 		
 	private static final String DEFAULT_ROOT_PASSWORD = "zdb12#$";
 	private static final String DEFAULT_USER = "admin";
@@ -229,6 +238,19 @@ public class MariaDBInstaller implements ZDBInstaller {
 				inputJson = inputJson.replace("${slave.replicas}", clusterSlaveCount+"");// input *******   필수값 
 				inputJson = inputJson.replace("${service.publicip.enabled}", isPublicEnabled+"");// input *******   필수값 
 				inputJson = inputJson.replace("${buffer.pool.size}", K8SUtil.getBufferSize(masterMemory));// 자동계산 *******   필수값 
+				
+				String characterSet = service.getCharacterSet();
+				inputJson = inputJson.replace("${character.set.server}", characterSet == null || characterSet.isEmpty() ? "utf8" : characterSet);
+				
+				if("utf8".equalsIgnoreCase(characterSet)) {
+					inputJson = inputJson.replace("${collation.server}", "utf8_general_ci");
+				} else if("euckr".equalsIgnoreCase(characterSet)) {
+					inputJson = inputJson.replace("${collation.server}", "euckr_korean_ci");
+				} else if("utf8mb4".equalsIgnoreCase(characterSet)) {
+					inputJson = inputJson.replace("${collation.server}", "utf8mb4_general_ci");
+				} else if("utf16".equalsIgnoreCase(characterSet)) {
+					inputJson = inputJson.replace("${collation.server}", "utf16_general_ci");
+				}
 				
 				valuesBuilder.setRaw(inputJson);
 				

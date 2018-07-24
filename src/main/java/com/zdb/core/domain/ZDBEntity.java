@@ -66,6 +66,8 @@ public class ZDBEntity {
 	private String purpose;
 	
 	private String deployType;
+	
+	private String characterSet;
 
 	
 	/**
