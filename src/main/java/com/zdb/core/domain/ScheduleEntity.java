@@ -29,4 +29,6 @@ public class ScheduleEntity {
 	private int storePeriod;
 	private String useYn;
 	private Date registerDate;
+	private String deleteYn;
+	private Date deleteDate;
 }
