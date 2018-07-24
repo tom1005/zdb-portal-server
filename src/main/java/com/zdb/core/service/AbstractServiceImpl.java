@@ -947,7 +947,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				log.warn("{} 는 ZDB 관리 목록에 등록되지 않은 서비스 입니다.", serviceName);
 				return;
 			}
-			long createTime = releaseMetaData.getCreateTime().getTime();
 			
 			List<Pod> pods = overview.getPods();
 			
@@ -958,9 +957,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 					break;
 				}
 			}
-			
-			// 15분이내 생성된 서버 1529453558000
-			if((System.currentTimeMillis() - createTime) < 150 * 60 * 1000 || !isPodReady) {
+
+			if(!isPodReady) {
 				// kind, name, reason
 				List<EventMetaData> pvcStatus = eventRepository.findByKindAndNameAndReason("PersistentVolumeClaim", "%"+serviceName+"%", "ProvisioningSucceeded");
 				
@@ -1105,14 +1103,54 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				
 				if(!eventMessageSet.isEmpty()) {
 					statusMessage = statusMessage + "</br>‣메세지:";
+					int index = 0;
 					for (Iterator<String> iterator = eventMessageSet.iterator(); iterator.hasNext();) {
 						String m = (String) iterator.next();
-						statusMessage += "</br>&nbsp; &nbsp; &nbsp;&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;" + m;
+						//CREATING
+						if(!"DEPLOYED".equals(overview.getDeploymentStatus()) 
+							&& !"DELETED".equals(overview.getDeploymentStatus())
+							&& !"DELETING".equals(overview.getDeploymentStatus())) {
+							m = getEventMessage(m); // 메시지 내용을 사용주 중심 메세지로 변환
+						}
+						if(!m.trim().isEmpty()) {
+							if(index == 0) {
+								statusMessage += " " + m;
+							} else {
+								statusMessage += "</br>&nbsp; &nbsp; &nbsp;&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;" + m;								
+							}
+						}
+						index++;
+						
 					}
 				}
 				overview.setStatusMessage(statusMessage);
 			}
 		}
+	}
+	
+	private String getEventMessage(String m) {
+		
+		if(m.startsWith("pod has unbound PersistentVolumeClaims")) {
+			return "서비스 준비중...";
+		} else if(m.startsWith("Readiness probe failed:")) {
+			return "서비스 상태 점검중...";
+		} else if(m.startsWith("Liveness probe failed:")) {
+			return "서비스 상태 점검중...";
+		} else if(m.startsWith("Successfully pulled image")) {
+			return "서비스 준비중...";
+		} else if(m.startsWith("Started container")) {
+			return "컨테이너 생성중...";
+		} else if(m.startsWith("MountVolume.SetUp succeeded")) {
+			return "볼륨 마운트 성공";
+		} else if(m.startsWith("Created container")) {
+			return "컨테이너 생성 성공";
+		} else if(m.startsWith("Container image")) {
+			return "서비스 준비중...";
+		} else if(m.startsWith("pulling image")) {
+			return "서비스 준비중...";
+		} 
+		
+		return m;
 	}
 	
 	/* (non-Javadoc)
