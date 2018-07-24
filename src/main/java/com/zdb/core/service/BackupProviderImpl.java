@@ -56,6 +56,7 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 			
 			/*
 			메타디비에서 기존에 저장된 ScheduleEntity를 조회하여 있으면 schedule를 갱신하고, 없으면 새로 저장합니다.
+			새로 등록할때만 registerDate를 설정합니다.
 			 */
 			ScheduleEntity oldSche = scheduleRepository.findScheduleByName(entity.getNamespace()
 								, entity.getServiceType()
