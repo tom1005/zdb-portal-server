@@ -198,7 +198,7 @@ public class MariaDBInstaller implements ZDBInstaller {
 				PersistenceSpec[] persistenceSpec = service.getPersistenceSpec();
 				
 				String m = persistenceSpec[0].getPodType();
-				String masterStorageClass = persistenceSpec[0].getStorageClass() == null ? DEFAULT_STORAGE_CLASS : persistenceSpec[0].getStorageClass();
+				String masterStorageClass = persistenceSpec[0].getStorageClass() == null ? storageClass : persistenceSpec[0].getStorageClass();
 				String masterSize = persistenceSpec[0].getSize() == null ? DEFAULT_STORAGE_SIZE : persistenceSpec[0].getSize();
 				
 				String s = persistenceSpec[1].getPodType();
