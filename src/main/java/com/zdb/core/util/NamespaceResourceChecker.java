@@ -109,6 +109,8 @@ public class NamespaceResourceChecker {
 		int serviceRequestMemory = memory;//K8SUtil.convertToMemory(memory);
 		int serviceRequestCpu = cpu;//K8SUtil.convertToCpu(cpu);
 		
+		log.warn("availableCpu : {}, serviceRequestCpu : {}", availableCpu, serviceRequestCpu);
+		
 		if( availableCpu - serviceRequestCpu < 0) {
 			throw new ResourceException("가용 CPU 자원이 부족합니다. [가용CPU : " + availableCpu +"m]");
 		}

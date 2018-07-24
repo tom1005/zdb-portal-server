@@ -187,6 +187,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		requestCpu += Integer.parseInt(masterCpu);
 		requestMem += Integer.parseInt(masterMemory);
 		
+		log.warn("cpu : {}, memory : {}, requestCpu : {}, requestMem : {}, clusterEnabled : {}", cpu, memory, requestCpu, requestMem, clusterEnabled);
+		
 		try {
 			boolean availableResource = NamespaceResourceChecker.isAvailableResource(namespace, userId, requestMem, requestCpu);
 			if(availableResource) {
