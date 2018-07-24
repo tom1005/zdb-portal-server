@@ -113,9 +113,11 @@ k8s:
 chart:
   mariadb:
     url: ${chart.mariadb.url}
+    storageClass: ${storage.class:ibmc-block-silver}
   redis:
     url: ${chart.redis.url}
-      
+    storageClass: ${storage.class:ibmc-block-silver}
+          
 iam:
     baseUrl: ${iam.baseUrl}
           
