@@ -98,6 +98,7 @@ public interface IResult {
 	
 	public static final String BACKUP_SCHEDULE = "BackupSchedule";
 	public static final String BACKUP_DETAIL = "BackupDetail";
+	public static final String SCHEDULE = "schedule";
 	public static final String BACKUP_LIST = "BackupList";
 
 	public int getCode();

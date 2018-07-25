@@ -11,7 +11,6 @@ import org.springframework.web.client.RestTemplate;
 
 import com.zdb.core.domain.BackupEntity;
 import com.zdb.core.domain.BackupStatus;
-import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.Result;
@@ -37,7 +36,7 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 
 	@Autowired
 	ScheduleEntityRepository scheduleRepository;
-	
+
 	@Override
 	public Result saveSchedule(String txid, ScheduleEntity entity) throws Exception {
 		Result result = null;
@@ -69,7 +68,8 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 				entity.setRegisterDate(new Date(System.currentTimeMillis()));
 				entity = scheduleRepository.save(entity);
 			}
-			result = new Result(txid, IResult.OK).putValue(IResult.BACKUP_SCHEDULE, entity);
+			//2018-07-25 UI backup 목록 오류 수정
+			result = new Result(txid, IResult.OK).putValue("backupSchedule", entity);
 			event.setEndTime(new Date(System.currentTimeMillis()));
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -96,7 +96,8 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 			Meta DB에서 아규먼트로 받은 namespace, serviceType, serviceName에 해당하는 스케줄을 조회하여 결과로 반환합니다.
 			 */
 			ScheduleEntity schedule = scheduleRepository.findScheduleByName(namespace, serviceType, serviceName);
-			result = new Result(txid, IResult.OK).putValue(IResult.BACKUP_DETAIL, schedule);
+			//2018-07-25 UI backup 목록 오류 수정
+			result = new Result(txid, IResult.OK).putValue(IResult.SCHEDULE, schedule);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			result = Result.RESULT_FAIL(txid, e);
@@ -176,8 +177,10 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 		
 		try {
 			log.debug("namespace : "+namespace+", serviceName : "+serviceName+", serviceType : "+serviceType);
+			
 			List<BackupEntity> list = backupRepository.findBackupByService(serviceType, serviceName);
-			result = new Result(txid, IResult.OK).putValue(IResult.BACKUP_LIST, list);
+			//2018-07-25 UI backup 목록 오류 수정
+			result = new Result(txid, IResult.OK).putValue("backupList", list);
 		} catch (KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 			if (e.getMessage().indexOf("Unauthorized") > -1) {

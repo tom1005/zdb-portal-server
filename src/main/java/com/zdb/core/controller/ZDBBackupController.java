@@ -259,7 +259,7 @@ public class ZDBBackupController {
 	}
 
 	
-	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/{backupId}/delete", method = RequestMethod.GET)
+	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/{backupId}/delete", method = RequestMethod.DELETE)
 	public ResponseEntity<String> deleteBackup(
 			@PathVariable("namespace") final String namespace
 			, @PathVariable("serviceType") final String serviceType
@@ -287,8 +287,8 @@ public class ZDBBackupController {
 			2) verifyService
 			아규먼트로 전달받은 namespace, serviceType, serviceName에 해당하는 서비스가 존재하는지 검증합니다.
 			이때 검증 오류가 발생하면 BackupException 발생시켜 오류를 리턴합니다.
-			*/
 			verifyService(namespace, serviceType, serviceName);
+			*/
 			
 			result = backupProvider.deleteBackup(txId, namespace, serviceType, serviceName, backupId);
 		} catch (Exception e) {
