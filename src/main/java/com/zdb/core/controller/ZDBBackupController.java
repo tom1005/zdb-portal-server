@@ -22,7 +22,7 @@ import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ScheduleEntity;
 import com.zdb.core.exception.BackupException;
 import com.zdb.core.service.BackupProviderImpl;
-import com.zdb.core.util.K8SUtil;
+import com.zdb.core.service.K8SService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -41,6 +41,9 @@ public class ZDBBackupController {
 	@Autowired
 	@Qualifier("backupProvider")
 	private BackupProviderImpl backupProvider;
+	
+	@Autowired
+	private K8SService k8sService;
 
 	private String txId() {
 		return UUID.randomUUID().toString();
@@ -82,7 +85,7 @@ public class ZDBBackupController {
 			아규먼트로 전달받은 scheduleEntity의 namespace, serviceType, serviceName에 해당하는 서비스가 존재하는지 검증합니다.
 			이때 검증 오류가 발생하면 BackupException 발생시켜 오류를 리턴합니다.
 			*/
-			verifyService(scheduleEntity.getNamespace(), scheduleEntity.getServiceName());
+			verifyService(scheduleEntity.getNamespace(), serviceType, scheduleEntity.getServiceName());
 			
 			result = backupProvider.saveSchedule(txId, scheduleEntity);
 		} catch (Exception e) {
@@ -134,7 +137,7 @@ public class ZDBBackupController {
 			아규먼트로 전달받은 namespace, serviceType, serviceName에 해당하는 서비스가 존재하는지 검증합니다.
 			이때 검증 오류가 발생하면 BackupException 발생시켜 오류를 리턴합니다.
 			*/
-			verifyService(namespace, serviceName);
+			verifyService(namespace, serviceType, serviceName);
 			
 			result = backupProvider.getSchedule(txId, namespace, serviceName, serviceType);
 		} catch (Exception e) {
@@ -185,7 +188,7 @@ public class ZDBBackupController {
 			아규먼트로 전달받은 namespace, serviceType, serviceName에 해당하는 서비스가 존재하는지 검증합니다.
 			이때 검증 오류가 발생하면 BackupException 발생시켜 오류를 리턴합니다.
 			*/
-			verifyService(namespace, backupEntity.getServiceName());
+			verifyService(namespace, serviceType, backupEntity.getServiceName());
 			
 			result = backupProvider.backupService(txId, backupEntity);
 			log.info("===========> backupService returns!  serviceType : "
@@ -239,7 +242,7 @@ public class ZDBBackupController {
 			아규먼트로 전달받은 namespace, serviceType, serviceName에 해당하는 서비스가 존재하는지 검증합니다.
 			이때 검증 오류가 발생하면 BackupException 발생시켜 오류를 리턴합니다.
 			*/
-			verifyService(namespace, serviceName);
+			verifyService(namespace, serviceType, serviceName);
 
 			result = backupProvider.getBackupList(txId, namespace, serviceName, serviceType);
 		} catch (Exception e) {
@@ -285,7 +288,7 @@ public class ZDBBackupController {
 			아규먼트로 전달받은 namespace, serviceType, serviceName에 해당하는 서비스가 존재하는지 검증합니다.
 			이때 검증 오류가 발생하면 BackupException 발생시켜 오류를 리턴합니다.
 			*/
-			verifyService(namespace, serviceName);
+			verifyService(namespace, serviceType, serviceName);
 			
 			result = backupProvider.deleteBackup(txId, namespace, serviceType, serviceName, backupId);
 		} catch (Exception e) {
@@ -331,7 +334,7 @@ public class ZDBBackupController {
 			아규먼트로 전달받은 namespace, serviceType, serviceName에 해당하는 서비스가 존재하는지 검증합니다.
 			이때 검증 오류가 발생하면 BackupException 발생시켜 오류를 리턴합니다.
 			*/
-			verifyService(namespace, serviceName);
+			verifyService(namespace, serviceType, serviceName);
 			result = backupProvider.restoreFromBackup(txId, namespace, serviceName, serviceType, backupId);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -347,10 +350,12 @@ public class ZDBBackupController {
 	}
 
 
-	private void verifyService(String namespace, String serviceName) throws BackupException {
+	private void verifyService(String namespace, String serviceType, String serviceName) throws BackupException {
 		StringBuilder sb = new StringBuilder();
 		try {
-			if (K8SUtil.isServiceExist(namespace, serviceName) == false) {
+		
+			if (k8sService.getServiceWithName(namespace, serviceType, serviceName) == null) {
+//			if (K8SUtil.isServiceExist(namespace, serviceName) == false) {
 				sb.append("Service(namespace:"+namespace+",serviceName:"+serviceName+") does not exits").append(",");
 				throw new BackupException(sb.toString(), BackupException.NOT_FOUND);
 			}

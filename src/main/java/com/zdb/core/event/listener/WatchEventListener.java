@@ -233,7 +233,6 @@ public class WatchEventListener {
 	 */
 	private synchronized void sendToClient(String eventType) {
 		try {
-			log.info(eventType);
 			if (getSessionCount() > 0) {
 				Result result = commonService.getServicesWithNamespaces(null, true);
 				if (result.isOK()) {
