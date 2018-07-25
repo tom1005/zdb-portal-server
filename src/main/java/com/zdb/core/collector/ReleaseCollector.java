@@ -47,6 +47,7 @@ public class ReleaseCollector {
 				releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds() * 1000L));
 				releaseMeta.setNamespace(release.getNamespace());
 				releaseMeta.setReleaseName(release.getName());
+				releaseMeta.setChartName(release.getChart().getMetadata().getName());
 				
 				String description = URLEncoder.encode(release.getInfo().getDescription(), "UTF-8");
 				releaseMeta.setDescription(description);
@@ -81,6 +82,15 @@ public class ReleaseCollector {
 			Iterable<ReleaseMetaData> findAll = repo.findAll();
 			for (ReleaseMetaData releaseMeta : findAll) {
 				String releaseName = releaseMeta.getReleaseName();
+				
+				// 동기화시 동기화 시점에 생성된 경우 삭제상태로 변경되는 케이스가 발생하여 최초 생성 후 5분이내의 경우 동기화 대상에서 제외.
+				Date createD = releaseMeta.getCreateTime();
+				long createTime = createD.getTime();
+				
+				long currentTime = System.currentTimeMillis();
+				if((currentTime - createTime) < 5 * 60 * 1000) {
+					continue;
+				}
 				
 				boolean exist = false;
 				for (Release release : releaseAllList) {
