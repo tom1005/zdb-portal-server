@@ -1009,9 +1009,9 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 						for (EventMetaData eventMetaData : podVolumeStatus) {
 							if (eventMetaData.getMessage().indexOf("MountVolume.SetUp succeeded") > -1) {
 								if ("master".equals(role)) {
-									storageMaster = " 마운트OK";
+									storageMaster = " OK";
 								} else {
-									storageSlave = " 마운트OK";
+									storageSlave = " OK";
 								}
 							}
 						}
@@ -1073,7 +1073,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 						if(!conditions.isEmpty()) {
 							String message = conditions.get(0).getMessage();
 							if(message != null) {
-								System.out.println(">>>>>>>>>>>>>>>>>>>>>>>> " + message);
+								log.warn(">>>>>>>>>>>>>>>>>>>>>>>> " + message);
 								eventMessageSet.add(message);
 							} else {
 								EventMetaData findByKindAndName = eventRepository.findByKindAndName("Pod", pod.getMetadata().getName());
@@ -1107,6 +1107,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				if(!eventMessageSet.isEmpty()) {
 					statusMessage = statusMessage + "</br>‣메세지:";
 					int index = 0;
+					String lastMessage = "";
 					for (Iterator<String> iterator = eventMessageSet.iterator(); iterator.hasNext();) {
 						String m = (String) iterator.next();
 						//CREATING
@@ -1116,6 +1117,11 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 							m = getEventMessage(m); // 메시지 내용을 사용주 중심 메세지로 변환
 						}
 						if(!m.trim().isEmpty()) {
+							if(m.equals(lastMessage)) {
+								lastMessage = "";
+								continue;
+							}
+							lastMessage = m;
 							if(index == 0) {
 								statusMessage += " " + m;
 							} else {
@@ -1151,9 +1157,13 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			return "서비스 준비중...";
 		} else if (m.startsWith("pulling image")) {
 			return "서비스 준비중...";
+		} else if (m.startsWith("Back-off restarting failed container")) {
+			return "서비스 준비중...";
 		} else if (m.startsWith("PersistentVolumeClaim is not bound")) {
 			return "스토리지 생성중...";
-		}
+		} else if (m.startsWith("containers with incomplete status: [init-volume]")) {
+			return "컨테이너 초기화중...";
+		} 
 
 		return m;
 	}

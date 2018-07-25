@@ -76,9 +76,6 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 		if (m == null) {
 			// send websocket
 			pushData = true;
-			
-			//System.out.println("DB MetaData is null. " + metaObj.getMetadata().getName());
-			
 			m = new MetaData();
 			try {
 				String ct = metaObj.getMetadata().getCreationTimestamp();
@@ -158,9 +155,7 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 			
 			// send websocket		
 			if(pushData) {
-				long s = System.currentTimeMillis();
 				sendWebSocket();
-				log.warn("meta send websocket --> " + (System.currentTimeMillis() - s));
 			}
 		}
 
