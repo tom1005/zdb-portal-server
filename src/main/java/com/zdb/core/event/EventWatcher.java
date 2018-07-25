@@ -110,9 +110,7 @@ public class EventWatcher<T> implements Watcher<T> {
 				}
 				
 				if(EVENT_KEYWORD.contains(event.getReason())) {
-					long s = System.currentTimeMillis();
 					sendWebSocket();
-					log.warn("event send websocket --> " + (System.currentTimeMillis() - s));
 					try {
 						if (event.getInvolvedObject().getKind().equals("Pod")) {
 							Pod pod = K8SUtil.getPodWithName(ns, event.getInvolvedObject().getName());
