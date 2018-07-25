@@ -13,6 +13,7 @@ import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
@@ -216,6 +217,17 @@ public class WatchEventListener {
 		}
 	}
 	
+	@Scheduled(initialDelayString = "30000", fixedRateString = "10000")
+	public void pushData() {
+		if((System.currentTimeMillis() - lastUpdate) < (9 * 1000) ) {
+			return;
+		}
+		
+		sendToClient("auto");
+	}
+	
+	static long lastUpdate = 0;
+	
 	/**
 	 * websocket send
 	 */
@@ -234,12 +246,15 @@ public class WatchEventListener {
 							Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
 							messageSender.convertAndSend("/service/" + serviceOverview.getServiceName(), r);
 						}
+						
+						// 최근 업데이트 시간 
+						lastUpdate = System.currentTimeMillis();
 					}
 				}
 			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-		}
+		} 
 	}
 	
 	Set<String> mySet = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
