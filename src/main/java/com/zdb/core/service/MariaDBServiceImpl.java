@@ -178,7 +178,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				event.setResultMessage(msg);
 				event.setStatus(IResult.ERROR);
 				event.setStatusMessage("Update Scale 오류");
-				event.setEndTIme(new Date(System.currentTimeMillis()));
+				event.setEndTime(new Date(System.currentTimeMillis()));
 
 				ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 
@@ -275,7 +275,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 			event.setResultMessage(service.getServiceName() + " update success.");
 			event.setStatus(IResult.RUNNING);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 
 			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 
@@ -283,7 +283,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			log.error(e.getMessage(), e);
 
 			event.setStatus(IResult.ERROR);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
 				event.setResultMessage("Unauthorized");
@@ -297,7 +297,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 			event.setResultMessage(e.getMessage());
 			event.setStatus(IResult.ERROR);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 
 			return Result.RESULT_FAIL(txId, e);
 		} finally {
@@ -365,7 +365,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 //				event.setResultMessage(msg);
 //				event.setStatusMessage("서비스 삭제 실패");
 //				event.setStatus(IResult.ERROR);
-//				event.setEndTIme(new Date(System.currentTimeMillis()));
+//				event.setEndTime(new Date(System.currentTimeMillis()));
 //				ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 //
 //				return new Result(txId, IResult.ERROR, msg);
@@ -455,7 +455,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 //			log.error(e.getMessage(), e);
 //
 //			event.setStatus(IResult.ERROR);
-//			event.setEndTIme(new Date(System.currentTimeMillis()));
+//			event.setEndTime(new Date(System.currentTimeMillis()));
 //
 //			if (e.getMessage().indexOf("Unauthorized") > -1) {
 //				event.setResultMessage("Unauthorized");
@@ -474,7 +474,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 //
 //			event.setResultMessage("Service [" + serviceName + "] delete error.\n" + e.getMessage());
 //			event.setStatus(IResult.ERROR);
-//			event.setEndTIme(new Date(System.currentTimeMillis()));
+//			event.setEndTime(new Date(System.currentTimeMillis()));
 //
 //			log.info("!!!"+new Gson().toJson(event));
 //			
@@ -784,7 +784,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 //
 //			event.setStatus(IResult.ERROR);
 //			event.setStatusMessage("DBConfiguration 적용 오류");
-//			event.setEndTIme(new Date(System.currentTimeMillis()));
+//			event.setEndTime(new Date(System.currentTimeMillis()));
 //
 //			if (e.getMessage().indexOf("Unauthorized") > -1) {
 //				event.setResultMessage("Unauthorized");
@@ -799,7 +799,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 //			event.setResultMessage(e.getMessage());
 //			event.setStatusMessage("DBConfiguration 적용 오류");
 //			event.setStatus(IResult.ERROR);
-//			event.setEndTIme(new Date(System.currentTimeMillis()));
+//			event.setEndTime(new Date(System.currentTimeMillis()));
 //
 //			return Result.RESULT_FAIL(txId, e);
 //		} catch (Exception e) {
@@ -808,7 +808,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 //			event.setResultMessage(e.getMessage());
 //			event.setStatusMessage("DBConfiguration 적용 오류");
 //			event.setStatus(IResult.ERROR);
-//			event.setEndTIme(new Date(System.currentTimeMillis()));
+//			event.setEndTime(new Date(System.currentTimeMillis()));
 //
 //			return Result.RESULT_FAIL(txId, e);
 //		} finally {

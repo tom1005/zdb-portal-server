@@ -19,16 +19,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Data
 public class RequestEvent {
-	
-	@Id
-	@GeneratedValue(generator = "uuid")
-	@GenericGenerator(name = "uuid", strategy = "uuid2")
-	@Column(name = "id")
-	private String id;
-	
 	private String opertaion;
 
-	@Column(name = "txId")
+	@Id
+	@Column(name = "id")
 	private String txId;
 	
 	private String namespace;
@@ -61,8 +55,8 @@ public class RequestEvent {
 	@Column(name = "startTime")
 	private Date startTime;
 	
-	@Column(name = "endTIme")
-	private Date endTIme;
+	@Column(name = "endTime")
+	private Date endTime;
 	
 	@Column(name = "updateTime")
 	private Date updateTime;

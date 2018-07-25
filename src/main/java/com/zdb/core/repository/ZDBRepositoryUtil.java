@@ -17,13 +17,13 @@ public class ZDBRepositoryUtil {
 			RequestEvent re = metaRepository.findByTxId(event.getTxId());
 			if(re != null) {
 				Date updateTime = event.getUpdateTime();
-				Date endTIme = event.getEndTIme();
+				Date endTime = event.getEndTime();
 				int status = event.getStatus();
 				String message = event.getResultMessage();
 				String statusMsg = event.getStatusMessage();
 				
 				re.setUpdateTime(updateTime == null ? new Date(System.currentTimeMillis()) : updateTime);
-				re.setEndTIme(endTIme == null ? new Date(System.currentTimeMillis()) : endTIme);
+				re.setEndTime(endTime == null ? new Date(System.currentTimeMillis()) : endTime);
 				re.setStatus(status);
 				re.setResultMessage(message);
 				re.setStatusMessage(statusMsg);

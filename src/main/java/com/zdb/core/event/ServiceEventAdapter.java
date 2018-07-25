@@ -88,7 +88,7 @@ public abstract class ServiceEventAdapter implements Runnable, JobEventListener 
 		event.setResultMessage(message);
 		event.setStatusMessage("done");
 		event.setStatus(IResult.OK);
-		event.setEndTIme(new Date(System.currentTimeMillis()));
+		event.setEndTime(new Date(System.currentTimeMillis()));
 		
 		log.info("!!!done " + new Gson().toJson(event));
 		
@@ -135,7 +135,7 @@ public abstract class ServiceEventAdapter implements Runnable, JobEventListener 
 		event.setStatusMessage("failure");
 		event.setResultMessage(message);
 		event.setUpdateTime(new Date(System.currentTimeMillis()));
-		event.setEndTIme(new Date(System.currentTimeMillis()));
+		event.setEndTime(new Date(System.currentTimeMillis()));
 		log.error("!!!failure " + new Gson().toJson(event));
 		ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 	}

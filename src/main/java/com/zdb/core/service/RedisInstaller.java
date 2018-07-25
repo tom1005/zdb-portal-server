@@ -122,22 +122,6 @@ public class RedisInstaller implements ZDBInstaller {
 			event.setStatusMessage("서비스명 중복 체크.");
 			
 			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-
-//			// 서비스 명 중복 체크
-//			if (K8SUtil.isServiceExist(service.getNamespace(), service.getServiceName())) {
-//				String msg = "사용중인 서비스 명입니다.[" + service.getServiceName() + "]";
-//				log.error(msg);
-//
-//				event.setStatus(IResult.ERROR);
-//				event.setResultMessage(msg);
-//				event.setStatusMessage("서비스명 중복 오류");
-//				event.setUpdateTime(new Date(System.currentTimeMillis()));
-//				event.setEndTIme(new Date(System.currentTimeMillis()));
-//
-//				ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-//
-//				return;
-//			}
 			
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
 			final Tiller tiller = new Tiller(client);
@@ -520,7 +504,7 @@ public class RedisInstaller implements ZDBInstaller {
 
 			RequestEvent event = getRequestEvent(exchange);
 			event.setStatus(IResult.ERROR);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
 				event.setResultMessage("Unauthorized");
@@ -537,7 +521,7 @@ public class RedisInstaller implements ZDBInstaller {
 			
 			event.setResultMessage(e.getMessage());
 			event.setStatus(IResult.ERROR);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 			
 			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 			
@@ -609,7 +593,7 @@ public class RedisInstaller implements ZDBInstaller {
 				event.setResultMessage(msg);
 				event.setStatusMessage("서비스 삭제 실패");
 				event.setStatus(IResult.ERROR);
-				event.setEndTIme(new Date(System.currentTimeMillis()));
+				event.setEndTime(new Date(System.currentTimeMillis()));
 				ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 
 //				return new Result(txId, IResult.ERROR, msg);
@@ -684,7 +668,7 @@ public class RedisInstaller implements ZDBInstaller {
 				event.setResultMessage(msg);
 				event.setStatusMessage("서비스 삭제 실패");
 				event.setStatus(IResult.ERROR);
-				event.setEndTIme(new Date(System.currentTimeMillis()));
+				event.setEndTime(new Date(System.currentTimeMillis()));
 				ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 
 //				return new Result(txId, IResult.ERROR, "Service 삭제 오류!");
@@ -695,7 +679,7 @@ public class RedisInstaller implements ZDBInstaller {
 			log.error(e.getMessage(), e);
 
 			event.setStatus(IResult.ERROR);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
 				event.setResultMessage("Unauthorized");
@@ -710,7 +694,7 @@ public class RedisInstaller implements ZDBInstaller {
 
 			event.setResultMessage(e.getMessage());
 			event.setStatus(IResult.ERROR);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 			
 			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 			

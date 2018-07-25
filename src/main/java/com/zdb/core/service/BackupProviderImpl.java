@@ -70,12 +70,12 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 				entity = scheduleRepository.save(entity);
 			}
 			result = new Result(txid, IResult.OK).putValue(EventType.BackupSchedule.name(), entity);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			event.setResultMessage(e.getMessage());
 			event.setStatus(IResult.ERROR);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 			result = Result.RESULT_FAIL(txid, e);
 		} finally {
 			zdbRepository.save(event);
@@ -113,7 +113,7 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 			event.setStatus(IResult.ERROR);
 			result = Result.RESULT_FAIL(txid, e);
 		} finally {
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 			zdbRepository.save(event);
 		}
 		return result;
@@ -144,7 +144,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 				+", serviceName : "+backupEntity.getServiceName()
 				+", serviceType : "+backupEntity.getServiceType());
 			event.setResultMessage("Acceptiong");
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 			
 			StringBuilder sb = new StringBuilder();
 			sb.append(K8SUtil.daemonUrl)
@@ -163,7 +163,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 			log.error(e.getMessage(), e);
 			event.setResultMessage(e.getMessage());
 			event.setStatus(IResult.ERROR);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 			/*
 			zdb-backup-agent의 요청 오류가 발생하면 해당 backup의 오류 상태를 DB에 
 			저장하고 오류를 리턴합니다.
@@ -201,12 +201,12 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 			
 			List<BackupEntity> list = backupRepository.findBackupByService(serviceType, serviceName);
 			result = new Result(txid, IResult.OK).putValue(EventType.BackupList.name(), list);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 			event.setStatus(IResult.OK);
 		} catch (KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 			event.setStatus(IResult.ERROR);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
 				result = new Result(txid, Result.UNAUTHORIZED, "Unauthorized", null);
 			} else {
@@ -215,7 +215,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			event.setStatus(IResult.ERROR);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 			result = new Result(txid, Result.ERROR, e.getMessage(), e);
 		} finally {
 			zdbRepository.save(event);
@@ -245,7 +245,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 		event.setEventType(EventType.DeleteBackup.name());
 		event.setNamespace(namespace);
 		event.setStartTime(new Date(System.currentTimeMillis()));
-		event.setEndTIme(new Date(System.currentTimeMillis()));
+		event.setEndTime(new Date(System.currentTimeMillis()));
 		
 		StringBuilder sb = new StringBuilder();
 		try {
@@ -255,7 +255,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 				.append("/api/v1/service/backup/delete/")
 				.append(txid);
 			result = restTemplate.postForObject(sb.toString(), backup, Result.class);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 			if (result.isOK()) {
 				event.setStatus(IResult.OK);
 			} else {
@@ -263,7 +263,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 			result = new Result(txid, Result.ERROR, e.getMessage(), e);
 		} finally {
 			zdbRepository.save(event);
@@ -300,14 +300,14 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 				.append("/api/v1/service/restore/")
 				.append(txId);
 			result = restTemplate.postForObject(sb.toString(), backup, Result.class);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 			event.setStatus(result.getCode());
 			if (!result.isOK()) {
 				event.setStatusMessage(result.getMessage());
 			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 			result = new Result(txId, Result.ERROR, e.getMessage(), e);
 		} finally {
 			zdbRepository.save(event);
@@ -350,7 +350,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 			result = restTemplate.getForObject(sb.toString(), Result.class);
 		} catch (Exception e) {
 			event.setStatus(IResult.ERROR);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 			event.setResultMessage("ServiceResource("+serviceName+") to delete not found");
 		} finally {
 			zdbRepository.save(event);

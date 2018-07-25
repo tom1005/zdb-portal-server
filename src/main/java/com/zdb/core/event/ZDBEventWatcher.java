@@ -157,7 +157,7 @@ public class ZDBEventWatcher<T> implements Watcher<T> {
 		if ("Running".equals(phase) && isSuccess && watchName.equals(releaseName)) {
 
 			requestEvent.setStatus(closeLatch.getCount() > 1 ? IResult.RUNNING : IResult.OK);
-			requestEvent.setEndTIme(new Date(System.currentTimeMillis()));
+			requestEvent.setEndTime(new Date(System.currentTimeMillis()));
 			requestEvent.setResultMessage(watchName + " create success.");
 			requestEvent.setStatusMessage("Pod 생성 성공");
 
@@ -199,7 +199,7 @@ public class ZDBEventWatcher<T> implements Watcher<T> {
 			requestEvent.setOpertaion(operation);
 			requestEvent.setResourceLog(resourceLos);
 			requestEvent.setStatus(IResult.OK);
-			requestEvent.setEndTIme(new Date(System.currentTimeMillis()));
+			requestEvent.setEndTime(new Date(System.currentTimeMillis()));
 			requestEvent.setResultMessage(watchName + " create success.");
 			requestEvent.setStatusMessage("PVC 생성 성공");
 
@@ -228,7 +228,7 @@ public class ZDBEventWatcher<T> implements Watcher<T> {
 			requestEvent.setStatus(IResult.OK);
 			requestEvent.setStatusMessage("PVC 삭제 성공");
 			requestEvent.setResultMessage(watchName + " delete success.");
-			requestEvent.setEndTIme(new Date(System.currentTimeMillis()));
+			requestEvent.setEndTime(new Date(System.currentTimeMillis()));
 
 			log.info("!!!" + new Gson().toJson(requestEvent));
 
@@ -257,7 +257,7 @@ public class ZDBEventWatcher<T> implements Watcher<T> {
 				requestEvent.setStatus(IResult.OK);
 				requestEvent.setStatusMessage("Pod 삭제 성공");
 				requestEvent.setResultMessage("Pod delete success. [" + watchName + "]");
-				requestEvent.setEndTIme(new Date(System.currentTimeMillis()));
+				requestEvent.setEndTime(new Date(System.currentTimeMillis()));
 
 				closeLatch.countDown();
 			} else {
@@ -291,7 +291,7 @@ public class ZDBEventWatcher<T> implements Watcher<T> {
 			requestEvent.setStatus(IResult.OK);
 			requestEvent.setStatusMessage("Namespace 생성 완료");
 			requestEvent.setResultMessage(watchName + "create namespace success.");
-			requestEvent.setEndTIme(new Date(System.currentTimeMillis()));
+			requestEvent.setEndTime(new Date(System.currentTimeMillis()));
 			
 			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, requestEvent);
 
@@ -310,7 +310,7 @@ public class ZDBEventWatcher<T> implements Watcher<T> {
 		requestEvent.setServiceName(serviceName);
 		requestEvent.setOpertaion(operation);
 		requestEvent.setStatusMessage("watcher onClose");
-		requestEvent.setEndTIme(new Date(System.currentTimeMillis()));
+		requestEvent.setEndTime(new Date(System.currentTimeMillis()));
 
 		if (cause == null) {
 			requestEvent.setStatus(IResult.OK);

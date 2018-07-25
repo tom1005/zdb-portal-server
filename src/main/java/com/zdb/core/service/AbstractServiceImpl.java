@@ -204,30 +204,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	
 	@Override
 	public Result createDeployment(String txId, ZDBEntity service, UserInfo userInfo) throws Exception {
-//		# id, 
-//		#uid, 
-//		#first_timestamp, 
-//		#last_timestamp, 
-//		#kind, 
-//		#name, 
-//		#namespace, 
-//		#reason, 
-//		#message, 
-//		#release_name
-//		#metadata, 
-//
-//		#30b17e5d7-8322-41cf-9970-f59c25d43caf', 
-//		#'15d38e03-754e-11e8-9249-62f12bbc403a', 
-//		#'2018-06-21 12:24:46', 
-//		#'2018-06-21 12:24:46', 
-//		#'Deployment', 
-//		#'zdb-redis-demo-session-slave', 
-//		#'zdb-redis', 
-//		#'ScalingReplicaSet', 
-//		#'Scaled up replica set zdb-redis-demo-session-slave-786c494c5b to 1', 
-//		#NULL
-//		#'{\"apiVersion\":\"v1\",\"count\":1,\"firstTimestamp\":\"2018-06-21T12:24:46Z\",\"involvedObject\":{\"apiVersion\":\"extensions\",\"kind\":\"Deployment\",\"name\":\"zdb-redis-demo-session-slave\",\"namespace\"
-		
 		RequestEvent event = new RequestEvent();
 
 		event.setTxId(txId);
@@ -241,9 +217,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		if(!requestCheck.isOK()) {
 			event.setStatusMessage("서비스 생성 요청 한도 초과");
 			event.setResultMessage(requestCheck.getMessage());
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 			
-			log.warn(toPrettyJson(event));
 			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 			
 			return requestCheck;
@@ -336,7 +311,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 //			} catch (Exception e) {
 //			} finally {
 //				event.setResultMessage("[" + service.getServiceName() + "] 설치 요청 성공.");
-//				event.setEndTIme(new Date(System.currentTimeMillis()));
+//				event.setEndTime(new Date(System.currentTimeMillis()));
 //
 //				log.info(toPrettyJson(event));
 //				ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
@@ -366,7 +341,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		if(!requestCheck.isOK()) {
 			event.setStatusMessage("서비스 생성 요청 한도 초과");
 			event.setResultMessage(requestCheck.getMessage());
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 			
 			log.warn(toPrettyJson(event));
 			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
@@ -386,7 +361,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		    unInstallRequest(exchange);
 
 			event.setResultMessage("[" + serviceName + "] 삭제 요청 성공.");
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 			
 			log.info(toPrettyJson(event));
 			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
@@ -479,7 +454,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 //			createPVCRequest(exchange);
 //
 //			event.setResultMessage("[" + pvcName + "] 설치 요청 성공.");
-//			event.setEndTIme(new Date(System.currentTimeMillis()));
+//			event.setEndTime(new Date(System.currentTimeMillis()));
 //			
 //			log.info(toPrettyJson(event));
 //			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
@@ -489,7 +464,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 //			/////////////////////////////////////////////////////////////////////////////
 //		} else {
 //			event.setStatus(IResult.ERROR);
-//			event.setEndTIme(new Date(System.currentTimeMillis()));
+//			event.setEndTime(new Date(System.currentTimeMillis()));
 //			log.info("!!!"+new Gson().toJson(event));
 //			
 //			return new Result(txId, IResult.ERROR, "exist PVC.").putValue(IResult.PERSISTENTVOLUMECLAIM, withName.get());
@@ -1376,7 +1351,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				event.setResultMessage(msg);
 				event.setStatusMessage("서비스 삭제 실패");
 				event.setStatus(IResult.ERROR);
-				event.setEndTIme(new Date(System.currentTimeMillis()));
+				event.setEndTime(new Date(System.currentTimeMillis()));
 				ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 
 				return new Result(txId, IResult.ERROR, msg);
@@ -1398,7 +1373,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			log.error(e.getMessage(), e);
 
 			event.setStatus(IResult.ERROR);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
 				event.setResultMessage("Unauthorized");
@@ -1412,7 +1387,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 
 			event.setResultMessage(e.getMessage());
 			event.setStatus(IResult.ERROR);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 
 			return Result.RESULT_FAIL(txId, e);
 		} finally {
@@ -1495,7 +1470,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				event.setResultMessage(msg);
 				event.setStatusMessage("POD 삭제 실패");
 				event.setStatus(IResult.ERROR);
-				event.setEndTIme(new Date(System.currentTimeMillis()));
+				event.setEndTime(new Date(System.currentTimeMillis()));
 				ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 
 				return new Result(txId, IResult.ERROR, msg);				
@@ -1506,7 +1481,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			log.error(e.getMessage(), e);
 
 			event.setStatus(IResult.ERROR);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
 				event.setResultMessage("Unauthorized");
@@ -1520,7 +1495,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 
 			event.setResultMessage(e.getMessage());
 			event.setStatus(IResult.ERROR);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 
 			return Result.RESULT_FAIL(txId, e);
 		} finally {
@@ -1587,7 +1562,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			log.error(e.getMessage(), e);
 
 			event.setStatus(IResult.ERROR);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
 				event.setResultMessage("Unauthorized");
@@ -1601,7 +1576,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 
 			event.setResultMessage(e.getMessage());
 			event.setStatus(IResult.ERROR);
-			event.setEndTIme(new Date(System.currentTimeMillis()));
+			event.setEndTime(new Date(System.currentTimeMillis()));
 
 			return Result.RESULT_FAIL(txId, e);
 		} finally {
