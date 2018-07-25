@@ -259,7 +259,7 @@ public class ZDBBackupController {
 	}
 
 	
-	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/{backupId}/delete", method = RequestMethod.GET)
+	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/{backupId}/delete", method = RequestMethod.DELETE)
 	public ResponseEntity<String> deleteBackup(
 			@PathVariable("namespace") final String namespace
 			, @PathVariable("serviceType") final String serviceType
