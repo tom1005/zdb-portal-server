@@ -418,8 +418,6 @@ public class ZDBBackupController {
 				Date date = new SimpleDateFormat("HH:mm").parse(schedule.getStartTime());
 				if (log.isInfoEnabled()) {
 					log.info("Schedule requested to change to startTime("+date+")");
-					
-					
 				}
 				//업무 외 시간으로 백업 설정이 가능하도록 설정 
 				if( !(Integer.parseInt(schedule.getStartTime().substring(0, 2)) > 18 
