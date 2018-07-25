@@ -411,7 +411,7 @@ public class ZDBBackupController {
 		} else if("".equals(schedule.getStartTime()) || schedule.getStartTime() == null) {
 			result = false;
 			sb.append("startTime empty or null");
-		} else if(schedule.getStorePeriod() < 1 || schedule.getStorePeriod() > 7) {
+		} else if(schedule.getStorePeriod() < 1 || schedule.getStorePeriod() > 8) {
 			result = false;
 			sb.append("storePeriod more then 0 and less then 8 : "+schedule.getStorePeriod());
 		} else if ("".equals(schedule.getUseYn()) || schedule.getUseYn()==null) {
@@ -423,6 +423,14 @@ public class ZDBBackupController {
 				Date date = new SimpleDateFormat("HH:mm").parse(schedule.getStartTime());
 				if (log.isInfoEnabled()) {
 					log.info("Schedule requested to change to startTime("+date+")");
+				}
+				//업무 외 시간으로 백업 설정이 가능하도록 설정 
+				if( !(Integer.parseInt(schedule.getStartTime().substring(0, 2)) > 18 
+						|| Integer.parseInt(schedule.getStartTime().substring(0, 2)) < 8) ) {
+					if (log.isInfoEnabled()) {
+						log.info("Availble schedule startTime : 18:00 ~07:00 / input time(" + schedule.getStartTime() + ")");
+					}
+					result = false;
 				}
 			} catch (Exception e) {
 				sb.append("startTime is unknown format :"+schedule.getStartTime());
