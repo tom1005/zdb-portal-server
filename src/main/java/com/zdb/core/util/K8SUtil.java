@@ -775,11 +775,24 @@ public class K8SUtil {
 
 			Iterator<ListReleasesResponse> requestBuilderList = releaseManager.list(requestBuilder.build());
 
+			List<Namespace> namespaces = getNamespaces();
+			List<String> namespaceList = new ArrayList<>();
+			for (Namespace n : namespaces) {
+				String name = n.getMetadata().getName();
+				namespaceList.add(name);
+			}
+			
 			while (requestBuilderList.hasNext()) {
 				ListReleasesResponse ent = requestBuilderList.next();
 				List<Release> list = ent.getReleasesList();
 
 				for (Release release : list) {
+					// zdb namespace check
+					String namespace = release.getNamespace();
+					if(!namespaceList.contains(namespace)) {
+						continue;
+					}
+					
 					String name = release.getChart().getMetadata().getName();
 					if (ZDBType.contains(name)) {
 						releaseMap.put(release.getName(), release);
