@@ -1794,18 +1794,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				int rCpu = Integer.parseInt(masterCpu);
 				int rMem = Integer.parseInt(masterMemory);
 			
-				// 현재 설정 값보다 스케일 업 설정 값이 크면...
-				if(cCpu < rCpu) {
-					gapCpu = gapCpu + rCpu - cCpu;
-				} else {
-					// nothing
-				}
-				
-				if(cMem < rMem) {
-					gapMem = gapMem + rMem - cMem;
-				} else {
-					// nothing
-				}
+				gapCpu = gapCpu + rCpu - cCpu;
+				gapMem = gapMem + rMem - cMem;
 			} catch (Exception e) {
 				log.error(e.getMessage(), e);
 			}
