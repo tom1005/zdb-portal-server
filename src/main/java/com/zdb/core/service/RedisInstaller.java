@@ -25,11 +25,9 @@ import org.yaml.snakeyaml.Yaml;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.Exchange;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.KubernetesConstants;
-import com.zdb.core.domain.KubernetesOperations;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
@@ -110,14 +108,9 @@ public class RedisInstaller implements ZDBInstaller {
 				chart = chartLoader.load(url);
 			}
 
-			String chartName = chart.getMetadata().getName();
-			String chartVersion = chart.getMetadata().getVersion();
-			
 			RequestEvent event = getRequestEvent(exchange);
 			
-			event.setChartName(chartName);
-			event.setChartVersion(chartVersion);
-			event.setOpertaion(KubernetesOperations.CREATE_DEPLOYMENT);
+			event.setOperation(RequestEvent.CREATE);
 			event.setResultMessage("");
 			event.setStatusMessage("서비스명 중복 체크.");
 			
@@ -211,7 +204,6 @@ public class RedisInstaller implements ZDBInstaller {
 				ServiceSpec[] serviceSpec = service.getServiceSpec();
 				for (ServiceSpec serviceInfo: serviceSpec) {					
 					if (serviceInfo.getPodType().equals("master")) {
-//						masterServiceAnnotations.put("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type", serviceInfo.getLoadBalancerType());
 						masterServiceAnnotations.put("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type", "private");						
 						masterService.put("type"		, "LoadBalancer");
 						masterService.put("annotations"	, masterServiceAnnotations);
@@ -220,7 +212,6 @@ public class RedisInstaller implements ZDBInstaller {
 							isPublicEnabled = true;
 						}
 						
-//						slaveServiceAnnotations.put("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type", serviceInfo.getLoadBalancerType());
 						slaveServiceAnnotations.put("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type", "private");						
 						slaveService.put("type"			, "LoadBalancer");
 						slaveService.put("annotations"	, slaveServiceAnnotations);		
@@ -542,7 +533,7 @@ public class RedisInstaller implements ZDBInstaller {
 			requestEvent.setServiceName(service.getServiceName());
 			requestEvent.setServiceType(service.getServiceType());
 			requestEvent.setStartTime(new Date(System.currentTimeMillis()));
-			requestEvent.setEventType(EventType.Deployment.name());
+			requestEvent.setOperation(RequestEvent.CREATE);
 		}
 		
 		return requestEvent;
@@ -566,9 +557,8 @@ public class RedisInstaller implements ZDBInstaller {
 		event.setServiceName(serviceName);
 		event.setServiceType(ZDBType.Redis.getName());
 		event.setNamespace(namespace);
-		event.setEventType(EventType.Delete.name());
 		event.setStartTime(new Date(System.currentTimeMillis()));
-		event.setOpertaion(KubernetesOperations.DELETE_SERVICE_INSTANCE);
+		event.setOperation(RequestEvent.DELETE);
 
 		ReleaseManager releaseManager = null;
 		try {

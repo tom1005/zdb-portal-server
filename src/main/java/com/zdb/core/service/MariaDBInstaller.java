@@ -23,7 +23,6 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
 import com.google.gson.Gson;
-import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.Exchange;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.KubernetesConstants;
@@ -127,14 +126,9 @@ public class MariaDBInstaller implements ZDBInstaller {
 				chart = chartLoader.load(url);
 			}
 
-			String chartName = chart.getMetadata().getName();
-			String chartVersion = chart.getMetadata().getVersion();
-
 			RequestEvent event = getRequestEvent(exchange);
 			
-			event.setChartName(chartName);
-			event.setChartVersion(chartVersion);
-			event.setOpertaion(KubernetesOperations.CREATE_DEPLOYMENT);
+			event.setOperation(KubernetesOperations.CREATE_DEPLOYMENT);
 			event.setResultMessage("");
 			event.setStatusMessage("서비스명 중복 체크.");
 			
@@ -424,7 +418,6 @@ public class MariaDBInstaller implements ZDBInstaller {
 			requestEvent.setServiceName(service.getServiceName());
 			requestEvent.setServiceType(service.getServiceType());
 			requestEvent.setStartTime(new Date(System.currentTimeMillis()));
-			requestEvent.setEventType(EventType.Deployment.name());
 		}
 
 		return requestEvent;
@@ -445,9 +438,8 @@ public class MariaDBInstaller implements ZDBInstaller {
 		event.setServiceName(serviceName);
 		event.setServiceType(ZDBType.MariaDB.getName());
 		event.setNamespace(namespace);
-		event.setEventType(EventType.Delete.name());
 		event.setStartTime(new Date(System.currentTimeMillis()));
-		event.setOpertaion(KubernetesOperations.DELETE_SERVICE_INSTANCE);
+		event.setOperation(RequestEvent.DELETE);
 
 		ReleaseManager releaseManager = null;
 		try {

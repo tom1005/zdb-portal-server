@@ -4,9 +4,9 @@ import java.util.Arrays;
 
 public enum EventType {
 	
-	Deployment, Delete, Restart, RestartPod, Update, UpdatePassword
+	Install, Delete/*, Restart, RestartPod, Update, UpdatePassword
 	, SearchDetail, ServiceAccount, UpdateDBConfig, CreatePersistentVolumeClaim, BackupSchedule, Backup, BackupList, BackupDetail
-	, DeleteBackup, Restore, EMPTY;
+	, DeleteBackup, Restore, AddTag, DeleteTag*/, EMPTY;
 
 	public static EventType getType(String typeName) {
 		return Arrays.stream(EventType.values()).filter(payGroup -> payGroup.isEquals(typeName)).findAny().orElse(EMPTY);
