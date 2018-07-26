@@ -1,7 +1,5 @@
 package com.zdb.core.repository;
 
-import java.util.Date;
-
 import com.google.gson.Gson;
 import com.zdb.core.domain.RequestEvent;
 
@@ -14,25 +12,7 @@ public class ZDBRepositoryUtil {
 		log.info(new Gson().toJson(event));
 		
 		if(metaRepository != null) {
-			RequestEvent re = metaRepository.findByTxId(event.getTxId());
-			if(re != null) {
-				Date updateTime = event.getUpdateTime();
-				Date endTime = event.getEndTime();
-				int status = event.getStatus();
-				String message = event.getResultMessage();
-				String statusMsg = event.getStatusMessage();
-				
-				re.setUpdateTime(updateTime == null ? new Date(System.currentTimeMillis()) : updateTime);
-				re.setEndTime(endTime == null ? new Date(System.currentTimeMillis()) : endTime);
-				re.setStatus(status);
-				re.setResultMessage(message);
-				re.setStatusMessage(statusMsg);
-				
-				metaRepository.save(re);
-			} else {
-				event.setStartTime(new Date(System.currentTimeMillis()));
-				metaRepository.save(event);
-			}
+			metaRepository.save(event);
 		} else {
 			log.error("Save fail. (ZDBRepository is null.)");
 		}

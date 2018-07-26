@@ -479,11 +479,11 @@ public class RedisInstaller implements ZDBInstaller {
 					
 					event.setStatus(IResult.OK);
 					event.setResultMessage("Installation successful.");
+					event.setEndTime(new Date(System.currentTimeMillis()));
 				} else {
 					event.setStatus(IResult.ERROR);
 					event.setResultMessage("Installation failed.");
-					
-					ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
+					event.setEndTime(new Date(System.currentTimeMillis()));
 				}
 			}
 			
@@ -514,19 +514,15 @@ public class RedisInstaller implements ZDBInstaller {
 	public RequestEvent getRequestEvent(Exchange exchange) {
 		ZDBEntity service = exchange.getProperty(Exchange.ZDBENTITY, ZDBEntity.class);
 		String txId = exchange.getProperty(Exchange.TXID, String.class);
-		
-		RequestEvent requestEvent = metaRepository.findByTxId(txId);
-		
-		if (requestEvent == null) {
-			requestEvent = new RequestEvent();
-			requestEvent.setTxId(txId);
-			requestEvent.setNamespace(service.getNamespace());
-			requestEvent.setServiceName(service.getServiceName());
-			requestEvent.setServiceType(service.getServiceType());
-			requestEvent.setStartTime(new Date(System.currentTimeMillis()));
-			requestEvent.setOperation(RequestEvent.CREATE);
-		}
-		
+
+		RequestEvent requestEvent = new RequestEvent();
+		requestEvent.setTxId(txId);
+		requestEvent.setNamespace(service.getNamespace());
+		requestEvent.setServiceName(service.getServiceName());
+		requestEvent.setServiceType(service.getServiceType());
+		requestEvent.setStartTime(new Date(System.currentTimeMillis()));
+		requestEvent.setOperation(RequestEvent.CREATE);
+
 		return requestEvent;
 	}
 	
@@ -558,12 +554,11 @@ public class RedisInstaller implements ZDBInstaller {
 			final Tiller tiller = new Tiller(client);
 			releaseManager = new ReleaseManager(tiller);
 
-			ReleaseMetaData releaseName = releaseRepository.findByReleaseName(serviceName);
+			ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(serviceName);
 			
-			if (releaseName == null) {
+			if (releaseMetaData == null) {
 				String msg = "설치된 서비스가 존재하지 않습니다.";
 				event.setResultMessage(msg);
-				event.setStatusMessage("서비스 삭제 실패");
 				event.setStatus(IResult.ERROR);
 				event.setEndTime(new Date(System.currentTimeMillis()));
 				ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
@@ -575,12 +570,9 @@ public class RedisInstaller implements ZDBInstaller {
 			uninstallRequestBuilder.setName(serviceName); // set releaseName
 			uninstallRequestBuilder.setPurge(true); // --purge
 
-			ReleaseMetaData findByReleaseName = releaseName;
-			if (findByReleaseName != null) {
-				findByReleaseName.setStatus("DELETING");
-				findByReleaseName.setUpdateTime(new Date(System.currentTimeMillis()));
-				releaseRepository.save(findByReleaseName);
-			}			
+			releaseMetaData.setStatus("DELETING");
+			releaseMetaData.setUpdateTime(new Date(System.currentTimeMillis()));
+			releaseRepository.save(releaseMetaData);
 			
 			Result result = new Result(txId, IResult.OK, "Delete Service instance. [" + serviceName + "]");
 			final Future<UninstallReleaseResponse> releaseFuture = releaseManager.uninstall(uninstallRequestBuilder.build());
@@ -606,11 +598,10 @@ public class RedisInstaller implements ZDBInstaller {
 
 				log.info(new Gson().toJson(releaseMeta));
 
-				findByReleaseName = releaseName;
-				if (findByReleaseName != null) {
-					findByReleaseName.setStatus(release.getInfo().getStatus().getCode().name());
-					findByReleaseName.setUpdateTime(new Date(System.currentTimeMillis()));
-					releaseRepository.save(findByReleaseName);
+				if (releaseMetaData != null) {
+					releaseMetaData.setStatus(release.getInfo().getStatus().getCode().name());
+					releaseMetaData.setUpdateTime(new Date(System.currentTimeMillis()));
+					releaseRepository.save(releaseMetaData);
 				} else {
 					releaseRepository.save(releaseMeta);
 				}
@@ -635,17 +626,14 @@ public class RedisInstaller implements ZDBInstaller {
 				backupProvider.removeServiceResource(txId, namespace, ZDBType.Redis.getName(), serviceName);
 				
 				event.setStatus(IResult.OK);
-				event.setResultMessage("삭제 완료.");
-				event.setUpdateTime(new Date(System.currentTimeMillis()));
+				event.setResultMessage("Successfully deleted.");
+				event.setEndTime(new Date(System.currentTimeMillis()));
 			} else {
 				String msg = "설치된 서비스가 존재하지 않습니다.";
 				event.setResultMessage(msg);
-				event.setStatusMessage("서비스 삭제 실패");
 				event.setStatus(IResult.ERROR);
 				event.setEndTime(new Date(System.currentTimeMillis()));
 				ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-
-//				return new Result(txId, IResult.ERROR, "Service 삭제 오류!");
 			    return;
 			}
 

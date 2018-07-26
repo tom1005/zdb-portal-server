@@ -116,6 +116,7 @@ public class MariaDBInstaller implements ZDBInstaller {
 		ReleaseManager releaseManager = null;
 		
 		RequestEvent event = getRequestEvent(exchange);
+		event.setOperation(RequestEvent.CREATE);
 		
 		try{ 
 //			chartUrl = "file:///Users/a06919/git/charts/stable/mariadb/mariadb-4.2.0.tgz";
@@ -357,6 +358,7 @@ public class MariaDBInstaller implements ZDBInstaller {
 						
 						event.setStatus(IResult.OK);
 						event.setResultMessage("Installation successful.");
+						event.setEndTime(new Date(System.currentTimeMillis()));
 					} else {
 						log.error("{} > {} > {} 권한 변경 실패!", service.getNamespace(), service.getServiceName(), account.getUserId());
 					}
@@ -364,8 +366,7 @@ public class MariaDBInstaller implements ZDBInstaller {
 				} else {
 					event.setStatus(IResult.ERROR);
 					event.setResultMessage("Installation failed.");
-					
-					ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
+					event.setEndTime(new Date(System.currentTimeMillis()));
 				}
 			}
 			
@@ -400,15 +401,12 @@ public class MariaDBInstaller implements ZDBInstaller {
 		ZDBEntity service = exchange.getProperty(Exchange.ZDBENTITY, ZDBEntity.class);
 		String txId = exchange.getProperty(Exchange.TXID, String.class);
 
-		RequestEvent requestEvent = metaRepository.findByTxId(txId);
-		if (requestEvent == null) {
-			requestEvent = new RequestEvent();
-			requestEvent.setTxId(txId);
-			requestEvent.setNamespace(service.getNamespace());
-			requestEvent.setServiceName(service.getServiceName());
-			requestEvent.setServiceType(service.getServiceType());
-			requestEvent.setStartTime(new Date(System.currentTimeMillis()));
-		}
+		RequestEvent requestEvent = new RequestEvent();
+		requestEvent.setTxId(txId);
+		requestEvent.setNamespace(service.getNamespace());
+		requestEvent.setServiceName(service.getServiceName());
+		requestEvent.setServiceType(service.getServiceType());
+		requestEvent.setStartTime(new Date(System.currentTimeMillis()));
 
 		return requestEvent;
 	}
@@ -438,25 +436,14 @@ public class MariaDBInstaller implements ZDBInstaller {
 			final Tiller tiller = new Tiller(client);
 			releaseManager = new ReleaseManager(tiller);
 			
-			Iterable<ReleaseMetaData> releaseList = releaseRepository.findAll();
+			ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(serviceName);
 			
-			String chartName = null;
-
-			for (ReleaseMetaData release : releaseList) {
-				if (namespace.equals(release.getNamespace()) && serviceName.equals(release.getReleaseName())) {
-					chartName = release.getApp();
-					break;
-				}
-			}
-			
-			if (chartName == null) {
+			if (releaseMetaData == null) {
 				String msg = "설치된 서비스가 존재하지 않습니다.";
 				event.setResultMessage(msg);
-				event.setStatusMessage("서비스 삭제 실패");
 				event.setStatus(IResult.ERROR);
 				event.setEndTime(new Date(System.currentTimeMillis()));
 				ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-
 			    return;
 			}
 
@@ -531,15 +518,12 @@ public class MariaDBInstaller implements ZDBInstaller {
 				
 				event.setResultMessage("Successfully deleted.");
 				event.setStatus(IResult.OK);
+				event.setEndTime(new Date(System.currentTimeMillis()));
 			} else {
 				String msg = "설치된 서비스가 존재하지 않습니다.";
 				event.setResultMessage(msg);
-				event.setStatusMessage("서비스 삭제 실패");
 				event.setStatus(IResult.ERROR);
 				event.setEndTime(new Date(System.currentTimeMillis()));
-				ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-
-//				return new Result(txId, IResult.ERROR, "Service 삭제 오류!");
 			    return;
 			}
 
@@ -554,18 +538,12 @@ public class MariaDBInstaller implements ZDBInstaller {
 			} else {
 				event.setResultMessage(e.getMessage());
 			}
-			
-			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			
 			event.setResultMessage(e.getMessage());
 			event.setStatus(IResult.ERROR);
 			event.setEndTime(new Date(System.currentTimeMillis()));
-			
-			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-			
 		} finally {
 			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 			

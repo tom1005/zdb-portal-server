@@ -4,6 +4,7 @@ import java.util.Date;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.Lob;
 
@@ -40,7 +41,10 @@ public class RequestEvent {
 	private String operation;
 
 	@Id
-	@Column(name = "id")
+	@GeneratedValue
+	private Long id;
+	
+	@Column(name = "txId")
 	private String txId;
 	
 	private String namespace;
@@ -60,9 +64,6 @@ public class RequestEvent {
 	@Column(name = "endTime")
 	private Date endTime;
 	
-	@Column(name = "updateTime")
-	private Date updateTime;
-	
 	/**
 	 * IResult.OK, IResult.RUNNING, IResult.WARNING, IResult.ERROR
 	 */
@@ -71,8 +72,4 @@ public class RequestEvent {
 	@Lob
 	@Column(length=1000000, name = "resultMessage")
 	private String resultMessage;
-	
-	private String statusMessage;
-
-	
 }

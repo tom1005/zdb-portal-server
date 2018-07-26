@@ -46,7 +46,7 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 		event.setTxId(txid);
 		event.setServiceName(entity.getServiceName());
 		event.setServiceType(entity.getServiceType());
-		event.setOperation(RequestEvent.CREATE);
+		event.setOperation(RequestEvent.SET_BACKUP_SCHEDULE);
 		event.setNamespace(entity.getNamespace());
 		event.setStartTime(new Date(System.currentTimeMillis()));
 		
@@ -69,7 +69,9 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 				entity = scheduleRepository.save(entity);
 			}
 			//2018-07-25 UI backup 목록 오류 수정
-			result = new Result(txid, IResult.OK).putValue("backupSchedule", entity);
+			result = new Result(txid, IResult.OK, "save schedule.").putValue("backupSchedule", entity);
+			
+			event.setResultMessage(result.getMessage());
 			event.setEndTime(new Date(System.currentTimeMillis()));
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -217,7 +219,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 			if (result.isOK()) {
 				event.setStatus(IResult.OK);
 			} else {
-				event.setStatusMessage(result.getMessage());
+				event.setResultMessage(result.getMessage());
 			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -261,7 +263,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 			event.setEndTime(new Date(System.currentTimeMillis()));
 			event.setStatus(result.getCode());
 			if (!result.isOK()) {
-				event.setStatusMessage(result.getMessage());
+				event.setResultMessage(result.getMessage());
 			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
