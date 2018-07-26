@@ -155,7 +155,7 @@ public interface ZDBRestService {
 
 	Result getServiceCheckAlive(String namespace, String serviceType, String serviceName) throws Exception;
 
-	Result setNewPassword(String txId, String namespace, String serviceType, String serviceName, String newPassword) throws Exception;
+	Result setNewPassword(String txId, String namespace, String serviceType, String serviceName, String newPassword, String clusterEnabled) throws Exception;
 
 	Result createTag(Tag tag) throws Exception;
 

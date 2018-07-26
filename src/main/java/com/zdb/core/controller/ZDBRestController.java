@@ -984,6 +984,7 @@ public class ZDBRestController {
 			//@RequestParam("newPassword") String newPassword
 			String newPassword = param.get("newPassword");
 			String secretType = param.get("secretType");
+			String clusterEnabled = param.get("clusterEnabled");
 			
 			if(newPassword == null || newPassword.isEmpty()) {
 				Result result = new Result(null, IResult.ERROR, "새로운 password 입력하세요.");
@@ -997,13 +998,13 @@ public class ZDBRestController {
 		    
 		    switch (dbType) {
 		    case MariaDB: 
-		    	result = mariadbService.setNewPassword(txId, namespace, serviceType, serviceName, newPassword);
+		    	result = mariadbService.setNewPassword(txId, namespace, serviceType, serviceName, newPassword, clusterEnabled);
 		    	if(result.isOK()) {
 		    		((MariaDBServiceImpl) mariadbService).updateAdminPassword(txId, namespace, serviceName, newPassword);
 		    	}
 		    	break;
 		    case Redis:
-		    	result = redisService.setNewPassword(txId, namespace, serviceType, serviceName, newPassword);
+		    	result = redisService.setNewPassword(txId, namespace, serviceType, serviceName, newPassword, clusterEnabled);
 		    	break;
 		    default:
 		    	log.error("Not support.");

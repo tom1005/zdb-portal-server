@@ -46,7 +46,6 @@ public class RedisConnection {
 				Jedis jedis = new Jedis(redisHost, redisPort);
 				jedis.connect();
 				jedis.auth(password);
-				
 				logger.debug("Redis connection succeeded.");
 				
 				return jedis;

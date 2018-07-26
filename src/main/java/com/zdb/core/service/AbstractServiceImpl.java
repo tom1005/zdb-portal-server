@@ -1378,7 +1378,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	 * @see com.zdb.core.service.ZDBRestService#restartService(java.lang.String, java.lang.String)
 	 */
 	@Override
-	public Result setNewPassword(String txId, String namespace, String serviceType, String serviceName, String newPassword) throws Exception {
+	public Result setNewPassword(String txId, String namespace, String serviceType, String serviceName, String newPassword, String clusterEnabled) throws Exception {
 
 		// 서비스 요청 정보 기록
 		RequestEvent event = new RequestEvent();
@@ -1406,10 +1406,12 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "master");
 				RedisConfiguration.setConfig(redisConnection, "requirepass", newPassword);
 				
-				redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "slave");
-				RedisConfiguration.setConfig(redisConnection, "requirepass", newPassword);
-
-				secretName = serviceName;
+				if (clusterEnabled.equals("true")) {
+					redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "slave");
+					RedisConfiguration.setConfig(redisConnection, "requirepass", newPassword);
+				}
+				
+				secretName = k8sService.getSecrets(namespace, serviceName).get(0).getMetadata().getName();
 				changedPassword = K8SUtil.updateSecrets(namespace, secretName, "redis-password", newPassword);
 				
 				break;
