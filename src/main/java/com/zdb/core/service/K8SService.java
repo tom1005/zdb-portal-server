@@ -12,7 +12,6 @@ import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.stereotype.Service;
 
 import com.google.gson.Gson;
 import com.zdb.core.domain.CommonConstants;
@@ -50,7 +49,7 @@ import io.fabric8.kubernetes.api.model.extensions.ReplicaSet;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
 import lombok.extern.slf4j.Slf4j;
 
-@Service("k8sService")
+@org.springframework.stereotype.Service("k8sService")
 @Slf4j
 @Configuration
 public class K8SService {
@@ -608,7 +607,7 @@ public class K8SService {
 					persistentVolumeClaims.add((PersistentVolumeClaim) obj);
 				} else if (obj instanceof Secret) {
 					secrets.add((Secret) obj);
-				} else if (obj instanceof Service) {
+				} else if (obj instanceof io.fabric8.kubernetes.api.model.Service) {
 					services.add((io.fabric8.kubernetes.api.model.Service) obj);
 				} else if (obj instanceof Deployment) {
 					deployments.add((Deployment) obj);

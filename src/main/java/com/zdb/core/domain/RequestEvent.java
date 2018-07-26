@@ -4,11 +4,8 @@ import java.util.Date;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.Lob;
-
-import org.hibernate.annotations.GenericGenerator;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -19,7 +16,14 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Data
 public class RequestEvent {
-	private String opertaion;
+	public static final String CREATE = "CREATE";
+	public static final String UPDATE = "UPDATE";
+	public static final String DELETE = "DELETE";
+	public static final String READ = "READ";
+	public static final String RESTART = "RESTART";
+	public static final String RESTORE = "RESTORE";
+	
+	private String operation;
 
 	@Id
 	@Column(name = "id")
@@ -36,22 +40,6 @@ public class RequestEvent {
 	@Column(name = "userId")
 	private String userId;
 	
-	@Column(name = "eventType")
-	private String eventType;
-	
-	@Column(name = "chartName")
-	private String chartName;
-	
-	@Column(name = "chartVersion")
-	private String chartVersion;
-
-//	@Column(name = "appVersion")
-//	private String appVersion;
-	
-	@Lob
-	@Column(length=1000000, name = "resourceLog")
-	private String resourceLog;
-	
 	@Column(name = "startTime")
 	private Date startTime;
 	
@@ -60,12 +48,6 @@ public class RequestEvent {
 	
 	@Column(name = "updateTime")
 	private Date updateTime;
-	
-	private String cluster;
-	
-	@Lob
-	@Column(length=1000000, name = "deploymentYaml")
-	private String deploymentYaml;
 	
 	/**
 	 * IResult.OK, IResult.RUNNING, IResult.WARNING, IResult.ERROR
@@ -78,4 +60,5 @@ public class RequestEvent {
 	
 	private String statusMessage;
 
+	
 }

@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
@@ -41,7 +42,6 @@ import com.zdb.core.domain.EventMetaData;
 import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.Exchange;
 import com.zdb.core.domain.IResult;
-import com.zdb.core.domain.KubernetesOperations;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
@@ -211,7 +211,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		event.setServiceType(service.getServiceType());
 		event.setNamespace(service.getNamespace());
 		event.setServiceName(service.getServiceName());
-		event.setEventType(EventType.Deployment.name());
+		event.setOperation(RequestEvent.CREATE);
+		event.setUserId(userInfo.getUserId());
 		
 		Result requestCheck = isDeploymentAvaliable();
 		if(!requestCheck.isOK()) {
@@ -235,7 +236,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			exchange.setProperty(Exchange.SERVICE_TYPE, service.getServiceType());
 			exchange.setProperty(Exchange.CHART_URL, chartUrl);
 			exchange.setProperty(Exchange.META_REPOSITORY, zdbRepository);
-			exchange.setProperty(Exchange.OPERTAION, EventType.Deployment);
+			exchange.setProperty(Exchange.OPERTAION, EventType.Install);
 			
 			long s = System.currentTimeMillis();
 			// 서비스 명 중복 체크
@@ -284,6 +285,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			releaseMeta.setUpdateTime(new Date(System.currentTimeMillis()));
 			releaseMeta.setPublicEnabled(clusterEnabled);
 			releaseMeta.setPurpose(service.getPurpose());
+			releaseMeta.setClusterEnabled(service.isClusterEnabled());
 
 			log.info(">>> install request : "+new Gson().toJson(releaseMeta));
 
@@ -291,31 +293,14 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 
 			// install request
 			deploymentRequest(exchange);
-//			long s = System.currentTimeMillis();
-//			try {
-//				while (true) {
-//					Thread.sleep(500);
-//					if((System.currentTimeMillis() - s) > 3 * 1000) {
-//						break;
-//					}
-//					try {
-//						List<Pod> pods = k8sService.getPods(service.getNamespace(), service.getServiceName());
-//						if (pods != null && !pods.isEmpty()) {
-//							break;
-//						}
-//					} catch (Exception e) {
-//					}
-//					
-//				}
-//
-//			} catch (Exception e) {
-//			} finally {
-//				event.setResultMessage("[" + service.getServiceName() + "] 설치 요청 성공.");
-//				event.setEndTime(new Date(System.currentTimeMillis()));
-//
-//				log.info(toPrettyJson(event));
-//				ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-//			}
+			try {
+
+			} finally {
+				event.setResultMessage("[" + service.getServiceName() + "] 설치 요청 성공.");
+				event.setEndTime(new Date(System.currentTimeMillis()));
+
+				ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+			}
 
 			return new Result(txId, IResult.OK, "[" + service.getServiceName() + "] 설치 요청 성공.");
 		}
@@ -332,9 +317,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		event.setServiceName(serviceName);
 		event.setServiceType(serviceType);
 		event.setNamespace(namespace);
-		event.setEventType(EventType.Delete.name());
 		event.setStartTime(new Date(System.currentTimeMillis()));
-		event.setOpertaion(KubernetesOperations.DELETE_SERVICE_INSTANCE);
+		event.setOperation(RequestEvent.DELETE);
 		
 		
 		Result requestCheck = isDeploymentAvaliable();
@@ -411,135 +395,22 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		return new Result("", Result.OK).putValue("deployments", "");
 	}
 	
-	/* (non-Javadoc)
-	 * @see com.zdb.core.service.ZDBRestService#createPersistentVolumeClaim(java.lang.String, java.lang.String, java.lang.String, com.zdb.core.domain.PersistenceSpec)
-	 */
-//	public Result createPersistentVolumeClaim(String txId, String namespace, String serviceName, String pvcName) throws Exception {
+//	/**
+//	 * @param eventType
+//	 * @param serviceName
+//	 * @return
+//	 */
+//	public RequestEvent getRequestEvent(EventType eventType, String serviceName) {
+//		Iterable<RequestEvent> findAll = zdbRepository.findAll();
 //
-//		String serviceType = "";
-//		if(this instanceof MariaDBServiceImpl) {
-//			serviceType = ZDBType.MariaDB.getName();
-//		} else if(this instanceof RedisServiceImpl) {
-//			serviceType = ZDBType.Redis.getName();
-//		} 
-//
-//		RequestEvent event = new RequestEvent();
-//
-//		event.setTxId(txId);
-//		event.setNamespace(namespace);
-//		event.setServiceName(serviceName == null ? "" : serviceName);
-//		event.setServiceType(serviceType);
-//		event.setEventType(EventType.CreatePersistentVolumeClaim.name());
-//		event.setOpertaion(KubernetesOperations.CREATE_PERSISTENT_VOLUME_CLAIM_OPERATION);
-//		event.setStartTime(new Date(System.currentTimeMillis()));
-//		
-////		final CountDownLatch closeLatch = new CountDownLatch(1);
-//
-//		DefaultKubernetesClient client = K8SUtil.kubernetesClient();
-//
-//		Resource<PersistentVolumeClaim, DoneablePersistentVolumeClaim> withName = client.inNamespace(namespace).persistentVolumeClaims().withName(pvcName);
-//
-//		if (withName == null || withName.get() == null) {
-//			// metaRepository, closeLatch, KubernetesOperations.CREATE_PERSISTENT_VOLUME_CLAIM_OPERATION, txId, namespace, serviceName, pvcName
-//			Exchange exchange = new DefaultExchange();
-//			exchange.setProperty(Exchange.TXID, txId);
-//			exchange.setProperty(Exchange.NAMESPACE, namespace);
-//			exchange.setProperty(Exchange.SERVICE_NAME, serviceName == null ? "" : serviceName);
-//			exchange.setProperty(Exchange.CHART_URL, chartUrl);
-//			exchange.setProperty(Exchange.META_REPOSITORY, metaRepository);
-//			
-//			//////////////////////////////////////////////////////////////////////////////
-//			
-//			
-//			createPVCRequest(exchange);
-//
-//			event.setResultMessage("[" + pvcName + "] 설치 요청 성공.");
-//			event.setEndTime(new Date(System.currentTimeMillis()));
-//			
-//			log.info(toPrettyJson(event));
-//			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-//			
-//			return new Result(txId, IResult.OK, "[" + pvcName + "] 설치 요청 성공.");
-//			
-//			/////////////////////////////////////////////////////////////////////////////
-//		} else {
-//			event.setStatus(IResult.ERROR);
-//			event.setEndTime(new Date(System.currentTimeMillis()));
-//			log.info("!!!"+new Gson().toJson(event));
-//			
-//			return new Result(txId, IResult.ERROR, "exist PVC.").putValue(IResult.PERSISTENTVOLUMECLAIM, withName.get());
+//		for (RequestEvent event : findAll) {
+//			if (event.getEventType() == eventType.name() && event.getServiceName().equals(serviceName)) {
+//				return event;
+//			}
 //		}
 //
+//		return null;
 //	}
-	
-	/**
-	 * @param txId
-	 * @param namespace
-	 * @param pvcName
-	 * @param billingType
-	 * @param accessMode
-	 * @param limitStorage
-	 * @param requestStorage
-	 * @return
-	 * @throws Exception
-	 */
-//	protected synchronized Result doCreatePersistentVolumeClaimsService(String txId, String namespace, String pvcName, String billingType, String accessMode, int size) throws Exception {
-//
-//		try {
-//			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
-//			PersistentVolumeClaim pvc = null;
-//
-//			Map<String, String> labels = new HashMap<>();
-//			// labels.put("billingType", "hourly");
-//			labels.put("billingType", billingType);
-//
-//			PersistentVolumeClaimSpec pvcSpec = new PersistentVolumeClaimSpec();
-//
-//			ResourceRequirements rr = new ResourceRequirements();
-//
-//			// Map<String, Quantity> mp = new HashMap<String, Quantity>();
-//			// mp.put("storage", new Quantity(limitStorage + "Gi"));
-//			// rr.setLimits(mp);
-//
-//			Map<String, Quantity> req = new HashMap<String, Quantity>();
-//			req.put("storage", new Quantity(size + "Gi"));
-//			rr.setRequests(req);
-//
-//			pvcSpec.setResources(rr);
-//			// pvcSpec.setVolumeName("maraiadb0003");
-//			List<String> access = new ArrayList<String>();
-//			// access.add("ReadWriteMany");
-//			access.add(accessMode);
-//
-//			pvcSpec.setAccessModes(access);
-//
-//			Map<String, String> annotations = new HashMap<>();
-//			annotations.put("volume.beta.kubernetes.io/storage-class", "ibmc-file-silver");
-//			PersistentVolumeClaim pvcCreating = new PersistentVolumeClaimBuilder().withNewMetadata().withName(pvcName).withAnnotations(annotations).withLabels(labels).endMetadata().withSpec(pvcSpec).build();
-//
-//			pvc = client.inNamespace(namespace).persistentVolumeClaims().create(pvcCreating);
-//			log.info("---------------------pvc create finish.............");
-//			return new Result(txId, IResult.OK, "Create PVC").putValue(IResult.PERSISTENTVOLUMECLAIM, pvc);
-//		} catch (Exception e) {
-//			return new Result(txId, IResult.ERROR, "Create PVC", e);
-//		}
-//	}
-	/**
-	 * @param eventType
-	 * @param serviceName
-	 * @return
-	 */
-	public RequestEvent getRequestEvent(EventType eventType, String serviceName) {
-		Iterable<RequestEvent> findAll = zdbRepository.findAll();
-
-		for (RequestEvent event : findAll) {
-			if (event.getEventType() == eventType.name() && event.getServiceName().equals(serviceName)) {
-				return event;
-			}
-		}
-
-		return null;
-	}
 	
 	public String toPrettyJson(Object obj) {
 		return new GsonBuilder().setPrettyPrinting().create().toJson(obj);
@@ -578,7 +449,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 							MariaDBInstaller installer = beanFactory.getBean(MariaDBInstaller.class);
 
 							switch (operation) {
-							case Deployment:
+							case Install:
 								installer.doInstall(exchange);
 								break;
 							case Delete:
@@ -592,7 +463,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 							RedisInstaller installer = beanFactory.getBean(RedisInstaller.class);
 							
 							switch (operation) {
-							case Deployment:
+							case Install:
 								installer.doInstall(exchange);
 								break;
 							case Delete:
@@ -1326,8 +1197,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		RequestEvent event = new RequestEvent();
 		event.setTxId(txId);
 		event.setServiceName(serviceName);
-		event.setEventType(EventType.Restart.name());
-		event.setOpertaion("Restart");
+		event.setOperation(RequestEvent.RESTART);
 		event.setNamespace(namespace);
 		event.setStartTime(new Date(System.currentTimeMillis()));
 
@@ -1453,8 +1323,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		RequestEvent event = new RequestEvent();
 		event.setTxId(txId);
 		event.setServiceName(serviceName);
-		event.setEventType(EventType.RestartPod.name());
-		event.setOpertaion("RestartPod");
+		event.setOperation(RequestEvent.RESTART);
 		event.setNamespace(namespace);
 		event.setStartTime(new Date(System.currentTimeMillis()));
 
@@ -1515,8 +1384,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		RequestEvent event = new RequestEvent();
 		event.setTxId(txId);
 		event.setServiceName(serviceName);
-		event.setEventType(EventType.UpdatePassword.name());
-		event.setOpertaion("UpdatePassword");
+		event.setOperation(RequestEvent.UPDATE);
 		event.setNamespace(namespace);
 		event.setStartTime(new Date(System.currentTimeMillis()));
 
@@ -1584,8 +1452,21 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		}
 	}			
 
+	private String txId() {
+		return UUID.randomUUID().toString();
+	}
+	
 	@Override
 	public Result createTag(Tag tag) throws Exception {
+		RequestEvent event = new RequestEvent();
+
+		event.setTxId(txId());
+		event.setServiceName(tag.getReleaseName());
+		event.setServiceType("");
+		event.setNamespace(tag.getNamespace());
+		event.setStartTime(new Date(System.currentTimeMillis()));
+		event.setOperation(RequestEvent.CREATE);
+		
 		if( tag != null) {
 			Tag findTag = tagRepository.findByNamespaceAndReleaseNameAndTag(tag.getNamespace(), tag.getReleaseName(), tag.getTagName());
 			if(findTag == null) {

@@ -30,9 +30,7 @@ import org.springframework.stereotype.Service;
 import com.google.gson.Gson;
 import com.zdb.core.domain.Connection;
 import com.zdb.core.domain.ConnectionInfo;
-import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.IResult;
-import com.zdb.core.domain.KubernetesOperations;
 import com.zdb.core.domain.Mycnf;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
@@ -151,8 +149,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		event.setServiceName(service.getServiceName());
 		event.setServiceType(ZDBType.MariaDB.getName());
 		event.setNamespace(service.getNamespace());
-		event.setEventType(EventType.Update.name());
-		event.setOpertaion(KubernetesOperations.SCALE_REPLICATION_CONTROLLER_OPERATION);
+		event.setOperation(RequestEvent.UPDATE);
 		event.setStartTime(new Date(System.currentTimeMillis()));
 
 		Result result = new Result(txId);
@@ -173,8 +170,6 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				String msg = "서비스가 존재하지 않습니다. [" + service.getServiceName() + "]";
 
 				log.error(msg);
-
-				event.setChartVersion(chartVersion);
 				event.setResultMessage(msg);
 				event.setStatus(IResult.ERROR);
 				event.setStatusMessage("Update Scale 오류");
@@ -314,262 +309,6 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 		return result;
 	}
-
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see com.zdb.core.service.ZDBRestService#deleteService(java.lang.String, java.lang.String)
-	 */
-//	@Override
-//	public synchronized Result deleteServiceInstance(String txId, String namespace, String serviceName) throws Exception {
-//
-//		// 서비스 요청 정보 기록
-//		RequestEvent event = new RequestEvent();
-//
-//		event.setTxId(txId);
-//		event.setServiceName(serviceName);
-//		event.setServiceType(ZDBType.MariaDB.getName());
-//		event.setNamespace(namespace);
-//		event.setEventType(EventType.Delete.name());
-//		event.setStartTime(new Date(System.currentTimeMillis()));
-//		event.setOpertaion(KubernetesOperations.DELETE_SERVICE_INSTANCE);
-//
-//		ReleaseManager releaseManager = null;
-//		try {
-//			DefaultKubernetesClient client = (DefaultKubernetesClient) K8SUtil.kubernetesClient()
-//					.inNamespace(namespace);
-//
-//			final Tiller tiller = new Tiller(client);
-//			releaseManager = new ReleaseManager(tiller);
-//
-//			final ListReleasesRequest.Builder requestBuilder = ListReleasesRequest.newBuilder();
-//			Iterator<ListReleasesResponse> requestBuilderList = releaseManager.list(requestBuilder.build());
-//
-//			String chartName = null;
-//			while (requestBuilderList.hasNext()) {
-//				ListReleasesResponse ent = requestBuilderList.next();
-//				List<Release> releaseList = ent.getReleasesList();
-//
-//				for (Release release : releaseList) {
-//					if (namespace.equals(release.getNamespace()) && serviceName.equals(release.getName())) {
-//						chartName = release.getChart().getMetadata().getName();
-//						break;
-//					}
-//				}
-//			}
-//			ServiceOverview serviceOverview = K8SUtil.getServiceWithName(namespace, ZDBType.MariaDB.getName(), serviceName);
-//
-//			if (chartName == null || serviceOverview == null) {
-//
-//				String msg = "설치된 서비스가 존재하지 않습니다.";
-//				event.setResultMessage(msg);
-//				event.setStatusMessage("서비스 삭제 실패");
-//				event.setStatus(IResult.ERROR);
-//				event.setEndTime(new Date(System.currentTimeMillis()));
-//				ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-//
-//				return new Result(txId, IResult.ERROR, msg);
-//			}
-//
-//			final UninstallReleaseRequest.Builder uninstallRequestBuilder = UninstallReleaseRequest.newBuilder();
-//
-//			uninstallRequestBuilder.setName(serviceName); // set releaseName
-//			uninstallRequestBuilder.setPurge(true); // --purge
-//
-//			Result result = new Result(txId, IResult.OK, "Delete Service instance. [" + serviceName + "]");
-//			final Future<UninstallReleaseResponse> releaseFuture = releaseManager.uninstall(uninstallRequestBuilder.build());
-//			
-//			if (releaseFuture != null) {
-//				final Release release = releaseFuture.get().getRelease();
-//				result.putValue(IResult.DELETE, release);
-//
-//				ReleaseMetaData releaseMeta = new ReleaseMetaData();
-//				releaseMeta.setAction("DELETE");
-//				releaseMeta.setApp(release.getChart().getMetadata().getName());
-//				releaseMeta.setAppVersion(release.getChart().getMetadata().getAppVersion());
-//				releaseMeta.setChartVersion(release.getChart().getMetadata().getVersion());
-//				releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds()));
-//				releaseMeta.setName(serviceName);
-//				releaseMeta.setNamespace(namespace);
-//				releaseMeta.setReleaseName(serviceName);
-//				releaseMeta.setStatus(release.getInfo().getStatus().getCode().name());
-//				releaseMeta.setDescription(release.getInfo().getDescription());
-//				releaseMeta.setManifest(release.getManifest());
-//
-//				log.info(new Gson().toJson(releaseMeta));
-//
-//				ReleaseMetaData findByReleaseName = releaseRepository.findByReleaseName(serviceName);
-//				if (findByReleaseName != null) {
-//					findByReleaseName.setStatus(release.getInfo().getStatus().getCode().name());
-//					findByReleaseName.setUpdateTime(new Date(System.currentTimeMillis()));
-//					releaseRepository.save(findByReleaseName);
-//				} else {
-//					releaseRepository.save(releaseMeta);
-//				}
-//
-////				{ // StatefulSet 삭제
-////					List<StatefulSet> statefulSets = serviceOverview.getStatefulSets();
-////
-////					for (StatefulSet sfs : statefulSets) {
-////						client.inNamespace(namespace).apps().statefulSets().withName(sfs.getMetadata().getName()).delete();
-////					}
-////				}
-////				
-////				{ // Pod 삭제
-////					List<Pod> pods = serviceOverview.getPods();
-////
-////					for (Pod pod : pods) {
-////						client.inNamespace(namespace).pods().withName(pod.getMetadata().getName()).delete();
-////					}
-////				}
-////				
-//				{ // pvc 삭제
-//					List<PersistentVolumeClaim> persistentVolumeClaims = serviceOverview.getPersistentVolumeClaims();
-//
-//					for (PersistentVolumeClaim pvc : persistentVolumeClaims) {
-//						client.inNamespace(namespace).persistentVolumeClaims().withName(pvc.getMetadata().getName()).delete();
-//					}
-//				}
-////
-////				{
-////					// Expose Service 삭제.
-////					List<io.fabric8.kubernetes.api.model.Service> serviceList = serviceOverview.getServices();
-////					for (io.fabric8.kubernetes.api.model.Service svc : serviceList) {
-////						boolean deleteService = K8SUtil.doDeleteService(namespace, svc.getMetadata().getName());
-////						log.info("{} delete. {}", svc.getMetadata().getName(), deleteService);
-////					}
-////				}
-//				{ // account 삭제
-//					MariaDBAccount.deleteAccounts(zdbMariaDBAccountRepository, namespace, serviceName);
-//				}
-//
-//				{ // config 삭제
-//					MariaDBConfiguration.deleteConfig(zdbMariaDBConfigRepository, namespace, serviceName);
-//				}
-//			} else {
-//				return new Result(txId, IResult.ERROR, "Service 삭제 오류!");
-//			}
-//
-//			return result;
-//		} catch (FileNotFoundException | KubernetesClientException e) {
-//			log.error(e.getMessage(), e);
-//
-//			event.setStatus(IResult.ERROR);
-//			event.setEndTime(new Date(System.currentTimeMillis()));
-//
-//			if (e.getMessage().indexOf("Unauthorized") > -1) {
-//				event.setResultMessage("Unauthorized");
-//				
-//				log.info("!!!"+new Gson().toJson(event));
-//				
-//				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
-//			} else {
-//				event.setResultMessage(e.getMessage());
-//				
-//				log.info("!!!"+new Gson().toJson(event));
-//				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
-//			}
-//		} catch (Exception e) {
-//			log.error(e.getMessage(), e);
-//
-//			event.setResultMessage("Service [" + serviceName + "] delete error.\n" + e.getMessage());
-//			event.setStatus(IResult.ERROR);
-//			event.setEndTime(new Date(System.currentTimeMillis()));
-//
-//			log.info("!!!"+new Gson().toJson(event));
-//			
-//			return new Result(txId, IResult.ERROR, "Service [" + serviceName + "] delete error.", e);
-//		} finally {
-//			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-//			
-//			if(releaseManager != null){
-//				releaseManager.close();
-//			}
-//		}
-//
-//	}
-
-	/**
-	 * @param txId
-	 * @param namespace
-	 * @param serviceName
-	 * @param client
-	 */
-//	private void deletePersistentVolumeClaim(Exchange exchange) {
-//		
-//		String txId = exchange.getProperty(Exchange.TXID, String.class);
-//		String namespace = exchange.getProperty(Exchange.NAMESPACE, String.class);
-//		String serviceName = exchange.getProperty(Exchange.SERVICE_NAME, String.class);
-//		
-//		exchange.getProperty(Exchange.SERVICE_NAME, String.class);
-//		
-//		ServiceOverview serviceOverview = exchange.getProperty(Exchange.SERVICE_OVERVIEW, ServiceOverview.class);
-//		
-//		
-//		List<Watch> watchList = new ArrayList<>();
-//		
-//		RequestEvent event = new RequestEvent();
-//		try {
-//			event.setTxId(txId);
-//			event.setServiceName(serviceName);
-//			event.setServiceType(ZDBType.MariaDB.getName());
-//			event.setNamespace(namespace);
-//			event.setEventType(EventType.Delete.name());
-//			event.setOpertaion(KubernetesOperations.DELETE_PERSISTENT_VOLUME_CLAIM_OPERATION);
-//			
-////			CountDownLatch closeLatch = new CountDownLatch(persistentVolumeClaims.size());
-////			
-////			// TODO service name 으로 PVC 조회후 삭제...
-////			
-////			// metaRepository, closeLatch, KubernetesOperations.DELETE_PERSISTENT_VOLUME_CLAIM_OPERATION, txId, namespace, serviceName, pvcName
-////			ZDBEventWatcher<PersistentVolumeClaim> eventWatcher = new ZDBEventWatcher<PersistentVolumeClaim>(
-////					KubernetesOperations.DELETE_PERSISTENT_VOLUME_CLAIM_OPERATION,
-////					closeLatch,
-////					exchange
-////					);
-//
-//			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
-//			
-//			List<PersistentVolumeClaim> persistentVolumeClaims = serviceOverview.getPersistentVolumeClaims();
-//			
-//			for(PersistentVolumeClaim pvc : persistentVolumeClaims) {
-//				event.setStatus(IResult.RUNNING);
-//				event.setStatusMessage("PVC 삭제 요청");
-//				event.setResultMessage("PVC 삭제 요청 [" +namespace +" > "+pvc.getMetadata().getName()+ "]");
-//				ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-//				
-//				client.inNamespace(namespace).persistentVolumeClaims().withName(pvc.getMetadata().getName()).delete();
-//			}
-//			
-//			
-////			closeLatch.await(30, TimeUnit.SECONDS);
-//			
-//		} catch (Exception e) {
-//			event.setStatus(IResult.ERROR);
-//			
-//			log.error(e.getMessage(), e);
-//			
-//			event.setResultMessage("PVC 삭제 요청중 오류. [" +namespace +" > "+ serviceName +"'s pvc > "+e.getMessage()+ "]");
-//			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-//		} finally {
-////			for(Watch w : watchList) {
-////				w.close();
-////			}
-//			
-//			event.setResultMessage("PVC 삭제 완료. [" +namespace +" > "+serviceName+ "'s pvc]");
-//			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-//		}
-//	}
-
-//	/*
-//	 * (non-Javadoc)
-//	 * 
-//	 * @see com.zdb.core.service.ZDBRestService#createPersistentVolumeClaimsService(java.lang.String, com.zdb.core.domain.ZDBEntity)
-//	 */
-//	@Override
-//	public Result createPersistentVolumeClaim(String txId, String namespace, String serviceName, PersistenceSpec persistenceSpec) throws Exception {
-//		return super.createPersistentVolumeClaim(txId, namespace, serviceName, persistenceSpec);
-//	}
 
 	/**
 	 * 

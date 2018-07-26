@@ -11,7 +11,6 @@ import org.springframework.web.client.RestTemplate;
 
 import com.zdb.core.domain.BackupEntity;
 import com.zdb.core.domain.BackupStatus;
-import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.Result;
@@ -37,7 +36,7 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 
 	@Autowired
 	ScheduleEntityRepository scheduleRepository;
-	
+
 	@Override
 	public Result saveSchedule(String txid, ScheduleEntity entity) throws Exception {
 		Result result = null;
@@ -47,7 +46,7 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 		event.setTxId(txid);
 		event.setServiceName(entity.getServiceName());
 		event.setServiceType(entity.getServiceType());
-		event.setEventType(EventType.BackupSchedule.name());
+		event.setOperation(RequestEvent.CREATE);
 		event.setNamespace(entity.getNamespace());
 		event.setStartTime(new Date(System.currentTimeMillis()));
 		
@@ -69,7 +68,8 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 				entity.setRegisterDate(new Date(System.currentTimeMillis()));
 				entity = scheduleRepository.save(entity);
 			}
-			result = new Result(txid, IResult.OK).putValue(EventType.BackupSchedule.name(), entity);
+			//2018-07-25 UI backup 목록 오류 수정
+			result = new Result(txid, IResult.OK).putValue("backupSchedule", entity);
 			event.setEndTime(new Date(System.currentTimeMillis()));
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -90,31 +90,18 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 				, String serviceType) throws Exception {
 		Result result = null;
 		
-		
-		RequestEvent event = new RequestEvent();
-		event.setTxId(txid);
-		event.setServiceName(serviceName);
-		event.setServiceType(serviceType);
-		event.setEventType(EventType.BackupSchedule.name());
-		event.setNamespace(namespace);
-		event.setStartTime(new Date(System.currentTimeMillis()));
-		
 		try {			
 			log.debug("namespace : "+namespace+", serviceName : "+serviceName+", serviceType : "+serviceType);
 			/*
 			Meta DB에서 아규먼트로 받은 namespace, serviceType, serviceName에 해당하는 스케줄을 조회하여 결과로 반환합니다.
 			 */
 			ScheduleEntity schedule = scheduleRepository.findScheduleByName(namespace, serviceType, serviceName);
-			result = new Result(txid, IResult.OK).putValue(EventType.BackupDetail.name(), schedule);
-			event.setStatus(Result.OK);
+			//2018-07-25 UI backup 목록 오류 수정
+			result = new Result(txid, IResult.OK).putValue(IResult.SCHEDULE, schedule);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			event.setResultMessage(e.getMessage());
-			event.setStatus(IResult.ERROR);
 			result = Result.RESULT_FAIL(txid, e);
 		} finally {
-			event.setEndTime(new Date(System.currentTimeMillis()));
-			zdbRepository.save(event);
 		}
 		return result;
 	}
@@ -136,7 +123,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 		event.setTxId(txid);
 		event.setServiceName(backupEntity.getServiceName());
 		event.setServiceType(backupEntity.getServiceType());
-		event.setEventType(EventType.Backup.name());
+		event.setOperation(RequestEvent.CREATE);
 		event.setNamespace(backupEntity.getNamespace());
 		event.setStartTime(new Date(System.currentTimeMillis()));
 		try {
@@ -187,26 +174,15 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 		ZDB META DB에서  namespace, serviceName, serviceType에 해당하는 백업 목록을 조회하여 회신합니다.
 		 */
 		Result result = null;
-		RequestEvent event = new RequestEvent();
-		event.setTxId(txid);
-		event.setServiceName(serviceName);
-		event.setServiceType(serviceType);
-		event.setEventType(EventType.BackupList.name());
-		event.setNamespace(namespace);
-		event.setStartTime(new Date(System.currentTimeMillis()));
 		
 		try {
 			log.debug("namespace : "+namespace+", serviceName : "+serviceName+", serviceType : "+serviceType);
-			event.setResultMessage("Not supperted method requested");
 			
 			List<BackupEntity> list = backupRepository.findBackupByService(serviceType, serviceName);
-			result = new Result(txid, IResult.OK).putValue(EventType.BackupList.name(), list);
-			event.setEndTime(new Date(System.currentTimeMillis()));
-			event.setStatus(IResult.OK);
+			//2018-07-25 UI backup 목록 오류 수정
+			result = new Result(txid, IResult.OK).putValue("backupList", list);
 		} catch (KubernetesClientException e) {
 			log.error(e.getMessage(), e);
-			event.setStatus(IResult.ERROR);
-			event.setEndTime(new Date(System.currentTimeMillis()));
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
 				result = new Result(txid, Result.UNAUTHORIZED, "Unauthorized", null);
 			} else {
@@ -214,11 +190,8 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			event.setStatus(IResult.ERROR);
-			event.setEndTime(new Date(System.currentTimeMillis()));
 			result = new Result(txid, Result.ERROR, e.getMessage(), e);
 		} finally {
-			zdbRepository.save(event);
 		}
 		return result;
 	}
@@ -242,7 +215,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 		event.setTxId(txid);
 		event.setServiceName(serviceName);
 		event.setServiceType(serviceType);
-		event.setEventType(EventType.DeleteBackup.name());
+		event.setOperation(RequestEvent.DELETE);
 		event.setNamespace(namespace);
 		event.setStartTime(new Date(System.currentTimeMillis()));
 		event.setEndTime(new Date(System.currentTimeMillis()));
@@ -285,7 +258,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 		event.setTxId(txId);
 		event.setServiceName(serviceName);
 		event.setServiceType(serviceType);
-		event.setEventType(EventType.Restore.name());
+		event.setOperation(RequestEvent.RESTORE);
 		event.setNamespace(namespace);
 		event.setStartTime(new Date(System.currentTimeMillis()));
 		
@@ -327,7 +300,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 			event.setTxId(txId);
 			event.setServiceName(serviceName);
 			event.setServiceType(serviceType);
-			event.setEventType(EventType.Delete.name());
+			event.setOperation(RequestEvent.DELETE);
 			event.setNamespace(namespace);
 			event.setStartTime(new Date(System.currentTimeMillis()));
 			

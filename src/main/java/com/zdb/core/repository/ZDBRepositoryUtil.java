@@ -28,13 +28,6 @@ public class ZDBRepositoryUtil {
 				re.setResultMessage(message);
 				re.setStatusMessage(statusMsg);
 				
-				if (re.getChartName() == null || re.getChartName().trim().length() == 0) {
-					re.setChartName(event.getChartName());
-				} 
-				if (re.getChartVersion() == null || re.getChartVersion().trim().length() == 0) {
-					re.setChartVersion(event.getChartVersion());
-				} 
-				
 				metaRepository.save(re);
 			} else {
 				event.setStartTime(new Date(System.currentTimeMillis()));
