@@ -727,14 +727,14 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 			
 			
 			// Set Redis slave config.
-			redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "slave");
+			if (releaseRepository.findByReleaseName(serviceName).getClusterEnabled()) {
+				redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "slave");
 
-			if (redisConnection == null) {
-				throw new Exception("Cannot connect Redis(Slave). Namespace: " + namespace + ", Service Name: " + serviceName);
+				if (redisConnection == null) {
+					throw new Exception("Cannot connect Redis(Slave). Namespace: " + namespace + ", Service Name: " + serviceName);
+				}
+				RedisConfiguration.setConfig(zdbRedisConfigRepository, redisConnection, namespace, serviceName, config); 
 			}
-			
-			RedisConfiguration.setConfig(zdbRedisConfigRepository, redisConnection, namespace, serviceName, config); 
-			
 			result = new Result(txId, IResult.OK, "Redis config update request.");			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
