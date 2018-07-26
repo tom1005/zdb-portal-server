@@ -21,7 +21,17 @@ public class RequestEvent {
 	public static final String DELETE = "DELETE";
 	public static final String READ = "READ";
 	public static final String RESTART = "RESTART";
+	public static final String POD_RESTART = "POD-RESTART";
 	public static final String RESTORE = "RESTORE";
+	public static final String CREATE_DB_USER = "CREATE-DB-USER";
+	public static final String UPDATE_DB_USER = "UPDATE-DB-USER";
+	public static final String DELETE_DB_USER = "DELETE-DB-USER";
+	public static final String CREATE_TAG = "CREATE-TAG";
+	public static final String DELETE_TAG = "DELETE-TAG";
+	public static final String SCALE_UP = "SCALE-UP";
+	public static final String SCALE_OUT = "SCALE-OUT";
+	public static final String UPDATE_CONFIG = "UPDATE-CONFIG";
+	public static final String MODIFY_PASSWORD = "MODIFY-PASSWORD";
 	
 	private String operation;
 

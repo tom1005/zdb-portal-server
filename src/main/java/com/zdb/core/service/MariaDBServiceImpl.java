@@ -34,7 +34,6 @@ import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.Mycnf;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
-import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ZDBEntity;
@@ -43,7 +42,6 @@ import com.zdb.core.domain.ZDBType;
 import com.zdb.core.repository.MycnfRepository;
 import com.zdb.core.repository.ZDBMariaDBAccountRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
-import com.zdb.core.repository.ZDBRepositoryUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.mariadb.MariaDBAccount;
 import com.zdb.mariadb.MariaDBShutDownUtil;
@@ -141,17 +139,6 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		
 	@Override
 	public Result updateScale(String txId, final ZDBEntity service) throws Exception {
-
-		// 서비스 요청 정보 기록
-		RequestEvent event = new RequestEvent();
-
-		event.setTxId(txId);
-		event.setServiceName(service.getServiceName());
-		event.setServiceType(ZDBType.MariaDB.getName());
-		event.setNamespace(service.getNamespace());
-		event.setOperation(RequestEvent.UPDATE);
-		event.setStartTime(new Date(System.currentTimeMillis()));
-
 		Result result = new Result(txId);
 
 		ReleaseManager releaseManager = null;
@@ -168,15 +155,6 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			// 서비스 명 체크
 			if (!K8SUtil.isServiceExist(service.getNamespace(), service.getServiceName())) {
 				String msg = "서비스가 존재하지 않습니다. [" + service.getServiceName() + "]";
-
-				log.error(msg);
-				event.setResultMessage(msg);
-				event.setStatus(IResult.ERROR);
-				event.setStatusMessage("Update Scale 오류");
-				event.setEndTime(new Date(System.currentTimeMillis()));
-
-				ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-
 				return new Result(txId, IResult.ERROR, msg);
 			}
 			
@@ -233,8 +211,6 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			
 			valuesBuilder.setRaw(inputJson);
 
-			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-
 			log.info(service.getServiceName() + " update start.");
 
 			final Future<UpdateReleaseResponse> releaseFuture = releaseManager.update(requestBuilder, chart);
@@ -267,37 +243,18 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 			log.info(service.getServiceName() + " update success!");
 			result = new Result(txId, IResult.RUNNING, "Update request. [" + service.getServiceName() + "]").putValue(IResult.UPDATE, release);
-
-			event.setResultMessage(service.getServiceName() + " update success.");
-			event.setStatus(IResult.RUNNING);
-			event.setEndTime(new Date(System.currentTimeMillis()));
-
-			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 
-			event.setStatus(IResult.ERROR);
-			event.setEndTime(new Date(System.currentTimeMillis()));
-
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
-				event.setResultMessage("Unauthorized");
-				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
+				return new Result(txId, Result.UNAUTHORIZED, "Unauthorized", null);
 			} else {
-				event.setResultMessage(e.getMessage());
-				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
 			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-
-			event.setResultMessage(e.getMessage());
-			event.setStatus(IResult.ERROR);
-			event.setEndTime(new Date(System.currentTimeMillis()));
-
 			return Result.RESULT_FAIL(txId, e);
 		} finally {
-			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-
 			if (releaseManager != null) {
 				try {
 					releaseManager.close();
@@ -834,10 +791,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		try {
 			// shutdown and pod delete (restart)
 			MariaDBShutDownUtil.getInstance().doShutdownAndDeleteAllPods(namespace, serviceName);
-			result = new Result(txId, IResult.OK, "Restart request. [" + serviceName + "]");
+			result = new Result(txId, IResult.OK, "Restart request.");
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, "Restart request fail. [" + serviceName + "]");
+			result = new Result(txId, IResult.ERROR, "Restart request fail. - " + e.getMessage());
 		}
 
 		return result;
@@ -846,16 +803,16 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	/* (non-Javadoc)
 	 * @see com.zdb.core.service.AbstractServiceImpl#reStartPod(java.lang.String, java.lang.String, java.lang.String, java.lang.String)
 	 */
-	public Result reStartPod(String txId, String namespace, String serviceName, String podName) throws Exception {
+	public Result rstartPod(String txId, String namespace, String serviceName, String podName) throws Exception {
 		Result result = null;
 
 		try {
 			// shutdown and pod delete (restart)
 			MariaDBShutDownUtil.getInstance().doShutdownAndDeletePod(namespace, serviceName, podName);
-			result = new Result(txId, IResult.OK, "config update request. [" + serviceName + "]");
+			result = new Result(txId, IResult.OK, "Pod restart request.");
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, "config update fail. [" + serviceName + "]");
+			result = new Result(txId, IResult.ERROR, "Pod restart fail. - " + e.getMessage());
 		}
 
 		return result;

@@ -644,7 +644,22 @@ public class K8SService {
 				return so.getPods().size() - 1;
 			} else if (ZDBType.Redis.name().toLowerCase().equals(so.getServiceType().toLowerCase())) {
 				if (!so.getReplicaSets().isEmpty()) {
-					return so.getReplicaSets().get(0).getStatus().getReplicas().intValue();
+
+					if(so.getReplicaSets().size() > 1) {
+						for (ReplicaSet replicaSet : so.getReplicaSets()) {
+							int intValue = replicaSet.getStatus().getReplicas().intValue();
+							if(intValue < 1) {
+								continue;
+							} else {
+								Integer availableReplicas = replicaSet.getStatus().getAvailableReplicas();
+								if( availableReplicas != null && availableReplicas.intValue() > 0)
+									return intValue;
+							}
+							
+						}
+					} else {
+						return so.getReplicaSets().get(0).getStatus().getReplicas().intValue();
+					}
 				}
 			}
 		} finally {

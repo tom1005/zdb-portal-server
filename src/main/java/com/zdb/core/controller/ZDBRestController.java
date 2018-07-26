@@ -2,6 +2,7 @@ package com.zdb.core.controller;
 
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -22,6 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import com.zdb.core.domain.IResult;
+import com.zdb.core.domain.ReleaseMetaData;
+import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.UserInfo;
@@ -30,6 +33,10 @@ import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBType;
 import com.zdb.core.repository.UserNamespaceRepository;
+import com.zdb.core.repository.ZDBReleaseRepository;
+import com.zdb.core.repository.ZDBRepository;
+import com.zdb.core.repository.ZDBRepositoryUtil;
+import com.zdb.core.service.K8SService;
 import com.zdb.core.service.MariaDBServiceImpl;
 import com.zdb.core.service.RedisServiceImpl;
 import com.zdb.core.service.ZDBRestService;
@@ -63,6 +70,12 @@ public class ZDBRestController {
 	@Autowired
 	@Qualifier("commonService")
 	private ZDBRestService commonService;
+	
+	@Autowired
+	protected ZDBRepository zdbRepository;
+	
+	@Autowired
+	protected ZDBReleaseRepository releaseRepository;
 	
 	@Autowired
 	private UserNamespaceRepository userNamespaceRepo;
@@ -203,8 +216,16 @@ public class ZDBRestController {
 			final UriComponentsBuilder ucBuilder) {
 
 		String txId = txId();
+		RequestEvent event = new RequestEvent();
 		try {
 			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(entity.getServiceType());
+			event.setNamespace(entity.getNamespace());
+			event.setServiceName(entity.getServiceName());
+			event.setOperation(RequestEvent.CREATE);
+			event.setUserId(userInfo.getUserId());
 			
 			// mariadb , redis, postgresql, rabbitmq, mongodb
 			ZDBType dbType = ZDBType.getType(serviceType);
@@ -235,11 +256,20 @@ public class ZDBRestController {
 				break;
 			}
 
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(e.getMessage());
+			
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}
 
 	}
@@ -260,11 +290,20 @@ public class ZDBRestController {
 			@PathVariable("serviceName") final String serviceName,
 			@RequestBody final ZDBEntity service, final UriComponentsBuilder ucBuilder) {
 		String txId = txId();
+		RequestEvent event = new RequestEvent();
 		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.SCALE_UP);
+			event.setUserId(userInfo.getUserId());	
+			
 			ZDBType dbType = ZDBType.getType(serviceType);
 
 			com.zdb.core.domain.Result result = null;
-			UserInfo userInfo = getUserInfo();
 			service.setRequestUserId(userInfo.getUserId());
 
 			switch (dbType) {
@@ -289,12 +328,22 @@ public class ZDBRestController {
 				break;
 			}
 
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
-		}
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}	
 	}
 
 	/**
@@ -313,12 +362,21 @@ public class ZDBRestController {
 			@PathVariable("serviceName") final String serviceName,
 			@RequestBody final ZDBEntity service, final UriComponentsBuilder ucBuilder) {
 		String txId = txId();
+		RequestEvent event = new RequestEvent();
 		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.SCALE_OUT);
+			event.setUserId(userInfo.getUserId());	
+			
 			ZDBType dbType = ZDBType.getType(serviceType);
 
 			com.zdb.core.domain.Result result = null;
 
-			UserInfo userInfo = getUserInfo();
 			service.setRequestUserId(userInfo.getUserId());
 			switch (dbType) {
 			case Redis:
@@ -330,11 +388,21 @@ public class ZDBRestController {
 				break;
 			}
 
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}
 	}	
 	
@@ -351,7 +419,17 @@ public class ZDBRestController {
 
 		ZDBType dbType = ZDBType.getType(serviceType);
 
+		RequestEvent event = new RequestEvent();
 		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setServiceName(serviceName);
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setOperation(RequestEvent.DELETE);
+			event.setUserId(userInfo.getUserId());
+			
 			com.zdb.core.domain.Result result = null;
 
 			switch (dbType) {
@@ -375,12 +453,20 @@ public class ZDBRestController {
 				result.setMessage("Not support service type.");
 				break;
 			}
-
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}
 	}
 
@@ -391,7 +477,17 @@ public class ZDBRestController {
 		String txId = txId();
 		ZDBType dbType = ZDBType.getType(serviceType);
 
+		RequestEvent event = new RequestEvent();
 		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setServiceType(serviceType);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.RESTART);
+			event.setNamespace(namespace);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setUserId(userInfo.getUserId());
+			
 			com.zdb.core.domain.Result result = null;
 
 			switch (dbType) {
@@ -415,12 +511,22 @@ public class ZDBRestController {
 				result.setMessage("Not support service type.");
 				break;
 			}
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			com.zdb.core.domain.Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
-		}
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}	
 	}
 
 	private String txId() {
@@ -478,7 +584,17 @@ public class ZDBRestController {
 		
 		ZDBType dbType = ZDBType.getType(serviceType);
 
+		RequestEvent event = new RequestEvent();
 		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.UPDATE_CONFIG);
+			event.setUserId(userInfo.getUserId());	
+			
 			switch (dbType) {
 			case MariaDB:
 				result = ((MariaDBServiceImpl) mariadbService).updateConfig(txId, namespace, serviceName, config);
@@ -501,12 +617,22 @@ public class ZDBRestController {
 				break;
 			}
 
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
-		}
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}	
 	}
 	
 	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/accounts", method = RequestMethod.GET)
@@ -542,14 +668,35 @@ public class ZDBRestController {
 		
 		Result result = null;
 		log.debug("accountId: {}, accountPassword: {}", accountId, account.getUserPassword());
+		RequestEvent event = new RequestEvent();
 		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.CREATE_DB_USER);
+			event.setUserId(userInfo.getUserId());
+			
 			result = ((MariaDBServiceImpl) mariadbService).createDBUser(txId, namespace, serviceName, account);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 			return new ResponseEntity<String>(result.toJson(), result.status());
 
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}
 	}
 	
@@ -565,15 +712,36 @@ public class ZDBRestController {
 		
 		Result result = null;
 		log.debug("accountId: {}, accountPassword: {}", accountId, account.getUserPassword());
+		RequestEvent event = new RequestEvent();
 		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.UPDATE_DB_USER);
+			event.setUserId(userInfo.getUserId());
+			
 			result = ((MariaDBServiceImpl) mariadbService).updateDBUser(txId(), namespace, serviceName, account);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 			return new ResponseEntity<String>(result.toJson(), result.status());
 
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
-		}
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}	
 	}
 	
 	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/accounts/{accountId}", method = RequestMethod.DELETE)
@@ -587,7 +755,17 @@ public class ZDBRestController {
 
 		Result result = null;
 		log.debug("deleting an account. accountId: {}", accountId);
+		RequestEvent event = new RequestEvent();
 		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.DELETE_DB_USER);
+			event.setUserId(userInfo.getUserId());
+			
 			// mariadb , redis, postgresql, rabbitmq, mongodb
 			ZDBType dbType = ZDBType.getType(serviceType);
 
@@ -613,56 +791,24 @@ public class ZDBRestController {
 				break;
 			}
 
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 			return new ResponseEntity<String>(result.toJson(), result.status());
 
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}
 	}
-	
-//	@RequestMapping(value = "/{serviceType}/service/{namespace}/pvc/create", method = RequestMethod.POST)
-//	public ResponseEntity<String> createPersistentVolumeClaim(@PathVariable("serviceType") String serviceType, @PathVariable("namespace") final String namespace, @RequestBody final PersistenceSpec pvcSpec,
-//			final UriComponentsBuilder ucBuilder) {
-//		
-//		String txId = txId();
-//		
-//		// mariadb , redis, postgresql, rabbitmq, mongodb
-//		ZDBType dbType = ZDBType.getType(serviceType);
-//
-//		Result result = null;
-//
-//		try {
-//			switch (dbType) {
-//			case MariaDB:
-//				result = mariadbService.createPersistentVolumeClaim(txId, namespace, null, pvcSpec);
-//				break;
-//			case Redis:
-//				result = redisService.createPersistentVolumeClaim(txId, namespace, null, pvcSpec);
-//				break;
-//			case PostgreSQL:
-//				// TODO
-//				break;
-//			case RabbitMQ:
-//				// TODO
-//				break;
-//			case MongoDB:
-//				// TODO
-//				break;
-//			default:
-//				log.error("Not support.");
-//				result.setMessage("Not support service type.");
-//				break;
-//			}
-//			return new ResponseEntity<String>(result.toJson(), result.status());
-//			
-//		} catch (Exception e) {
-//			log.error(e.getMessage(), e);
-//			result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
-//			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
-//		}
-//	}
 	
 	/**
 	 * getting a Pod/Container Logs
@@ -777,7 +923,6 @@ public class ZDBRestController {
 	@RequestMapping(value = "/service/services", method = RequestMethod.GET)
 	public ResponseEntity<String> getServices() throws Exception {
 		try {
-			long s = System.currentTimeMillis();
 			Result result = mariadbService.getAllServices();
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
@@ -980,14 +1125,27 @@ public class ZDBRestController {
 			        				     @RequestBody final Map<String, String> param) {
 		String txId = txId();
 		
+		RequestEvent event = new RequestEvent();
 		try {
-			//@RequestParam("newPassword") String newPassword
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setServiceName(serviceName);
+			event.setServiceType(serviceType);
+			event.setOperation(RequestEvent.MODIFY_PASSWORD);
+			event.setNamespace(namespace);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setUserId(userInfo.getUserId());
+			
 			String newPassword = param.get("newPassword");
 			String secretType = param.get("secretType");
 			String clusterEnabled = param.get("clusterEnabled");
 			
 			if(newPassword == null || newPassword.isEmpty()) {
 				Result result = new Result(null, IResult.ERROR, "새로운 password 입력하세요.");
+				
+				event.setStatus(result.getCode());
+				event.setResultMessage(result.getMessage());
+				
 				return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 			}
 			
@@ -1012,15 +1170,25 @@ public class ZDBRestController {
 		    	break;
 		    }
 		    
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
 			
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
 			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
-		}
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}	
 	}
+	
 	
 	/**
 	 * Retrieve All Abnormal Persistent Volume Claims
@@ -1061,13 +1229,24 @@ public class ZDBRestController {
 	}
 	
 	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/pod/{podName}/restart", method = RequestMethod.GET)
-	public ResponseEntity<String> reStartPod(@PathVariable("namespace") final String namespace, 
+	public ResponseEntity<String> restartPod(@PathVariable("namespace") final String namespace, 
 										     @PathVariable("serviceType") final String serviceType, 
 										     @PathVariable("serviceName") final String serviceName,
 											 @PathVariable("podName") final String podName) {
 		String txId = txId();
 
+		RequestEvent event = new RequestEvent();
 		try {
+
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setServiceName(serviceName);
+			event.setServiceType(serviceType);
+			event.setOperation(RequestEvent.POD_RESTART);
+			event.setNamespace(namespace);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setUserId(userInfo.getUserId());
+			
 			com.zdb.core.domain.Result result = null;
 			
 			// mariadb , redis, postgresql, rabbitmq, mongodb
@@ -1076,10 +1255,10 @@ public class ZDBRestController {
 		    
 		    switch (dbType) {
 		    case MariaDB: 
-		    	result = mariadbService.reStartPod(txId, namespace, serviceName, podName);
+		    	result = mariadbService.restartPod(txId, namespace, serviceName, podName);
 		    	break;
 		    case Redis:
-		    	result = redisService.reStartPod(txId, namespace, serviceName, podName);
+		    	result = redisService.restartPod(txId, namespace, serviceName, podName);
 		    	break;
 		    default:
 		    	log.error("Not support.");
@@ -1087,50 +1266,24 @@ public class ZDBRestController {
 		    	break;
 		    }
 
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
-		}
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}	
 
 	}
-	
-	/**
-	 * Getting result of Service alive check
-	 * 
-	 * @return ResponseEntity<List<Service>>
-	 */
-//	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/checkAlive", method = RequestMethod.GET)
-//	public ResponseEntity<String> getServiceCheckAlive(@PathVariable("namespace") final String namespace, 
-//			        				     @PathVariable("serviceType") final String serviceType, 
-//			        				     @PathVariable("serviceName") final String serviceName ) {
-//		try {
-//		    ZDBType dbType = ZDBType.getType(serviceType);
-//			
-//		    Result result = null;
-//		    
-//		    switch (dbType) {
-//		    case MariaDB: 
-//		    	//TO-DO
-//		    	break;
-//		    case Redis:
-//		    	result = redisService.getServiceCheckAlive(namespace, serviceType, serviceName);
-//		    	break;
-//		    default:
-//		    	log.error("Not support.");
-//		    	result.setMessage("Not support service type.");
-//		    	break;
-//		    }
-//			
-//		    return new ResponseEntity<String>(result.toJson(), result.status());
-//		} catch (Exception e) {
-//			log.error(e.getMessage(), e);
-//
-//			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
-//			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
-//		}
-//	}	
 	
 	/**
 	 * Update MariaDB My.cnf
@@ -1143,32 +1296,76 @@ public class ZDBRestController {
 			        				     @RequestBody final Map<String, String> config) {
 		String txId = txId();
 		
+		RequestEvent event = new RequestEvent();
 		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType("mariadb");
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.CREATE);
+			event.setUserId(userInfo.getUserId());
 			
 			Result result = ((MariaDBServiceImpl)mariadbService).updateConfig(txId, namespace, serviceName, config);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
 			
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
 			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
-		}
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}	
 	}
 	
 	@RequestMapping(value = "/{namespace}/tag/{serviceName}", method = RequestMethod.POST)
 	public ResponseEntity<String> createTag(@PathVariable("namespace") final String namespace, 
 			        				     @PathVariable("serviceName") final String serviceName, 
 			        				     @RequestBody final Tag tag) {
+		RequestEvent event = new RequestEvent();
 		try {
+			UserInfo userInfo = getUserInfo();
+			
+			ReleaseMetaData releaseName = releaseRepository.findByReleaseName(serviceName);
+			if(releaseName != null) {
+				event.setServiceType(releaseName.getApp());
+			}
+			
+			event.setTxId(txId());
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.CREATE_TAG);
+			event.setUserId(userInfo.getUserId());
+			
 			Result result = mariadbService.createTag(tag);
+
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
 			
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
 			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}
 	}
 	
@@ -1178,15 +1375,38 @@ public class ZDBRestController {
 			        				     @RequestBody final Tag tag) {
 		String txId = txId();
 		
+		RequestEvent event = new RequestEvent();
 		try {
+			UserInfo userInfo = getUserInfo();
+			
+			ReleaseMetaData releaseName = releaseRepository.findByReleaseName(serviceName);
+			if(releaseName != null) {
+				event.setServiceType(releaseName.getApp());
+			}
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.DELETE_TAG);
+			event.setUserId(userInfo.getUserId());	
 			Result result = mariadbService.deleteTag(tag);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
 			
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
 			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}
 	}
 	

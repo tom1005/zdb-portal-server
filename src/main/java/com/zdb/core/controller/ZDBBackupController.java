@@ -92,7 +92,7 @@ public class ZDBBackupController {
 			log.error(e.getMessage(), e);
 			if (e instanceof BackupException) {
 				result = new Result(txId, IResult.ERROR, e.getMessage());
-				//result.setCode(((BackupException)e).getStatusCode());
+				result.setCode(((BackupException)e).getStatusCode());
 			} else {
 				result = new Result(txId, IResult.ERROR, "").putValue("error", e);
 				result.setCode(HttpStatus.EXPECTATION_FAILED.value());
@@ -428,8 +428,7 @@ public class ZDBBackupController {
 				if( !(Integer.parseInt(schedule.getStartTime().substring(0, 2)) > 18 
 						|| Integer.parseInt(schedule.getStartTime().substring(0, 2)) < 8) ) {
 					if (log.isInfoEnabled()) {
-						log.info("Availble backup-schedule startTime : 18:00 ~ 07:00 / input time(" + schedule.getStartTime() + ")");
-						sb.append("Availble backup-schedule startTime : 18:00 ~ 07:00 / "+schedule.getStartTime());
+						log.info("Availble schedule startTime : 18:00 ~07:00 / input time(" + schedule.getStartTime() + ")");
 					}
 					result = false;
 				}

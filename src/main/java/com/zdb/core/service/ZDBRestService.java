@@ -151,7 +151,7 @@ public interface ZDBRestService {
 
 	Result getAbnormalPersistentVolumes() throws Exception;
 
-	Result reStartPod(String txId, String namespace, String serviceName, String podName) throws Exception;
+	Result restartPod(String txId, String namespace, String serviceName, String podName) throws Exception;
 
 	Result getServiceCheckAlive(String namespace, String serviceType, String serviceName) throws Exception;
 

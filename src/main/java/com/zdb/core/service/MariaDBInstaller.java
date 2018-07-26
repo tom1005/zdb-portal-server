@@ -115,6 +115,8 @@ public class MariaDBInstaller implements ZDBInstaller {
 
 		ReleaseManager releaseManager = null;
 		
+		RequestEvent event = getRequestEvent(exchange);
+		
 		try{ 
 //			chartUrl = "file:///Users/a06919/git/charts/stable/mariadb/mariadb-4.2.0.tgz";
 			/////////////////////////
@@ -125,14 +127,6 @@ public class MariaDBInstaller implements ZDBInstaller {
 			try (final URLChartLoader chartLoader = new URLChartLoader()) {
 				chart = chartLoader.load(url);
 			}
-
-			RequestEvent event = getRequestEvent(exchange);
-			
-			event.setOperation(KubernetesOperations.CREATE_DEPLOYMENT);
-			event.setResultMessage("");
-			event.setStatusMessage("서비스명 중복 체크.");
-			
-			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 			
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
 			final Tiller tiller = new Tiller(client);
@@ -360,13 +354,16 @@ public class MariaDBInstaller implements ZDBInstaller {
 							schedule.setUseYn("Y");
 							backupProvider.saveSchedule(exchange.getProperty(Exchange.TXID, String.class), schedule);
 						}
+						
+						event.setStatus(IResult.OK);
+						event.setResultMessage("Installation successful.");
 					} else {
 						log.error("{} > {} > {} 권한 변경 실패!", service.getNamespace(), service.getServiceName(), account.getUserId());
 					}
 					
 				} else {
 					event.setStatus(IResult.ERROR);
-					event.setResultMessage("DB 생성 오류");
+					event.setResultMessage("Installation failed.");
 					
 					ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 				}
@@ -375,29 +372,22 @@ public class MariaDBInstaller implements ZDBInstaller {
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 
-			RequestEvent event = getRequestEvent(exchange);
 			event.setStatus(IResult.ERROR);
 			event.setEndTime(new Date(System.currentTimeMillis()));
 
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
 				event.setResultMessage("Unauthorized");
 			} else {
-				event.setResultMessage(e.getMessage());
+				event.setResultMessage("Resource not found. ["+e.getMessage() +"]");
 			}
-			
-			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			RequestEvent event = getRequestEvent(exchange);
-			
 			event.setResultMessage(e.getMessage());
 			event.setStatus(IResult.ERROR);
 			event.setEndTime(new Date(System.currentTimeMillis()));
-			
+		} finally {
 			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-			
 		}
 
 	}
@@ -515,22 +505,6 @@ public class MariaDBInstaller implements ZDBInstaller {
 					releaseRepository.save(releaseMeta);
 				}
 
-//				{ // StatefulSet 삭제
-//					List<StatefulSet> statefulSets = serviceOverview.getStatefulSets();
-//
-//					for (StatefulSet sfs : statefulSets) {
-//						client.inNamespace(namespace).apps().statefulSets().withName(sfs.getMetadata().getName()).delete();
-//					}
-//				}
-//				
-//				{ // Pod 삭제
-//					List<Pod> pods = serviceOverview.getPods();
-//
-//					for (Pod pod : pods) {
-//						client.inNamespace(namespace).pods().withName(pod.getMetadata().getName()).delete();
-//					}
-//				}
-//				
 				{ // pvc 삭제
 					List<PersistentVolumeClaim> persistentVolumeClaims = K8SUtil.getPersistentVolumeClaims(namespace, serviceName);
 
@@ -538,15 +512,6 @@ public class MariaDBInstaller implements ZDBInstaller {
 						client.inNamespace(namespace).persistentVolumeClaims().withName(pvc.getMetadata().getName()).delete();
 					}
 				}
-//
-//				{
-//					// Expose Service 삭제.
-//					List<io.fabric8.kubernetes.api.model.Service> serviceList = serviceOverview.getServices();
-//					for (io.fabric8.kubernetes.api.model.Service svc : serviceList) {
-//						boolean deleteService = K8SUtil.doDeleteService(namespace, svc.getMetadata().getName());
-//						log.info("{} delete. {}", svc.getMetadata().getName(), deleteService);
-//					}
-//				}
 				{ // account 삭제
 					MariaDBAccount.deleteAccounts(accountRepository, namespace, serviceName);
 				}
@@ -563,6 +528,9 @@ public class MariaDBInstaller implements ZDBInstaller {
 				
 				// Backup Resource 삭제 요청
 				backupProvider.removeServiceResource(txId, namespace, ZDBType.MariaDB.getName(), serviceName);
+				
+				event.setResultMessage("Successfully deleted.");
+				event.setStatus(IResult.OK);
 			} else {
 				String msg = "설치된 서비스가 존재하지 않습니다.";
 				event.setResultMessage(msg);

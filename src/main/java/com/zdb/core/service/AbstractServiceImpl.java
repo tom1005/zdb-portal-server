@@ -204,24 +204,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	
 	@Override
 	public Result createDeployment(String txId, ZDBEntity service, UserInfo userInfo) throws Exception {
-		RequestEvent event = new RequestEvent();
-
-		event.setTxId(txId);
-		event.setStartTime(new Date(System.currentTimeMillis()));
-		event.setServiceType(service.getServiceType());
-		event.setNamespace(service.getNamespace());
-		event.setServiceName(service.getServiceName());
-		event.setOperation(RequestEvent.CREATE);
-		event.setUserId(userInfo.getUserId());
-		
 		Result requestCheck = isDeploymentAvaliable();
 		if(!requestCheck.isOK()) {
-			event.setStatusMessage("서비스 생성 요청 한도 초과");
-			event.setResultMessage(requestCheck.getMessage());
-			event.setEndTime(new Date(System.currentTimeMillis()));
-			
-			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-			
 			return requestCheck;
 		} else {
 			
@@ -261,7 +245,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				return new Result(txId, IResult.ERROR, availableResource.getMessage());
 			}
 			
-			log.error("서비스 명 중복 체크 : " + (System.currentTimeMillis() - s));
 			// 설치 요청 정보 저장
 			if(releaseMeta == null) {
 				releaseMeta = new ReleaseMetaData();
@@ -293,16 +276,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 
 			// install request
 			deploymentRequest(exchange);
-			try {
 
-			} finally {
-				event.setResultMessage("[" + service.getServiceName() + "] 설치 요청 성공.");
-				event.setEndTime(new Date(System.currentTimeMillis()));
-
-				ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-			}
-
-			return new Result(txId, IResult.OK, "[" + service.getServiceName() + "] 설치 요청 성공.");
+			return new Result(txId, IResult.OK, "Installation request.");
 		}
 		
 	}
@@ -310,49 +285,23 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	@Override
 	public synchronized Result deleteServiceInstance(String txId, String namespace, String serviceType, String serviceName) throws Exception {
 
-		// 서비스 요청 정보 기록
-		RequestEvent event = new RequestEvent();
-
-		event.setTxId(txId);
-		event.setServiceName(serviceName);
-		event.setServiceType(serviceType);
-		event.setNamespace(namespace);
-		event.setStartTime(new Date(System.currentTimeMillis()));
-		event.setOperation(RequestEvent.DELETE);
-		
-		
 		Result requestCheck = isDeploymentAvaliable();
-		if(!requestCheck.isOK()) {
-			event.setStatusMessage("서비스 생성 요청 한도 초과");
-			event.setResultMessage(requestCheck.getMessage());
-			event.setEndTime(new Date(System.currentTimeMillis()));
-			
-			log.warn(toPrettyJson(event));
-			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-			
+		if (!requestCheck.isOK()) {
 			return requestCheck;
-		} else {
-			
-			Exchange exchange = new DefaultExchange();
-			exchange.setProperty(Exchange.TXID, txId);
-			exchange.setProperty(Exchange.NAMESPACE, namespace);
-			exchange.setProperty(Exchange.SERVICE_NAME, serviceName);
-			exchange.setProperty(Exchange.SERVICE_TYPE, serviceType);
-			exchange.setProperty(Exchange.CHART_URL, chartUrl);
-			exchange.setProperty(Exchange.META_REPOSITORY, zdbRepository);
-			exchange.setProperty(Exchange.OPERTAION, EventType.Delete);
-			
-		    unInstallRequest(exchange);
-
-			event.setResultMessage("[" + serviceName + "] 삭제 요청 성공.");
-			event.setEndTime(new Date(System.currentTimeMillis()));
-			
-			log.info(toPrettyJson(event));
-			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-			
-			return new Result(txId, IResult.OK, "[" + serviceName + "] 삭제 요청 성공.");
 		}
-		
+
+		Exchange exchange = new DefaultExchange();
+		exchange.setProperty(Exchange.TXID, txId);
+		exchange.setProperty(Exchange.NAMESPACE, namespace);
+		exchange.setProperty(Exchange.SERVICE_NAME, serviceName);
+		exchange.setProperty(Exchange.SERVICE_TYPE, serviceType);
+		exchange.setProperty(Exchange.CHART_URL, chartUrl);
+		exchange.setProperty(Exchange.OPERTAION, EventType.Delete);
+		exchange.setProperty(Exchange.META_REPOSITORY, zdbRepository);
+
+		unInstallRequest(exchange);
+
+		return new Result(txId, IResult.OK, "Delete request.");
 	}
 
 	/* (non-Javadoc)
@@ -395,23 +344,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		return new Result("", Result.OK).putValue("deployments", "");
 	}
 	
-//	/**
-//	 * @param eventType
-//	 * @param serviceName
-//	 * @return
-//	 */
-//	public RequestEvent getRequestEvent(EventType eventType, String serviceName) {
-//		Iterable<RequestEvent> findAll = zdbRepository.findAll();
-//
-//		for (RequestEvent event : findAll) {
-//			if (event.getEventType() == eventType.name() && event.getServiceName().equals(serviceName)) {
-//				return event;
-//			}
-//		}
-//
-//		return null;
-//	}
-	
 	public String toPrettyJson(Object obj) {
 		return new GsonBuilder().setPrettyPrinting().create().toJson(obj);
 	}
@@ -436,13 +368,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 					
 					EventType operation = exchange.getProperty(Exchange.OPERTAION, EventType.class);
 					String serviceType = exchange.getProperty(Exchange.SERVICE_TYPE, String.class);
-					
-//					exchange.setProperty(Exchange.TXID, txId);
-//					exchange.setProperty(Exchange.NAMESPACE, namespace);
-//					exchange.setProperty(Exchange.SERVICE_NAME, serviceName);
-//					exchange.setProperty(Exchange.CHART_URL, chartUrl);
-//					exchange.setProperty(Exchange.META_REPOSITORY, metaRepository);
-//					exchange.setProperty(Exchange.OPERTAION, EventType.Delete.name());
 					
 					if(operation != null) {
 						if (ZDBType.MariaDB.name().equalsIgnoreCase(serviceType)) {
@@ -475,29 +400,14 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 							}
 						
 						} else {
-							
-							String txId = exchange.getProperty(Exchange.TXID, String.class);
-							ZDBRepository metaRepository = exchange.getProperty(Exchange.META_REPOSITORY, ZDBRepository.class);
-							
 							String msg = "지원하지 않는 서비스 타입 입니다. [" + property.getServiceType() + "]";
-							
-							RequestEvent event = metaRepository.findByTxId(txId);
-							if(event != null) {
-								event.setStatus(IResult.ERROR);
-								event.setResultMessage(msg);
-								event.setStatusMessage("생성오류");
-							} else {
-								
-							}
-							ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-							
-							log.warn(msg);
+							log.error(msg);
 						}
 					} else {
 						log.error("비정상 요청...");
 					}
 
-				} catch (InterruptedException e) {
+				} catch (Exception e) {
 					log.error(e.getMessage(), e);
 				}
 			}
@@ -996,9 +906,9 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		} else if (m.startsWith("Started container")) {
 			return "컨테이너 생성중...";
 		} else if (m.startsWith("MountVolume.SetUp succeeded")) {
-			return "볼륨 마운트 성공";
+			return "볼륨 마운트 완료";
 		} else if (m.startsWith("Created container")) {
-			return "컨테이너 생성 성공";
+			return "컨테이너 생성 완료";
 		} else if (m.startsWith("Container image")) {
 			return "서비스 준비중...";
 		} else if (m.startsWith("pulling image")) {
@@ -1192,76 +1102,38 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	 */
 	@Override
 	public Result restartService(String txId, ZDBType dbType, String namespace, String serviceName) {
-
-		// 서비스 요청 정보 기록
-		RequestEvent event = new RequestEvent();
-		event.setTxId(txId);
-		event.setServiceName(serviceName);
-		event.setOperation(RequestEvent.RESTART);
-		event.setNamespace(namespace);
-		event.setStartTime(new Date(System.currentTimeMillis()));
-
 		try {
-			
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
 
-			Iterable<ReleaseMetaData> releaseList = releaseRepository.findAll();
-			
-			String chartName = null;
+			ReleaseMetaData findByReleaseName = releaseRepository.findByReleaseName(serviceName);
 
-			for (ReleaseMetaData release : releaseList) {
-				if (namespace.equals(release.getNamespace()) && serviceName.equals(release.getReleaseName())) {
-					chartName = release.getApp();
-					break;
-				}
+			if (findByReleaseName == null) {
+				return new Result(txId, IResult.ERROR, "설치된 서비스가 존재하지 않습니다.");
 			}
-			
-			if (chartName == null) {
-				String msg = "설치된 서비스가 존재하지 않습니다.";
-				event.setResultMessage(msg);
-				event.setStatusMessage("서비스 삭제 실패");
-				event.setStatus(IResult.ERROR);
-				event.setEndTime(new Date(System.currentTimeMillis()));
-				ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 
-				return new Result(txId, IResult.ERROR, msg);
-			}
-			
-			List<Pod> pods = K8SUtil.getPods(namespace, serviceName);
-			
+			List<Pod> pods = k8sService.getPods(namespace, serviceName);
+
 			for (Pod pod : pods) {
 				PodResource<Pod, DoneablePod> podResource = client.inNamespace(namespace).pods().withName(pod.getMetadata().getName());
 				if (podResource != null) {
 					podResource.delete();
 				}
 			}
-			
-			return new Result(txId, IResult.OK, "Pod 재시작 요청.");
 
+			return new Result(txId, IResult.OK, "Service restart request.");
 
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 
-			event.setStatus(IResult.ERROR);
-			event.setEndTime(new Date(System.currentTimeMillis()));
-
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
-				event.setResultMessage("Unauthorized");
-				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
+				return new Result(txId, Result.UNAUTHORIZED, "Unauthorized", null);
 			} else {
-				event.setResultMessage(e.getMessage());
-				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
 			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			event.setResultMessage(e.getMessage());
-			event.setStatus(IResult.ERROR);
-			event.setEndTime(new Date(System.currentTimeMillis()));
-
 			return Result.RESULT_FAIL(txId, e);
-		} finally {
-			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}
 	}	
 	
@@ -1314,19 +1186,9 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	/*
 	 * (non-Javadoc)
 	 * 
-	 * @see com.zdb.core.service.ZDBRestService#restartService(java.lang.String, java.lang.String)
 	 */
 	@Override
-	public Result reStartPod(String txId, String namespace, String serviceName, String podName) throws Exception {
-
-		// 서비스 요청 정보 기록
-		RequestEvent event = new RequestEvent();
-		event.setTxId(txId);
-		event.setServiceName(serviceName);
-		event.setOperation(RequestEvent.RESTART);
-		event.setNamespace(namespace);
-		event.setStartTime(new Date(System.currentTimeMillis()));
-
+	public Result restartPod(String txId, String namespace, String serviceName, String podName) throws Exception {
 		try {
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
 
@@ -1336,39 +1198,21 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				podResource.delete();
 			} else {
 				String msg = "삭제 대상 POD이 존재하지 않습니다.";
-				event.setResultMessage(msg);
-				event.setStatusMessage("POD 삭제 실패");
-				event.setStatus(IResult.ERROR);
-				event.setEndTime(new Date(System.currentTimeMillis()));
-				ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-
 				return new Result(txId, IResult.ERROR, msg);				
 			}
 			
-			return new Result(txId, IResult.OK, "Pod 재시작 요청.");
+			return new Result(txId, IResult.OK, "Pod restart reqeust.");
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 
-			event.setStatus(IResult.ERROR);
-			event.setEndTime(new Date(System.currentTimeMillis()));
-
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
-				event.setResultMessage("Unauthorized");
-				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
+				return new Result(txId, Result.UNAUTHORIZED, "Unauthorized", null);
 			} else {
-				event.setResultMessage(e.getMessage());
-				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
 			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-
-			event.setResultMessage(e.getMessage());
-			event.setStatus(IResult.ERROR);
-			event.setEndTime(new Date(System.currentTimeMillis()));
-
 			return Result.RESULT_FAIL(txId, e);
-		} finally {
-			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}
 	}		
 	
@@ -1379,15 +1223,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	 */
 	@Override
 	public Result setNewPassword(String txId, String namespace, String serviceType, String serviceName, String newPassword, String clusterEnabled) throws Exception {
-
-		// 서비스 요청 정보 기록
-		RequestEvent event = new RequestEvent();
-		event.setTxId(txId);
-		event.setServiceName(serviceName);
-		event.setOperation(RequestEvent.UPDATE);
-		event.setNamespace(namespace);
-		event.setStartTime(new Date(System.currentTimeMillis()));
-
 		try {
 			String changedPassword = new String();
 			
@@ -1427,30 +1262,18 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			Map<String, String> changeResult = new HashMap<String, String>();
 			changeResult.put("password", changedPassword);
 			
-			return new Result("", Result.OK).putValue(IResult.CHANGE_PASSWORD, changeResult);
+			return new Result(txId, Result.OK, "Password change successful.").putValue(IResult.CHANGE_PASSWORD, changeResult);
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 
-			event.setStatus(IResult.ERROR);
-			event.setEndTime(new Date(System.currentTimeMillis()));
-
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
-				event.setResultMessage("Unauthorized");
-				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
+				return new Result(txId, Result.UNAUTHORIZED, "Unauthorized", null);
 			} else {
-				event.setResultMessage(e.getMessage());
-				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
 			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-
-			event.setResultMessage(e.getMessage());
-			event.setStatus(IResult.ERROR);
-			event.setEndTime(new Date(System.currentTimeMillis()));
-
 			return Result.RESULT_FAIL(txId, e);
-		} finally {
-			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}
 	}			
 
@@ -1460,15 +1283,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	
 	@Override
 	public Result createTag(Tag tag) throws Exception {
-		RequestEvent event = new RequestEvent();
-
-		event.setTxId(txId());
-		event.setServiceName(tag.getReleaseName());
-		event.setServiceType("");
-		event.setNamespace(tag.getNamespace());
-		event.setStartTime(new Date(System.currentTimeMillis()));
-		event.setOperation(RequestEvent.CREATE);
-		
 		if( tag != null) {
 			Tag findTag = tagRepository.findByNamespaceAndReleaseNameAndTag(tag.getNamespace(), tag.getReleaseName(), tag.getTagName());
 			if(findTag == null) {

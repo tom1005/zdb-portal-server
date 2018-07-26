@@ -98,6 +98,7 @@ public class RedisInstaller implements ZDBInstaller {
 		ZDBRepository metaRepository = exchange.getProperty(Exchange.META_REPOSITORY, ZDBRepository.class);
 
 		ReleaseManager releaseManager = null; 
+		RequestEvent event = getRequestEvent(exchange);
 		
 		try{ 
 			// chart 정보 로딩
@@ -108,13 +109,6 @@ public class RedisInstaller implements ZDBInstaller {
 				chart = chartLoader.load(url);
 			}
 
-			RequestEvent event = getRequestEvent(exchange);
-			
-			event.setOperation(RequestEvent.CREATE);
-			event.setResultMessage("");
-			event.setStatusMessage("서비스명 중복 체크.");
-			
-			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 			
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
 			final Tiller tiller = new Tiller(client);
@@ -482,9 +476,12 @@ public class RedisInstaller implements ZDBInstaller {
 							backupProvider.saveSchedule(exchange.getProperty(Exchange.TXID, String.class), schedule);
 						}
 					}
+					
+					event.setStatus(IResult.OK);
+					event.setResultMessage("Installation successful.");
 				} else {
 					event.setStatus(IResult.ERROR);
-					event.setResultMessage("Redis Instance 생성 오류");
+					event.setResultMessage("Installation failed.");
 					
 					ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 				}
@@ -492,30 +489,24 @@ public class RedisInstaller implements ZDBInstaller {
 			
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
-
-			RequestEvent event = getRequestEvent(exchange);
 			event.setStatus(IResult.ERROR);
 			event.setEndTime(new Date(System.currentTimeMillis()));
 
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
 				event.setResultMessage("Unauthorized");
 			} else {
-				event.setResultMessage(e.getMessage());
+				event.setResultMessage("Resource not found. ["+e.getMessage() +"]");
 			}
-			
-			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-
-			RequestEvent event = getRequestEvent(exchange);
 			
 			event.setResultMessage(e.getMessage());
 			event.setStatus(IResult.ERROR);
 			event.setEndTime(new Date(System.currentTimeMillis()));
 			
-			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 			
+		} finally {
+			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 		}
 
 	}
@@ -567,26 +558,15 @@ public class RedisInstaller implements ZDBInstaller {
 			final Tiller tiller = new Tiller(client);
 			releaseManager = new ReleaseManager(tiller);
 
-			Iterable<ReleaseMetaData> releaseList = releaseRepository.findAll();
+			ReleaseMetaData releaseName = releaseRepository.findByReleaseName(serviceName);
 			
-			String chartName = null;
-
-			for (ReleaseMetaData release : releaseList) {
-				if (namespace.equals(release.getNamespace()) && serviceName.equals(release.getReleaseName())) {
-					chartName = release.getApp();
-					break;
-				}
-			}
-
-			if (chartName == null) {
+			if (releaseName == null) {
 				String msg = "설치된 서비스가 존재하지 않습니다.";
 				event.setResultMessage(msg);
 				event.setStatusMessage("서비스 삭제 실패");
 				event.setStatus(IResult.ERROR);
 				event.setEndTime(new Date(System.currentTimeMillis()));
 				ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-
-//				return new Result(txId, IResult.ERROR, msg);
 			    return;
 			}
 
@@ -595,7 +575,7 @@ public class RedisInstaller implements ZDBInstaller {
 			uninstallRequestBuilder.setName(serviceName); // set releaseName
 			uninstallRequestBuilder.setPurge(true); // --purge
 
-			ReleaseMetaData findByReleaseName = releaseRepository.findByReleaseName(serviceName);
+			ReleaseMetaData findByReleaseName = releaseName;
 			if (findByReleaseName != null) {
 				findByReleaseName.setStatus("DELETING");
 				findByReleaseName.setUpdateTime(new Date(System.currentTimeMillis()));
@@ -626,7 +606,7 @@ public class RedisInstaller implements ZDBInstaller {
 
 				log.info(new Gson().toJson(releaseMeta));
 
-				findByReleaseName = releaseRepository.findByReleaseName(serviceName);
+				findByReleaseName = releaseName;
 				if (findByReleaseName != null) {
 					findByReleaseName.setStatus(release.getInfo().getStatus().getCode().name());
 					findByReleaseName.setUpdateTime(new Date(System.currentTimeMillis()));
@@ -653,6 +633,10 @@ public class RedisInstaller implements ZDBInstaller {
 				
 				// backup resource 삭제 요청
 				backupProvider.removeServiceResource(txId, namespace, ZDBType.Redis.getName(), serviceName);
+				
+				event.setStatus(IResult.OK);
+				event.setResultMessage("삭제 완료.");
+				event.setUpdateTime(new Date(System.currentTimeMillis()));
 			} else {
 				String msg = "설치된 서비스가 존재하지 않습니다.";
 				event.setResultMessage(msg);
@@ -676,18 +660,12 @@ public class RedisInstaller implements ZDBInstaller {
 			} else {
 				event.setResultMessage(e.getMessage());
 			}
-			
-			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
 			event.setResultMessage(e.getMessage());
 			event.setStatus(IResult.ERROR);
 			event.setEndTime(new Date(System.currentTimeMillis()));
-			
-			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-			
 		} finally {
 			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 			

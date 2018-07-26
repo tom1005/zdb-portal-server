@@ -28,15 +28,12 @@ import com.zdb.core.domain.ConnectionInfo;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
-import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBRedisConfig;
-import com.zdb.core.domain.ZDBType;
 import com.zdb.core.repository.ZDBRedisConfigRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
-import com.zdb.core.repository.ZDBRepositoryUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.NamespaceResourceChecker;
 import com.zdb.redis.RedisConfiguration;
@@ -132,17 +129,6 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 
 	@Override
 	public Result updateScale(String txId, final ZDBEntity service) throws Exception {
-
-		// 서비스 요청 정보 기록
-		RequestEvent event = new RequestEvent();
-
-		event.setTxId(txId);
-		event.setServiceName(service.getServiceName());
-		event.setServiceType(ZDBType.Redis.getName());
-		event.setNamespace(service.getNamespace());
-		event.setOperation(RequestEvent.UPDATE);
-		event.setStartTime(new Date(System.currentTimeMillis()));
-
 		Result result = new Result(txId);
 
 		ReleaseManager releaseManager = null;
@@ -154,21 +140,11 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 				chart = chartLoader.load(url);
 			}
 
-			String chartVersion = chart.getMetadata().getVersion();
+			ReleaseMetaData releaseName = releaseRepository.findByReleaseName(service.getServiceName());
 
 			// 서비스 명 체크
-			if (!K8SUtil.isServiceExist(service.getNamespace(), service.getServiceName())) {
+			if (releaseName == null) {
 				String msg = "서비스가 존재하지 않습니다. [" + service.getServiceName() + "]";
-
-				log.error(msg);
-
-				event.setResultMessage(msg);
-				event.setStatus(IResult.ERROR);
-				event.setStatusMessage("Update Scale 오류");
-				event.setEndTime(new Date(System.currentTimeMillis()));
-
-				ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-
 				return new Result(txId, IResult.ERROR, msg);
 			}
 
@@ -272,15 +248,13 @@ public class RedisServiceImpl extends AbstractServiceImpl {
  
 			valuesBuilder.setRaw(valueYaml);
 
-			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-
 			log.info(service.getServiceName() + " update start.");
 
 			final Future<UpdateReleaseResponse> releaseFuture = releaseManager.update(requestBuilder, chart);
 			final Release release = releaseFuture.get().getRelease();
 
 			if (release != null) {
-				ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(service.getServiceName());
+				ReleaseMetaData releaseMeta = releaseName;
 				if(releaseMeta == null) {
 					releaseMeta = new ReleaseMetaData();
 				}
@@ -306,38 +280,19 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 			}
 
 			log.info(service.getServiceName() + " update success!");
-			result = new Result(txId, IResult.RUNNING, "Update request. [" + service.getServiceName() + "]").putValue(IResult.UPDATE, release);
-
-			event.setResultMessage(service.getServiceName() + " update success.");
-			event.setStatus(IResult.RUNNING);
-			event.setEndTime(new Date(System.currentTimeMillis()));
-
-			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-
+			result = new Result(txId, IResult.OK, "scale-up request.").putValue(IResult.UPDATE, release);
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 
-			event.setStatus(IResult.ERROR);
-			event.setEndTime(new Date(System.currentTimeMillis()));
-
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
-				event.setResultMessage("Unauthorized");
-				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
+				return new Result(txId, Result.UNAUTHORIZED, "Unauthorized", null);
 			} else {
-				event.setResultMessage(e.getMessage());
-				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
 			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-
-			event.setResultMessage(e.getMessage());
-			event.setStatus(IResult.ERROR);
-			event.setEndTime(new Date(System.currentTimeMillis()));
-
 			return Result.RESULT_FAIL(txId, e);
 		} finally {
-			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-
 			if (releaseManager != null) {
 				try {
 					releaseManager.close();
@@ -350,183 +305,17 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 		return result;
 	}
 
-//	@Override
-//	public Result updateScaleOut(String txId, final ZDBEntity service) throws Exception {
-//		// 서비스 요청 정보 기록
-//		RequestEvent event = new RequestEvent();
-//
-//		event.setTxId(txId);
-//		event.setServiceName(service.getServiceName());
-//		event.setServiceType(service.getServiceType());
-//		event.setNamespace(service.getNamespace());
-//		event.setEventType(EventType.Update.name());
-//		event.setOperation(KubernetesOperations.SCALE_REPLICATION_CONTROLLER_OPERATION);
-//		event.setStartTime(new Date(System.currentTimeMillis()));
-//
-//		Result result = new Result(txId);
-//
-//		ReleaseManager releaseManager = null;
-//		try {
-//			final URI uri = URI.create(chartUrl);
-//			final URL url = uri.toURL();
-//			Chart.Builder chart = null;
-//			try (final URLChartLoader chartLoader = new URLChartLoader()) {
-//				chart = chartLoader.load(url);
-//			}
-//
-//			String chartVersion = chart.getMetadata().getVersion();
-//
-//			// 서비스 명 체크
-//			if (!K8SUtil.isServiceExist(service.getNamespace(), service.getServiceName())) {
-//				String msg = "서비스가 존재하지 않습니다. [" + service.getServiceName() + "]";
-//
-//				log.error(msg);
-//
-//				event.setChartVersion(chartVersion);
-//				event.setResultMessage(msg);
-//				event.setStatus(IResult.ERROR);
-//				event.setStatusMessage("Update Scale 오류");
-//				event.setEndTime(new Date(System.currentTimeMillis()));
-//
-//				ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-//
-//				return new Result(txId, IResult.ERROR, msg);
-//			}
-//
-//			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
-//
-//			final Tiller tiller = new Tiller(client);
-//			releaseManager = new ReleaseManager(tiller);
-//
-//			final UpdateReleaseRequest.Builder requestBuilder = UpdateReleaseRequest.newBuilder();
-//			requestBuilder.setTimeout(300L);
-//			requestBuilder.setName(service.getServiceName());
-//			requestBuilder.setWait(false);
-//
-//			requestBuilder.setReuseValues(true);
-//
-//			hapi.chart.ConfigOuterClass.Config.Builder valuesBuilder = requestBuilder.getValuesBuilder();
-//
-//			Map<String, Object> values = new HashMap<String, Object>();
-//
-//			int slaveCount = service.getClusterSlaveCount();
-//
-//			Map<String, Object> clusterInfo = new HashMap<String, Object>();
-//			clusterInfo.put("slaveCount", slaveCount);
-//			values.put("cluster", clusterInfo);
-//			
-//			DumperOptions options = new DumperOptions();
-//			options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-//			options.setPrettyFlow(true);
-//
-//			Yaml yaml = new Yaml(options);
-//			String valueYaml = yaml.dump(values);
-//
-//			log.info("****** YAML Values : " + valueYaml);
-//
-//			valuesBuilder.setRaw(valueYaml);
-//
-//			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-//
-//			log.info(service.getServiceName() + " update start.");
-//
-//			final Future<UpdateReleaseResponse> releaseFuture = releaseManager.update(requestBuilder, chart);
-//			final Release release = releaseFuture.get().getRelease();
-//
-//			if (release != null) {
-//				ReleaseMetaData releaseMeta = new ReleaseMetaData();
-//				releaseMeta.setAction("UPDATE");
-//				releaseMeta.setApp(release.getChart().getMetadata().getName());
-//				releaseMeta.setAppVersion(release.getChart().getMetadata().getAppVersion());
-//				releaseMeta.setChartVersion(release.getChart().getMetadata().getVersion());
-//				releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds()));
-//				releaseMeta.setNamespace(service.getNamespace());
-//				releaseMeta.setReleaseName(service.getServiceName());
-//				releaseMeta.setStatus(release.getInfo().getStatus().getCode().name());
-//				//releaseMeta.setDescription(release.getInfo().getDescription());
-//				// releaseMeta.setInputValues(valuesBuilder.getRaw());
-//				releaseMeta.setInputValues(valueYaml);
-//				//releaseMeta.setNotes(release.getInfo().getStatus().getNotes());
-//
-//				log.info(new Gson().toJson(releaseMeta));
-//
-//				releaseRepository.save(releaseMeta);
-//			}
-//
-//			log.info(service.getServiceName() + " update success!");
-//			result = new Result(txId, IResult.RUNNING, "Update request. [" + service.getServiceName() + "]")
-//					.putValue(IResult.UPDATE, release);
-//
-//			event.setResultMessage(service.getServiceName() + " update success.");
-//			event.setStatus(IResult.RUNNING);
-//			event.setEndTime(new Date(System.currentTimeMillis()));
-//
-//			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-//
-//		} catch (FileNotFoundException | KubernetesClientException e) {
-//			log.error(e.getMessage(), e);
-//
-//			event.setStatus(IResult.ERROR);
-//			event.setEndTime(new Date(System.currentTimeMillis()));
-//
-//			if (e.getMessage().indexOf("Unauthorized") > -1) {
-//				event.setResultMessage("Unauthorized");
-//				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
-//			} else {
-//				event.setResultMessage(e.getMessage());
-//				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
-//			}
-//		} catch (Exception e) {
-//			log.error(e.getMessage(), e);
-//
-//			event.setResultMessage(e.getMessage());
-//			event.setStatus(IResult.ERROR);
-//			event.setEndTime(new Date(System.currentTimeMillis()));
-//
-//			return Result.RESULT_FAIL(txId, e);
-//		} finally {
-//			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-//
-//			if (releaseManager != null) {
-//				try {
-//					releaseManager.close();
-//				} catch (IOException e) {
-//					log.error(e.getMessage(), e);
-//				}
-//			}
-//		}
-//
-//		return result;
-//	}
-
 	@Override
 	public Result updateScaleOut(String txId, final ZDBEntity service) throws Exception {
-		// 서비스 요청 정보 기록
-		RequestEvent event = new RequestEvent();
-
-		event.setTxId(txId);
-		event.setServiceName(service.getServiceName());
-		event.setServiceType(ZDBType.Redis.getName());
-		event.setNamespace(service.getNamespace());
-		event.setOperation(RequestEvent.UPDATE);
-		event.setStartTime(new Date(System.currentTimeMillis()));
-
 		Result result = new Result(txId);
 
 		try {
 			// 서비스 명 체크
-			if (!K8SUtil.isServiceExist(service.getNamespace(), service.getServiceName())) {
+			
+			ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(service.getServiceName());
+			
+			if (releaseMetaData == null) {
 				String msg = "서비스가 존재하지 않습니다. [" + service.getServiceName() + "]";
-
-				log.error(msg);
-
-				event.setResultMessage(msg);
-				event.setStatus(IResult.ERROR);
-				event.setStatusMessage("Update Scale 오류");
-				event.setEndTime(new Date(System.currentTimeMillis()));
-
-				ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-
 				return new Result(txId, IResult.ERROR, msg);
 			}
 
@@ -559,15 +348,13 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 							return result;
 						}
 					} catch (Exception e) {
-						e.printStackTrace();
+						log.error(e.getMessage(), e);
 					}
 				}
 			}
 			
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
  		
-			//String deploymentName = service.getServiceName() + "-slave";
-			
 			List<Deployment> deployments = client.extensions().deployments().inNamespace(service.getNamespace()).withLabel("release", service.getServiceName()).list().getItems();
 			
 			String releaseName = new String();
@@ -578,30 +365,19 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 			}
 			
 			client.extensions().deployments().inNamespace(service.getNamespace()).withName(releaseName).scale(slaveCount);
-
+			result.setCode(IResult.OK);
+			result.setMessage("scale-out request.");
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 
-			event.setStatus(IResult.ERROR);
-			event.setEndTime(new Date(System.currentTimeMillis()));
-
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
-				event.setResultMessage("Unauthorized");
-				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
+				return new Result(txId, Result.UNAUTHORIZED, "Unauthorized", null);
 			} else {
-				event.setResultMessage(e.getMessage());
-				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
 			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-
-			event.setResultMessage(e.getMessage());
-			event.setStatus(IResult.ERROR);
-			event.setEndTime(new Date(System.currentTimeMillis()));
-
 			return Result.RESULT_FAIL(txId, e);
-		} finally {
-			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}
 
 		return result;
@@ -784,62 +560,25 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 		Result result = Result.RESULT_OK(txId);
 		Jedis redisConnection = null;
 
-		RequestEvent event = new RequestEvent();
-		event.setTxId(txId);
-		event.setServiceName(serviceName);
-		event.setOperation(RequestEvent.UPDATE);
-		event.setNamespace(namespace);
-		event.setStartTime(new Date(System.currentTimeMillis()));
-		event.setStatusMessage("Update Redis Configuration");
-
 		try {
-			event.setServiceType(K8SUtil.getChartName(namespace, serviceName));
-			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-
-//			redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "master");
-//
-//			if (redisConnection == null) {
-//				throw new Exception("Cannot connect Redis. Namespace: " + namespace + ", Service Name: " + serviceName);
-//			}
-//			RedisConfiguration.setConfig(zdbRedisConfigRepository, redisConnection, namespace, serviceName, config); 
-
 			result = updateConfig(txId, namespace, serviceName, config); 
 			
 			result.putValue(IResult.REDIS_CONFIG, config);
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 
-			event.setStatus(IResult.ERROR);
-			event.setStatusMessage("DBConfiguration 적용 오류");
-			event.setEndTime(new Date(System.currentTimeMillis()));
-
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
-				event.setResultMessage("Unauthorized");
-				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
+				return new Result(txId, Result.UNAUTHORIZED, "Unauthorized", null);
 			} else {
-				event.setResultMessage(e.getMessage());
-				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
 			}
 		} catch (JedisException e) {
 			log.error(e.getMessage(), e);
-
-			event.setResultMessage(e.getMessage());
-			event.setStatusMessage("DBConfiguration 적용 오류");
-			event.setStatus(IResult.ERROR);
-			event.setEndTime(new Date(System.currentTimeMillis()));
-
 			return Result.RESULT_FAIL(txId, e);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-
-			event.setResultMessage(e.getMessage());
-			event.setStatusMessage("DBConfiguration 적용 오류");
-			event.setStatus(IResult.ERROR);
-			event.setEndTime(new Date(System.currentTimeMillis()));
-
 			return Result.RESULT_FAIL(txId, e);
 		} finally {
-			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 			if (redisConnection != null) {
 				redisConnection.close();
 			}
@@ -996,11 +735,11 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 			
 			RedisConfiguration.setConfig(zdbRedisConfigRepository, redisConnection, namespace, serviceName, config); 
 			
-			result = new Result(txId, IResult.OK, "config update request. [" + serviceName + "]");			
+			result = new Result(txId, IResult.OK, "Redis config update request.");			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			result = new Result(txId, IResult.ERROR, "config update fail. [" + serviceName + "] - " + e.getLocalizedMessage());
+			result = new Result(txId, IResult.ERROR, "Redis config update fail. - " + e.getLocalizedMessage());
 //		} finally {
 //			if (releaseManager != null) {
 //				try {

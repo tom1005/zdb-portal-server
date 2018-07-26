@@ -294,20 +294,11 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 		/api/v1/api/v1/{namespace}/{serviceType}/service/{serviceName}/delete/{txId}를 
 		RestAPI URL로 설정하고 GET으로 실행합니다.
 		*/
-		RequestEvent event = new RequestEvent();
 		Result result = null;
 		try {
-			event.setTxId(txId);
-			event.setServiceName(serviceName);
-			event.setServiceType(serviceType);
-			event.setOperation(RequestEvent.DELETE);
-			event.setNamespace(namespace);
-			event.setStartTime(new Date(System.currentTimeMillis()));
-			
 			log.debug("namespace : "+namespace
 					+", serviceName : "+serviceName
 					+", serviceType : "+serviceType);
-			event.setResultMessage("ServiceResource("+serviceName+") to delete");
 			StringBuilder sb = new StringBuilder();
 			sb.append(K8SUtil.daemonUrl)
 					.append("/api/v1/")
@@ -319,15 +310,10 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 					.append(txId);
 			RestTemplate restTemplate = new RestTemplate();
 			log.info(">>>> uri : "+sb.toString());
-			event.setStatus(IResult.RUNNING);
 			result = restTemplate.getForObject(sb.toString(), Result.class);
 		} catch (Exception e) {
-			event.setStatus(IResult.ERROR);
-			event.setEndTime(new Date(System.currentTimeMillis()));
-			event.setResultMessage("ServiceResource("+serviceName+") to delete not found");
-		} finally {
-			zdbRepository.save(event);
-		}		
+			log.error(e.getMessage(), e);
+		} 	
 		return result;
 	}
 	
