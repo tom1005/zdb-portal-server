@@ -428,7 +428,8 @@ public class ZDBBackupController {
 				if( !(Integer.parseInt(schedule.getStartTime().substring(0, 2)) > 18 
 						|| Integer.parseInt(schedule.getStartTime().substring(0, 2)) < 8) ) {
 					if (log.isInfoEnabled()) {
-						log.info("Availble schedule startTime : 18:00 ~07:00 / input time(" + schedule.getStartTime() + ")");
+						log.info("Availble backup-schedule startTime : 18:00 ~ 07:00 / input time(" + schedule.getStartTime() + ")");
+						sb.append("Availble backup-schedule startTime : 18:00 ~ 07:00 / "+schedule.getStartTime());
 					}
 					result = false;
 				}
