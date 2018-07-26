@@ -619,37 +619,15 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 	public Result updateConfig(String txId, final String namespace, final String serviceName, Map<String, String> config) throws Exception {
 		Result result = new Result(txId);
 		
-//		ReleaseManager releaseManager = null;
 		try {
-//			final URI uri = URI.create(chartUrl);
-//			final URL url = uri.toURL();
-//			Chart.Builder chart = null;
-//			try (final URLChartLoader chartLoader = new URLChartLoader()) {
-//				chart = chartLoader.load(url);
-//			}
-
-			//String chartVersion = chart.getMetadata().getVersion();
-
 			// 서비스 명 체크
-			if (!K8SUtil.isServiceExist(namespace, serviceName)) {
-				String msg = "서비스가 존재하지 않습니다. [" + serviceName + "]";
-				log.error(msg);
-				result = new Result(txId, IResult.ERROR, "config update fail. [" + serviceName + "] - " + msg);
+			ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(serviceName);
+			if( releaseMetaData == null) {
+				String msg = "서비스가 존재하지 않습니다.";
+				return new Result(txId, IResult.ERROR, msg);
 			}
 			
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
-
-//			final Tiller tiller = new Tiller(client);
-//			releaseManager = new ReleaseManager(tiller);
-//
-//			final UpdateReleaseRequest.Builder requestBuilder = UpdateReleaseRequest.newBuilder();
-//			requestBuilder.setTimeout(300L);
-//			requestBuilder.setName(serviceName);
-//			requestBuilder.setWait(true);
-//
-//			requestBuilder.setReuseValues(true);
-//		
-//			hapi.chart.ConfigOuterClass.Config.Builder valuesBuilder = requestBuilder.getValuesBuilder();
 
 			StringBuffer redisConfig = new StringBuffer();
 			redisConfig.append("bind 0.0.0.0").append("\n");
@@ -684,32 +662,6 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 				}
 			}
 			
-//			Map<String, Object> values = new HashMap<String, Object>();
-//			Map<String, Object> master = new HashMap<String, Object>(); 
-//	        master.put("config", redisConfig.toString());
-//			values.put("master", master);				
-
-//			DumperOptions options = new DumperOptions();
-//			options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-//			options.setPrettyFlow(true);				
-//			
-//			Yaml yaml = new Yaml(options);
-//			String valueYaml = yaml.dump(values);
-
-//			valuesBuilder.setRaw(valueYaml);
-
-//			log.debug("redis.cnf : \n" + valueYaml);
-//			log.debug(serviceName + " update start.");
-
-//			final Future<UpdateReleaseResponse> releaseFuture = releaseManager.update(requestBuilder, chart);
-//			final Release release = releaseFuture.get().getRelease();
-//
-//			if (release != null) {
-//				result = new Result(txId, IResult.OK, "config update request. [" + serviceName + "]");
-//			} else {
-//				throw new Exception("Cannot change chart for Redis. Namespace: " + namespace + ", Service Name: " + serviceName);
-//			}
-			
 			Resource<ConfigMap, DoneableConfigMap> configMapResource = client.configMaps().inNamespace(namespace).withName(serviceName + "-redis-config");
 
 		    ConfigMap configMap = configMapResource.createOrReplace(new ConfigMapBuilder().
@@ -740,14 +692,6 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 			log.error(e.getMessage(), e);
 
 			result = new Result(txId, IResult.ERROR, "Redis config update fail. - " + e.getLocalizedMessage());
-//		} finally {
-//			if (releaseManager != null) {
-//				try {
-//					releaseManager.close();
-//				} catch (IOException e) {
-//					log.error(e.getMessage(), e);
-//				}
-//			}
 		}
 		
 		return result;

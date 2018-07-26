@@ -4,6 +4,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.UUID;
 
+import javax.servlet.http.HttpServletRequest;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
@@ -18,9 +20,13 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import com.zdb.core.domain.BackupEntity;
 import com.zdb.core.domain.IResult;
+import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ScheduleEntity;
+import com.zdb.core.domain.UserInfo;
 import com.zdb.core.exception.BackupException;
+import com.zdb.core.repository.ZDBRepository;
+import com.zdb.core.repository.ZDBRepositoryUtil;
 import com.zdb.core.service.BackupProviderImpl;
 import com.zdb.core.service.K8SService;
 
@@ -39,14 +45,35 @@ import lombok.extern.slf4j.Slf4j;
 public class ZDBBackupController {
 
 	@Autowired
+	private HttpServletRequest request;
+	
+	@Autowired
 	@Qualifier("backupProvider")
 	private BackupProviderImpl backupProvider;
+	
+	@Autowired
+	protected ZDBRepository zdbRepository;
 	
 	@Autowired
 	private K8SService k8sService;
 
 	private String txId() {
 		return UUID.randomUUID().toString();
+	}
+	
+	/**
+	 * @return
+	 */
+	private UserInfo getUserInfo() {
+		UserInfo userInfo = new UserInfo();
+		userInfo.setUserId(request.getHeader("userId"));
+		userInfo.setUserName(request.getHeader("userName"));
+		userInfo.setEmail(request.getHeader("email"));
+		userInfo.setAccessRole(request.getHeader("accessRole"));
+		userInfo.setNamespaces(request.getHeader("namespaces"));
+		userInfo.setDefaultNamespace(request.getHeader("defaultNamespace"));
+
+		return userInfo;
 	}
 	
 	/**
@@ -74,7 +101,17 @@ public class ZDBBackupController {
 		String txId = txId();
 		Result result = null;
 
+		RequestEvent event = new RequestEvent();
 		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(scheduleEntity.getServiceName());
+			event.setOperation(RequestEvent.SET_BACKUP_SCHEDULE);
+			event.setUserId(userInfo.getUserId());
+			
 			/*
 			1) verifyParameters
 			아규먼트로 전달받은 scheduleEntity의 namespace, serviceType, serviceName은 null이거나 공백이면 안되므로 verify를 수행합니다.
@@ -97,7 +134,13 @@ public class ZDBBackupController {
 				result = new Result(txId, IResult.ERROR, "").putValue("error", e);
 				result.setCode(HttpStatus.EXPECTATION_FAILED.value());
 			}
-		} 
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}	
 		return new ResponseEntity<String>(result.toJson(), result.status());
 	}
 
@@ -176,7 +219,17 @@ public class ZDBBackupController {
 		String txId = txId();
 		Result result = null;
 
+		RequestEvent event = new RequestEvent();
 		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(backupEntity.getServiceName());
+			event.setOperation(RequestEvent.EXEC_BACKUP);
+			event.setUserId(userInfo.getUserId());
+			
 			/*
 			1) verifyParameters
 			아규먼트로 전달받은 namespace, serviceType, serviceName은 null이거나 공백이면 안되므로 verify를 수행합니다.
@@ -195,6 +248,10 @@ public class ZDBBackupController {
 					+serviceType
 					+", namespace : "
 					+namespace+",serviceName : "+backupEntity.getServiceName());
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			if (e instanceof BackupException) {
@@ -204,7 +261,14 @@ public class ZDBBackupController {
 				result = new Result(txId, IResult.ERROR, "").putValue("error", e);
 				result.setCode(HttpStatus.EXPECTATION_FAILED.value());
 			}
-		} 
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}	
 		return new ResponseEntity<String>(result.toJson(), result.status());
 	}
 
@@ -276,7 +340,17 @@ public class ZDBBackupController {
 		Result result = null;
 		String txId = txId();
 
+		RequestEvent event = new RequestEvent();
 		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.DELETE_BACKUP_DATA);
+			event.setUserId(userInfo.getUserId());
+			
 			/*
 			1) verifyParameters
 			아규먼트로 전달받은 namespace, serviceType, serviceName은 null이거나 공백이면 안되므로 verify를 수행합니다.
@@ -291,6 +365,10 @@ public class ZDBBackupController {
 			*/
 			
 			result = backupProvider.deleteBackup(txId, namespace, serviceType, serviceName, backupId);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			if (e instanceof BackupException) {
@@ -300,7 +378,14 @@ public class ZDBBackupController {
 				result = new Result(txId, IResult.ERROR, "").putValue("error", e);
 				result.setCode(HttpStatus.EXPECTATION_FAILED.value());
 			}
-		} 
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}
 		return new ResponseEntity<String>(result.toJson(), result.status());
 	}
 
@@ -322,7 +407,17 @@ public class ZDBBackupController {
 		String txId = txId();
 		Result result = null;
 
+		RequestEvent event = new RequestEvent();
 		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.RESTORE_BACKUP);
+			event.setUserId(userInfo.getUserId());
+			
 			/*
 			1) verifyParameters
 			아규먼트로 전달받은 namespace, serviceType, serviceName은 null이거나 공백이면 안되므로 verify를 수행합니다.
@@ -336,6 +431,10 @@ public class ZDBBackupController {
 			*/
 			verifyService(namespace, serviceType, serviceName);
 			result = backupProvider.restoreFromBackup(txId, namespace, serviceName, serviceType, backupId);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			if (e instanceof BackupException) {
@@ -345,7 +444,13 @@ public class ZDBBackupController {
 				result = new Result(txId, IResult.ERROR, "").putValue("error", e);
 				result.setCode(HttpStatus.EXPECTATION_FAILED.value());
 			}
-		} 
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}
 		return new ResponseEntity<String>(result.toJson(), result.status());
 	}
 
@@ -355,7 +460,6 @@ public class ZDBBackupController {
 		try {
 		
 			if (k8sService.getServiceWithName(namespace, serviceType, serviceName) == null) {
-//			if (K8SUtil.isServiceExist(namespace, serviceName) == false) {
 				sb.append("Service(namespace:"+namespace+",serviceName:"+serviceName+") does not exits").append(",");
 				throw new BackupException(sb.toString(), BackupException.NOT_FOUND);
 			}

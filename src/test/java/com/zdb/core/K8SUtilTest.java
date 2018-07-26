@@ -194,20 +194,20 @@ public class K8SUtilTest {
 
 	}
 	
-	@Test
-	public void isServiceExist() {
-		try {
-			boolean bool = K8SUtil.isServiceExist("zdb", "mariadb3-test");
-
-			assertTrue(bool);
-
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-
-		}
- 
-	}
+//	@Test
+//	public void isServiceExist() {
+//		try {
+//			boolean bool = K8SUtil.isServiceExist("zdb", "mariadb3-test");
+//
+//			assertTrue(bool);
+//
+//		} catch (Exception e) {
+//			e.printStackTrace();
+//		} finally {
+//
+//		}
+// 
+//	}
 	
 	@Test
 	public void updateSecret() {

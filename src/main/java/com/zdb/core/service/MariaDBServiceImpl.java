@@ -150,11 +150,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				chart = chartLoader.load(url);
 			}
 
-			String chartVersion = chart.getMetadata().getVersion();
-
 			// 서비스 명 체크
-			if (!K8SUtil.isServiceExist(service.getNamespace(), service.getServiceName())) {
-				String msg = "서비스가 존재하지 않습니다. [" + service.getServiceName() + "]";
+			ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(service.getServiceName());
+			if( releaseMetaData == null) {
+				String msg = "서비스가 존재하지 않습니다.";
 				return new Result(txId, IResult.ERROR, msg);
 			}
 			
@@ -676,9 +675,9 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				
 				connection.setIpAddress(ip);
 
-				ReleaseMetaData findByReleaseName = releaseRepository.findByReleaseName(serviceName);
-				if( findByReleaseName != null) {
-					info.setDbName(findByReleaseName.getDbname());
+				ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(serviceName);
+				if( releaseMetaData != null) {
+					info.setDbName(releaseMetaData.getDbname());
 				} 
 				
 				if(info.getDbName() == null || info.getDbName().length() == 0) {

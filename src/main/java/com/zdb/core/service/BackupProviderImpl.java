@@ -119,19 +119,10 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 		*/
 		RestTemplate restTemplate = new RestTemplate();
 		Result result = null;
-		RequestEvent event = new RequestEvent();
-		event.setTxId(txid);
-		event.setServiceName(backupEntity.getServiceName());
-		event.setServiceType(backupEntity.getServiceType());
-		event.setOperation(RequestEvent.CREATE);
-		event.setNamespace(backupEntity.getNamespace());
-		event.setStartTime(new Date(System.currentTimeMillis()));
 		try {
 			log.debug("namespace : "+backupEntity.getNamespace()
 				+", serviceName : "+backupEntity.getServiceName()
 				+", serviceType : "+backupEntity.getServiceType());
-			event.setResultMessage("Acceptiong");
-			event.setEndTime(new Date(System.currentTimeMillis()));
 			
 			StringBuilder sb = new StringBuilder();
 			sb.append(K8SUtil.daemonUrl)
@@ -145,12 +136,8 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 			
 			log.info(">>>>>>> uri : "+sb.toString());
 			result = restTemplate.postForObject(sb.toString(), backupEntity, Result.class);
-			event.setStatus(result.getCode());
 		} catch(Exception e) {
 			log.error(e.getMessage(), e);
-			event.setResultMessage(e.getMessage());
-			event.setStatus(IResult.ERROR);
-			event.setEndTime(new Date(System.currentTimeMillis()));
 			/*
 			zdb-backup-agent의 요청 오류가 발생하면 해당 backup의 오류 상태를 DB에 
 			저장하고 오류를 리턴합니다.
@@ -162,9 +149,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 			backupEntity.setReason(e.getMessage());
 			backupRepository.save(backupEntity);
 			result = Result.RESULT_FAIL(txid, e);			
-		} finally {
-			zdbRepository.save(event);
-		}
+		} 
 		return result;
 	}
 	
