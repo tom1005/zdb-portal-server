@@ -679,7 +679,6 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 			
 			
 			// Set Redis slave config.
-			ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(serviceName);
 			if (releaseMetaData != null && releaseMetaData.getClusterEnabled()) {
 				redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "slave");
 
