@@ -58,7 +58,7 @@ chart:
   mariadb:
     url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/mariadb/charts/mariadb-4.2.0.tgz"
   redis:
-    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/redis/charts/redis-3.3.2.tgz"
+    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/redis/charts/redis-3.6.3.tgz"
   
 iam:
     baseUrl: https://zcp-iam.cloudzcp.io:443
