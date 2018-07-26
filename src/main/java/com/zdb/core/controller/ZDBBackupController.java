@@ -92,7 +92,7 @@ public class ZDBBackupController {
 			log.error(e.getMessage(), e);
 			if (e instanceof BackupException) {
 				result = new Result(txId, IResult.ERROR, e.getMessage());
-				result.setCode(((BackupException)e).getStatusCode());
+				//result.setCode(((BackupException)e).getStatusCode());
 			} else {
 				result = new Result(txId, IResult.ERROR, "").putValue("error", e);
 				result.setCode(HttpStatus.EXPECTATION_FAILED.value());
