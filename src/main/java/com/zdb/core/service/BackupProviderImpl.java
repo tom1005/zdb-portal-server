@@ -9,15 +9,14 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import com.google.gson.Gson;
 import com.zdb.core.domain.BackupEntity;
 import com.zdb.core.domain.BackupStatus;
 import com.zdb.core.domain.IResult;
-import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ScheduleEntity;
 import com.zdb.core.repository.BackupEntityRepository;
 import com.zdb.core.repository.ScheduleEntityRepository;
-import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.util.K8SUtil;
 
 import io.fabric8.kubernetes.client.KubernetesClientException;
@@ -29,9 +28,6 @@ import lombok.extern.slf4j.Slf4j;
 public class BackupProviderImpl implements ZDBBackupProvider {
 
 	@Autowired
-	protected ZDBRepository zdbRepository;
-	
-	@Autowired
 	BackupEntityRepository backupRepository;
 
 	@Autowired
@@ -40,18 +36,9 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 	@Override
 	public Result saveSchedule(String txid, ScheduleEntity entity) throws Exception {
 		Result result = null;
-
-		RequestEvent event = new RequestEvent();
-
-		event.setTxId(txid);
-		event.setServiceName(entity.getServiceName());
-		event.setServiceType(entity.getServiceType());
-		event.setOperation(RequestEvent.SET_BACKUP_SCHEDULE);
-		event.setNamespace(entity.getNamespace());
-		event.setStartTime(new Date(System.currentTimeMillis()));
 		
 		try {			
-			log.debug("save : "+entity);
+			log.info("saveSchedule : "+ new Gson().toJson(entity));
 			
 			/*
 			메타디비에서 기존에 저장된 ScheduleEntity를 조회하여 있으면 schedule를 갱신하고, 없으면 새로 저장합니다.
@@ -70,18 +57,10 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 			}
 			//2018-07-25 UI backup 목록 오류 수정
 			result = new Result(txid, IResult.OK, "Set schedule.").putValue("backupSchedule", entity);
-			
-			event.setResultMessage(result.getMessage());
-			event.setEndTime(new Date(System.currentTimeMillis()));
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			event.setResultMessage(e.getMessage());
-			event.setStatus(IResult.ERROR);
-			event.setEndTime(new Date(System.currentTimeMillis()));
 			result = Result.RESULT_FAIL(txid, e);
-		} finally {
-			zdbRepository.save(event);
-		}
+		} 
 		return result;
 	}
 	
@@ -198,15 +177,6 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 		Result result = null;
 		RestTemplate restTemplate = new RestTemplate();
 		
-		RequestEvent event = new RequestEvent();
-		event.setTxId(txid);
-		event.setServiceName(serviceName);
-		event.setServiceType(serviceType);
-		event.setOperation(RequestEvent.DELETE);
-		event.setNamespace(namespace);
-		event.setStartTime(new Date(System.currentTimeMillis()));
-		event.setEndTime(new Date(System.currentTimeMillis()));
-		
 		StringBuilder sb = new StringBuilder();
 		try {
 			//service/backup/delete/{txId}
@@ -215,19 +185,10 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 				.append("/api/v1/service/backup/delete/")
 				.append(txid);
 			result = restTemplate.postForObject(sb.toString(), backup, Result.class);
-			event.setEndTime(new Date(System.currentTimeMillis()));
-			if (result.isOK()) {
-				event.setStatus(IResult.OK);
-			} else {
-				event.setResultMessage(result.getMessage());
-			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			event.setEndTime(new Date(System.currentTimeMillis()));
 			result = new Result(txid, Result.ERROR, e.getMessage(), e);
-		} finally {
-			zdbRepository.save(event);
-		}
+		} 
 		return result;
 	}
 	
@@ -241,14 +202,6 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 		Result result = null;
 		RestTemplate restTemplate = new RestTemplate();
 		
-		RequestEvent event = new RequestEvent();
-		event.setTxId(txId);
-		event.setServiceName(serviceName);
-		event.setServiceType(serviceType);
-		event.setOperation(RequestEvent.RESTORE);
-		event.setNamespace(namespace);
-		event.setStartTime(new Date(System.currentTimeMillis()));
-		
 		StringBuilder sb = new StringBuilder();
 		try {
 			/*
@@ -260,18 +213,10 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 				.append("/api/v1/service/restore/")
 				.append(txId);
 			result = restTemplate.postForObject(sb.toString(), backup, Result.class);
-			event.setEndTime(new Date(System.currentTimeMillis()));
-			event.setStatus(result.getCode());
-			if (!result.isOK()) {
-				event.setResultMessage(result.getMessage());
-			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			event.setEndTime(new Date(System.currentTimeMillis()));
 			result = new Result(txId, Result.ERROR, e.getMessage(), e);
-		} finally {
-			zdbRepository.save(event);
-		}
+		} 
 		return result;
 	}
 	

@@ -35,6 +35,7 @@ public class RequestEvent {
 	public static final String MODIFY_PASSWORD = "MODIFY-PASSWORD";
 	public static final String SET_BACKUP_SCHEDULE = "SET-SCHEDULE";
 	public static final String EXEC_BACKUP = "EXEC-BACKUP";
+	public static final String REQ_BACKUP = "REQ-BACKUP";
 	public static final String DELETE_BACKUP_DATA = "DELETE-BACKUP-DATA";
 	public static final String RESTORE_BACKUP = "RESTORE-BACKUP";
 	

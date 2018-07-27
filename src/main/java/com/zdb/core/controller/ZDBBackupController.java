@@ -227,7 +227,7 @@ public class ZDBBackupController {
 			event.setServiceType(serviceType);
 			event.setNamespace(namespace);
 			event.setServiceName(backupEntity.getServiceName());
-			event.setOperation(RequestEvent.EXEC_BACKUP);
+			event.setOperation(RequestEvent.REQ_BACKUP);
 			event.setUserId(userInfo.getUserId());
 			
 			/*
