@@ -17,27 +17,27 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Data
 public class RequestEvent {
-	public static final String CREATE = "CREATE";
-	public static final String UPDATE = "UPDATE";
-	public static final String DELETE = "DELETE";
+	public static final String CREATE = "서비스 생성";
+	public static final String UPDATE = "업데이트";
+	public static final String DELETE = "서비스 삭제";
 	public static final String READ = "READ";
-	public static final String RESTART = "RESTART";
-	public static final String POD_RESTART = "POD-RESTART";
-	public static final String RESTORE = "RESTORE";
-	public static final String CREATE_DB_USER = "CREATE-DB-USER";
-	public static final String UPDATE_DB_USER = "UPDATE-DB-USER";
-	public static final String DELETE_DB_USER = "DELETE-DB-USER";
-	public static final String CREATE_TAG = "CREATE-TAG";
-	public static final String DELETE_TAG = "DELETE-TAG";
-	public static final String SCALE_UP = "SCALE-UP";
-	public static final String SCALE_OUT = "SCALE-OUT";
-	public static final String UPDATE_CONFIG = "UPDATE-CONFIG";
-	public static final String MODIFY_PASSWORD = "MODIFY-PASSWORD";
-	public static final String SET_BACKUP_SCHEDULE = "SET-SCHEDULE";
-	public static final String EXEC_BACKUP = "EXEC-BACKUP";
-	public static final String REQ_BACKUP = "REQ-BACKUP";
-	public static final String DELETE_BACKUP_DATA = "DELETE-BACKUP-DATA";
-	public static final String RESTORE_BACKUP = "RESTORE-BACKUP";
+	public static final String RESTART = "서비스 재시작";
+	public static final String POD_RESTART = "컨테이너 재시작";
+	public static final String RESTORE = "데이터 복원";
+	public static final String CREATE_DB_USER = "사용자 생성";
+	public static final String UPDATE_DB_USER = "사용자 업데이트";
+	public static final String DELETE_DB_USER = "사용자 삭제";
+	public static final String CREATE_TAG = "태그 추가";
+	public static final String DELETE_TAG = "태그 삭제";
+	public static final String SCALE_UP = "Scale-Up";
+	public static final String SCALE_OUT = "Scale-Out";
+	public static final String UPDATE_CONFIG = "환경설정 변경";
+	public static final String MODIFY_PASSWORD = "비빌번호 변경";
+	public static final String SET_BACKUP_SCHEDULE = "스케줄 설정";
+	public static final String EXEC_BACKUP = "백업 실행";
+	public static final String REQ_BACKUP = "백업 요청";
+	public static final String DELETE_BACKUP_DATA = "백업 데이터 삭제";
+	public static final String RESTORE_BACKUP = "백업 데이터 복원";
 	
 	private String operation;
 
