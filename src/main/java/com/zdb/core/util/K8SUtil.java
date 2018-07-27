@@ -626,59 +626,59 @@ public class K8SUtil {
 	 * @throws FileNotFoundException
 	 * @throws KubernetesClientException
 	 */
-//	public static boolean isServiceExist(String namespace, String serviceName) throws Exception {
-//
-//		ReleaseManager releaseManager = null;
-//		try {
-//			DefaultKubernetesClient client = kubernetesClient();
-//
-//			final Tiller tiller = new Tiller(client);
-//			releaseManager = new ReleaseManager(tiller);
-//
-//			final ListReleasesRequest.Builder requestBuilder = ListReleasesRequest.newBuilder();
-//			
-////		    case 0: return UNKNOWN;
-////		    case 1: return DEPLOYED;
-////		    case 2: return DELETED;
-////		    case 3: return SUPERSEDED;
-////		    case 4: return FAILED;
-////		    case 5: return DELETING;
-////		    case 6: return PENDING_INSTALL;
-////		    case 7: return PENDING_UPGRADE;
-////		    case 8: return PENDING_ROLLBACK;
-//			requestBuilder.addStatusCodes(Status.Code.UNKNOWN);
-//			requestBuilder.addStatusCodes(Status.Code.DEPLOYED);
-////			requestBuilder.addStatusCodes(Status.Code.DELETED);
-//			requestBuilder.addStatusCodes(Status.Code.SUPERSEDED);
-//			requestBuilder.addStatusCodes(Status.Code.FAILED);
-//			requestBuilder.addStatusCodes(Status.Code.DELETING);
-//			requestBuilder.addStatusCodes(Status.Code.PENDING_INSTALL);
-//			requestBuilder.addStatusCodes(Status.Code.PENDING_UPGRADE);
-//			requestBuilder.addStatusCodes(Status.Code.PENDING_ROLLBACK);
-//				
-//			Iterator<ListReleasesResponse> requestBuilderList = releaseManager.list(requestBuilder.build());
-//
-//			while (requestBuilderList.hasNext()) {
-//				ListReleasesResponse ent = requestBuilderList.next();
-//				List<Release> releaseList = ent.getReleasesList();
-//
-//				for (Release release : releaseList) {
-//					// Helm Deploy 상태가 FAILED인 경우는 조회가 되지 않는다.
-//					// FAILED 상태의 Release 까지 조회가 필요한 경우 추가 조치가 필요함.
-//					if (namespace.equals(release.getNamespace()) && serviceName.equals(release.getName())) {
-//						return true;
-//					}
-//				}
-//			}
-//		} finally {
-//			if (releaseManager != null) {
-//				releaseManager.close();
-//			}
-//		}
-//
-//		return false;
-//	
-//	}
+	public static boolean isServiceExist(String namespace, String serviceName) throws Exception {
+
+		ReleaseManager releaseManager = null;
+		try {
+			DefaultKubernetesClient client = kubernetesClient();
+
+			final Tiller tiller = new Tiller(client);
+			releaseManager = new ReleaseManager(tiller);
+
+			final ListReleasesRequest.Builder requestBuilder = ListReleasesRequest.newBuilder();
+			
+//		    case 0: return UNKNOWN;
+//		    case 1: return DEPLOYED;
+//		    case 2: return DELETED;
+//		    case 3: return SUPERSEDED;
+//		    case 4: return FAILED;
+//		    case 5: return DELETING;
+//		    case 6: return PENDING_INSTALL;
+//		    case 7: return PENDING_UPGRADE;
+//		    case 8: return PENDING_ROLLBACK;
+			requestBuilder.addStatusCodes(Status.Code.UNKNOWN);
+			requestBuilder.addStatusCodes(Status.Code.DEPLOYED);
+//			requestBuilder.addStatusCodes(Status.Code.DELETED);
+			requestBuilder.addStatusCodes(Status.Code.SUPERSEDED);
+			requestBuilder.addStatusCodes(Status.Code.FAILED);
+			requestBuilder.addStatusCodes(Status.Code.DELETING);
+			requestBuilder.addStatusCodes(Status.Code.PENDING_INSTALL);
+			requestBuilder.addStatusCodes(Status.Code.PENDING_UPGRADE);
+			requestBuilder.addStatusCodes(Status.Code.PENDING_ROLLBACK);
+				
+			Iterator<ListReleasesResponse> requestBuilderList = releaseManager.list(requestBuilder.build());
+
+			while (requestBuilderList.hasNext()) {
+				ListReleasesResponse ent = requestBuilderList.next();
+				List<Release> releaseList = ent.getReleasesList();
+
+				for (Release release : releaseList) {
+					// Helm Deploy 상태가 FAILED인 경우는 조회가 되지 않는다.
+					// FAILED 상태의 Release 까지 조회가 필요한 경우 추가 조치가 필요함.
+					if (namespace.equals(release.getNamespace()) && serviceName.equals(release.getName())) {
+						return true;
+					}
+				}
+			}
+		} finally {
+			if (releaseManager != null) {
+				releaseManager.close();
+			}
+		}
+
+		return false;
+	
+	}
 	
 	/**
 	 * Release 정보 조회
