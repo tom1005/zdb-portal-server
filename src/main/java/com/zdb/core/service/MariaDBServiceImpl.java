@@ -241,7 +241,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			}
 
 			log.info(service.getServiceName() + " update success!");
-			result = new Result(txId, IResult.RUNNING, "Update request. [" + service.getServiceName() + "]").putValue(IResult.UPDATE, release);
+			result = new Result(txId, IResult.RUNNING, "scale-up request.").putValue(IResult.UPDATE, release);
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 
