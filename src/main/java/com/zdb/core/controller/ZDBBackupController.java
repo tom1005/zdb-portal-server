@@ -125,6 +125,10 @@ public class ZDBBackupController {
 			verifyService(scheduleEntity.getNamespace(), serviceType, scheduleEntity.getServiceName());
 			
 			result = backupProvider.saveSchedule(txId, scheduleEntity);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			if (e instanceof BackupException) {
