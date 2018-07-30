@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zdb-portal-server-config
+  namespace: zdb-system
+data:
+  chart.mariadb.url: https://github.com/cnpst/zdb-chart-repo/raw/master/stable/mariadb/charts/mariadb-4.2.0.tgz
+  chart.redis.url: https://github.com/cnpst/zdb-chart-repo/raw/master/stable/redis/charts/redis-3.3.2.tgz
+  cluster: zcp-demo
+  daemonUrl: http://10.178.145.85:8080
+  datasource.url: jdbc:mariadb://10.178.31.212:3306/zdb
+  iam.baseUrl: https://zcp-iam.cloudzcp.io:443
+  masterUrl: https://169.56.69.242:32124
+  storage.class: ibmc-block-silver

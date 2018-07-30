@@ -1,0 +1,44 @@
+
+1. namespace 생성
+ - 01.zdb-system-create-namespace.yaml
+ 
+2. docker-registry secret #https://console.bluemix.net/docs/containers/cs_images.html#other_regions_accounts
+ - bx cr token-list
+ - bx cr token-get ba776d38-203b-5ad9-bbf6-da9aebca6c64
+   예> kubectl --namespace <kubernetes_namespace> create secret docker-registry <secret_name>  --docker-server=<registry_URL> --docker-username=token --docker-password=<token_value> --docker-email=<docker_email>
+
+   kubectl --namespace zdb-system create secret docker-registry zdb-system-secret --docker-server=registry.au-syd.bluemix.net --docker-username=token --docker-password=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJiYTc3NmQzOC0yMDNiLTVhZDktYmJmNi1kYTlhZWJjYTZjNjQiLCJpc3MiOiJyZWdpc3RyeS5ibHVlbWl4Lm5ldCJ9.aU5UnKng-FO-2RHICCBItUSc2VSmCwy82sQ_sjijDus --docker-email=pns@sk.com
+
+3. account
+ - kubectl apply -f 02.zdb-system-serviceaccount.yaml
+
+4. block-storage-plugin
+ - helm ls --all 
+ - helm install ibm/ibmcloud-block-storage-plugin
+
+5. db install
+ - helm install https://github.com/cnpst/zdb-chart-repo/raw/master/stable/mariadb/charts/mariadb-4.2.0.tgz --namespace zdb-system --name zdb-system-zdb -f /Users/a06919/github/zdb-portal-server/deploy/zdb-values.yaml
+
+6. configmap
+ - kubectl apply -f  03.zdb-system-configmap.yaml
+7. app install
+ - kubectl apply -f  04.zdb-system-zdb-portal-app.yaml
+
+8. ingresses install
+ - kubectl apply -f  05.zdb-system-zdb-portal-app-ingresses.yaml
+
+
+ku -n zdb-system get ClusterRole zdb-system-account -o yaml > zdb-system-account-clusterrole.yaml
+ku -n zdb-system get ClusterRoleBinding zdb-system-account -o yaml > zdb-system-account-clusterrolebinding.yaml
+ku -n zdb-system get ServiceAccount zdb-system-account -o yaml > zdb-system-account-serviceaccount.yaml
+ku -n zdb-system get Deployments zdb-agent-deployment -o yaml > zdb-agent-deployment.yaml
+ku -n zdb-system get Deployments zdb-portal-ui-deployment -o yaml > zdb-portal-ui-deployment.yaml
+ku -n zdb-system get Deployments zdb-portal-server-deployment -o yaml > zdb-portal-server-deployment.yaml
+ku -n zdb-system get service zdb-system-zdb-mariadb -o yaml > zdb-system-zdb-mariadb-lb-service.yaml
+
+ku -n zdb-system get service zdb-agent-loadbalancer -o yaml > zdb-system-zdb-agent-loadbalancer-service.yaml
+
+ku -n zdb-system get ingresses  zdb-agent-ingress  -o yaml > zdb-agent-ingress.yaml
+ku -n zdb-system get ingresses zdb-portal-server-ingress -o yaml > zdb-portal-server-ingress.yaml
+ku -n zdb-system get ingresses zdb-portal-ui-ingress -o yaml > zdb-portal-ui-ingress.yaml
+ku -n zdb-system get configmap zdb-portal-server-config -o yaml > zdb-portal-server-config.yaml

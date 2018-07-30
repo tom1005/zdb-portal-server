@@ -32,9 +32,9 @@ spring:
   profiles: local
   datasource:
 #    url: jdbc:mariadb://169.56.94.12:3306/zdb
-    url: jdbc:mariadb://169.56.80.186:3306/zdb
-    username: zdb
-    password: 1111
+    url: jdbc:mariadb://169.56.87.210:3306/zdb
+    username: admin
+    password: 32763vyJUy
     driverClassName: org.mariadb.jdbc.Driver
   jpa:
     database-platform: org.hibernate.dialect.MySQLDialect
@@ -107,8 +107,8 @@ logging:
   config: classpath:logback-prod.xml
           
 k8s:
-  masterUrl: ${MASTER_URL}
-  daemonUrl: ${DAEMON_URL}
+  masterUrl: ${master.url}
+  daemonUrl: ${zdb.backup.agent.url}
   
 chart:
   mariadb:
