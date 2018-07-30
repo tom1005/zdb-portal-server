@@ -6,9 +6,15 @@ metadata:
 data:
   chart.mariadb.url: https://github.com/cnpst/zdb-chart-repo/raw/master/stable/mariadb/charts/mariadb-4.2.0.tgz
   chart.redis.url: https://github.com/cnpst/zdb-chart-repo/raw/master/stable/redis/charts/redis-3.3.2.tgz
+  master.url: https://169.56.69.242:32124
+  storage.class: ibmc-block-silver
   cluster: zcp-demo
-  daemonUrl: http://10.178.145.85:8080
+  zdb.backup.agent.url: http://10.178.145.85:8080
   datasource.url: jdbc:mariadb://10.178.31.212:3306/zdb
   iam.baseUrl: https://zcp-iam.cloudzcp.io:443
-  masterUrl: https://169.56.69.242:32124
-  storage.class: ibmc-block-silver
+  grafana.url: http://grafana-zdb.cloudzcp.io
+  zdb.portal.server.url: http://api.jp-tok.containers.mybluemix.net
+  zcp.access.token.url: https://keycloak.cloudzcp.io/auth/realms/zcp/protocol/openid-connect/token
+  zcp.client.secret: 0227b024-6483-4e96-827b-3bc4dd73637e
+  zcp.redirect.url: http://zdb.cloudzcp.io/k8s-login
+  zcp.user.auth.url: https://keycloak.cloudzcp.io/auth/realms/zcp/protocol/openid-connect/auth  
