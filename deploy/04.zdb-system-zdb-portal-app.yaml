@@ -22,7 +22,6 @@ spec:
         - containerPort: 8080
         imagePullPolicy: Always
         env:
-      - env:
         - name: master.url
           valueFrom:
             configMapKeyRef:
@@ -104,10 +103,7 @@ spec:
       containers:
       - env:
         - name: SPRING_ACTIVE_PROFILE
-          valueFrom:
-            configMapKeyRef:
-              key: cluster
-              name: zdb-portal-server-config
+          value: prod
         - name: cluster
           valueFrom:
             configMapKeyRef:
@@ -252,7 +248,7 @@ kind: Service
 metadata:
   annotations:
     service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type: private
-  name: zdb-agent-loadbalancer
+  name: zdb-backup-agent-loadbalancer
   namespace: zdb-system
 spec:
   externalTrafficPolicy: Cluster

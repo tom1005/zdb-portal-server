@@ -9,7 +9,7 @@ spec:
     http:
       paths:
       - backend:
-          serviceName: zdb-portal-ui-service
+          serviceName: zdb-portal-ui-loadbalancer
           servicePort: 8080
         path: /
 #  tls:
