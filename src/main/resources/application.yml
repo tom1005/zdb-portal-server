@@ -89,7 +89,7 @@ backup:
 spring:
   profiles: prod
   datasource:
-    url: ${datasource.url}
+    url: jdbc:mariadb://zdb-system-zdb-mariadb.zdb-system:3306/zdb
     username: zdb
     password: 24cmdshvek!
     driverClassName: org.mariadb.jdbc.Driver
@@ -107,8 +107,8 @@ logging:
   config: classpath:logback-prod.xml
           
 k8s:
-  masterUrl: ${master.url}
-  daemonUrl: ${zdb.backup.agent.url}
+  masterUrl: ${cluster.master}
+  daemonUrl: http://zdb-backup-agent-loadbalancer.zdb-system:8080
   
 chart:
   mariadb:
@@ -119,7 +119,7 @@ chart:
     storageClass: ${storage.class:ibmc-block-silver}
           
 iam:
-    baseUrl: ${iam.baseUrl}
+    baseUrl: https://iam.${domain.custom}
           
 storage:
   storageType: AWS_S3
