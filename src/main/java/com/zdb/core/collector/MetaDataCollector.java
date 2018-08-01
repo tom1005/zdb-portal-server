@@ -34,7 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
-@Profile("prod")
+@Profile({"prod", "zcp-demo"})
 public class MetaDataCollector {
 	
 	@Autowired
