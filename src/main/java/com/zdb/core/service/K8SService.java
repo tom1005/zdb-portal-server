@@ -1068,6 +1068,10 @@ public class K8SService {
 	
 	private ZDBStatus getStatus(ServiceOverview so) {
 		
+		if(so.getDeploymentStatus().equals("ERROR")) {
+			return ZDBStatus.GRAY;
+		}
+		
 		String app = null;
 		String component = null;
 		
