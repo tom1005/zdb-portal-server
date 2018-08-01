@@ -235,7 +235,7 @@ chart:
     storageClass: ${storage.class:ibmc-block-silver}
           
 iam:
-    baseUrl: https://iam.${domain.custom}
+    baseUrl: http://zcp-iam.zcp-system
           
 storage:
   storageType: AWS_S3
