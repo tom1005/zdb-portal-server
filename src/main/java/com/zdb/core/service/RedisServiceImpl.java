@@ -687,11 +687,11 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 				}
 				RedisConfiguration.setConfig(zdbRedisConfigRepository, redisConnection, namespace, serviceName, config); 
 			}
-			result = new Result(txId, IResult.OK, "Redis config update request.");			
+			result = new Result(txId, IResult.OK, "환경설정 변경 요청됨");			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			result = new Result(txId, IResult.ERROR, "Redis config update fail. - " + e.getLocalizedMessage());
+			result = new Result(txId, IResult.ERROR, "환경설정 변경 요청 오류 - " + e.getLocalizedMessage());
 		}
 		
 		return result;
