@@ -443,18 +443,22 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				event.setEndTime(new Date(System.currentTimeMillis()));
 				ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 			    return;
-			}
+			} 
 
 			final UninstallReleaseRequest.Builder uninstallRequestBuilder = UninstallReleaseRequest.newBuilder();
 
 			uninstallRequestBuilder.setName(serviceName.trim().toLowerCase()); // set releaseName
 			uninstallRequestBuilder.setPurge(true); // --purge
 
-			ReleaseMetaData findByReleaseName = releaseRepository.findByReleaseName(serviceName);
-			if (findByReleaseName != null) {
-				findByReleaseName.setStatus("DELETING");
-				findByReleaseName.setUpdateTime(new Date(System.currentTimeMillis()));
-				releaseRepository.save(findByReleaseName);
+			if (releaseMetaData.getStatus().equals("ERROR")) {
+				releaseMetaData.setStatus("DELETED");
+				releaseMetaData.setUpdateTime(new Date(System.currentTimeMillis()));
+				releaseRepository.save(releaseMetaData);
+				return;
+			} else {
+				releaseMetaData.setStatus("DELETING");
+				releaseMetaData.setUpdateTime(new Date(System.currentTimeMillis()));
+				releaseRepository.save(releaseMetaData);
 			}
 			
 			Result result = new Result(txId, IResult.OK);
@@ -481,11 +485,11 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 
 				log.info(new Gson().toJson(releaseMeta));
 
-				findByReleaseName = releaseRepository.findByReleaseName(serviceName);
-				if (findByReleaseName != null) {
-					findByReleaseName.setStatus(release.getInfo().getStatus().getCode().name());
-					findByReleaseName.setUpdateTime(new Date(System.currentTimeMillis()));
-					releaseRepository.save(findByReleaseName);
+				releaseMetaData = releaseRepository.findByReleaseName(serviceName);
+				if (releaseMetaData != null) {
+					releaseMetaData.setStatus(release.getInfo().getStatus().getCode().name());
+					releaseMetaData.setUpdateTime(new Date(System.currentTimeMillis()));
+					releaseRepository.save(releaseMetaData);
 				} else {
 					releaseRepository.save(releaseMeta);
 				}
@@ -522,6 +526,10 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				event.setResultMessage(msg);
 				event.setStatus(IResult.ERROR);
 				event.setEndTime(new Date(System.currentTimeMillis()));
+				
+				releaseMetaData.setStatus("DELETED");
+				releaseMetaData.setUpdateTime(new Date(System.currentTimeMillis()));
+				releaseRepository.save(releaseMetaData);
 			    return;
 			}
 

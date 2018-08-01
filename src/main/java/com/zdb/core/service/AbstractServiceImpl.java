@@ -699,11 +699,18 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	 */
 	private void setServiceOverViewStatusMessage(String serviceName, ServiceOverview overview) throws Exception {
 		if(overview.getStatus() != ZDBStatus.GREEN ) {
+			if(overview.getDeploymentStatus().equals("ERROR")) {
+				overview.setStatusMessage("생성중 오류가 발생했습니다. 삭제 후 재생성하거나 관리자에게 문의하세요.");
+				return;
+			}
+
 			ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(serviceName);
 			if(releaseMetaData == null) {
 				log.warn("{} 는 ZDB 관리 목록에 등록되지 않은 서비스 입니다.", serviceName);
+				overview.setStatusMessage("삭제된 서비스 이거나 서비스 불가 상태입니다. 관리자에게 문의하세요.");
 				return;
 			}
+			
 			
 			List<Pod> pods = overview.getPods();
 			

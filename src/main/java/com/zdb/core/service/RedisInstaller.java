@@ -572,9 +572,16 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 			uninstallRequestBuilder.setName(serviceName); // set releaseName
 			uninstallRequestBuilder.setPurge(true); // --purge
 
-			releaseMetaData.setStatus("DELETING");
-			releaseMetaData.setUpdateTime(new Date(System.currentTimeMillis()));
-			releaseRepository.save(releaseMetaData);
+			if (releaseMetaData.getStatus().equals("ERROR")) {
+				releaseMetaData.setStatus("DELETED");
+				releaseMetaData.setUpdateTime(new Date(System.currentTimeMillis()));
+				releaseRepository.save(releaseMetaData);
+				return;
+			} else {
+				releaseMetaData.setStatus("DELETING");
+				releaseMetaData.setUpdateTime(new Date(System.currentTimeMillis()));
+				releaseRepository.save(releaseMetaData);
+			}
 			
 			Result result = new Result(txId, IResult.OK, "Delete Service instance. [" + serviceName + "]");
 			final Future<UninstallReleaseResponse> releaseFuture = releaseManager.uninstall(uninstallRequestBuilder.build());
