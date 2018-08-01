@@ -16,8 +16,6 @@ import org.apache.commons.io.IOUtils;
 import org.microbean.helm.ReleaseManager;
 import org.microbean.helm.Tiller;
 import org.microbean.helm.chart.URLChartLoader;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
@@ -544,7 +542,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 			} else {
 				event.setResultMessage(e.getMessage());
 			}
-			saveReleaseError(serviceName, e);
+			saveDeleteReleaseError(serviceName, e);
 			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -553,7 +551,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 			event.setStatus(IResult.ERROR);
 			event.setEndTime(new Date(System.currentTimeMillis()));
 			
-			saveReleaseError(serviceName, e);
+			saveDeleteReleaseError(serviceName, e);
 			
 		} finally {
 			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
