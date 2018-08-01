@@ -61,6 +61,22 @@ public abstract class ZDBInstallerAdapter implements ZDBInstaller {
 		}
 	}
 	
+	public void saveDeleteReleaseError(String serviceName, Exception e) {
+		try {
+			ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(serviceName);
+			if(releaseMeta != null) {
+				releaseMeta.setStatus("DELETED");
+				
+				String stackTraceToString = getStackTraceToString(e);
+				releaseMeta.setManifest(stackTraceToString);
+				
+				releaseRepository.save(releaseMeta);
+			}
+		} catch (Exception e1) {
+			log.error(e.getMessage(), e);
+		}
+	}
+	
 	private String getStackTraceToString(Exception e) {
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		PrintStream pinrtStream = new PrintStream(out);
