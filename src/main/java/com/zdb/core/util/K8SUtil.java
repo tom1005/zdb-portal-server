@@ -847,7 +847,7 @@ public class K8SUtil {
 				System.exit(-1);
 			}
 			
-		} else if ("prod".equals(profile)) {
+		} else if ("prod".equals(profile) || "zcp-demo".equals(profile)) {
 			File tokenFile = new File("/var/run/secrets/kubernetes.io/serviceaccount/token");
 
 			log.debug("Token File exists :" + tokenFile.exists());

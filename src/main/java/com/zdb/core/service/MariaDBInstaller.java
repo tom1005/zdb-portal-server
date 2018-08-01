@@ -26,7 +26,6 @@ import com.google.gson.Gson;
 import com.zdb.core.domain.Exchange;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.KubernetesConstants;
-import com.zdb.core.domain.KubernetesOperations;
 import com.zdb.core.domain.MariaDBConfig;
 import com.zdb.core.domain.PersistenceSpec;
 import com.zdb.core.domain.PodSpec;
@@ -40,11 +39,6 @@ import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBType;
-import com.zdb.core.repository.DiskUsageRepository;
-import com.zdb.core.repository.TagRepository;
-import com.zdb.core.repository.ZDBMariaDBAccountRepository;
-import com.zdb.core.repository.ZDBMariaDBConfigRepository;
-import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
 import com.zdb.core.util.K8SUtil;
@@ -65,32 +59,32 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
-public class MariaDBInstaller implements ZDBInstaller {
+public class MariaDBInstaller extends ZDBInstallerAdapter {
 	
-	@Autowired
-	private ZDBMariaDBAccountRepository accountRepository;
-
-	@Autowired
-	private ZDBMariaDBConfigRepository configRepository;
-	
-	@Autowired
-	private ZDBReleaseRepository releaseRepository;
-	
-	@Autowired
-	private ZDBRepository metaRepository;
-
-	@Autowired
-	private TagRepository tagRepository;
-	
-	@Autowired
-	private K8SService k8sService;
-
-	@Autowired
-	private DiskUsageRepository diskUsageRepository;
-	
-	@Autowired
-	@Qualifier("backupProvider")
-	private BackupProviderImpl backupProvider;
+//	@Autowired
+//	private ZDBMariaDBAccountRepository accountRepository;
+//
+//	@Autowired
+//	private ZDBMariaDBConfigRepository configRepository;
+//	
+//	@Autowired
+//	private ZDBReleaseRepository releaseRepository;
+//	
+//	@Autowired
+//	private ZDBRepository metaRepository;
+//
+//	@Autowired
+//	private TagRepository tagRepository;
+//	
+//	@Autowired
+//	private K8SService k8sService;
+//
+//	@Autowired
+//	private DiskUsageRepository diskUsageRepository;
+//	
+//	@Autowired
+//	@Qualifier("backupProvider")
+//	private BackupProviderImpl backupProvider;
 	
 	private static String storageClass;
 
@@ -381,12 +375,16 @@ public class MariaDBInstaller implements ZDBInstaller {
 			} else {
 				event.setResultMessage("Resource not found. ["+e.getMessage() +"]");
 			}
+			
+			saveReleaseError(service.getServiceName(), e);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
 			event.setResultMessage(e.getMessage());
 			event.setStatus(IResult.ERROR);
 			event.setEndTime(new Date(System.currentTimeMillis()));
+
+			saveReleaseError(service.getServiceName(), e);
 		} finally {
 			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 		}
@@ -459,7 +457,7 @@ public class MariaDBInstaller implements ZDBInstaller {
 				releaseRepository.save(findByReleaseName);
 			}
 			
-			Result result = new Result(txId, IResult.OK, "Delete Service instance. [" + serviceName + "]");
+			Result result = new Result(txId, IResult.OK);
 			final Future<UninstallReleaseResponse> releaseFuture = releaseManager.uninstall(uninstallRequestBuilder.build());
 			
 			if (releaseFuture != null) {
@@ -538,12 +536,17 @@ public class MariaDBInstaller implements ZDBInstaller {
 			} else {
 				event.setResultMessage(e.getMessage());
 			}
+			saveReleaseError(serviceName, e);
+			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			
 			event.setResultMessage(e.getMessage());
 			event.setStatus(IResult.ERROR);
 			event.setEndTime(new Date(System.currentTimeMillis()));
+			
+			saveReleaseError(serviceName, e);
+			
 		} finally {
 			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 			

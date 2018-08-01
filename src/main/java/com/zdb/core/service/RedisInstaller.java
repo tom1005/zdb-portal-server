@@ -60,25 +60,25 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
-public class RedisInstaller implements ZDBInstaller {
-	@Autowired
-	private ZDBReleaseRepository releaseRepository;
-	
-	@Autowired
-	private ZDBRepository metaRepository;
-	
-	@Autowired
-	private TagRepository tagRepository;
-	
-	@Autowired
-	private DiskUsageRepository diskUsageRepository;
-	
-	@Autowired
-	@Qualifier("backupProvider")
-	private BackupProviderImpl backupProvider;
-		
-	@Autowired
-	private K8SService k8sService;
+public class RedisInstaller  extends ZDBInstallerAdapter {
+//	@Autowired
+//	private ZDBReleaseRepository releaseRepository;
+//	
+//	@Autowired
+//	private ZDBRepository metaRepository;
+//	
+//	@Autowired
+//	private TagRepository tagRepository;
+//	
+//	@Autowired
+//	private DiskUsageRepository diskUsageRepository;
+//	
+//	@Autowired
+//	@Qualifier("backupProvider")
+//	private BackupProviderImpl backupProvider;
+//		
+//	@Autowired
+//	private K8SService k8sService;
 	
 	private static String storageClass;
 
@@ -497,6 +497,8 @@ public class RedisInstaller implements ZDBInstaller {
 			} else {
 				event.setResultMessage("Resource not found. ["+e.getMessage() +"]");
 			}
+			
+			saveReleaseError(service.getServiceName(), e);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			
@@ -504,7 +506,7 @@ public class RedisInstaller implements ZDBInstaller {
 			event.setStatus(IResult.ERROR);
 			event.setEndTime(new Date(System.currentTimeMillis()));
 			
-			
+			saveReleaseError(service.getServiceName(), e);
 		} finally {
 			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 		}
@@ -648,12 +650,14 @@ public class RedisInstaller implements ZDBInstaller {
 			} else {
 				event.setResultMessage(e.getMessage());
 			}
+			saveReleaseError(serviceName, e);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
 			event.setResultMessage(e.getMessage());
 			event.setStatus(IResult.ERROR);
 			event.setEndTime(new Date(System.currentTimeMillis()));
+			saveReleaseError(serviceName, e);
 		} finally {
 			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 			

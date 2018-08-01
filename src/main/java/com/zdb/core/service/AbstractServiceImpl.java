@@ -44,7 +44,6 @@ import com.zdb.core.domain.Exchange;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
-import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ServiceOverview;
@@ -59,7 +58,6 @@ import com.zdb.core.repository.MetadataRepository;
 import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepository;
-import com.zdb.core.repository.ZDBRepositoryUtil;
 import com.zdb.core.util.DateUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.NamespaceResourceChecker;
@@ -269,6 +267,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			releaseMeta.setPublicEnabled(clusterEnabled);
 			releaseMeta.setPurpose(service.getPurpose());
 			releaseMeta.setClusterEnabled(service.isClusterEnabled());
+			releaseMeta.setUserId(userInfo.getUserId());
 
 			log.info(">>> install request : "+new Gson().toJson(releaseMeta));
 
