@@ -16,23 +16,6 @@ spec:
 #  - hosts:
 #    - console.zmon-dev.seo01.containers.appdomain.cloud
 #    secretName: cloudzcp-io-cert
-     
-     
----
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: zdb-backup-agent-ingress
-  namespace: zdb-system
-spec:
-  rules:
-  - host: agent.zmon-dev.seo01.containers.appdomain.cloud
-    http:
-      paths:
-      - backend:
-          serviceName: zdb-backup-agent-loadbalancer
-          servicePort: 8080
-        path: /
 
 ---
 apiVersion: extensions/v1beta1

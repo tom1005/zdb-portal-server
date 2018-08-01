@@ -5,9 +5,9 @@ metadata:
   namespace: zdb-system
 data:
   chart.mariadb.url: https://github.com/cnpst/zdb-chart-repo/raw/master/stable/mariadb/charts/mariadb-4.2.0.tgz
-  chart.redis.url: https://github.com/cnpst/zdb-chart-repo/raw/master/stable/redis/charts/redis-3.3.2.tgz
+  chart.redis.url: https://github.com/cnpst/zdb-chart-repo/raw/master/stable/redis/charts/redis-3.6.3.tgz
   master.url: https://169.56.69.242:32124
-  storage.class: ibmc-block-silver
+  storage.class: ibmc-block-gold
   cluster: zcp-demo
   zdb.backup.agent.url: http://10.178.145.85:8080
   datasource.url: jdbc:mariadb://10.178.31.212:3306/zdb

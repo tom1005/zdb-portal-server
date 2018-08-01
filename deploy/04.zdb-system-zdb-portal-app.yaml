@@ -22,41 +22,41 @@ spec:
         - containerPort: 8080
         imagePullPolicy: Always
         env:
-        - name: master.url
+        - name: cluster.master
           valueFrom:
             configMapKeyRef:
-              key: master.url
-              name: zdb-portal-server-config
-        - name: zdb.backup.agent.url
-          valueFrom:
-            configMapKeyRef:
-              key: zdb.backup.agent.url
-              name: zdb-portal-server-config
-        - name: chart.redis.url
-          valueFrom:
-            configMapKeyRef:
-              key: chart.redis.url
+              key: cluster.master
               name: zdb-portal-server-config
         - name: chart.mariadb.url
           valueFrom:
             configMapKeyRef:
               key: chart.mariadb.url
-              name: zdb-portal-server-config
-        - name: datasource.url
+              name: zdb-portal-server-config            
+        - name: chart.redis.url
           valueFrom:
             configMapKeyRef:
-              key: datasource.url
+              key: chart.redis.url
               name: zdb-portal-server-config
-        - name: iam.baseUrl
+        - name: domain.custom
           valueFrom:
             configMapKeyRef:
-              key: iam.baseUrl
+              key: domain.custom
               name: zdb-portal-server-config
         - name: storage.class
           valueFrom:
             configMapKeyRef:
               key: storage.class
-              name: zdb-portal-server-config              
+              name: zdb-portal-server-config
+        - name: domain.ingress
+          valueFrom:
+            configMapKeyRef:
+              key: domain.ingress
+              name: zdb-portal-server-config
+        - name: cluster
+          valueFrom:
+            configMapKeyRef:
+              key: cluster
+              name: zdb-portal-server-config
       imagePullSecrets:
       - name: zdb-system-secret
       serviceAccountName: zdb-system-account
@@ -103,52 +103,25 @@ spec:
       containers:
       - env:
         - name: SPRING_ACTIVE_PROFILE
-          value: prod
-        - name: cluster
           valueFrom:
             configMapKeyRef:
-              key: cluster
+              key: SPRING_ACTIVE_PROFILE
               name: zdb-portal-server-config
-        - name: grafana.url
+        - name: iam.secret
           valueFrom:
             configMapKeyRef:
-              key: grafana.url
-              name: zdb-portal-server-config          
-        - name: iam.baseUrl
-          valueFrom:
-            configMapKeyRef:
-              key: iam.baseUrl
+              key: iam.secret
               name: zdb-portal-server-config
-        - name: zdb.portal.server.url
+        - name: domain.custom
           valueFrom:
             configMapKeyRef:
-              key: zdb.portal.server.url
+              key: domain.custom
               name: zdb-portal-server-config
-        - name: zcp.access.token.url
+        - name: domain.ingress
           valueFrom:
             configMapKeyRef:
-              key: zcp.access.token.url
+              key: domain.ingress
               name: zdb-portal-server-config
-        - name: zcp.client.secret
-          valueFrom:
-            configMapKeyRef:
-              key: zcp.client.secret
-              name: zdb-portal-server-config
-        - name: zcp.redirect.url
-          valueFrom:
-            configMapKeyRef:
-              key: zcp.redirect.url
-              name: zdb-portal-server-config
-        - name: zcp.user.auth.url
-          valueFrom:
-            configMapKeyRef:
-              key: zcp.user.auth.url
-              name: zdb-portal-server-config
-        - name: zdb.backup.agent.url
-          valueFrom:
-            configMapKeyRef:
-              key: zdb.backup.agent.url
-              name: zdb-portal-server-config  
         image: cloudzcp/zdb-portal-ui
         imagePullPolicy: Always
         name: zdb-portal-ui
@@ -208,20 +181,15 @@ spec:
       automountServiceAccountToken: true
       containers:
       - env:
-        - name: datasource.url
+        - name: cluster.master
           valueFrom:
             configMapKeyRef:
-              key: datasource.url
+              key: cluster.master
               name: zdb-portal-server-config
-        - name: master.url
+        - name: domain.custom
           valueFrom:
             configMapKeyRef:
-              key: master.url
-              name: zdb-portal-server-config
-        - name: zdb.backup.agent.url
-          valueFrom:
-            configMapKeyRef:
-              key: zdb.backup.agent.url
+              key: domain.custom
               name: zdb-portal-server-config                            
         image: cloudzcp/zdb-backup-agent
         imagePullPolicy: Always
