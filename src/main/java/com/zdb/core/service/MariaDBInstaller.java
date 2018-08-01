@@ -516,7 +516,7 @@ public class MariaDBInstaller implements ZDBInstaller {
 				// Backup Resource 삭제 요청
 				backupProvider.removeServiceResource(txId, namespace, ZDBType.MariaDB.getName(), serviceName);
 				
-				event.setResultMessage("Successfully deleted.");
+				event.setResultMessage("서비스 삭제 완료");
 				event.setStatus(IResult.OK);
 				event.setEndTime(new Date(System.currentTimeMillis()));
 			} else {

@@ -241,7 +241,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			}
 
 			log.info(service.getServiceName() + " update success!");
-			result = new Result(txId, IResult.RUNNING, "scale-up request.").putValue(IResult.UPDATE, release);
+			result = new Result(txId, IResult.RUNNING, "스케일 업 요청됨").putValue(IResult.UPDATE, release);
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 
@@ -439,83 +439,6 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 		return new Result("", Result.ERROR);
 	}
-
-//	public Result updateDBVariables(final String txId, final String namespace, final String serviceName, Map<String, String> config) throws Exception {
-//		Result result = Result.RESULT_OK(txId);
-//		MariaDBConnection connection = null;
-//
-//		// 서비스 요청 정보 기록
-//		RequestEvent event = new RequestEvent();
-//		event.setTxId(txId);
-//		event.setServiceName(serviceName);
-//		event.setEventType(EventType.UpdateDBConfig.name());
-//		event.setNamespace(namespace);
-//		event.setStartTime(new Date(System.currentTimeMillis()));
-//		event.setStatusMessage("DB Configuration 갱신.");
-//		
-//		try {
-//			event.setServiceType(K8SUtil.getChartName(namespace, serviceName));
-//			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-//			
-//			ServiceOverview serviceWithName = getServiceWithName(namespace, ZDBType.MariaDB.getName(), serviceName);
-//			ZDBStatus status = serviceWithName.getStatus();
-//			
-//			if(status == ZDBStatus.RED) {
-//				return new Result(txId, IResult.ERROR, "DB 실행중이지 않습니다. 상태를 확인하세요.");
-//			}
-//
-//			connection = MariaDBConnection.getRootMariaDBConnection(namespace, serviceName);
-//			if (connection == null) {
-//				throw new Exception("cannot connect mariadb. namespace: " + namespace + ", serviceName: " + serviceName);
-//			}
-//			
-//			
-////			MariaDBConfiguration.setConfig(zdbMariaDBConfigRepository, connection.getStatement(), namespace, serviceName, config);
-//
-//			result = new Result(txId, IResult.OK, "");
-//			result.putValue(IResult.MARIADB_CONFIG, config);
-//		} catch (FileNotFoundException | KubernetesClientException e) {
-//			log.error(e.getMessage(), e);
-//
-//			event.setStatus(IResult.ERROR);
-//			event.setStatusMessage("DBConfiguration 적용 오류");
-//			event.setEndTime(new Date(System.currentTimeMillis()));
-//
-//			if (e.getMessage().indexOf("Unauthorized") > -1) {
-//				event.setResultMessage("Unauthorized");
-//				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
-//			} else {
-//				event.setResultMessage(e.getMessage());
-//				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
-//			}
-//		} catch (SQLException e) {
-//			log.error(e.getMessage(), e);
-//
-//			event.setResultMessage(e.getMessage());
-//			event.setStatusMessage("DBConfiguration 적용 오류");
-//			event.setStatus(IResult.ERROR);
-//			event.setEndTime(new Date(System.currentTimeMillis()));
-//
-//			return Result.RESULT_FAIL(txId, e);
-//		} catch (Exception e) {
-//			log.error(e.getMessage(), e);
-//
-//			event.setResultMessage(e.getMessage());
-//			event.setStatusMessage("DBConfiguration 적용 오류");
-//			event.setStatus(IResult.ERROR);
-//			event.setEndTime(new Date(System.currentTimeMillis()));
-//
-//			return Result.RESULT_FAIL(txId, e);
-//		} finally {
-//			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
-//
-//			if (connection!= null) {
-//				connection.close();
-//			}
-//		}
-//
-//		return result;
-//	}
 
 	public Result getDBInstanceAccounts(String txId, String namespace, String serviceName) throws Exception {
 		Result result = Result.RESULT_OK(txId);
@@ -768,11 +691,11 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			// shutdown and pod delete (restart)
 			MariaDBShutDownUtil.getInstance().doShutdownAndDeleteAllPods(namespace, serviceName);
 
-			result = new Result(txId, IResult.OK, "config update request. [" + serviceName + "]");
+			result = new Result(txId, IResult.OK, "환경설정 변경 요청됨");
 
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, "config update fail. [" + serviceName + "]");
+			result = new Result(txId, IResult.ERROR, "환경설정 변경 오류 - " + e.getMessage());
 		}
 
 		return result;
@@ -790,10 +713,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		try {
 			// shutdown and pod delete (restart)
 			MariaDBShutDownUtil.getInstance().doShutdownAndDeleteAllPods(namespace, serviceName);
-			result = new Result(txId, IResult.OK, "Restart request.");
+			result = new Result(txId, IResult.OK, "서비스 재시작 요청됨");
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, "Restart request fail. - " + e.getMessage());
+			result = new Result(txId, IResult.ERROR, "서비스 재시작 오류. - " + e.getMessage());
 		}
 
 		return result;
@@ -808,10 +731,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		try {
 			// shutdown and pod delete (restart)
 			MariaDBShutDownUtil.getInstance().doShutdownAndDeletePod(namespace, serviceName, podName);
-			result = new Result(txId, IResult.OK, "Pod restart request.");
+			result = new Result(txId, IResult.OK, "Pod 재시작 요청됨");
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, "Pod restart fail. - " + e.getMessage());
+			result = new Result(txId, IResult.ERROR, "Pod 재시작 오류. - " + e.getMessage());
 		}
 
 		return result;

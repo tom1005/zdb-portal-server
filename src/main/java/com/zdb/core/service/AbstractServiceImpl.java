@@ -277,7 +277,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			// install request
 			deploymentRequest(exchange);
 
-			return new Result(txId, IResult.OK, "Installation request.");
+			return new Result(txId, IResult.OK, "서비스 생성 요청됨");
 		}
 		
 	}
@@ -301,7 +301,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 
 		unInstallRequest(exchange);
 
-		return new Result(txId, IResult.OK, "Delete request.");
+		return new Result(txId, IResult.OK, "서비스 삭제 요청됨");
 	}
 
 	/* (non-Javadoc)
@@ -1262,7 +1262,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			Map<String, String> changeResult = new HashMap<String, String>();
 			changeResult.put("password", changedPassword);
 			
-			return new Result(txId, Result.OK, "Password change successful.").putValue(IResult.CHANGE_PASSWORD, changeResult);
+			return new Result(txId, Result.OK, "비밀번호 변경 성공").putValue(IResult.CHANGE_PASSWORD, changeResult);
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 
