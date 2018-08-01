@@ -56,7 +56,7 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 				entity = scheduleRepository.save(entity);
 			}
 			//2018-07-25 UI backup 목록 오류 수정
-			result = new Result(txid, IResult.OK, "Set schedule.").putValue("backupSchedule", entity);
+			result = new Result(txid, IResult.OK, "백업 스케쥴 변경 완료.").putValue("backupSchedule", entity);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			result = Result.RESULT_FAIL(txid, e);
