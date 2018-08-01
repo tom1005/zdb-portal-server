@@ -23,12 +23,15 @@ import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ScheduleEntity;
+import com.zdb.core.domain.ServiceOverview;
 import com.zdb.core.domain.UserInfo;
+import com.zdb.core.domain.ZDBStatus;
 import com.zdb.core.exception.BackupException;
 import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
 import com.zdb.core.service.BackupProviderImpl;
 import com.zdb.core.service.K8SService;
+import com.zdb.core.service.ZDBRestService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -56,6 +59,14 @@ public class ZDBBackupController {
 	
 	@Autowired
 	private K8SService k8sService;
+	
+	@Autowired
+	@Qualifier("mariadbService")
+	private ZDBRestService mariadbService;
+
+	@Autowired
+	@Qualifier("redisService")
+	private ZDBRestService redisService;
 
 	private String txId() {
 		return UUID.randomUUID().toString();
@@ -466,6 +477,16 @@ public class ZDBBackupController {
 			if (k8sService.getServiceWithName(namespace, serviceType, serviceName) == null) {
 				sb.append("Service(namespace:"+namespace+",serviceName:"+serviceName+") does not exits").append(",");
 				throw new BackupException(sb.toString(), BackupException.NOT_FOUND);
+			}
+			
+			ServiceOverview overview = k8sService.getServiceWithName(namespace, serviceType, serviceName);
+			
+			if (overview != null) {
+				if(overview.getStatus() != ZDBStatus.GREEN) {
+					throw new BackupException("서비스가 가용 상태가 아닙니다.", BackupException.NOT_FOUND);
+				}
+			} else {
+				throw new BackupException("등록된 서비스가 없습니다.", BackupException.NOT_FOUND);
 			}
 		} catch (Exception e) {
 			if (e instanceof BackupException) {
