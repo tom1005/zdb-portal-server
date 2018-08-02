@@ -104,13 +104,9 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 				chart = chartLoader.load(url);
 			}
 
-			try {
-				DefaultKubernetesClient client = K8SUtil.kubernetesClient();
-				final Tiller tiller = new Tiller(client, "kube-system");
-				releaseManager = new ReleaseManager(tiller);
-			} catch (Exception e) {
-				log.error(e.getMessage(), e);
-			}
+			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
+			final Tiller tiller = new Tiller(client, "kube-system");
+			releaseManager = new ReleaseManager(tiller);
 
 			final InstallReleaseRequest.Builder requestBuilder = InstallReleaseRequest.newBuilder();
 			
