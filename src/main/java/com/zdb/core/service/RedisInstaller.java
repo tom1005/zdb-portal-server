@@ -556,7 +556,7 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 		try {
 			DefaultKubernetesClient client = (DefaultKubernetesClient) K8SUtil.kubernetesClient().inNamespace(namespace);
 
-			final Tiller tiller = new Tiller(client, "kube-systm");
+			final Tiller tiller = new Tiller(client);
 			releaseManager = new ReleaseManager(tiller);
 
 			ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(serviceName);

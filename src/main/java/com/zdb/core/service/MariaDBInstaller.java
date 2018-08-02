@@ -122,7 +122,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 			}
 			
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
-			final Tiller tiller = new Tiller(client, "kube-systm");
+			final Tiller tiller = new Tiller(client);
 			releaseManager = new ReleaseManager(tiller);
 
 			final InstallReleaseRequest.Builder requestBuilder = InstallReleaseRequest.newBuilder();
@@ -434,7 +434,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 		try {
 			DefaultKubernetesClient client = (DefaultKubernetesClient) K8SUtil.kubernetesClient().inNamespace(namespace);
 
-			final Tiller tiller = new Tiller(client, "kube-systm");
+			final Tiller tiller = new Tiller(client);
 			releaseManager = new ReleaseManager(tiller);
 			
 			ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(serviceName);
