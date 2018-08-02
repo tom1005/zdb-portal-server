@@ -1405,7 +1405,7 @@ public class K8SUtil {
 		        		  ip = service.getStatus().getLoadBalancer().getIngress().get(0).getIp();
 			        	  continue;  
 		        	  }
-	    		  } else if (profile == null || "prod".equals(profile)) {	        	  
+	    		  } else {	        	  
 		        	  if ("private".equals(loadbalancerType)) {
 		        		  ip = service.getSpec().getClusterIP();
 		        		  continue;
