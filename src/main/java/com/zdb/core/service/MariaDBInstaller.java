@@ -122,7 +122,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 			}
 			
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
-			final Tiller tiller = new Tiller(client);
+			final Tiller tiller = new Tiller(client, "kube-systm");
 			releaseManager = new ReleaseManager(tiller);
 
 			final InstallReleaseRequest.Builder requestBuilder = InstallReleaseRequest.newBuilder();
@@ -315,6 +315,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 										}
 										lacth.countDown();
 										System.out.println("------------------------------------------------- service create success! ------------------------------------------------- ");
+										watchEventListener.sendToClient("mariadb installer");
 										break;
 									} else {
 										if(releaseMeta != null) {
@@ -351,6 +352,8 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 						event.setStatus(IResult.OK);
 						event.setResultMessage("Installation successful.");
 						event.setEndTime(new Date(System.currentTimeMillis()));
+						
+						watchEventListener.sendToClient("mariadb installer");
 					} else {
 						log.error("{} > {} > {} 권한 변경 실패!", service.getNamespace(), service.getServiceName(), account.getUserId());
 					}
@@ -359,6 +362,8 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 					event.setStatus(IResult.ERROR);
 					event.setResultMessage("Installation failed.");
 					event.setEndTime(new Date(System.currentTimeMillis()));
+					
+					watchEventListener.sendToClient("mariadb installer");
 				}
 			}
 			
@@ -429,7 +434,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 		try {
 			DefaultKubernetesClient client = (DefaultKubernetesClient) K8SUtil.kubernetesClient().inNamespace(namespace);
 
-			final Tiller tiller = new Tiller(client);
+			final Tiller tiller = new Tiller(client, "kube-systm");
 			releaseManager = new ReleaseManager(tiller);
 			
 			ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(serviceName);
@@ -563,6 +568,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 					log.error(e.getMessage(), e);
 				}
 			}
+			watchEventListener.sendToClient("mariadb installer");
 		}
 	}
 }

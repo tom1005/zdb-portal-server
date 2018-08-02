@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
 import com.zdb.core.domain.ReleaseMetaData;
+import com.zdb.core.event.listener.WatchEventListener;
 import com.zdb.core.repository.DiskUsageRepository;
 import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBMariaDBAccountRepository;
@@ -40,6 +41,9 @@ public abstract class ZDBInstallerAdapter implements ZDBInstaller {
 
 	@Autowired
 	protected DiskUsageRepository diskUsageRepository;
+	
+	@Autowired
+	protected WatchEventListener watchEventListener;
 
 	@Autowired
 	@Qualifier("backupProvider")

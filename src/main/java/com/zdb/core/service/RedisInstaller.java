@@ -16,8 +16,6 @@ import java.util.concurrent.TimeUnit;
 import org.microbean.helm.ReleaseManager;
 import org.microbean.helm.Tiller;
 import org.microbean.helm.chart.URLChartLoader;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.yaml.snakeyaml.DumperOptions;
@@ -38,9 +36,6 @@ import com.zdb.core.domain.ServiceSpec;
 import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBType;
-import com.zdb.core.repository.DiskUsageRepository;
-import com.zdb.core.repository.TagRepository;
-import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
 import com.zdb.core.util.K8SUtil;
@@ -449,6 +444,7 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 										}
 										lacth.countDown();
 										System.out.println("------------------------------------------------- service create success! ------------------------------------------------- ");
+										watchEventListener.sendToClient("redis installer");
 										break;
 									} else {
 										if(releaseMeta != null) {
@@ -483,10 +479,14 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 					event.setStatus(IResult.OK);
 					event.setResultMessage("Installation successful.");
 					event.setEndTime(new Date(System.currentTimeMillis()));
+
+					watchEventListener.sendToClient("redis installer");
 				} else {
 					event.setStatus(IResult.ERROR);
 					event.setResultMessage("Installation failed.");
 					event.setEndTime(new Date(System.currentTimeMillis()));
+					
+					watchEventListener.sendToClient("redis installer");
 				}
 			}
 			
@@ -556,7 +556,7 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 		try {
 			DefaultKubernetesClient client = (DefaultKubernetesClient) K8SUtil.kubernetesClient().inNamespace(namespace);
 
-			final Tiller tiller = new Tiller(client);
+			final Tiller tiller = new Tiller(client, "kube-systm");
 			releaseManager = new ReleaseManager(tiller);
 
 			ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(serviceName);
@@ -678,6 +678,8 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 					log.error(e.getMessage(), e);
 				}
 			}
+			
+			watchEventListener.sendToClient("redis installer");
 		}
 	
 	}

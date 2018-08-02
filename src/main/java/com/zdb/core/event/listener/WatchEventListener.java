@@ -233,7 +233,7 @@ public class WatchEventListener {
 	/**
 	 * websocket send
 	 */
-	private synchronized void sendToClient(String eventType) {
+	public synchronized void sendToClient(String eventType) {
 		try {
 			if (getSessionCount() > 0) {
 				Result result = commonService.getServicesWithNamespaces(null, true);

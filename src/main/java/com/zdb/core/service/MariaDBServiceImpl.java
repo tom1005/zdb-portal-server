@@ -181,7 +181,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
 
-			final Tiller tiller = new Tiller(client);
+			final Tiller tiller = new Tiller(client, "kube-systm");
 			releaseManager = new ReleaseManager(tiller);
 			
 			final UpdateReleaseRequest.Builder requestBuilder = UpdateReleaseRequest.newBuilder();

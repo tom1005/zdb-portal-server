@@ -589,7 +589,7 @@ public class K8SUtil {
 		try {
 			DefaultKubernetesClient client = (DefaultKubernetesClient) K8SUtil.kubernetesClient().inNamespace(namespace);
 
-			final Tiller tiller = new Tiller(client);
+			final Tiller tiller = new Tiller(client, "kube-systm");
 			releaseManager = new ReleaseManager(tiller);
 
 			final ListReleasesRequest.Builder requestBuilder = ListReleasesRequest.newBuilder();
@@ -632,7 +632,7 @@ public class K8SUtil {
 		try {
 			DefaultKubernetesClient client = kubernetesClient();
 
-			final Tiller tiller = new Tiller(client);
+			final Tiller tiller = new Tiller(client, "kube-systm");
 			releaseManager = new ReleaseManager(tiller);
 
 			final ListReleasesRequest.Builder requestBuilder = ListReleasesRequest.newBuilder();
@@ -694,7 +694,7 @@ public class K8SUtil {
 		try {
 			DefaultKubernetesClient client = kubernetesClient();
 
-			final Tiller tiller = new Tiller(client);
+			final Tiller tiller = new Tiller(client, "kube-systm");
 			releaseManager = new ReleaseManager(tiller);
 
 			final ListReleasesRequest.Builder requestBuilder = ListReleasesRequest.newBuilder();
@@ -760,7 +760,7 @@ public class K8SUtil {
 		try {
 			DefaultKubernetesClient client = kubernetesClient();
 
-			final Tiller tiller = new Tiller(client);
+			final Tiller tiller = new Tiller(client, "kube-systm");
 			releaseManager = new ReleaseManager(tiller);
 
 			final ListReleasesRequest.Builder requestBuilder = ListReleasesRequest.newBuilder();
