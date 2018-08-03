@@ -239,8 +239,8 @@ iam:
           
 storage:
   storageType: AWS_S3
-  accessKey: "6bf48d42eb304e1292f178bf69034f12"
-  secretKey: "0c61052e1bd30002a96cc57c8589d7521efef440f0471873"
+  accessKey: "${storage.accessKey}"
+  secretKey: "${storage.secretKey}"
   endpointUrl: "s3-api.us-geo.objectstorage.softlayer.net"
   apiKey: "na"
   serviceInstanceId: "na"
