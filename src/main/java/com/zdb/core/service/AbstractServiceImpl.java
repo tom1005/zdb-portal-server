@@ -849,25 +849,25 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				
 				String storageMsg = "";
 				if (pvcList.size() == 2) {
-					storageMsg = String.format("‣스토리지[M: %s, S: %s]</br>", storageMaster, storageSlave);
+					storageMsg = String.format("‣ 스토리지[M: %s, S: %s]</br>", storageMaster, storageSlave);
 				} else if (pvcList.size() == 1) {
-					storageMsg = String.format("‣스토리지[M: %s]</br>", storageMaster);
+					storageMsg = String.format("‣ 스토리지[M: %s]</br>", storageMaster);
 				}
 				
 				if (overview.isClusterEnabled()) {
-					statusMessage = String.format("%s‣컨테이너[M: %s, S: %s]</br>‣상태[M: %s, S: %s]", storageMsg, containerMaster, containerSlave, isReadyMaster, isReadySlave);
+					statusMessage = String.format("%s‣ 컨테이너[M: %s, S: %s]</br>‣ 상태[M: %s, S: %s]", storageMsg, containerMaster, containerSlave, isReadyMaster, isReadySlave);
 					if("OK".equals(isReadyMaster) && "OK".equals(isReadySlave)) {
 						overview.setStatus(ZDBStatus.GREEN);
 					}
 				} else {
-					statusMessage = String.format("%s‣컨테이너[M: %s]</br>‣상태[M: %s]", storageMsg, containerMaster, isReadyMaster);
+					statusMessage = String.format("%s‣ 컨테이너[M: %s]</br>‣ 상태[M: %s]", storageMsg, containerMaster, isReadyMaster);
 					if("OK".equals(isReadyMaster)) {
 						overview.setStatus(ZDBStatus.GREEN);
 					}
 				}
 				
 				if(!eventMessageSet.isEmpty()) {
-					statusMessage = statusMessage + "</br>‣메세지:";
+					statusMessage = statusMessage + "</br>‣ 메세지:";
 					int index = 0;
 					String lastMessage = "";
 					for (Iterator<String> iterator = eventMessageSet.iterator(); iterator.hasNext();) {
@@ -895,6 +895,14 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 					}
 				}
 				overview.setStatusMessage(statusMessage);
+			} else {
+				if(pods.isEmpty()) {
+					List<EventMetaData> statefulSetStatus = eventRepository.findByKindAndNameAndReason("StatefulSet", "%"+serviceName+"%", "FailedCreate");
+					if(statefulSetStatus != null && !statefulSetStatus.isEmpty()) {
+						EventMetaData eventMetaData = statefulSetStatus.get(0);
+						overview.setStatusMessage("서비스 생성에 실패 했습니다. 관리자에게 문의하세요.<br> ‣ 에러메세지 : "+eventMetaData.getMessage());
+					}
+				}
 			}
 		}
 	}
@@ -924,6 +932,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		} else if (m.startsWith("PersistentVolumeClaim is not bound")) {
 			return "스토리지 생성중...";
 		} else if (m.startsWith("containers with incomplete status: [init-volume]")) {
+			return "컨테이너 초기화중...";
+		} else if (m.startsWith("Successfully assigned")) {
 			return "컨테이너 초기화중...";
 		} 
 
