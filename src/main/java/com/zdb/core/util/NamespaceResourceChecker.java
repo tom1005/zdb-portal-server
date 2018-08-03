@@ -67,57 +67,57 @@ public class NamespaceResourceChecker {
 	 * @throws Exception
 	 */
 	public static boolean isAvailableResource(String namespace, String userId, int memory, int cpu) throws Exception {
-		NamespaceResource resource = getNamespaceResource(namespace, userId);
-		
-		if(resource == null) {
-			log.error("네임스페이스[{}] 의 가용 리소스 정보를 알 수 없습니다.", namespace);
-			throw new ResourceException("가용 리소스 정보 조회 에러.[" + namespace +"]");
-		}
-		
-		ResourceQuota hard = resource.getHard();
-		Integer cpuLimits = hard.getCpuLimits();
-		CPUUnit cpuLimitsUnit = hard.getCpuLimitsUnit();
-		if(cpuLimitsUnit == CPUUnit.Core) {
-			cpuLimits = cpuLimits * 1000;
-		}
-		
-		Integer memLimits = hard.getMemoryLimits();
-		MemoryUnit memRequestsUnit = hard.getMemoryLimitsUnit();
-		if(memRequestsUnit == MemoryUnit.Gi) {
-			memLimits = memLimits * 1000;
-		}
-		
-		ResourceQuota used = resource.getUsed();
-		Integer usedCpuLimits = used.getCpuLimits();
-		CPUUnit usedCpuLimitsUnit = used.getCpuLimitsUnit();
-		if(usedCpuLimitsUnit == CPUUnit.Core) {
-			usedCpuLimits = usedCpuLimits * 1000;
-		}
-		
-		Integer usedMemLimits = used.getMemoryLimits();
-		MemoryUnit usedMemRequestsUnit = used.getMemoryLimitsUnit();
-		
-		if(usedMemRequestsUnit == MemoryUnit.Gi) {
-			usedMemLimits = usedMemLimits * 1000;
-		}
-		
-		int availableCpu = cpuLimits - usedCpuLimits;
-		int availableMemory = memLimits - usedMemLimits;
-		
-		
-		
-		int serviceRequestMemory = memory;//K8SUtil.convertToMemory(memory);
-		int serviceRequestCpu = cpu;//K8SUtil.convertToCpu(cpu);
-		
-		log.warn("availableCpu : {}, serviceRequestCpu : {}", availableCpu, serviceRequestCpu);
-		
-		if( availableCpu - serviceRequestCpu < 0) {
-			throw new ResourceException("가용 CPU 자원이 부족합니다. [가용CPU : " + availableCpu +"m]");
-		}
-		
-		if( availableMemory - serviceRequestMemory < 0) {
-			throw new ResourceException("가용 메모리가 부족합니다. [가용메모리 : " + availableMemory +"Mi]");
-		}
+//		NamespaceResource resource = getNamespaceResource(namespace, userId);
+//		
+//		if(resource == null) {
+//			log.error("네임스페이스[{}] 의 가용 리소스 정보를 알 수 없습니다.", namespace);
+//			throw new ResourceException("가용 리소스 정보 조회 에러.[" + namespace +"]");
+//		}
+//		
+//		ResourceQuota hard = resource.getHard();
+//		Integer cpuLimits = hard.getCpuLimits();
+//		CPUUnit cpuLimitsUnit = hard.getCpuLimitsUnit();
+//		if(cpuLimitsUnit == CPUUnit.Core) {
+//			cpuLimits = cpuLimits * 1000;
+//		}
+//		
+//		Integer memLimits = hard.getMemoryLimits();
+//		MemoryUnit memRequestsUnit = hard.getMemoryLimitsUnit();
+//		if(memRequestsUnit == MemoryUnit.Gi) {
+//			memLimits = memLimits * 1000;
+//		}
+//		
+//		ResourceQuota used = resource.getUsed();
+//		Integer usedCpuLimits = used.getCpuLimits();
+//		CPUUnit usedCpuLimitsUnit = used.getCpuLimitsUnit();
+//		if(usedCpuLimitsUnit == CPUUnit.Core) {
+//			usedCpuLimits = usedCpuLimits * 1000;
+//		}
+//		
+//		Integer usedMemLimits = used.getMemoryLimits();
+//		MemoryUnit usedMemRequestsUnit = used.getMemoryLimitsUnit();
+//		
+//		if(usedMemRequestsUnit == MemoryUnit.Gi) {
+//			usedMemLimits = usedMemLimits * 1000;
+//		}
+//		
+//		int availableCpu = cpuLimits - usedCpuLimits;
+//		int availableMemory = memLimits - usedMemLimits;
+//		
+//		
+//		
+//		int serviceRequestMemory = memory;//K8SUtil.convertToMemory(memory);
+//		int serviceRequestCpu = cpu;//K8SUtil.convertToCpu(cpu);
+//		
+//		log.warn("availableCpu : {}, serviceRequestCpu : {}", availableCpu, serviceRequestCpu);
+//		
+//		if( availableCpu - serviceRequestCpu < 0) {
+//			throw new ResourceException("가용 CPU 자원이 부족합니다. [가용CPU : " + availableCpu +"m]");
+//		}
+//		
+//		if( availableMemory - serviceRequestMemory < 0) {
+//			throw new ResourceException("가용 메모리가 부족합니다. [가용메모리 : " + availableMemory +"Mi]");
+//		}
 		
 		return true;
 	}
