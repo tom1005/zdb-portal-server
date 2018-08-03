@@ -828,6 +828,25 @@ public class ZDBRestController {
 		}
 	}
 
+	@RequestMapping(value = "/system-events", method = RequestMethod.GET)
+	public ResponseEntity<String> getSystemEvents(
+			@RequestParam("namespace") final String namespace, 
+			@RequestParam("kind") final String kind,
+			@RequestParam("serviceName") final String serviceName,
+			@RequestParam("startTime") final String startTime,
+			@RequestParam("endTime") final String endTime,
+			@RequestParam("keyword") final String keyword) {
+		try {
+			Result result = commonService.getSystemEvents(namespace, serviceName, kind, startTime, endTime, keyword);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
 	@RequestMapping(value = "/events", method = RequestMethod.GET)
 	public ResponseEntity<String> getEvents(
 			@RequestParam("namespace") final String namespace, 

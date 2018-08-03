@@ -458,7 +458,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	 * @see com.zdb.core.service.ZDBRestService#getEvents(java.lang.String, java.lang.String, java.lang.String)
 	 */
 	@Override
-	public Result getEvents(String namespace, String servceName, String kind, String start, String end, String keyword) throws Exception {
+	public Result getSystemEvents(String namespace, String servceName, String kind, String start, String end, String keyword) throws Exception {
 		try {
 			CriteriaBuilder builder = entityManager.getCriteriaBuilder();
 			CriteriaQuery<EventMetaData> query = builder.createQuery(EventMetaData.class);
@@ -532,6 +532,13 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			log.error(e.getMessage(), e);
 			return new Result("", Result.ERROR, e.getMessage(), e);
 		}
+	}
+	
+	@Override
+	public Result getEvents(String namespace, String servceName, String kind, String start, String end, String keyword) throws Exception {
+		//TODO 수정 예정.
+		
+		return getSystemEvents(namespace, servceName, kind, start, end, keyword);
 	}
 	
 	@Override

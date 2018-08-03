@@ -1,10 +1,7 @@
 package com.zdb.core.event.listener;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -13,21 +10,15 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.web.socket.messaging.SessionConnectedEvent;
-import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
-import com.zdb.core.domain.IResult;
-import com.zdb.core.domain.Result;
-import com.zdb.core.domain.ServiceOverview;
 import com.zdb.core.event.EventWatcher;
 import com.zdb.core.event.MetaDataWatcher;
 import com.zdb.core.repository.EventRepository;
 import com.zdb.core.repository.MetadataRepository;
 import com.zdb.core.service.ZDBRestService;
 import com.zdb.core.util.K8SUtil;
+import com.zdb.core.ws.MessageSender;
 
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.Event;
@@ -55,7 +46,10 @@ public class WatchEventListener {
 	EventRepository eventRepo;
 	
 	@Autowired
-	private SimpMessagingTemplate messageSender;
+	private SimpMessagingTemplate messagingTemplate;
+
+	@Autowired
+	private MessageSender messageSender;
 	
 	@Autowired
 	@Qualifier("commonService")
@@ -74,9 +68,9 @@ public class WatchEventListener {
 					public void run() {
 						Watch eventsWatcher;
 						try {
-							eventsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().events().watch(new EventWatcher<Event>(eventRepo, metaRepo, messageSender) {
+							eventsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().events().watch(new EventWatcher<Event>(eventRepo, metaRepo, messagingTemplate) {
 								protected void sendWebSocket() {
-									sendToClient("events");
+									messageSender.sendToClient("events");
 								}
 							});
 							watchList.add(eventsWatcher);
@@ -123,7 +117,7 @@ public class WatchEventListener {
 						try {
 							persistentVolumeClaimsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().persistentVolumeClaims().watch(new MetaDataWatcher<PersistentVolumeClaim>(metaRepo) {
 								protected void sendWebSocket() {
-									sendToClient("persistentVolumeClaims");
+									messageSender.sendToClient("persistentVolumeClaims");
 								}
 							});
 							watchList.add(persistentVolumeClaimsWatcher);
@@ -183,7 +177,7 @@ public class WatchEventListener {
 						try {
 							podsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().pods().watch(new MetaDataWatcher<Pod>(metaRepo) {
 								protected void sendWebSocket() {
-									sendToClient("pods");
+									messageSender.sendToClient("pods");
 								}
 							});
 							watchList.add(podsWatcher);
@@ -218,61 +212,61 @@ public class WatchEventListener {
 			}
 		}
 	}
-	
-	@Scheduled(initialDelayString = "30000", fixedRateString = "10000")
-	public void pushData() {
-		if((System.currentTimeMillis() - lastUpdate) < (9 * 1000) ) {
-			return;
-		}
-		
-		sendToClient("auto");
-	}
-	
-	static long lastUpdate = 0;
-	
-	/**
-	 * websocket send
-	 */
-	public synchronized void sendToClient(String eventType) {
-		try {
-			if (getSessionCount() > 0) {
-				Result result = commonService.getServicesWithNamespaces(null, true);
-				if (result.isOK()) {
-					Object object = result.getResult().get(IResult.SERVICEOVERVIEWS);
-					if (object != null) {
-						messageSender.convertAndSend("/services", result);
-
-						List<ServiceOverview> overviews = (List<ServiceOverview>) object;
-						for (ServiceOverview serviceOverview : overviews) {
-							Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
-							messageSender.convertAndSend("/service/" + serviceOverview.getServiceName(), r);
-						}
-						
-						// 최근 업데이트 시간 
-						lastUpdate = System.currentTimeMillis();
-					}
-				}
-			}
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-		} 
-	}
-	
-	Set<String> mySet = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
-	
-	public int getSessionCount() {
-		return mySet.size();
-	}
-
-	@EventListener
-	private void onSessionConnectedEvent(SessionConnectedEvent event) {
-	    StompHeaderAccessor sha = StompHeaderAccessor.wrap(event.getMessage());
-	    mySet.add(sha.getSessionId());
-	}
-
-	@EventListener
-	private void onSessionDisconnectEvent(SessionDisconnectEvent event) {
-	    StompHeaderAccessor sha = StompHeaderAccessor.wrap(event.getMessage());
-	    mySet.remove(sha.getSessionId());
-	}
+//	
+//	@Scheduled(initialDelayString = "30000", fixedRateString = "10000")
+//	public void pushData() {
+//		if((System.currentTimeMillis() - lastUpdate) < (9 * 1000) ) {
+//			return;
+//		}
+//		
+//		sendToClient("auto");
+//	}
+//	
+//	static long lastUpdate = 0;
+//	
+//	/**
+//	 * websocket send
+//	 */
+//	public synchronized void sendToClient(String eventType) {
+//		try {
+//			if (getSessionCount() > 0) {
+//				Result result = commonService.getServicesWithNamespaces(null, true);
+//				if (result.isOK()) {
+//					Object object = result.getResult().get(IResult.SERVICEOVERVIEWS);
+//					if (object != null) {
+//						messageSender.convertAndSend("/services", result);
+//
+//						List<ServiceOverview> overviews = (List<ServiceOverview>) object;
+//						for (ServiceOverview serviceOverview : overviews) {
+//							Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
+//							messageSender.convertAndSend("/service/" + serviceOverview.getServiceName(), r);
+//						}
+//						
+//						// 최근 업데이트 시간 
+//						lastUpdate = System.currentTimeMillis();
+//					}
+//				}
+//			}
+//		} catch (Exception e) {
+//			log.error(e.getMessage(), e);
+//		} 
+//	}
+//	
+//	Set<String> mySet = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
+//	
+//	public int getSessionCount() {
+//		return mySet.size();
+//	}
+//
+//	@EventListener
+//	private void onSessionConnectedEvent(SessionConnectedEvent event) {
+//	    StompHeaderAccessor sha = StompHeaderAccessor.wrap(event.getMessage());
+//	    mySet.add(sha.getSessionId());
+//	}
+//
+//	@EventListener
+//	private void onSessionDisconnectEvent(SessionDisconnectEvent event) {
+//	    StompHeaderAccessor sha = StompHeaderAccessor.wrap(event.getMessage());
+//	    mySet.remove(sha.getSessionId());
+//	}
 }
