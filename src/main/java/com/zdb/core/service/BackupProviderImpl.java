@@ -1,5 +1,6 @@
 package com.zdb.core.service;
 
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -145,6 +146,47 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 			log.debug("namespace : "+namespace+", serviceName : "+serviceName+", serviceType : "+serviceType);
 			
 			List<BackupEntity> list = backupRepository.findBackupByService(serviceType, serviceName);
+			
+			Calendar cal = Calendar.getInstance();
+			list.forEach( i -> {
+				cal.setTime(i.getAcceptedDatetime());
+				cal.add(Calendar.HOUR_OF_DAY, 9);
+				i.setAcceptedDatetime(cal.getTime());
+				
+				if(i.getArchivedDatetime() != null) {
+					cal.setTime(i.getArchivedDatetime());
+					cal.add(Calendar.HOUR_OF_DAY, 9);
+					i.setArchivedDatetime(cal.getTime());
+				}
+				
+				if(i.getCompleteDatetime() != null) {
+					cal.setTime(i.getCompleteDatetime());
+					cal.add(Calendar.HOUR_OF_DAY, 9);
+					i.setCompleteDatetime(cal.getTime());
+				}
+				
+				if(i.getCreatedDatetime() != null) {
+					cal.setTime(i.getCreatedDatetime());
+					cal.add(Calendar.HOUR_OF_DAY, 9);
+					i.setCreatedDatetime(cal.getTime());
+				}
+				
+				if(i.getDeleteDatetime() != null) {
+					cal.setTime(i.getDeleteDatetime());
+					cal.add(Calendar.HOUR_OF_DAY, 9);
+					i.setDeleteDatetime(cal.getTime());
+				}
+				
+				if(i.getStartDatetime() != null) {
+					cal.setTime(i.getStartDatetime());
+					cal.add(Calendar.HOUR_OF_DAY, 9);
+					i.setStartDatetime(cal.getTime());
+				}
+				
+			});
+			
+			
+			
 			//2018-07-25 UI backup 목록 오류 수정
 			result = new Result(txid, IResult.OK).putValue("backupList", list);
 		} catch (KubernetesClientException e) {
