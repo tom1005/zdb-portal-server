@@ -323,7 +323,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 						}
 						
 						event.setStatus(IResult.OK);
-						event.setResultMessage("Installation successful.");
+						event.setResultMessage("서비스 생성 완료");
 						event.setEndTime(new Date(System.currentTimeMillis()));
 						
 						messageSender.sendToClient("mariadb installer");
