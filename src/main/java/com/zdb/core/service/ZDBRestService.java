@@ -107,7 +107,7 @@ public interface ZDBRestService {
 	 * @return
 	 * @throws Exception
 	 */
-	Result getSystemEvents(String namespace, String servceName, String kind, String startTime, String endTime, String keyword) throws Exception;
+	Result getOperationEvents(String namespace, String servceName, String startTime, String endTime, String keyword) throws Exception;
 	
 	Result getEvents(String namespace, String servceName, String kind, String startTime, String endTime, String keyword) throws Exception;
 	

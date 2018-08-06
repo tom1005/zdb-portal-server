@@ -44,6 +44,7 @@ import com.zdb.core.domain.Exchange;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
+import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ServiceOverview;
@@ -458,7 +459,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	 * @see com.zdb.core.service.ZDBRestService#getEvents(java.lang.String, java.lang.String, java.lang.String)
 	 */
 	@Override
-	public Result getSystemEvents(String namespace, String servceName, String kind, String start, String end, String keyword) throws Exception {
+	public Result getEvents(String namespace, String servceName, String kind, String start, String end, String keyword) throws Exception {
 		try {
 			CriteriaBuilder builder = entityManager.getCriteriaBuilder();
 			CriteriaQuery<EventMetaData> query = builder.createQuery(EventMetaData.class);
@@ -535,10 +536,78 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	}
 	
 	@Override
-	public Result getEvents(String namespace, String servceName, String kind, String start, String end, String keyword) throws Exception {
-		//TODO 수정 예정.
-		
-		return getSystemEvents(namespace, servceName, kind, start, end, keyword);
+	public Result getOperationEvents(String namespace, String servceName, String start, String end, String keyword) throws Exception {
+
+		try {
+			CriteriaBuilder builder = entityManager.getCriteriaBuilder();
+			CriteriaQuery<RequestEvent> query = builder.createQuery(RequestEvent.class);
+			Root<RequestEvent> root = query.from(RequestEvent.class);
+			// where절에 들어갈 옵션 목록.
+			List<Predicate> predicates = new ArrayList<>();
+
+			// where절에 like문 추가
+			// predicates.add( builder.like ( root.get("titleMsg"), "%test%" ) );
+	
+			if (servceName != null && !servceName.isEmpty() && !servceName.equals("-")) {
+				predicates.add(builder.equal(root.get("serviceName"), servceName));
+			}
+			
+			if (namespace != null && !namespace.isEmpty() && !namespace.equals("-")) {
+				predicates.add(builder.equal(root.get("namespace"), namespace));
+			}
+
+			if (keyword != null && !keyword.isEmpty() && !keyword.equals("-")) {
+				Predicate message = builder.like(root.get("message"), "%" + keyword + "%");
+				Predicate reason = builder.like(root.get("reason"), "%" + keyword + "%");
+				predicates.add(builder.or(message, reason));
+			}
+			if (start != null && !start.isEmpty() && end != null && !end.isEmpty()) {
+				Expression<Date> endTime = root.get("endTime");
+
+				GregorianCalendar gc1 = new GregorianCalendar();
+				gc1.setTime(DateUtil.parseDate(start));
+				gc1.add(Calendar.HOUR_OF_DAY, -9);
+				Date changeStartDate = gc1.getTime();
+				
+				Calendar gc2 = Calendar.getInstance();
+				gc2.setTime(DateUtil.parseDate(end));
+				gc2.add(Calendar.HOUR_OF_DAY, -9);
+				Date changeEndDate = gc2.getTime();
+				
+				predicates.add(builder.between(endTime, changeStartDate, changeEndDate));
+			}
+
+			// 옵션 목록을 where절에 추가
+			query.where(predicates.toArray(new Predicate[] {}));
+			
+			query.orderBy(builder.desc(root.get("endTime")));
+
+			// 쿼리를 select문 추가
+			query.select(root);
+
+			// 최종적인 쿼리를 만큼
+			TypedQuery<RequestEvent> typedQuery = entityManager.createQuery(query);
+
+			// 쿼리 실행 후 결과 확인
+			List<RequestEvent> eventMetaDataList = typedQuery.getResultList();
+			
+			for (RequestEvent requestEvent : eventMetaDataList) {
+				Date endTime = requestEvent.getEndTime();
+				
+				GregorianCalendar gc = new GregorianCalendar();
+				gc.setTime(endTime);
+				gc.add(Calendar.HOUR_OF_DAY, 9);
+				
+				Date changeDate = gc.getTime();
+				
+				requestEvent.setEndTime(changeDate);
+			}
+			
+			return new Result("", Result.OK).putValue(IResult.OPERATION_EVENTS, eventMetaDataList);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
 	}
 	
 	@Override
