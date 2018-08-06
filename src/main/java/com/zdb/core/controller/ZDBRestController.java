@@ -36,7 +36,6 @@ import com.zdb.core.repository.UserNamespaceRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
-import com.zdb.core.service.K8SService;
 import com.zdb.core.service.MariaDBServiceImpl;
 import com.zdb.core.service.RedisServiceImpl;
 import com.zdb.core.service.ZDBRestService;
@@ -829,7 +828,7 @@ public class ZDBRestController {
 	}
 
 	@RequestMapping(value = "/operationEvents", method = RequestMethod.GET)
-	public ResponseEntity<String> getSystemEvents(
+	public ResponseEntity<String> getOperationEvents(
 			@RequestParam("namespace") final String namespace, 
 			@RequestParam("serviceName") final String serviceName,
 			@RequestParam("startTime") final String startTime,
@@ -1122,6 +1121,22 @@ public class ZDBRestController {
 			String userId = userInfo.getUserId();
 			
 			Result result = commonService.isAvailableResource(namespace, userId, cpu, memory, clusterEnabled);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
+	@RequestMapping(value = "/{namespace}/resource", method = RequestMethod.GET)
+	public ResponseEntity<String> getNamespaceResource(@PathVariable("namespace") final String namespace) {
+		try {
+			UserInfo userInfo = getUserInfo();
+			String userId = userInfo.getUserId();
+			
+			Result result = commonService.getNamespaceResource(namespace, userId);
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);

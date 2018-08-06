@@ -176,5 +176,7 @@ public interface ZDBRestService {
 	Result getUnusedPersistentVolumeClaims(String namespace) throws Exception;
 	
 	Result isAvailableResource(String namespace, String userId, String cpu, String memory, boolean clusterEnabled) throws Exception;
+	
+	Result getNamespaceResource(String namespace, String userId) throws Exception;
 
 }

@@ -42,6 +42,7 @@ import com.zdb.core.domain.EventMetaData;
 import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.Exchange;
 import com.zdb.core.domain.IResult;
+import com.zdb.core.domain.NamespaceResource;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
@@ -164,6 +165,21 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			deploymentQueue.put(req);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
+		}
+	}
+	
+	@Override
+	public Result getNamespaceResource(String namespace, String userId) throws Exception {
+		try {
+			NamespaceResource namespaceResource = NamespaceResourceChecker.getNamespaceResource(namespace, userId);
+			if(namespaceResource != null) {
+				return new Result("", IResult.OK, "").putValue(IResult.NAMESPACE_RESOURCE, namespaceResource);
+			} else {
+				return new Result("", IResult.ERROR, "가용 리소스 조회 오류.");
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", IResult.ERROR, e.getMessage());
 		}
 	}
 	
