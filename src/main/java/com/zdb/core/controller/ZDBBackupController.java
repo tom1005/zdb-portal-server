@@ -144,10 +144,10 @@ public class ZDBBackupController {
 			log.error(e.getMessage(), e);
 			if (e instanceof BackupException) {
 				result = new Result(txId, IResult.ERROR, e.getMessage());
-				result.setCode(((BackupException)e).getStatusCode());
+				//result.setCode(((BackupException)e).getStatusCode());
 			} else {
 				result = new Result(txId, IResult.ERROR, "").putValue("error", e);
-				result.setCode(HttpStatus.EXPECTATION_FAILED.value());
+				//result.setCode(HttpStatus.EXPECTATION_FAILED.value());
 			}
 			
 			event.setStatus(result.getCode());
@@ -202,10 +202,10 @@ public class ZDBBackupController {
 			log.error(e.getMessage(), e);
 			if (e instanceof BackupException) {
 				result = new Result(txId, IResult.ERROR, e.getMessage());
-				result.setCode(((BackupException)e).getStatusCode());
+				//result.setCode(((BackupException)e).getStatusCode());
 			} else {
 				result = new Result(txId, IResult.ERROR, "").putValue("error", e);
-				result.setCode(HttpStatus.EXPECTATION_FAILED.value());
+				//result.setCode(HttpStatus.EXPECTATION_FAILED.value());
 			}
 		} 
 		return new ResponseEntity<String>(result.toJson(), result.status());
@@ -271,10 +271,10 @@ public class ZDBBackupController {
 			log.error(e.getMessage(), e);
 			if (e instanceof BackupException) {
 				result = new Result(txId, IResult.ERROR, e.getMessage());
-				result.setCode(((BackupException)e).getStatusCode());
+				//result.setCode(((BackupException)e).getStatusCode());
 			} else {
 				result = new Result(txId, IResult.ERROR, "").putValue("error", e);
-				result.setCode(HttpStatus.EXPECTATION_FAILED.value());
+				//result.setCode(HttpStatus.EXPECTATION_FAILED.value());
 			}
 			
 			event.setStatus(result.getCode());
@@ -328,10 +328,10 @@ public class ZDBBackupController {
 			log.error(e.getMessage(), e);
 			if (e instanceof BackupException) {
 				result = new Result(txId, IResult.ERROR, e.getMessage());
-				result.setCode(((BackupException)e).getStatusCode());
+				//result.setCode(((BackupException)e).getStatusCode());
 			} else {
 				result = new Result(txId, IResult.ERROR, "").putValue("error", e);
-				result.setCode(HttpStatus.EXPECTATION_FAILED.value());
+				//result.setCode(HttpStatus.EXPECTATION_FAILED.value());
 			}
 		} 
 		return new ResponseEntity<String>(result.toJson(), result.status());
@@ -388,10 +388,10 @@ public class ZDBBackupController {
 			log.error(e.getMessage(), e);
 			if (e instanceof BackupException) {
 				result = new Result(txId, IResult.ERROR, e.getMessage());
-				result.setCode(((BackupException)e).getStatusCode());
+				//result.setCode(((BackupException)e).getStatusCode());
 			} else {
 				result = new Result(txId, IResult.ERROR, "").putValue("error", e);
-				result.setCode(HttpStatus.EXPECTATION_FAILED.value());
+				//result.setCode(HttpStatus.EXPECTATION_FAILED.value());
 			}
 			
 			event.setStatus(result.getCode());
@@ -454,10 +454,10 @@ public class ZDBBackupController {
 			log.error(e.getMessage(), e);
 			if (e instanceof BackupException) {
 				result = new Result(txId, IResult.ERROR, e.getMessage());
-				result.setCode(((BackupException)e).getStatusCode());
+				//result.setCode(((BackupException)e).getStatusCode());
 			} else {
 				result = new Result(txId, IResult.ERROR, "").putValue("error", e);
-				result.setCode(HttpStatus.EXPECTATION_FAILED.value());
+				//result.setCode(HttpStatus.EXPECTATION_FAILED.value());
 			}
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
@@ -559,6 +559,7 @@ public class ZDBBackupController {
 					if (log.isInfoEnabled()) {
 						log.info("Availble schedule startTime : 18:00 ~07:00 / input time(" + schedule.getStartTime() + ")");
 					}
+					sb.append("Availble schedule startTime : 18:00 ~07:00 / input time(" + schedule.getStartTime() + ")");
 					result = false;
 				}
 			} catch (Exception e) {
