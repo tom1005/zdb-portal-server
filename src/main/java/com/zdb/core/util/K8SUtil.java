@@ -1429,34 +1429,47 @@ public class K8SUtil {
 	 * @param memory
 	 * @return
 	 */
+//	public static String getBufferSize(String memory) {
+//		String[] unit = new String[] { "E", "P", "T", "G", "M", "K" };
+//
+//		int memSize = 0;
+//		String memUnit = "";
+//		
+//		String bufferSize = "128M";
+//		try {
+//			
+//			for (String u : unit) {
+//				if (memory.indexOf(u) > 0) {
+//
+//					memSize = Integer.parseInt(memory.substring(0, memory.indexOf(u)));
+//
+//					memUnit = memory.substring(memory.indexOf(u));
+//
+//					if (memUnit.startsWith("M")) {
+//						bufferSize = ""+(memSize * 50 / 100) +"M";
+//					} else if (memUnit.startsWith("G")) {
+//						bufferSize = ""+(memSize * 1000 * 50 / 100)+"M";
+//					}
+//
+//					break;
+//				}
+//			}
+//		} catch (Exception e) {
+//			log.error(e.getMessage(), e);
+//		}
+//		
+//		return bufferSize;
+//	}
+	
 	public static String getBufferSize(String memory) {
-		String[] unit = new String[] { "E", "P", "T", "G", "M", "K" };
+		String bufferSize = "512M";
 
-		int memSize = 0;
-		String memUnit = "";
-		
-		String bufferSize = "128M";
 		try {
-			for (String u : unit) {
-				if (memory.indexOf(u) > 0) {
-
-					memSize = Integer.parseInt(memory.substring(0, memory.indexOf(u)));
-
-					memUnit = memory.substring(memory.indexOf(u));
-
-					if (memUnit.startsWith("M")) {
-						bufferSize = ""+(memSize * 50 / 100) +"M";
-					} else if (memUnit.startsWith("G")) {
-						bufferSize = ""+(memSize * 1000 * 50 / 100)+"M";
-					}
-
-					break;
-				}
-			}
+			int memSize = Integer.parseInt(memory);
+			bufferSize = "" + (memSize * 50 / 100) + "M";
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 		}
-		
 		return bufferSize;
 	}
 	
