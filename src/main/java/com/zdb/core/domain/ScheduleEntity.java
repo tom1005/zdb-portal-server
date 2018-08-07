@@ -27,7 +27,7 @@ public class ScheduleEntity {
 	private String namespace;
 	private String startTime;
 	private int storePeriod;
-	private String useYn;
+	private String useYn = "N";
 	private Date registerDate;
 	private String deleteYn;
 	private Date deleteDate;
