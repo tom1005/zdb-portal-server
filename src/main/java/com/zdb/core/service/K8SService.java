@@ -1244,6 +1244,22 @@ public class K8SService {
 			createServiceCount++;
 		}
 		
+		if(clusterEnabled == null) {
+			try {
+				List<Pod> pods = getPods(namespace, serviceName);
+				if(pods.size() > 1) {
+					clusterEnabled = true;
+				} else {
+					clusterEnabled = false;
+				}
+				
+				releaseMetaData.setClusterEnabled(clusterEnabled);
+				releaseRepository.save(releaseMetaData);
+			} catch (Exception e) {
+				log.error(e.getMessage(), e);
+			}
+		}
+		
 		if(clusterEnabled) {
 			InputStream templateInputStream = new ClassPathResource(serviceType+"/create_public_svc.template").getInputStream();
 			String inputYaml = IOUtils.toString(templateInputStream, StandardCharsets.UTF_8.name());
