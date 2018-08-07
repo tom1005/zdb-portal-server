@@ -499,7 +499,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			if (keyword != null && !keyword.isEmpty() && !keyword.equals("-")) {
 				Predicate message = builder.like(root.get("message"), "%" + keyword + "%");
 				Predicate reason = builder.like(root.get("reason"), "%" + keyword + "%");
-				predicates.add(builder.or(message, reason));
+				Predicate name = builder.like(root.get("name"), "%" + servceName + "%");
+				predicates.add(builder.or(message, reason, name));
 			}
 			if (start != null && !start.isEmpty() && end != null && !end.isEmpty()) {
 				Expression<Date> last_timestamp = root.get("lastTimestamp");
