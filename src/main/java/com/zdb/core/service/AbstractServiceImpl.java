@@ -967,7 +967,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 						if(!"DEPLOYED".equals(overview.getDeploymentStatus()) 
 							&& !"DELETED".equals(overview.getDeploymentStatus())
 							&& !"DELETING".equals(overview.getDeploymentStatus())) {
-							m = getEventMessage(m); // 메시지 내용을 사용주 중심 메세지로 변환
+							m = getEventMessage(m); 
 						}
 						if(!m.trim().isEmpty()) {
 							if(m.equals(lastMessage)) {
