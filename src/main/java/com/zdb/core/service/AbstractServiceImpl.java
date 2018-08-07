@@ -1227,7 +1227,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				}
 			}
 
-			return new Result(txId, IResult.OK, "Service restart request.");
+			return new Result(txId, IResult.OK, "서비스 재시작 요청");
 
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
