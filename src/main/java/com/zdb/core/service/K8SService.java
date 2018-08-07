@@ -1241,6 +1241,9 @@ public class K8SService {
 			Service ss = K8SUtil.kubernetesClient().services().inNamespace(namespace).load(is).get();
 			K8SUtil.kubernetesClient().services().inNamespace(namespace).createOrReplace(ss);
 			
+			releaseMetaData.setPublicEnabled(true);
+			releaseRepository.save(releaseMetaData);
+			
 			createServiceCount++;
 		}
 		
@@ -1273,11 +1276,43 @@ public class K8SService {
 			Service ss = K8SUtil.kubernetesClient().services().inNamespace(namespace).load(is).get();
 			K8SUtil.kubernetesClient().services().inNamespace(namespace).createOrReplace(ss);
 			
-			releaseMetaData.setPublicEnabled(true);
-			
-			releaseRepository.save(releaseMetaData);
-			
 			createServiceCount++;
+		}
+		
+		if (createServiceCount > 0) {
+			final int createdServiceCnt = createServiceCount;
+			long s = System.currentTimeMillis();
+			
+			Thread.sleep(1000);
+			
+			while ( (System.currentTimeMillis() - s) < 30 * 1000 ) {
+				
+				try {
+
+					Thread.sleep(500);
+					int svcCount = 0;
+					List<Service> services = getServices(namespace, serviceName);
+					for (Service service : services) {
+						Map<String, String> annotations = service.getMetadata().getAnnotations();
+						if (annotations != null && annotations.containsKey("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type")) {
+
+							String type = annotations.get("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type");
+
+							if ("public".equals(type)) {
+								svcCount++;
+							}
+						}
+					}
+
+					if (svcCount == createdServiceCnt) {
+						System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+						break;
+					}
+
+				} catch (Exception e) {
+				}
+				
+			}
 		}
 		
 		return createServiceCount;
