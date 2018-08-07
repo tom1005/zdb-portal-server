@@ -1590,4 +1590,52 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		return availableResource;
 	}
 	
+	/* (non-Javadoc)
+	 * @see com.zdb.core.service.ZDBRestService#createPublicService(java.lang.String, java.lang.String, java.lang.String, java.lang.String)
+	 */
+	public Result createPublicService(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+		try {
+			int createPublicService = k8sService.createPublicService(namespace, serviceType, serviceName);
+			
+			if(createPublicService > 0) {
+				return new Result(txId, Result.OK, "Public 서비스 생성 완료");				
+			} else {
+				return new Result(txId, Result.ERROR, "Public 서비스 생성 오류");
+			}
+			
+		} catch (FileNotFoundException | KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result(txId, Result.UNAUTHORIZED, "Unauthorized", null);
+			} else {
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result(txId, Result.ERROR, e.getMessage(), e);
+		}
+	}
+	
+	public Result deletePublicService(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+		try {
+			int createPublicService = k8sService.deletePublicService(namespace, serviceType, serviceName);
+			
+			if(createPublicService > 0) {
+				return new Result(txId, Result.OK, "Public 서비스 삭제 완료");				
+			} else {
+				return new Result(txId, Result.ERROR, "Public 서비스 삭제 오류");
+			}
+			
+		} catch (FileNotFoundException | KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result(txId, Result.UNAUTHORIZED, "Unauthorized", null);
+			} else {
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result(txId, Result.ERROR, e.getMessage(), e);
+		}
+	}
 }

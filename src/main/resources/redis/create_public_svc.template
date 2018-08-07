@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${serviceName}-redis-${role}-public
+  labels:
+    app: redis
+    chart: redis-${chartVersion}
+    release: "${serviceName}"
+    heritage: "Tiller"
+  annotations:
+    service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type: public
+spec:
+  type: LoadBalancer
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: redis
+  selector:
+    app: redis
+    release: "${serviceName}"
+    role: ${role}

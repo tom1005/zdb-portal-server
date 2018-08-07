@@ -104,6 +104,8 @@ public interface IResult {
 	public static final String BACKUP_LIST = "BackupList";
 	
 	public static final String OPERATION_EVENTS = "operationEvents";
+	
+	public static final String CREATE_PUBLIC_SVC = "createPublicService";
 
 	public int getCode();
 	

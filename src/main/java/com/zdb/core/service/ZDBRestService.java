@@ -179,4 +179,7 @@ public interface ZDBRestService {
 	
 	Result getNamespaceResource(String namespace, String userId) throws Exception;
 
+	Result createPublicService(String txId, String namespace, String serviceType, String serviceName) throws Exception;
+	
+	Result deletePublicService(String txId, String namespace, String serviceType, String serviceName) throws Exception;
 }

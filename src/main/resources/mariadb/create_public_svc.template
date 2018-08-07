@@ -6,11 +6,10 @@ metadata:
   labels:
     app: mariadb
     chart: mariadb-${chartVersion}
-    component: ${component}
+    component: ${role}
     heritage: Tiller
     release: ${serviceName}
-  name: ${serviceName}-mariadb-public
-  namespace: ${namespace}
+  name: ${serviceName}-mariadb-${role}-public
 spec:
   ports:
   - name: mysql
@@ -23,6 +22,6 @@ spec:
     targetPort: metrics
   selector:
     app: mariadb
-    component: ${component}
+    component: ${role}
     release: ${serviceName}
   type: LoadBalancer    

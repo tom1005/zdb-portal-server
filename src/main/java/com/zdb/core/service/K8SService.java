@@ -1,5 +1,8 @@
 package com.zdb.core.service;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -9,9 +12,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.ClassPathResource;
 
 import com.google.gson.Gson;
 import com.zdb.core.domain.CommonConstants;
@@ -44,6 +49,7 @@ import io.fabric8.kubernetes.api.model.PodCondition;
 import io.fabric8.kubernetes.api.model.PodStatus;
 import io.fabric8.kubernetes.api.model.ResourceRequirements;
 import io.fabric8.kubernetes.api.model.Secret;
+import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.ReplicaSet;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
@@ -1206,6 +1212,98 @@ public class K8SService {
 		
 		return list;
 	
+	}
+	
+	/**
+	 * @param namespace
+	 * @param serviceType
+	 * @param serviceName
+	 * @throws Exception
+	 */
+	public int createPublicService(String namespace, String serviceType, String serviceName) throws Exception {
+		ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(serviceName);
+		
+		String chartVersion = releaseMetaData.getChartVersion();
+		Boolean clusterEnabled = releaseMetaData.getClusterEnabled();
+		
+		int createServiceCount = 0;
+		
+		{
+			InputStream templateInputStream = new ClassPathResource(serviceType+"/create_public_svc.template").getInputStream();
+			String inputYaml = IOUtils.toString(templateInputStream, StandardCharsets.UTF_8.name());
+			inputYaml = inputYaml.replace("${role}", "master");
+			inputYaml = inputYaml.replace("${chartVersion}", chartVersion);
+			inputYaml = inputYaml.replace("${serviceName}", serviceName);
+	
+			log.info(inputYaml);
+	
+			InputStream is = new ByteArrayInputStream(inputYaml.getBytes(StandardCharsets.UTF_8));
+			Service ss = K8SUtil.kubernetesClient().services().inNamespace(namespace).load(is).get();
+			K8SUtil.kubernetesClient().services().inNamespace(namespace).createOrReplace(ss);
+			
+			createServiceCount++;
+		}
+		
+		if(clusterEnabled) {
+			InputStream templateInputStream = new ClassPathResource(serviceType+"/create_public_svc.template").getInputStream();
+			String inputYaml = IOUtils.toString(templateInputStream, StandardCharsets.UTF_8.name());
+			inputYaml = inputYaml.replace("${role}", "slave");
+			inputYaml = inputYaml.replace("${chartVersion}", chartVersion);
+			inputYaml = inputYaml.replace("${serviceName}", serviceName);
+	
+			log.info(inputYaml);
+	
+			InputStream is = new ByteArrayInputStream(inputYaml.getBytes(StandardCharsets.UTF_8));
+			Service ss = K8SUtil.kubernetesClient().services().inNamespace(namespace).load(is).get();
+			K8SUtil.kubernetesClient().services().inNamespace(namespace).createOrReplace(ss);
+			
+			releaseMetaData.setPublicEnabled(true);
+			
+			releaseRepository.save(releaseMetaData);
+			
+			createServiceCount++;
+		}
+		
+		return createServiceCount;
+	}
+	
+	/**
+	 * @param namespace
+	 * @param serviceType
+	 * @param serviceName
+	 * @return
+	 * @throws Exception
+	 */
+	public int deletePublicService(String namespace, String serviceType, String serviceName) throws Exception {
+		ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(serviceName);
+
+		int deleteServiceCount = 0;
+
+		List<Service> services = K8SUtil.getServices(namespace, serviceName);
+		
+		for (Service service : services) {
+			// "service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type": "public"
+			Map<String, String> annotations = service.getMetadata().getAnnotations();
+			if (annotations != null && annotations.containsKey("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type")) {
+
+				String type = annotations.get("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type");
+
+				if ("public".equals(type)) {
+					Boolean delete = K8SUtil.kubernetesClient().inNamespace(namespace).services().withName(service.getMetadata().getName()).delete();
+					if (delete) {
+						deleteServiceCount++;
+					}
+				}
+			}
+		}
+		
+		if (deleteServiceCount > 0) {
+			releaseMetaData.setPublicEnabled(false);
+
+			releaseRepository.save(releaseMetaData);
+		}
+
+		return deleteServiceCount;
 	}
 	
 }
