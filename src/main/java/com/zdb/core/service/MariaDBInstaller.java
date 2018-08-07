@@ -319,6 +319,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 							schedule.setStartTime("01:00");
 							schedule.setStorePeriod(2);
 							schedule.setUseYn("Y");
+							schedule.setDeleteYn("N");
 							backupProvider.saveSchedule(exchange.getProperty(Exchange.TXID, String.class), schedule);
 						}
 						
@@ -328,12 +329,26 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 						
 						messageSender.sendToClient("mariadb installer");
 					} else {
+						event.setStatus(IResult.ERROR);
+						event.setResultMessage("서비스 생성 실패. - 10분 타임아웃");
+						event.setEndTime(new Date(System.currentTimeMillis()));
+						
+						releaseMeta = releaseRepository.findByReleaseName(service.getServiceName());
+						if(releaseMeta != null) {
+							if("CREATING".equals(releaseMeta.getStatus())) {
+								releaseMeta.setStatus("ERROR");
+								releaseMeta.setDescription("서비스 생성 실패.(타임아웃)");
+								
+								releaseRepository.save(releaseMeta);
+							}
+						}
+						
 						log.error("{} > {} > {} 권한 변경 실패!", service.getNamespace(), service.getServiceName(), account.getUserId());
 					}
 					
 				} else {
 					event.setStatus(IResult.ERROR);
-					event.setResultMessage("Installation failed.");
+					event.setResultMessage("Installation failed." );
 					event.setEndTime(new Date(System.currentTimeMillis()));
 					
 					messageSender.sendToClient("mariadb installer");
