@@ -339,7 +339,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 						scheduleInfo.setExecutionTime((backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime())/1000);
 						scheduleInfo.setFileSize(backup.getFileSize());
 					}
-					scheduleInfo.setFileSumSize(scheduleInfo.getFileSize() + backup.getArchiveFileSize());
+					scheduleInfo.setFileSumSize(scheduleInfo.getFileSumSize() + backup.getArchiveFileSize());
 				});
 				
 				scheduleInfolist.add(scheduleInfo);

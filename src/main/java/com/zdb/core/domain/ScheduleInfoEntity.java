@@ -23,6 +23,6 @@ public class ScheduleInfoEntity {
 	private long executionTime;
 	private String status;
 	private long fileSize;
-	private long fileSumSize;
+	private long fileSumSize = 0l;
 	
 }	
