@@ -152,4 +152,8 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 	@Transactional
 	@Query("DELETE FROM BackupEntity t WHERE t.backupId=:backupId")
 	int deleteBackup(@Param("backupId") String backupId);
+
+	
+	@Query("select t from BackupEntity t where t.scheduleId=:scheduleId" )
+	List<BackupEntity> findBackupListByScheduleId(@Param("scheduleId") String scheduleId);
 }

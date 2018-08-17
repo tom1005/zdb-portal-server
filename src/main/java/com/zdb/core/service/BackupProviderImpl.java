@@ -1,5 +1,6 @@
 package com.zdb.core.service;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -16,6 +17,7 @@ import com.zdb.core.domain.BackupStatus;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ScheduleEntity;
+import com.zdb.core.domain.ScheduleInfoEntity;
 import com.zdb.core.repository.BackupEntityRepository;
 import com.zdb.core.repository.ScheduleEntityRepository;
 import com.zdb.core.util.K8SUtil;
@@ -294,5 +296,61 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 	
 	public Result updateDBInstanceConfiguration(final String txId, final String namespace, final String serviceName, Map<String, String> config) throws Exception {
 		return null;
+	}
+
+	public Result getSchedule(String txId, String namespace) {
+		Result result = null;
+		
+		try {		
+			log.debug("namespace : "+namespace);
+			List<ScheduleEntity> schedulelist = null;
+			if(namespace.equals("all")) {
+				schedulelist = scheduleRepository.findScheduleByNamespace();
+			}else {
+				schedulelist = scheduleRepository.findScheduleByNamespace(namespace);
+			}
+			List<ScheduleInfoEntity> scheduleInfolist = new ArrayList<ScheduleInfoEntity>();
+			
+			Calendar cal = Calendar.getInstance();
+			schedulelist.forEach(i -> {
+				ScheduleInfoEntity scheduleInfo = new ScheduleInfoEntity();
+				scheduleInfo.setNamespace(i.getNamespace());
+				scheduleInfo.setServiceName(i.getServiceName());
+				scheduleInfo.setServiceType(i.getServiceType());
+				
+				if(i.getRegisterDate() != null) {
+					cal.setTime(i.getRegisterDate());
+					cal.add(Calendar.HOUR_OF_DAY, 9);
+					scheduleInfo.setRegisterDate(cal.getTime());
+				}
+				scheduleInfo.setStartTime(i.getStartTime());
+				scheduleInfo.setStorePeriod(i.getStorePeriod());
+				
+				List<BackupEntity> backuplist = backupRepository.findBackupListByScheduleId(i.getScheduleId());
+				backuplist.forEach(backup -> {
+					if(scheduleInfo.getAcceptedDatetime() == null) {
+						scheduleInfo.setAcceptedDatetime(backup.getAcceptedDatetime());
+						scheduleInfo.setCompleteDatetime(backup.getCompleteDatetime());
+						scheduleInfo.setExecutionTime((backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime())/1000);
+						scheduleInfo.setFileSize(backup.getFileSize());
+					}else if(scheduleInfo.getAcceptedDatetime().before(backup.getAcceptedDatetime())) {
+						scheduleInfo.setAcceptedDatetime(backup.getAcceptedDatetime());
+						scheduleInfo.setCompleteDatetime(backup.getCompleteDatetime());
+						scheduleInfo.setExecutionTime((backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime())/1000);
+						scheduleInfo.setFileSize(backup.getFileSize());
+					}
+					scheduleInfo.setFileSumSize(scheduleInfo.getFileSize() + backup.getArchiveFileSize());
+				});
+				
+				scheduleInfolist.add(scheduleInfo);
+			});
+			
+			result = new Result(txId, IResult.OK).putValue(IResult.SCHEDULE_INFO_LIST, scheduleInfolist);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = Result.RESULT_FAIL(txId, e);
+		} finally {
+		}
+		return result;
 	}
 }
