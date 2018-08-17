@@ -58,4 +58,15 @@ public interface ScheduleEntityRepository extends CrudRepository<ScheduleEntity,
                         + ", t.deleteDate=now() "
                         + "WHERE t.scheduleId=:scheduleId")
         int modify2Delete(@Param("scheduleId") String scheduleId);
+
+        @Query("select t from ScheduleEntity t "
+                + "where t.namespace=:namespace "
+                + "and t.useYn = 'Y' "
+                + "and t.deleteYn = 'N'" )
+        List<ScheduleEntity> findScheduleByNamespace(@Param("namespace") String namespace);
+
+        @Query("select t from ScheduleEntity t "
+                + "where t.useYn = 'Y' "
+                + "and t.deleteYn = 'N'" )
+		List<ScheduleEntity> findScheduleByNamespace();
 }
