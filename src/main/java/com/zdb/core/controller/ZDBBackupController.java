@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -468,7 +469,29 @@ public class ZDBBackupController {
 		}
 		return new ResponseEntity<String>(result.toJson(), result.status());
 	}
+	
+	@RequestMapping(value = "/scheduleInfo-list", method = RequestMethod.GET)
+	public ResponseEntity<String> getScheduleInfoList(@RequestParam("namespace") final String namespace) {
+		if (log.isInfoEnabled()) {
+			log.info(">>>> getScheduleInfoList Interface :GET /scheduleInfo-list {" +"namespace:"+namespace+"}");
+		}
 
+		Result result = null;
+		String txId = txId();
+
+		try {
+			result = backupProvider.getSchedule(txId, namespace);
+			
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			if (e instanceof BackupException) {
+				result = new Result(txId, IResult.ERROR, e.getMessage());
+			} else {
+				result = new Result(txId, IResult.ERROR, "").putValue("error", e);
+			}
+		} 
+		return new ResponseEntity<String>(result.toJson(), result.status());
+	}	
 
 	private void verifyService(String namespace, String serviceType, String serviceName) throws BackupException {
 		StringBuilder sb = new StringBuilder();
@@ -557,13 +580,14 @@ public class ZDBBackupController {
 				if( !(Integer.parseInt(schedule.getStartTime().substring(0, 2)) > 18 
 						|| Integer.parseInt(schedule.getStartTime().substring(0, 2)) < 8) ) {
 					if (log.isInfoEnabled()) {
-						log.info("Availble schedule startTime : 18:00 ~07:00 / input time(" + schedule.getStartTime() + ")");
+						log.info("Availble schedule startTime : 18:00 ~ 07:00 / input time(" + schedule.getStartTime() + ")");
 					}
-					sb.append("Availble schedule startTime : 18:00 ~07:00 / input time(" + schedule.getStartTime() + ")");
+					sb.append("입력받은 시간은 가용한 시간이 아닙니다.(가용백업시간 : 18:00 ~ 07:00)");
 					result = false;
 				}
 			} catch (Exception e) {
-				sb.append("startTime is unknown format :"+schedule.getStartTime());
+				//sb.append("startTime is unknown format :"+schedule.getStartTime());
+				sb.append("입력받은 백업시간의 형식이 잘못되었습니다.:"+schedule.getStartTime());
 				result = false;
 			}
 		}
