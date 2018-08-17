@@ -42,8 +42,10 @@ import com.zdb.core.domain.EventMetaData;
 import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.Exchange;
 import com.zdb.core.domain.IResult;
+import com.zdb.core.domain.NamespaceResource;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
+import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ServiceOverview;
@@ -163,6 +165,21 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			deploymentQueue.put(req);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
+		}
+	}
+	
+	@Override
+	public Result getNamespaceResource(String namespace, String userId) throws Exception {
+		try {
+			NamespaceResource namespaceResource = NamespaceResourceChecker.getNamespaceResource(namespace, userId);
+			if(namespaceResource != null) {
+				return new Result("", IResult.OK, "").putValue(IResult.NAMESPACE_RESOURCE, namespaceResource);
+			} else {
+				return new Result("", IResult.ERROR, "가용 리소스 조회 오류.");
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", IResult.ERROR, e.getMessage());
 		}
 	}
 	
@@ -482,7 +499,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			if (keyword != null && !keyword.isEmpty() && !keyword.equals("-")) {
 				Predicate message = builder.like(root.get("message"), "%" + keyword + "%");
 				Predicate reason = builder.like(root.get("reason"), "%" + keyword + "%");
-				predicates.add(builder.or(message, reason));
+				Predicate name = builder.like(root.get("name"), "%" + keyword + "%");
+				predicates.add(builder.or(message, reason, name));
 			}
 			if (start != null && !start.isEmpty() && end != null && !end.isEmpty()) {
 				Expression<Date> last_timestamp = root.get("lastTimestamp");
@@ -528,6 +546,79 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			}
 			
 			return new Result("", Result.OK).putValue(IResult.SERVICE_EVENTS, eventMetaDataList);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
+	
+	@Override
+	public Result getOperationEvents(String namespace, String servceName, String start, String end, String keyword) throws Exception {
+
+		try {
+			CriteriaBuilder builder = entityManager.getCriteriaBuilder();
+			CriteriaQuery<RequestEvent> query = builder.createQuery(RequestEvent.class);
+			Root<RequestEvent> root = query.from(RequestEvent.class);
+			// where절에 들어갈 옵션 목록.
+			List<Predicate> predicates = new ArrayList<>();
+
+			// where절에 like문 추가
+			// predicates.add( builder.like ( root.get("titleMsg"), "%test%" ) );
+	
+			if (servceName != null && !servceName.isEmpty() && !servceName.equals("-")) {
+				predicates.add(builder.equal(root.get("serviceName"), servceName));
+			}
+			
+			if (namespace != null && !namespace.isEmpty() && !namespace.equals("-")) {
+				predicates.add(builder.equal(root.get("namespace"), namespace));
+			}
+
+			if (keyword != null && !keyword.isEmpty() && !keyword.equals("-")) {
+				predicates.add(builder.like(root.get("resultMessage"), "%" + keyword + "%"));
+			}
+			if (start != null && !start.isEmpty() && end != null && !end.isEmpty()) {
+				Expression<Date> endTime = root.get("endTime");
+
+				GregorianCalendar gc1 = new GregorianCalendar();
+				gc1.setTime(DateUtil.parseDate(start));
+				gc1.add(Calendar.HOUR_OF_DAY, -9);
+				Date changeStartDate = gc1.getTime();
+				
+				Calendar gc2 = Calendar.getInstance();
+				gc2.setTime(DateUtil.parseDate(end));
+				gc2.add(Calendar.HOUR_OF_DAY, -9);
+				Date changeEndDate = gc2.getTime();
+				
+				predicates.add(builder.between(endTime, changeStartDate, changeEndDate));
+			}
+
+			// 옵션 목록을 where절에 추가
+			query.where(predicates.toArray(new Predicate[] {}));
+			
+			query.orderBy(builder.desc(root.get("endTime")));
+
+			// 쿼리를 select문 추가
+			query.select(root);
+
+			// 최종적인 쿼리를 만큼
+			TypedQuery<RequestEvent> typedQuery = entityManager.createQuery(query);
+
+			// 쿼리 실행 후 결과 확인
+			List<RequestEvent> eventMetaDataList = typedQuery.getResultList();
+			
+			for (RequestEvent requestEvent : eventMetaDataList) {
+				Date endTime = requestEvent.getEndTime();
+				
+				GregorianCalendar gc = new GregorianCalendar();
+				gc.setTime(endTime);
+				gc.add(Calendar.HOUR_OF_DAY, 9);
+				
+				Date changeDate = gc.getTime();
+				
+				requestEvent.setEndTime(changeDate);
+			}
+			
+			return new Result("", Result.OK).putValue(IResult.OPERATION_EVENTS, eventMetaDataList);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			return new Result("", Result.ERROR, e.getMessage(), e);
@@ -876,7 +967,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 						if(!"DEPLOYED".equals(overview.getDeploymentStatus()) 
 							&& !"DELETED".equals(overview.getDeploymentStatus())
 							&& !"DELETING".equals(overview.getDeploymentStatus())) {
-							m = getEventMessage(m); // 메시지 내용을 사용주 중심 메세지로 변환
+							m = getEventMessage(m); 
 						}
 						if(!m.trim().isEmpty()) {
 							if(m.equals(lastMessage)) {
@@ -1136,7 +1227,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				}
 			}
 
-			return new Result(txId, IResult.OK, "Service restart request.");
+			return new Result(txId, IResult.OK, "서비스 재시작 요청");
 
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
@@ -1500,4 +1591,52 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		return availableResource;
 	}
 	
+	/* (non-Javadoc)
+	 * @see com.zdb.core.service.ZDBRestService#createPublicService(java.lang.String, java.lang.String, java.lang.String, java.lang.String)
+	 */
+	public Result createPublicService(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+		try {
+			int createPublicService = k8sService.createPublicService(namespace, serviceType, serviceName);
+			
+			if(createPublicService > 0) {
+				return new Result(txId, Result.OK, "Public 서비스 생성 완료");				
+			} else {
+				return new Result(txId, Result.ERROR, "Public 서비스 생성 오류");
+			}
+			
+		} catch (FileNotFoundException | KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result(txId, Result.UNAUTHORIZED, "Unauthorized", null);
+			} else {
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result(txId, Result.ERROR, e.getMessage(), e);
+		}
+	}
+	
+	public Result deletePublicService(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+		try {
+			int createPublicService = k8sService.deletePublicService(namespace, serviceType, serviceName);
+			
+			if(createPublicService > 0) {
+				return new Result(txId, Result.OK, "Public 서비스 삭제 완료");				
+			} else {
+				return new Result(txId, Result.ERROR, "Public 서비스 삭제 오류");
+			}
+			
+		} catch (FileNotFoundException | KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result(txId, Result.UNAUTHORIZED, "Unauthorized", null);
+			} else {
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result(txId, Result.ERROR, e.getMessage(), e);
+		}
+	}
 }

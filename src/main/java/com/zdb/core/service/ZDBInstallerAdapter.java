@@ -7,13 +7,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
 import com.zdb.core.domain.ReleaseMetaData;
-import com.zdb.core.event.listener.WatchEventListener;
 import com.zdb.core.repository.DiskUsageRepository;
 import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBMariaDBAccountRepository;
 import com.zdb.core.repository.ZDBMariaDBConfigRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepository;
+import com.zdb.core.ws.MessageSender;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -43,7 +43,7 @@ public abstract class ZDBInstallerAdapter implements ZDBInstaller {
 	protected DiskUsageRepository diskUsageRepository;
 	
 	@Autowired
-	protected WatchEventListener watchEventListener;
+	protected MessageSender messageSender;
 
 	@Autowired
 	@Qualifier("backupProvider")

@@ -39,6 +39,10 @@ public class RequestEvent {
 	public static final String DELETE_BACKUP_DATA = "백업 데이터 삭제";
 	public static final String RESTORE_BACKUP = "백업 데이터 복원";
 	
+	public static final String CREATE_PUBLIC_SVC = "Public Network 생성";
+	
+	public static final String DELETE_PUBLIC_SVC = "Public Network 삭제";
+	
 	private String operation;
 
 	@Id

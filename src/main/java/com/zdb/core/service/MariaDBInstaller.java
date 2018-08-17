@@ -58,45 +58,17 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 public class MariaDBInstaller extends ZDBInstallerAdapter {
-	
-//	@Autowired
-//	private ZDBMariaDBAccountRepository accountRepository;
-//
-//	@Autowired
-//	private ZDBMariaDBConfigRepository configRepository;
-//	
-//	@Autowired
-//	private ZDBReleaseRepository releaseRepository;
-//	
-//	@Autowired
-//	private ZDBRepository metaRepository;
-//
-//	@Autowired
-//	private TagRepository tagRepository;
-//	
-//	@Autowired
-//	private K8SService k8sService;
-//
-//	@Autowired
-//	private DiskUsageRepository diskUsageRepository;
-//	
-//	@Autowired
-//	@Qualifier("backupProvider")
-//	private BackupProviderImpl backupProvider;
-	
 	private static String storageClass;
 
 	@Value("${chart.mariadb.storageClass:ibmc-block-silver}")
 	public void setStorageClass(String storageType) {
 		storageClass = storageType;
 	}
-	
 		
 	private static final String DEFAULT_ROOT_PASSWORD = "zdb12#$";
 	private static final String DEFAULT_USER = "admin";
 	private static final String DEFAULT_USER_PASSWORD = "zdbadmin12#$";
 	private static final String DEFAULT_DATABASE_NAME = "mydb";
-	private static final String DEFAULT_STORAGE_CLASS = "ibmc-block-silver";
 	private static final String DEFAULT_STORAGE_SIZE = "20Gi";
 	
 	public void doInstall(Exchange exchange) {
@@ -167,7 +139,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				String masterSize = persistenceSpec[0].getSize() == null ? DEFAULT_STORAGE_SIZE : persistenceSpec[0].getSize();
 				
 				String s = persistenceSpec[1].getPodType();
-				String slaveStorageClass = persistenceSpec[1].getStorageClass() == null ? DEFAULT_STORAGE_CLASS : persistenceSpec[1].getStorageClass();
+				String slaveStorageClass = persistenceSpec[1].getStorageClass() == null ? storageClass : persistenceSpec[1].getStorageClass();
 				String slaveSize = persistenceSpec[1].getSize() == null ? DEFAULT_STORAGE_SIZE : persistenceSpec[1].getSize();
 				
 				PodSpec[] podSpec = service.getPodSpec();
@@ -315,7 +287,8 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 										}
 										lacth.countDown();
 										System.out.println("------------------------------------------------- service create success! ------------------------------------------------- ");
-										watchEventListener.sendToClient("mariadb installer");
+										
+										messageSender.sendToClient("mariadb installer");
 										break;
 									} else {
 										if(releaseMeta != null) {
@@ -346,24 +319,39 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 							schedule.setStartTime("01:00");
 							schedule.setStorePeriod(2);
 							schedule.setUseYn("Y");
+							schedule.setDeleteYn("N");
 							backupProvider.saveSchedule(exchange.getProperty(Exchange.TXID, String.class), schedule);
 						}
 						
 						event.setStatus(IResult.OK);
-						event.setResultMessage("Installation successful.");
+						event.setResultMessage("서비스 생성 완료");
 						event.setEndTime(new Date(System.currentTimeMillis()));
 						
-						watchEventListener.sendToClient("mariadb installer");
+						messageSender.sendToClient("mariadb installer");
 					} else {
+						event.setStatus(IResult.ERROR);
+						event.setResultMessage("서비스 생성 실패. - 10분 타임아웃");
+						event.setEndTime(new Date(System.currentTimeMillis()));
+						
+						releaseMeta = releaseRepository.findByReleaseName(service.getServiceName());
+						if(releaseMeta != null) {
+							if("CREATING".equals(releaseMeta.getStatus())) {
+								releaseMeta.setStatus("ERROR");
+								releaseMeta.setDescription("서비스 생성 실패.(타임아웃)");
+								
+								releaseRepository.save(releaseMeta);
+							}
+						}
+						
 						log.error("{} > {} > {} 권한 변경 실패!", service.getNamespace(), service.getServiceName(), account.getUserId());
 					}
 					
 				} else {
 					event.setStatus(IResult.ERROR);
-					event.setResultMessage("Installation failed.");
+					event.setResultMessage("Installation failed." );
 					event.setEndTime(new Date(System.currentTimeMillis()));
 					
-					watchEventListener.sendToClient("mariadb installer");
+					messageSender.sendToClient("mariadb installer");
 				}
 			}
 			
@@ -568,7 +556,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 					log.error(e.getMessage(), e);
 				}
 			}
-			watchEventListener.sendToClient("mariadb installer");
+			messageSender.sendToClient("mariadb installer");
 		}
 	}
 }

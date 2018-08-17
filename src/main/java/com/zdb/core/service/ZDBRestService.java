@@ -107,6 +107,8 @@ public interface ZDBRestService {
 	 * @return
 	 * @throws Exception
 	 */
+	Result getOperationEvents(String namespace, String servceName, String startTime, String endTime, String keyword) throws Exception;
+	
 	Result getEvents(String namespace, String servceName, String kind, String startTime, String endTime, String keyword) throws Exception;
 	
 	/**
@@ -174,5 +176,10 @@ public interface ZDBRestService {
 	Result getUnusedPersistentVolumeClaims(String namespace) throws Exception;
 	
 	Result isAvailableResource(String namespace, String userId, String cpu, String memory, boolean clusterEnabled) throws Exception;
+	
+	Result getNamespaceResource(String namespace, String userId) throws Exception;
 
+	Result createPublicService(String txId, String namespace, String serviceType, String serviceName) throws Exception;
+	
+	Result deletePublicService(String txId, String namespace, String serviceType, String serviceName) throws Exception;
 }

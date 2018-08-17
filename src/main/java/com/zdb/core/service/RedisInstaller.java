@@ -56,25 +56,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 public class RedisInstaller  extends ZDBInstallerAdapter {
-//	@Autowired
-//	private ZDBReleaseRepository releaseRepository;
-//	
-//	@Autowired
-//	private ZDBRepository metaRepository;
-//	
-//	@Autowired
-//	private TagRepository tagRepository;
-//	
-//	@Autowired
-//	private DiskUsageRepository diskUsageRepository;
-//	
-//	@Autowired
-//	@Qualifier("backupProvider")
-//	private BackupProviderImpl backupProvider;
-//		
-//	@Autowired
-//	private K8SService k8sService;
-	
 	private static String storageClass;
 
 	@Value("${chart.redis.storageClass:ibmc-block-silver}")
@@ -440,7 +421,7 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 										}
 										lacth.countDown();
 										System.out.println("------------------------------------------------- service create success! ------------------------------------------------- ");
-										watchEventListener.sendToClient("redis installer");
+										messageSender.sendToClient("redis installer");
 										break;
 									} else {
 										if(releaseMeta != null) {
@@ -468,21 +449,36 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 							schedule.setStartTime("01:00");
 							schedule.setStorePeriod(2);
 							schedule.setUseYn("Y");
+							schedule.setDeleteYn("N");
 							backupProvider.saveSchedule(exchange.getProperty(Exchange.TXID, String.class), schedule);
+						}
+						event.setStatus(IResult.OK);
+						event.setResultMessage("서비스 생성 완료");
+						event.setEndTime(new Date(System.currentTimeMillis()));
+					} else {
+						event.setStatus(IResult.ERROR);
+						event.setResultMessage("서비스 생성 실패. - 10분 타임아웃");
+						event.setEndTime(new Date(System.currentTimeMillis()));
+						
+						releaseMeta = releaseRepository.findByReleaseName(service.getServiceName());
+						if(releaseMeta != null) {
+							if("CREATING".equals(releaseMeta.getStatus())) {
+								releaseMeta.setStatus("ERROR");
+								releaseMeta.setDescription("서비스 생성 실패.(타임아웃)");
+								
+								releaseRepository.save(releaseMeta);
+							}
 						}
 					}
 					
-					event.setStatus(IResult.OK);
-					event.setResultMessage("Installation successful.");
-					event.setEndTime(new Date(System.currentTimeMillis()));
 
-					watchEventListener.sendToClient("redis installer");
+					messageSender.sendToClient("redis installer");
 				} else {
 					event.setStatus(IResult.ERROR);
 					event.setResultMessage("Installation failed.");
 					event.setEndTime(new Date(System.currentTimeMillis()));
 					
-					watchEventListener.sendToClient("redis installer");
+					messageSender.sendToClient("redis installer");
 				}
 			}
 			
@@ -675,7 +671,7 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 				}
 			}
 			
-			watchEventListener.sendToClient("redis installer");
+			messageSender.sendToClient("redis installer");
 		}
 	
 	}

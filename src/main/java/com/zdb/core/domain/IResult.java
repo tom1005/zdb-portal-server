@@ -31,6 +31,8 @@ public interface IResult {
 	public static final String NAMESPACE = "namespace";
 	
 	public static final String NAMESPACES = "namespaces";
+
+	public static final String NAMESPACE_RESOURCE = "namespaceResource";
 	
 	public static final String PODS = "PODS";
 	
@@ -100,7 +102,14 @@ public interface IResult {
 	public static final String BACKUP_DETAIL = "BackupDetail";
 	public static final String SCHEDULE = "schedule";
 	public static final String BACKUP_LIST = "BackupList";
+
 	public static final String SCHEDULE_INFO_LIST = "ScheduleInfoList";
+
+	
+	public static final String OPERATION_EVENTS = "operationEvents";
+	
+	public static final String CREATE_PUBLIC_SVC = "createPublicService";
+
 
 	public int getCode();
 	

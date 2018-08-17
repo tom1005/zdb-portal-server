@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type: public
+  labels:
+    app: mariadb
+    chart: mariadb-${chartVersion}
+    component: ${role}
+    heritage: Tiller
+    release: ${serviceName}
+  name: ${serviceName}-mariadb-${role}-public
+spec:
+  ports:
+  - name: mysql
+    port: 3306
+    protocol: TCP
+    targetPort: mysql
+  - name: metrics
+    port: 9104
+    protocol: TCP
+    targetPort: metrics
+  selector:
+    app: mariadb
+    component: ${role}
+    release: ${serviceName}
+  type: LoadBalancer    
