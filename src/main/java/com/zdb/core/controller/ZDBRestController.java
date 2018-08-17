@@ -36,7 +36,6 @@ import com.zdb.core.repository.UserNamespaceRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
-import com.zdb.core.service.K8SService;
 import com.zdb.core.service.MariaDBServiceImpl;
 import com.zdb.core.service.RedisServiceImpl;
 import com.zdb.core.service.ZDBRestService;
@@ -272,6 +271,90 @@ public class ZDBRestController {
 			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}
 
+	}
+	
+	@RequestMapping(value = "/{namespace}/{serviceType}/{serviceName}/public-service", method = RequestMethod.POST)
+	public ResponseEntity<String> createPublicService(
+			  @PathVariable("serviceType") final String serviceType
+			, @PathVariable("namespace") final String namespace
+			, @PathVariable("serviceName") final String serviceName) {
+
+		String txId = txId();
+		RequestEvent event = new RequestEvent();
+		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.CREATE_PUBLIC_SVC);
+			event.setUserId(userInfo.getUserId());
+			
+			// mariadb , redis, postgresql, rabbitmq, mongodb
+			log.info("{}, {}, {}", userInfo.getUserId(), userInfo.getUserName(), userInfo.getAccessRole());
+
+			com.zdb.core.domain.Result result = null;
+			
+			result = commonService.createPublicService(txId, namespace, serviceType, serviceName);
+
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(e.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}
+	}
+	
+	@RequestMapping(value = "/{namespace}/{serviceType}/{serviceName}/public-service", method = RequestMethod.DELETE)
+	public ResponseEntity<String> deletePublicService(
+			  @PathVariable("serviceType") final String serviceType
+			, @PathVariable("namespace") final String namespace
+			, @PathVariable("serviceName") final String serviceName) {
+
+		String txId = txId();
+		RequestEvent event = new RequestEvent();
+		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.DELETE_PUBLIC_SVC);
+			event.setUserId(userInfo.getUserId());
+			
+			// mariadb , redis, postgresql, rabbitmq, mongodb
+			log.info("{}, {}, {}", userInfo.getUserId(), userInfo.getUserName(), userInfo.getAccessRole());
+
+			com.zdb.core.domain.Result result = null;
+			
+			result = commonService.deletePublicService(txId, namespace, serviceType, serviceName);
+
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(e.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}
 	}
 
 	/**
@@ -828,6 +911,24 @@ public class ZDBRestController {
 		}
 	}
 
+	@RequestMapping(value = "/operationEvents", method = RequestMethod.GET)
+	public ResponseEntity<String> getOperationEvents(
+			@RequestParam("namespace") final String namespace, 
+			@RequestParam("serviceName") final String serviceName,
+			@RequestParam("startTime") final String startTime,
+			@RequestParam("endTime") final String endTime,
+			@RequestParam("keyword") final String keyword) {
+		try {
+			Result result = commonService.getOperationEvents(namespace, serviceName, startTime, endTime, keyword);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
 	@RequestMapping(value = "/events", method = RequestMethod.GET)
 	public ResponseEntity<String> getEvents(
 			@RequestParam("namespace") final String namespace, 
@@ -1104,6 +1205,22 @@ public class ZDBRestController {
 			String userId = userInfo.getUserId();
 			
 			Result result = commonService.isAvailableResource(namespace, userId, cpu, memory, clusterEnabled);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
+	@RequestMapping(value = "/{namespace}/resource", method = RequestMethod.GET)
+	public ResponseEntity<String> getNamespaceResource(@PathVariable("namespace") final String namespace) {
+		try {
+			UserInfo userInfo = getUserInfo();
+			String userId = userInfo.getUserId();
+			
+			Result result = commonService.getNamespaceResource(namespace, userId);
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);

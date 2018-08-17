@@ -10,11 +10,7 @@ import org.springframework.web.client.RestTemplate;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.zdb.core.domain.CPUUnit;
-import com.zdb.core.domain.MemoryUnit;
 import com.zdb.core.domain.NamespaceResource;
-import com.zdb.core.domain.ResourceQuota;
-import com.zdb.core.exception.ResourceException;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -29,7 +25,7 @@ public class NamespaceResourceChecker {
 		iamBaseUrl = url;
 	}
 	
-	private static NamespaceResource getNamespaceResource(String namespace, String userId) {
+	public static NamespaceResource getNamespaceResource(String namespace, String userId) {
 		//https://zcp-iam.cloudzcp.io:443/iam/namespace/ns-zdb-02/resource
 		
 		RestTemplate restTemplate = getRestTemplate();
