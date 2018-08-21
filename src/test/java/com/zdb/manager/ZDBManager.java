@@ -24,6 +24,7 @@ import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodCondition;
 import io.fabric8.kubernetes.api.model.PodStatus;
 import io.fabric8.kubernetes.api.model.Quantity;
+import io.fabric8.kubernetes.api.model.ResourceQuota;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
@@ -62,11 +63,66 @@ public class ZDBManager {
 		System.out.println(cc("=", 170));
 		System.out.println("#Namespaces");
 		System.out.println(cc("=", 170));
-		System.out.println(b("Name", 15) + "  " + b("Labels", 70) + "  " + b("Age", 15));
+		System.out.println(b("Name", 15) + "  " + b("Labels", 70) + "  " + b("Req CPU(u/h)", 12) + "  " + b("Limit CPU(u/h)", 12) + "  " + b("Req Mem(u/h)", 15)  + "  " + b("Limit Mem(u/h)", 15) + "  " + b("Age", 15));
 		System.out.println(cc("=", 170));
 		
 		for (Namespace n : namespaces) {
 			String namespace = n.getMetadata().getName();
+			
+//			 status:
+//				    hard:
+//				      configmaps: "20"
+//				      limits.cpu: "12"
+//				      limits.memory: 24Gi
+//				      persistentvolumeclaims: "20"
+//				      pods: "20"
+//				      requests.cpu: "12"
+//				      requests.memory: 24Gi
+//				      secrets: "20"
+//				      services: "20"
+//				      services.loadbalancers: "20"
+//				    used:
+//				      configmaps: "3"
+//				      limits.cpu: "10"
+//				      limits.memory: 18048Mi
+//				      persistentvolumeclaims: "2"
+//				      pods: "2"
+//				      requests.cpu: "10"
+//				      requests.memory: 18048Mi
+//				      secrets: "2"
+//				      services: "2"
+//				      services.loadbalancers: "2"
+			ResourceQuota resourceQuota = kubernetesClient().inNamespace(namespace).resourceQuotas().withName("zcp-system-rq-"+namespace).get();
+			
+			String limitCpu = "";
+			String requestCpu = "";
+			
+			String limitMemory = "";
+			String requestMemory = "";
+			
+			if(resourceQuota != null) {
+				Map<String, Quantity> hard = resourceQuota.getStatus().getHard();
+				Quantity hardLimitsCpu = hard.get("limits.cpu");
+				Quantity hardLimitsMemory = hard.get("limits.memory");
+
+				Quantity hardRequestsCpu = hard.get("requests.cpu");
+				Quantity hardRequestsMemory = hard.get("requests.memory");
+				
+				Map<String, Quantity> used = resourceQuota.getStatus().getUsed();
+				Quantity usedLimitsCpu = used.get("limits.cpu");
+				Quantity usedLimitsMemory = used.get("limits.memory");
+
+				Quantity usedRequestsCpu = used.get("requests.cpu");
+				Quantity usedRequestsMemory = used.get("requests.memory");
+				
+				limitCpu = usedLimitsCpu.getAmount() +"/"+ hardLimitsCpu.getAmount();
+				limitMemory = usedLimitsMemory.getAmount() +"/"+ hardLimitsMemory.getAmount();
+
+				requestCpu = usedRequestsCpu.getAmount() +"/"+ hardRequestsCpu.getAmount();
+				requestMemory = usedRequestsMemory.getAmount() +"/"+ hardRequestsMemory.getAmount();
+				
+			}
+			
 			
 			String creationTimestamp = n.getMetadata().getCreationTimestamp();
 			creationTimestamp = creationTimestamp.replace("T", " ").replace("Z", "");
@@ -82,7 +138,7 @@ public class ZDBManager {
 				}
 			}
 			
-			System.out.println(b(namespace, 15) + "  " + b(sb.toString(), 70) +"  " + creationTimestamp);
+			System.out.println(b(namespace, 15) + "  " + b(sb.toString(), 70) + "  " + b(requestCpu, 12) + "  " + b(limitCpu, 14) + "  " + b(requestMemory, 15)  + "  " + b(limitMemory, 15) +"  " + creationTimestamp);
 		}
 	}
 
@@ -122,7 +178,11 @@ public class ZDBManager {
 			
 			//readyReplicas=1, replicas=1
 			int replicas = status.getReplicas().intValue();
-			int readyReplicas = status.getReadyReplicas().intValue();
+			Integer readyReplicas2 = status.getReadyReplicas();
+			
+			int readyReplicas = 0;
+			if(readyReplicas2 != null)
+				readyReplicas = readyReplicas2.intValue();
 			
 			System.out.println(b(namespace, 15) + "  " +b(name, 50) + "  " + b(readyReplicas+ "/"+replicas, 6) + "  " + b(creationTimestamp, 15));
 		}
@@ -277,7 +337,7 @@ public class ZDBManager {
 			String capacity = pvc.getStatus().getCapacity().get("storage").getAmount();
 			String accessModes = pvc.getStatus().getAccessModes().get(0);
 			
-			System.out.println(b(namespace, 15) + "  " +b(name, 50) + "  " + b(status, 6) + "  " + b(volumeName, 41)+ "  " + b(capacity, 8)+ "  " + b(accessModes, 14)+ "  " + b(storageClassName, 17)+ "  " + b("Age", 15));
+			System.out.println(b(namespace, 15) + "  " +b(name, 50) + "  " + b(status, 6) + "  " + b(volumeName, 41)+ "  " + b(capacity, 8)+ "  " + b(accessModes, 14)+ "  " + b(storageClassName, 17)+ "  " + b(creationTimestamp, 15));
 		}
 		
 	}
@@ -288,7 +348,7 @@ public class ZDBManager {
 		System.out.println(cc("=", 170));
 		System.out.println("#Pods");
 		System.out.println(cc("=", 170));
-		System.out.println(b("Namespace", 15) + "  " +b("Name", 50) + "  " + b("Status", 8) + "  " + b("Alive", 8) + "  " + b("isInit", 8)+ "  " + b("isReady", 8)+ "  " + b("isPodScheduled", 16)+ "  " + b("isContainerReady", 16)+ "  " + b("Age", 15));
+		System.out.println(b("Namespace", 15) + "  " +b("Name", 50) + "  " + b("Status", 8) + "  " + b("Alive", 8) + "  " + b("isInit", 8)+ "  " + b("isReady", 8)+ "  " + b("isPodScheduled", 16)+ "  " + b("isContainerReady", 16)+ "  " + b("Age", 21) + "  " + "message");
 		System.out.println(cc("=", 170));
 		
 		List<Pod> items = kubernetesClient().pods().list().getItems();
@@ -305,7 +365,16 @@ public class ZDBManager {
 			creationTimestamp = elapsedTime(creationTimestamp);
 			String status = pod.getStatus().getPhase();
 			
-			System.out.println(b(namespace, 15) + "  " +b(name, 50) + "  " + b(status, 8) + "  " + b(podStatus(pod)+"", 8)  + "  " + b(isInitialized(pod)+"", 8) + "  " + b(isReady(pod)+"", 8) + "  " + b(isPodScheduled(pod)+"", 16)  + "  " + b(isContainerReady(pod)+"", 16)+ "  " + getPodLastTransitionTime(pod));
+			List<PodCondition> conditions = pod.getStatus().getConditions();
+			
+			StringBuffer errMsg = new StringBuffer();
+			
+			for (PodCondition podCondition : conditions) {
+				if(podCondition.getReason() == null) continue;
+				errMsg.append(podCondition.getReason() +" / "+ podCondition.getMessage()).append(" ");
+			}
+			
+			System.out.println(b(namespace, 15) + "  " +b(name, 50) + "  " + b(status, 8) + "  " + b(podStatus(pod)+"", 8)  + "  " + b(isInitialized(pod)+"", 8) + "  " + b(isReady(pod)+"", 8) + "  " + b(isPodScheduled(pod)+"", 16)  + "  " + b(isContainerReady(pod)+"", 16)+ "  " + b(getPodLastTransitionTime(pod), 21) + " " + errMsg.toString());
 		}
 		
 	
@@ -376,7 +445,7 @@ public class ZDBManager {
 			creationTimestamp = creationTimestamp.replace("T", " ").replace("Z", "");
 			creationTimestamp = elapsedTime(creationTimestamp);
 			
-			System.out.println(b(namespace, 15) + "  " +b(name, 40) + "  " + b("", 6) + "  " + creationTimestamp);
+			System.out.println(b(namespace, 15) + "  " +b(name, 40) + "  " + creationTimestamp);
 		}
 	}
 	
@@ -480,7 +549,7 @@ public class ZDBManager {
 		System.out.println(cc("=", 170));
 		System.out.println("#Nodes");
 		System.out.println(cc("=", 170));
-		System.out.println(b("Name", 14) + "  " + b("Labels", 11) + " " + b("Ready", 5)+ "  " + b("CPU", 8)+ "  " + b("Memory", 21) + "  " + b("Age", 15));
+		System.out.println(b("Name", 14) + "  " + b("Labels", 11) + " " + b("Ready", 5)+ "  " + b("CPU(Allocatable | Capacity)", 27)+ "  " + b("Memory(Allocatable | Capacity)", 30) + "  " + b("Age", 15));
 		System.out.println(cc("=", 170));
 		while(nodelist.hasNext()) {
 			Node node = nodelist.next();
@@ -516,8 +585,22 @@ public class ZDBManager {
 			String amount = allocatableMemory.getAmount();
 			long mem = Long.parseLong(amount);
 			
-			System.out.println(b(name,15) + " "+ b(role, 11)+ " "+ b(status,6) + b(" ("+ capacityCpu.getAmount()+ " | "+ allocatableCpu.getAmount()+ ")",10) + b("("+ capacityMemory.getAmount()+ " | " + mem / 1000/1000 +"M)",24) +"" + creationTimestamp);
+			System.out.println(b(name,15) + " "+ b(role, 11)+ " "+ b(status,6) + b(" ("+ allocatableCpu.getAmount() + " | "+ capacityCpu.getAmount()+ ")",30) + b("("+ mem / 1000/1000 + "M | " + conv(capacityMemory.getAmount()) +")",30) +"" + creationTimestamp);
 		}
+	}
+	
+	static String conv(String m) {
+		if(m.endsWith("Ki")) {
+			if(m.length() > 5) {
+				String mmm = m.substring(0, m.indexOf("Ki"));
+				int parseInt = Integer.parseInt(mmm);
+				
+				long mem = parseInt / 1000;
+				
+				return mem +  "M";
+			}
+		}
+		return m;
 	}
 	
 	static String b(String n, int len) {
@@ -716,7 +799,7 @@ public class ZDBManager {
 					
 					String lastTransitionTime = condition.getLastTransitionTime();
 					lastTransitionTime = lastTransitionTime.replace("T", " ").replace("Z", "");
-					lastTransitionTime = elapsedTime(lastTransitionTime);
+					//lastTransitionTime = elapsedTime(lastTransitionTime);
 					
 					return lastTransitionTime;
 				}
