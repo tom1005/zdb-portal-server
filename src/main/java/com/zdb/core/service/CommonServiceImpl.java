@@ -72,4 +72,9 @@ public class CommonServiceImpl extends AbstractServiceImpl {
 		return null;
 	}
 
+	@Override
+	public Result getUserGrants(String namespace, String serviceType, String releaseName) {
+		return null;
+	}
+
 }

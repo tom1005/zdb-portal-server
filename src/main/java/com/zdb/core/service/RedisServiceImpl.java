@@ -701,6 +701,11 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 	public Result getMycnf(String namespace, String releaseName) {
 		// do nothing
 		return null;
+	}
+
+	@Override
+	public Result getUserGrants(String namespace, String serviceType, String releaseName) {
+		return null;
 	}	
 }
   

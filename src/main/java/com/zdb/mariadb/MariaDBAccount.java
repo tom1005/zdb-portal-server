@@ -1,6 +1,8 @@
 package com.zdb.mariadb;
 
+import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -9,7 +11,7 @@ import javax.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.zdb.core.domain.ServiceOverview;
+import com.zdb.core.domain.DBUser;
 import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBType;
 import com.zdb.core.repository.ZDBMariaDBAccountRepository;
@@ -18,7 +20,6 @@ import com.zdb.core.util.K8SUtil;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.EnvVar;
 import io.fabric8.kubernetes.api.model.Secret;
-import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
 import lombok.Getter;
 
@@ -496,6 +497,89 @@ public class MariaDBAccount {
 	public static List<ZDBMariaDBAccount> getAccounts(final ZDBMariaDBAccountRepository repo, final String namespace, final String releaseName) {
 		List<ZDBMariaDBAccount> accounts = repo.findAllByReleaseName(releaseName);
 		return accounts;
+	}
+	
+	public static List<DBUser> getUserGrants(String namespace, String releaseName) throws Exception {
+		MariaDBConnection connection = null;
+
+		List<DBUser> userList = new ArrayList<DBUser>();
+
+		try {
+			connection = MariaDBConnection.getRootMariaDBConnection(namespace, releaseName);
+			Statement statement = connection.getStatement();
+
+			StringBuffer q = new StringBuffer();
+
+			q.append("select ");
+			q.append("	user as 'USER', ");
+			q.append("	host as 'HOST', ");
+			q.append("	Select_priv as 'SELECT', ");
+			q.append("	Insert_priv as 'INSERT', ");
+			q.append("	Update_priv as 'UPDATE', ");
+			q.append("	Delete_priv as 'DELETE', ");
+			q.append("	Execute_priv as 'EXECUTE', ");
+			q.append("	Create_priv as 'CREATE', ");
+			q.append("	Alter_priv as 'ALTER', ");
+			q.append("	Drop_priv as 'DROP', ");
+			q.append("	Index_priv as 'INDEX', ");
+			q.append("	Create_view_priv as 'CREATE_VIEW', ");
+			q.append("	Trigger_priv as 'TRIGGER', ");
+			q.append("	Grant_priv as 'GRANT', ");
+			q.append("	Create_user_priv as 'CREATE_USER' ");
+			q.append("from  ");
+			q.append("	mysql.user ");
+			q.append("where ");
+			q.append("  1 = 1");
+			q.append("	and user <> 'root' ");
+			q.append("	and user <> 'replicator' ");
+			
+			logger.debug("query: {}", q.toString());
+
+			ResultSet rs = statement.executeQuery(q.toString());
+			while (rs.next()) {
+				String user = rs.getString("USER");
+				String host = rs.getString("HOST");
+				String select = rs.getString("SELECT");
+				String insert = rs.getString("INSERT");
+				String update = rs.getString("UPDATE");
+				String delete = rs.getString("DELETE");
+				String execute = rs.getString("EXECUTE");
+				String create = rs.getString("CREATE");
+				String alter = rs.getString("ALTER");
+				String drop = rs.getString("DROP");
+				String createView = rs.getString("CREATE_VIEW");
+				String trigger = rs.getString("TRIGGER");
+				String grant = rs.getString("GRANT");
+				String createUser = rs.getString("CREATE_USER");
+				
+				DBUser dbUser = new DBUser();
+				dbUser.setUser(user);
+				dbUser.setHost(host);
+				dbUser.setSelect(select);
+				dbUser.setInsert(insert);
+				dbUser.setUpdate(update);
+				dbUser.setDelete(delete);
+				dbUser.setExecute(execute);
+				dbUser.setCreate(create);
+				dbUser.setAlter(alter);
+				dbUser.setDrop(drop);
+				dbUser.setCreateView(createView);
+				dbUser.setTrigger(trigger);
+				dbUser.setGrant(grant);
+				dbUser.setCreateUser(createUser);
+				
+				userList.add(dbUser);
+			}
+		} catch (Exception e) {
+			logger.error("Exception.", e);
+			throw e;
+		} finally {
+			if (connection != null) {
+				connection.close();
+			}
+		}
+		
+		return userList;
 	}
 
 	public static void deleteAccount(final ZDBMariaDBAccountRepository repo, final String namespace, final String releaseName, final String id) throws Exception {

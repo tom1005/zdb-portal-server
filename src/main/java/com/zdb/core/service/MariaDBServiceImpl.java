@@ -30,6 +30,7 @@ import org.springframework.stereotype.Service;
 import com.google.gson.Gson;
 import com.zdb.core.domain.Connection;
 import com.zdb.core.domain.ConnectionInfo;
+import com.zdb.core.domain.DBUser;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.Mycnf;
 import com.zdb.core.domain.PodSpec;
@@ -769,4 +770,22 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		return new Result("", Result.ERROR);
 	}
 
+	@Override
+	public Result getUserGrants(String namespace, String serviceType, String releaseName) {
+		try {
+			List<DBUser> userGrants = MariaDBAccount.getUserGrants(namespace, releaseName);
+			
+			return new Result("", Result.OK).putValue(IResult.USER_GRANTS, userGrants);
+		} catch (KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
+			} else {
+				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
 }
