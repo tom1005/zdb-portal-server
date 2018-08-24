@@ -695,6 +695,12 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 		}
 		
 		return result;
+	}
+
+	@Override
+	public Result getMycnf(String namespace, String releaseName) {
+		// do nothing
+		return null;
 	}	
 }
   

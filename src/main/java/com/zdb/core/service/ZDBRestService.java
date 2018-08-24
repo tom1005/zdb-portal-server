@@ -182,4 +182,8 @@ public interface ZDBRestService {
 	Result createPublicService(String txId, String namespace, String serviceType, String serviceName) throws Exception;
 	
 	Result deletePublicService(String txId, String namespace, String serviceType, String serviceName) throws Exception;
+	
+	Result getSlowLog(String namespace, String podName) throws Exception;
+	
+	Result getMycnf(String namespace, String releaseName);
 }

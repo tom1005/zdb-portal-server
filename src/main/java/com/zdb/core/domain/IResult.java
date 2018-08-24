@@ -85,6 +85,10 @@ public interface IResult {
 
 	public static final String POD_LOG = "podLog";
 
+	public static final String SLOW_LOG = "slowLog";
+
+	public static final String MY_CNF = "mycnf";
+
 	public static final String CONNECTION_INFO = "connectionInfo";
 
 	public static final String SERVICE_STATUS = "serviceStatus";

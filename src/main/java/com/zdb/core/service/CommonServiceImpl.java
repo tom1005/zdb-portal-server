@@ -66,4 +66,10 @@ public class CommonServiceImpl extends AbstractServiceImpl {
 		return null;
 	}
 
+	@Override
+	public Result getMycnf(String namespace, String releaseName) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 }

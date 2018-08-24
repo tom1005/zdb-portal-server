@@ -739,5 +739,34 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 		return result;
 	}
+	
+	public Result getMycnf(String namespace, String releaseName) {
+		String cnf = "";
+		try {
+			List<ConfigMap> configMaps = K8SUtil.getConfigMaps(namespace, releaseName);
+			
+			if(configMaps != null && !configMaps.isEmpty()) {
+				ConfigMap map = configMaps.get(0);
+				Map<String, String> data = map.getData();
+				cnf = data.get("my.cnf");
+				
+				String[] mycnf = cnf.split("\n");
+				
+				return new Result("", Result.OK).putValue(IResult.MY_CNF, mycnf);
+			}
+		} catch (KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
+			} else {
+				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+		
+		return new Result("", Result.ERROR);
+	}
 
 }

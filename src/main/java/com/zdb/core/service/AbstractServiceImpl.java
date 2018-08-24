@@ -42,6 +42,7 @@ import com.zdb.core.domain.EventMetaData;
 import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.Exchange;
 import com.zdb.core.domain.IResult;
+import com.zdb.core.domain.Mycnf;
 import com.zdb.core.domain.NamespaceResource;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
@@ -63,9 +64,11 @@ import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.util.DateUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.NamespaceResourceChecker;
+import com.zdb.core.util.ZDBLogViewer;
 import com.zdb.redis.RedisConfiguration;
 import com.zdb.redis.RedisConnection;
 
+import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.DoneablePod;
 import io.fabric8.kubernetes.api.model.LoadBalancerIngress;
 import io.fabric8.kubernetes.api.model.Namespace;
@@ -80,7 +83,9 @@ import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.DeploymentList;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.dsl.LogWatch;
 import io.fabric8.kubernetes.client.dsl.PodResource;
+import io.fabric8.kubernetes.client.dsl.PrettyLoggable;
 import lombok.extern.slf4j.Slf4j;
 import redis.clients.jedis.Jedis;
 
@@ -433,11 +438,30 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	@Override
 	public Result getPodLog(String namespace, String podName) throws Exception {
 		try {
-			String[] podLog = K8SUtil.getPodLog(namespace, podName);
+			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
 			
-			if (!StringUtils.isEmpty(podLog)) {
-				return new Result("", Result.OK).putValue(IResult.POD_LOG, podLog);
+			String app = client.pods().inNamespace(namespace).withName(podName).get().getMetadata().getLabels().get("app");
+			String log = "";
+			if ("redis".equals(app)) {
+				String[] podLog = K8SUtil.getPodLog(namespace, podName);
+				
+				if (!StringUtils.isEmpty(podLog)) {
+					return new Result("", Result.OK).putValue(IResult.POD_LOG, podLog);
+				}
+			} else if ("mariadb".equals(app)) {
+				String slowlogPath = getLogPath(namespace, podName, "log_error");
+				if(slowlogPath == null || slowlogPath.isEmpty()) {
+					slowlogPath = "/bitnami/mariadb/logs/mysqld_safe.log";
+				}
+				
+				log = new ZDBLogViewer().getTailLog(namespace, podName, "mariadb", 1000, slowlogPath);
+				if (!log.isEmpty()) {
+					String[] errorLog = log.split("\n");
+
+					return new Result("", Result.OK).putValue(IResult.POD_LOG, errorLog);
+				}
 			}
+			
 		} catch (KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
@@ -449,8 +473,81 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			log.error(e.getMessage(), e);
 			return new Result("", Result.ERROR, e.getMessage(), e);
 		}
-
+		
 		return new Result("", Result.ERROR);
+	}
+	
+	@Override
+	public Result getSlowLog(String namespace, String podName) throws Exception {
+		try {
+			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
+			
+			String app = client.pods().inNamespace(namespace).withName(podName).get().getMetadata().getLabels().get("app");
+			String log = "";
+			if ("redis".equals(app)) {
+				
+				return new Result("", Result.OK).putValue(IResult.SLOW_LOG, "");
+			} else if ("mariadb".equals(app)) {
+				String slowlogPath = getLogPath(namespace, podName, "slow_query_log_file");
+				if(slowlogPath == null || slowlogPath.isEmpty()) {
+					slowlogPath = "/bitnami/mariadb/logs/maria_slow.log";
+				}
+				
+				log = new ZDBLogViewer().getTailLog(namespace, podName, "mariadb", 1000, slowlogPath);
+				if (!log.isEmpty()) {
+					String[] errorLog = log.split("\n");
+
+					return new Result("", Result.OK).putValue(IResult.SLOW_LOG, errorLog);
+				}
+			}
+			
+		} catch (KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
+			} else {
+				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+		
+		return new Result("", Result.ERROR);
+	}
+	
+	private String getLogPath(String namespace, String podName, String logType) {
+		Map<String, String> systemConfigMap = new HashMap<String, String>();
+		try {
+			String releaseName = K8SUtil.kubernetesClient().pods().inNamespace(namespace).withName(podName).get().getMetadata().getLabels().get("release");
+			List<ConfigMap> configMaps = K8SUtil.getConfigMaps(namespace, releaseName);
+			
+			
+			if(configMaps != null && !configMaps.isEmpty()) {
+				ConfigMap map = configMaps.get(0);
+				Map<String, String> data = map.getData();
+				String cnf = data.get("my.cnf");
+				String[] split = cnf.split("\n");
+				
+				for (String line : split) {
+					String[] params = line.split("=");
+					if(params.length == 2) {
+						String key = params[0].trim();
+						String value = params[1].trim();
+						if(key.startsWith("#")) {
+							continue;
+						}
+						//slow_query_log_file
+						//log_error
+						systemConfigMap.put(key, value);
+					}
+				}
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
+		
+		return systemConfigMap.get(logType);
 	}
 	
 	@PersistenceContext
