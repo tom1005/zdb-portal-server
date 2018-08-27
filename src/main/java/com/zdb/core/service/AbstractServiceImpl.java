@@ -479,44 +479,17 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	
 	@Override
 	public Result getSlowLog(String namespace, String podName) throws Exception {
-		try {
-			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
-			
-			String app = client.pods().inNamespace(namespace).withName(podName).get().getMetadata().getLabels().get("app");
-			String log = "";
-			if ("redis".equals(app)) {
-				
-				return new Result("", Result.OK).putValue(IResult.SLOW_LOG, "");
-			} else if ("mariadb".equals(app)) {
-				String slowlogPath = getLogPath(namespace, podName, "slow_query_log_file");
-				if(slowlogPath == null || slowlogPath.isEmpty()) {
-					slowlogPath = "/bitnami/mariadb/logs/maria_slow.log";
-				}
-				
-				log = new ZDBLogViewer().getTailLog(namespace, podName, "mariadb", 1000, slowlogPath);
-				if (!log.isEmpty()) {
-					String[] errorLog = log.split("\n");
-
-					return new Result("", Result.OK).putValue(IResult.SLOW_LOG, errorLog);
-				}
-			}
-			
-		} catch (KubernetesClientException e) {
-			log.error(e.getMessage(), e);
-			if (e.getMessage().indexOf("Unauthorized") > -1) {
-				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
-			} else {
-				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
-			}
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-			return new Result("", Result.ERROR, e.getMessage(), e);
-		}
-		
-		return new Result("", Result.ERROR);
+		// MariaDBServiceImpl 에 구현...
+		return null;
 	}
 	
-	private String getLogPath(String namespace, String podName, String logType) {
+	@Override
+	public Result getSlowLogDownload(String namespace, String podName) throws Exception {
+		// MariaDBServiceImpl 에 구현...
+		return null;
+	}
+	
+	protected String getLogPath(String namespace, String podName, String logType) {
 		Map<String, String> systemConfigMap = new HashMap<String, String>();
 		try {
 			String releaseName = K8SUtil.kubernetesClient().pods().inNamespace(namespace).withName(podName).get().getMetadata().getLabels().get("release");
