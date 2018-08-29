@@ -521,7 +521,6 @@ public class MariaDBAccount {
 			q.append("	Create_priv as 'CREATE', ");
 			q.append("	Alter_priv as 'ALTER', ");
 			q.append("	Drop_priv as 'DROP', ");
-			q.append("	Index_priv as 'INDEX', ");
 			q.append("	Create_view_priv as 'CREATE_VIEW', ");
 			q.append("	Trigger_priv as 'TRIGGER', ");
 			q.append("	Grant_priv as 'GRANT', ");
