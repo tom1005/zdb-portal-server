@@ -60,6 +60,11 @@ public class CommonServiceImpl extends AbstractServiceImpl {
 	public Result getDBVariables(String txId, String namespace, String serviceName) {
 		return null;
 	}
+	
+	@Override
+	public Result getAllDBVariables(String txId, String namespace, String serviceName) {
+		return null;
+	}
 
 	@Override
 	public Result getServiceCheckAlive(String namespace, String serviceType, String serviceName) throws Exception {

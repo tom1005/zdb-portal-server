@@ -1,5 +1,6 @@
 package com.zdb.redis;
 
+import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -33,6 +34,17 @@ public class RedisConfiguration {
 		String value = null;
 		try {
 			value = jedis.configGet(configurationName).get(1);
+		} catch (JedisException e) {
+			logger.error("Exception: ", e);
+			throw e;
+		}
+		return value;
+	}
+	
+	public static List<String> getAllConfig(final Jedis jedis) throws JedisException {
+		List<String> value = null;
+		try {
+			value = jedis.configGet("*");
 		} catch (JedisException e) {
 			logger.error("Exception: ", e);
 			throw e;
