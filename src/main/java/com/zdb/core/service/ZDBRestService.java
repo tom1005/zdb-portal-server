@@ -185,5 +185,12 @@ public interface ZDBRestService {
 	
 	Result getSlowLog(String namespace, String podName) throws Exception;
 	
+	Result getSlowLogDownload(String namespace, String podName) throws Exception;
+	
 	Result getMycnf(String namespace, String releaseName);
+	
+	Result getUserGrants(String namespace, String serviceType, String releaseName);
+	
+	
+	
 }

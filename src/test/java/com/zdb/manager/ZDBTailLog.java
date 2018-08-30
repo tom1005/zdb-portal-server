@@ -1,4 +1,4 @@
-package com.zdb.core.util;
+package com.zdb.manager;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -6,12 +6,17 @@ import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.net.URLEncoder;
+import java.util.Date;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import com.zdb.core.util.DateUtil;
+import com.zdb.core.util.K8SUtil;
+
+import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.client.Callback;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.dsl.ContainerResource;
@@ -23,40 +28,63 @@ import io.fabric8.kubernetes.client.dsl.TtyExecErrorable;
 import io.fabric8.kubernetes.client.utils.BlockingInputStreamPumper;
 import okhttp3.Response;
 
-/**
- * 에러로그, slowlog 조회 및 다운로드 
- * @author a06919
- *
- */
-public class ZDBLogViewer implements Callback<byte[]> {
+public class ZDBTailLog implements Callback<byte[]> {
 
-	StringBuffer sb = new StringBuffer();
-	
-	public  String getTailLog(String namespace, String podName, String container, int line, String logPath) throws InterruptedException, IOException, Exception {
-		String[] commands = new String[] { "/bin/sh", "-c", "tail -n " + line + " " + logPath };
-		String result = exec(namespace, podName, container, commands);
-		return result;
+	public static void main(String[] args) {
+		try {
+			String namespace = null;
+			String appName = null;
+			int line = 300;
+			
+			if(args.length != 3) {
+				System.out.println("Input namespace, appName... ");
+				return;
+			}
+			
+			namespace = args[0];
+			appName = args[1];
+			line = Integer.parseInt(args[2]);
+			
+			
+			if( namespace == null ) {
+				namespace = "zdb-system";
+			}
+			
+			if( appName == null ) {
+				appName = "zdb-portal-server";
+			}
+			
+			if( line == 0 ) {
+				line = 300;
+			}
+			
+			String tailLog = new ZDBTailLog().getTailLog(namespace, appName, line);
+			
+			System.out.println(tailLog);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
+
+	final StringBuffer sb = new StringBuffer();
 	
-	public String getSlowLogDownload(String namespace, String podName, String container, String logPath) throws InterruptedException, IOException, Exception {
-		String[] commands = new String[] { "/bin/sh", "-c", "cat " + logPath };
-		String result = exec(namespace, podName, container, commands);
-		return result;
-	}
-	
-	public synchronized String exec(String namespace, String podName, String container, String[] commands) throws InterruptedException, IOException, Exception {
+	public  String getTailLog(String namespace, String appName, int line) throws InterruptedException, IOException, Exception {
 		ScheduledExecutorService executorService = Executors.newScheduledThreadPool(20);
 
 		try (final DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
 			ExecWatch watch = null;
 			BlockingInputStreamPumper pump = null;
 			
+			String today = DateUtil.formatDate(new Date(), "yyyyMMdd");
+			
+			String[] commands = new String[] { "/bin/sh", "-c", "tail -n "+line+" -f /var/log/"+appName+"-"+today+".log" };
 
 			final CountDownLatch latch = new CountDownLatch(1);
 			
-			// "gdi-iam-prod-db-mariadb-master-0"
+			Pod pod = client.inNamespace(namespace).pods().withLabel("app", "zdb-portal-server").list().getItems().get(0);
+			
 			ContainerResource<String, LogWatch, InputStream, PipedOutputStream, OutputStream, PipedInputStream, String, ExecWatch> inContainer = 
-					client.inNamespace(namespace).pods().withName(podName).inContainer(container);
+					client.inNamespace(namespace).pods().withName(pod.getMetadata().getName());
 			
 			TtyExecErrorable<String, OutputStream, PipedInputStream, ExecWatch> redirectingOutput = inContainer.redirectingOutput();
 			
@@ -64,6 +92,7 @@ public class ZDBLogViewer implements Callback<byte[]> {
 				@Override
 				public void onOpen(Response response) {
 //					System.out.println(response.toString());
+					
 				}
 
 				@Override
@@ -75,7 +104,7 @@ public class ZDBLogViewer implements Callback<byte[]> {
 				@Override
 				public void onClose(int code, String reason) {
 					latch.countDown();
-//					System.out.println("onClose - code:"+code+",reason : "+reason);
+					System.out.println("onClose - code:"+code+",reason : "+reason);
 				}
 			});
 			
@@ -89,7 +118,7 @@ public class ZDBLogViewer implements Callback<byte[]> {
 			Future<String> outPumpFuture = executorService.submit(pump, "Done");
 			executorService.scheduleAtFixedRate(new FutureChecker("Pump", outPumpFuture), 0, 30, TimeUnit.SECONDS);
 
-			latch.await(30, TimeUnit.SECONDS);
+			latch.await(300, TimeUnit.SECONDS);
 			watch.close();
 		}
 		executorService.shutdown();
@@ -101,8 +130,8 @@ public class ZDBLogViewer implements Callback<byte[]> {
 	public void call(byte[] input) {
 		try {
 			String x = new String(input, "UTF-8");
-//			System.out.println(x);
-			sb.append(x).append("\n");
+			System.out.println(x);
+//			sb.append(x).append("\n");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -120,7 +149,7 @@ public class ZDBLogViewer implements Callback<byte[]> {
 		@Override
 		public void run() {
 			if(!future.isDone()) {
-//				System.out.println("Future:[" + name + "] is not done yet");
+				System.out.println("Future:[" + name + "] is not done yet");
 			}
 		}
 	}

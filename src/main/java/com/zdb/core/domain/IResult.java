@@ -88,6 +88,8 @@ public interface IResult {
 	public static final String SLOW_LOG = "slowLog";
 
 	public static final String MY_CNF = "mycnf";
+	
+	public static final String USER_GRANTS = "userGrants";
 
 	public static final String CONNECTION_INFO = "connectionInfo";
 
