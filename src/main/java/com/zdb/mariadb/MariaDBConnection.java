@@ -162,6 +162,7 @@ public class MariaDBConnection {
 
 			if (password != null && !password.isEmpty()) {
 				password = new String(Base64.getDecoder().decode(password));
+				password = password.trim();
 			}
 
 			connection = new MariaDBConnection(url, user, password);
