@@ -24,6 +24,6 @@ public class ScheduleInfoEntity {
 	private long executionMilsec;
 	private String status;
 	private long fileSize;
-	private long fileSumSize;
+	private long fileSumSize = 0l;
 	
 }	

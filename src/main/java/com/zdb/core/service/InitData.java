@@ -10,6 +10,7 @@ import com.zdb.core.repository.MycnfRepository;
 public class InitData {
 	static Map<String, String> defaultConfigMap = new HashMap<>();
 	static {
+		defaultConfigMap.put("autocommit", "0|범위 : 1 , 0|true|boolean");
 		defaultConfigMap.put("back_log", "200|범위 : 100이상|false|number");
 		defaultConfigMap.put("binlog_cache_size", "1M|범위 : 4096 to 18446744073709547520|true|numeric");
 		defaultConfigMap.put("bulk_insert_buffer_size", "16M|범위 : 0 ~ 18446744073709547520|true|numeric");
@@ -31,7 +32,7 @@ public class InitData {
 		defaultConfigMap.put("local_infile", "0|범위 : 1 , 0|true|boolean");
 		defaultConfigMap.put("long_query_time", "5|범위 : 0 이상|true|numeric");
 		defaultConfigMap.put("max_allowed_packet", "16M|범위 : 1024 ~ 1073741824|true|numeric");
-		defaultConfigMap.put("max_connections", "200|범위 : 1~100000|true|numeric");
+		defaultConfigMap.put("max_connections", "300|범위 : 1~100000|true|numeric");
 		defaultConfigMap.put("myisam_sort_buffer_size", "16M|범위 : 4096 ~ 18446744073709547520|true|numeric");
 		defaultConfigMap.put("query_cache_limit", "0|범위 : 0 ~ 4294967295|true|numeric");
 		defaultConfigMap.put("query_cache_size", "0|범위 : 1024 단위의 0보다 큰값|true|numeric");

@@ -23,6 +23,7 @@ import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.zdb.core.domain.Connection;
 import com.zdb.core.domain.ConnectionInfo;
 import com.zdb.core.domain.IResult;
@@ -545,6 +546,40 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 		}
 		return result;
 	}
+	
+	@Override
+	public Result getAllDBVariables(String txId, String namespace, String serviceName) {
+		Result result = Result.RESULT_OK(txId);
+		Jedis redisConnection = null;
+		
+		try {
+			redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "master"); 
+
+			if (redisConnection == null) {
+				throw new Exception("Cannot connect redis. Namespace: " + namespace + ", ServiceName: " + serviceName);
+			}
+			
+			List<String> config = RedisConfiguration.getAllConfig(redisConnection);
+			
+			List<String> configList = new ArrayList<>();
+			
+			for (int i=0; i<config.size(); i+=2) {
+				configList.add(config.get(i) + " = " + config.get(i+1));
+			}
+
+			result = new Result(txId, IResult.OK, "");
+			result.putValue(IResult.REDIS_CONFIG, configList.toArray());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+
+			return Result.RESULT_FAIL(txId, e);
+		} finally {
+			if (redisConnection != null) {
+				redisConnection.close();
+			}
+		}
+		return result;
+	}
 
 	/**
 	 * 
@@ -695,6 +730,17 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 		}
 		
 		return result;
+	}
+
+	@Override
+	public Result getMycnf(String namespace, String releaseName) {
+		// do nothing
+		return null;
+	}
+
+	@Override
+	public Result getUserGrants(String namespace, String serviceType, String releaseName) {
+		return null;
 	}	
 }
   

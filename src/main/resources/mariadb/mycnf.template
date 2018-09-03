@@ -26,7 +26,6 @@ back_log=${back_log}
 join_buffer_size=${join_buffer_size}
 max_allowed_packet=16M
 max_heap_table_size=16M
-max_connection=200
 performance_schema
 read_buffer_size=${read_buffer_size}
 read_rnd_buffer_size=${read_rnd_buffer_size}
@@ -40,6 +39,7 @@ binlog_cache_size=${binlog_cache_size}
 table_open_cache=${table_open_cache}
 open_files_limit=8192
 transaction-isolation=${transaction-isolation}
+autocommit=${autocommit}
 
 # Log Config
 log_error=/bitnami/mariadb/logs/mysqld.log
@@ -91,6 +91,7 @@ default-time-zone=+09:00
 [mysql]
 no-auto-rehash
 max_allowed_packet=${max_allowed_packet}
+default-character-set=${character_set_server}
 
 [mysqld_safe]
 log_error=/bitnami/mariadb/logs/mysqld_safe.log
@@ -102,4 +103,4 @@ max_allowed_packet=16M
 [client]
 port=3306
 socket=/opt/bitnami/mariadb/tmp/mysql.sock
-default-character-set=UTF8
+default-character-set=${character_set_server}

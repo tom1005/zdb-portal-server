@@ -60,9 +60,25 @@ public class CommonServiceImpl extends AbstractServiceImpl {
 	public Result getDBVariables(String txId, String namespace, String serviceName) {
 		return null;
 	}
+	
+	@Override
+	public Result getAllDBVariables(String txId, String namespace, String serviceName) {
+		return null;
+	}
 
 	@Override
 	public Result getServiceCheckAlive(String namespace, String serviceType, String serviceName) throws Exception {
+		return null;
+	}
+
+	@Override
+	public Result getMycnf(String namespace, String releaseName) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Result getUserGrants(String namespace, String serviceType, String releaseName) {
 		return null;
 	}
 

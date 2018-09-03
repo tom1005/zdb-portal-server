@@ -66,7 +66,7 @@ master:
     join_buffer_size=64k
     max_allowed_packet=16M
     max_heap_table_size=16M
-    max_connection=200
+    max_connections=300
     performance_schema
     read_buffer_size=1M
     read_rnd_buffer_size=1M
@@ -80,6 +80,7 @@ master:
     table_open_cache=4000
     open_files_limit=8192
     transaction-isolation=READ-COMMITTED
+    autocommit=0
     
     # Log Config
     log_error=/bitnami/mariadb/logs/mysqld.log
@@ -131,6 +132,7 @@ master:
     [mysql]
     no-auto-rehash
     max_allowed_packet=16M
+    default-character-set=${character.set.server}
     
     [mysqld_safe]
     log_error=/bitnami/mariadb/logs/mysqld_safe.log
@@ -142,7 +144,7 @@ master:
     [client]
     port=3306
     socket=/opt/bitnami/mariadb/tmp/mysql.sock
-    default-character-set=UTF8
+    default-character-set=${character.set.server}
 
   ## Configure master resource requests and limits
   ## ref: http://kubernetes.io/docs/user-guide/compute-resources/
@@ -197,7 +199,7 @@ slave:
     join_buffer_size=64k
     max_allowed_packet=16M
     max_heap_table_size=16M
-    max_connection=200
+    max_connections=300
     performance_schema
     read_buffer_size=1M
     read_rnd_buffer_size=1M
@@ -211,6 +213,7 @@ slave:
     table_open_cache=4000
     open_files_limit=8192
     transaction-isolation=READ-COMMITTED
+    autocommit=0
     
     # Log Config
     log_error=/bitnami/mariadb/logs/mysqld.log
@@ -262,6 +265,7 @@ slave:
     [mysql]
     no-auto-rehash
     max_allowed_packet=16M
+    default-character-set=${character.set.server}
     
     [mysqld_safe]
     log_error=/bitnami/mariadb/logs/mysqld_safe.log
@@ -273,7 +277,7 @@ slave:
     [client]
     port=3306
     socket=/opt/bitnami/mariadb/tmp/mysql.sock
-    default-character-set=UTF8
+    default-character-set=${character.set.server}
 
   ##
   ## Configure slave resource requests and limits

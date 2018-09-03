@@ -30,6 +30,7 @@ import org.springframework.stereotype.Service;
 import com.google.gson.Gson;
 import com.zdb.core.domain.Connection;
 import com.zdb.core.domain.ConnectionInfo;
+import com.zdb.core.domain.DBUser;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.Mycnf;
 import com.zdb.core.domain.PodSpec;
@@ -43,6 +44,7 @@ import com.zdb.core.repository.MycnfRepository;
 import com.zdb.core.repository.ZDBMariaDBAccountRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.util.K8SUtil;
+import com.zdb.core.util.ZDBLogViewer;
 import com.zdb.mariadb.MariaDBAccount;
 import com.zdb.mariadb.MariaDBShutDownUtil;
 
@@ -386,6 +388,11 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 //		}
 
 		return result;
+	}
+	
+	public Result getAllDBVariables(final String txId, final String namespace, final String releaseName) {
+		// TODO
+		return null;
 	}
 
 	/* (non-Javadoc)
@@ -739,5 +746,130 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 		return result;
 	}
+	
+	public Result getMycnf(String namespace, String releaseName) {
+		String cnf = "";
+		try {
+			List<ConfigMap> configMaps = K8SUtil.getConfigMaps(namespace, releaseName);
+			
+			if(configMaps != null && !configMaps.isEmpty()) {
+				ConfigMap map = configMaps.get(0);
+				Map<String, String> data = map.getData();
+				cnf = data.get("my.cnf");
+				
+				String[] mycnf = cnf.split("\n");
+				
+				return new Result("", Result.OK).putValue(IResult.MY_CNF, mycnf);
+			}
+		} catch (KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
+			} else {
+				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+		
+		return new Result("", Result.ERROR);
+	}
 
+	@Override
+	public Result getUserGrants(String namespace, String serviceType, String releaseName) {
+		try {
+			List<DBUser> userGrants = MariaDBAccount.getUserGrants(namespace, releaseName);
+			
+			return new Result("", Result.OK).putValue(IResult.USER_GRANTS, userGrants);
+		} catch (KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
+			} else {
+				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
+	
+	@Override
+	public Result getSlowLog(String namespace, String podName) throws Exception {
+		try {
+			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
+			
+			String app = client.pods().inNamespace(namespace).withName(podName).get().getMetadata().getLabels().get("app");
+			String log = "";
+			if ("redis".equals(app)) {
+				
+				return new Result("", Result.OK).putValue(IResult.SLOW_LOG, "");
+			} else if ("mariadb".equals(app)) {
+				String slowlogPath = getLogPath(namespace, podName, "slow_query_log_file");
+				if(slowlogPath == null || slowlogPath.isEmpty()) {
+					slowlogPath = "/bitnami/mariadb/logs/maria_slow.log";
+				}
+				
+				log = new ZDBLogViewer().getTailLog(namespace, podName, "mariadb", 1000, slowlogPath);
+				if (!log.isEmpty()) {
+					String[] errorLog = log.split("\n");
+
+					return new Result("", Result.OK).putValue(IResult.SLOW_LOG, errorLog);
+				}
+			}
+			
+		} catch (KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
+			} else {
+				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+		
+		return new Result("", Result.ERROR);
+	}
+	
+	@Override
+	public Result getSlowLogDownload(String namespace, String podName) throws Exception {
+		try {
+			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
+			
+			String app = client.pods().inNamespace(namespace).withName(podName).get().getMetadata().getLabels().get("app");
+			String log = "";
+			if ("redis".equals(app)) {
+				
+				return new Result("", Result.OK).putValue(IResult.SLOW_LOG, "");
+			} else if ("mariadb".equals(app)) {
+				String slowlogPath = getLogPath(namespace, podName, "slow_query_log_file");
+				if(slowlogPath == null || slowlogPath.isEmpty()) {
+					slowlogPath = "/bitnami/mariadb/logs/maria_slow.log";
+				}
+				
+				log = new ZDBLogViewer().getSlowLogDownload(namespace, podName, "mariadb", slowlogPath);
+				if (!log.isEmpty()) {
+					String[] errorLog = log.split("\n");
+
+					return new Result("", Result.OK).putValue(IResult.SLOW_LOG, errorLog);
+				}
+			}
+			
+		} catch (KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
+			} else {
+				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+		
+		return new Result("", Result.ERROR);
+	}
 }

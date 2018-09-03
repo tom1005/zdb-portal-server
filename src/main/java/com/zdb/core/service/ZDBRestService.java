@@ -107,6 +107,8 @@ public interface ZDBRestService {
 	 * @return
 	 * @throws Exception
 	 */
+	Result getOperationEvents(String namespace, String servceName, String startTime, String endTime, String keyword) throws Exception;
+	
 	Result getEvents(String namespace, String servceName, String kind, String startTime, String endTime, String keyword) throws Exception;
 	
 	/**
@@ -146,6 +148,8 @@ public interface ZDBRestService {
 	Result updateDBVariables(final String txId, final String namespace, final String serviceName, Map<String, String> config) throws Exception;
 
 	Result getDBVariables(String txId, String namespace, String serviceName);
+	
+	Result getAllDBVariables(String txId, String namespace, String serviceName);
 
 	Result getAbnormalPersistentVolumeClaims(String namespace, String abnormalType) throws Exception;
 
@@ -174,5 +178,18 @@ public interface ZDBRestService {
 	Result getUnusedPersistentVolumeClaims(String namespace) throws Exception;
 	
 	Result isAvailableResource(String namespace, String userId, String cpu, String memory, boolean clusterEnabled) throws Exception;
+	
+	Result getNamespaceResource(String namespace, String userId) throws Exception;
 
+	Result createPublicService(String txId, String namespace, String serviceType, String serviceName) throws Exception;
+	
+	Result deletePublicService(String txId, String namespace, String serviceType, String serviceName) throws Exception;
+	
+	Result getSlowLog(String namespace, String podName) throws Exception;
+	
+	Result getSlowLogDownload(String namespace, String podName) throws Exception;
+	
+	Result getMycnf(String namespace, String releaseName);
+	
+	Result getUserGrants(String namespace, String serviceType, String releaseName);
 }

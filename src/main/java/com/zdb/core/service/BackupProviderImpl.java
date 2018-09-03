@@ -105,11 +105,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 		Result result = null;
 		try {
 			log.debug("namespace : "+backupEntity.getNamespace()
-				+", serviceName : "+backupEntity.getServiceName()
-				+", serviceType : "+backupEntity.getServiceType());
-			
-			StringBuilder sb = new StringBuilder();
-			sb.append(K8SUtil.daemonUrl)
+				+", serviceName : 
 					.append("/api/v1/")
 					.append(backupEntity.getNamespace()).append("/")
 					.append(backupEntity.getServiceType())
