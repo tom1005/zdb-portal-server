@@ -18,9 +18,10 @@ public class ScheduleInfoEntity {
 	private int storePeriod;
 	private Date registerDate;
 	
-	private Date acceptedDatetime;
+	private Date startDatetime;
 	private Date completeDatetime;
-	private long executionTime;
+	private String executionTime;
+	private long executionMilsec;
 	private String status;
 	private long fileSize;
 	private long fileSumSize = 0l;

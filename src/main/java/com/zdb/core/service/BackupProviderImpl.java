@@ -105,11 +105,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 		Result result = null;
 		try {
 			log.debug("namespace : "+backupEntity.getNamespace()
-				+", serviceName : "+backupEntity.getServiceName()
-				+", serviceType : "+backupEntity.getServiceType());
-			
-			StringBuilder sb = new StringBuilder();
-			sb.append(K8SUtil.daemonUrl)
+				+", serviceName : 
 					.append("/api/v1/")
 					.append(backupEntity.getNamespace()).append("/")
 					.append(backupEntity.getServiceType())
@@ -328,23 +324,23 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 				
 				List<BackupEntity> backuplist = backupRepository.findBackupListByScheduleId(i.getScheduleId());
 				backuplist.forEach(backup -> {
-					if(scheduleInfo.getAcceptedDatetime() == null) {
-						scheduleInfo.setAcceptedDatetime(backup.getAcceptedDatetime());
+					if(scheduleInfo.getStartDatetime() == null) {
+						scheduleInfo.setStartDatetime(backup.getStartDatetime());
 						scheduleInfo.setCompleteDatetime(backup.getCompleteDatetime());
-						scheduleInfo.setExecutionTime((backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime())/1000);
+						scheduleInfo.setExecutionMilsec(backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime());
 						scheduleInfo.setFileSize(backup.getFileSize());
-					}else if(scheduleInfo.getAcceptedDatetime().before(backup.getAcceptedDatetime())) {
-						scheduleInfo.setAcceptedDatetime(backup.getAcceptedDatetime());
+					}else if(scheduleInfo.getStartDatetime().before(backup.getStartDatetime())) {
+						scheduleInfo.setStartDatetime(backup.getStartDatetime());
 						scheduleInfo.setCompleteDatetime(backup.getCompleteDatetime());
-						scheduleInfo.setExecutionTime((backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime())/1000);
+						scheduleInfo.setExecutionMilsec(backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime());
+						scheduleInfo.setExecutionTime(getExecutionTimeConvertion(backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime()));
 						scheduleInfo.setFileSize(backup.getFileSize());
 					}
-					scheduleInfo.setFileSumSize(scheduleInfo.getFileSumSize() + backup.getArchiveFileSize());
+					scheduleInfo.setFileSumSize(scheduleInfo.getFileSize() + backup.getArchiveFileSize());
 				});
-				
+				scheduleInfo.setExecutionTime(getExecutionTimeConvertion(scheduleInfo.getExecutionMilsec()));
 				scheduleInfolist.add(scheduleInfo);
 			});
-			
 			result = new Result(txId, IResult.OK).putValue(IResult.SCHEDULE_INFO_LIST, scheduleInfolist);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -352,5 +348,17 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 		} finally {
 		}
 		return result;
+	}
+	
+	private String getExecutionTimeConvertion(long milsec) {
+		if(milsec == 0 ) {
+			return "";
+		}else if (milsec >= 3600000) {
+			return Long.toString(milsec/3600000) + "시간 " + getExecutionTimeConvertion(milsec%3600000);
+		} else if (milsec >= 60000) {
+			return Long.toString(milsec/60000) + "분 " + getExecutionTimeConvertion(milsec%60000);
+		} else {
+			return Long.toString(milsec/1000) + "초";
+		}
 	}
 }
