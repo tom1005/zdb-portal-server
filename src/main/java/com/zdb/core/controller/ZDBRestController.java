@@ -655,6 +655,45 @@ public class ZDBRestController {
 		}
 	}
 	
+	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/allVariables", method = RequestMethod.GET)
+	public ResponseEntity<String> getAllDBVariables(
+			@PathVariable("serviceType") final String serviceType, 
+			@PathVariable("namespace") final String namespace, 
+			@PathVariable("serviceName") final String serviceName
+			) {
+		Result result = null;
+		String txId = txId();
+		ZDBType dbType = ZDBType.getType(serviceType);
+		try {
+			switch (dbType) {
+			case MariaDB:
+				// TODO
+				break;
+			case Redis:
+				result = ((RedisServiceImpl) redisService).getAllDBVariables(txId, namespace, serviceName);
+				break;
+			case PostgreSQL:
+				// TODO
+				break;
+			case RabbitMQ:
+				// TODO
+				break;
+			case MongoDB:
+				// TODO
+				break;
+			default:
+				log.error("Not support.");
+				result.setMessage("Not support service type.");
+				break;
+			}
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
 	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/variables", method = RequestMethod.PUT)
 	public ResponseEntity<String> updateDBVariables(
 			@PathVariable("serviceType") final String serviceType, 

@@ -389,6 +389,11 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 		return result;
 	}
+	
+	public Result getAllDBVariables(final String txId, final String namespace, final String releaseName) {
+		// TODO
+		return null;
+	}
 
 	/* (non-Javadoc)
 	 * @see com.zdb.core.service.ZDBRestService#getPersistentVolumeClaims(java.lang.String)

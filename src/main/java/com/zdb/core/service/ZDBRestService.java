@@ -148,6 +148,8 @@ public interface ZDBRestService {
 	Result updateDBVariables(final String txId, final String namespace, final String serviceName, Map<String, String> config) throws Exception;
 
 	Result getDBVariables(String txId, String namespace, String serviceName);
+	
+	Result getAllDBVariables(String txId, String namespace, String serviceName);
 
 	Result getAbnormalPersistentVolumeClaims(String namespace, String abnormalType) throws Exception;
 
@@ -190,7 +192,4 @@ public interface ZDBRestService {
 	Result getMycnf(String namespace, String releaseName);
 	
 	Result getUserGrants(String namespace, String serviceType, String releaseName);
-	
-	
-	
 }
