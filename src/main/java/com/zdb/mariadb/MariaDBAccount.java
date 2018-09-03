@@ -3,6 +3,7 @@ package com.zdb.mariadb;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
@@ -215,21 +216,37 @@ public class MariaDBAccount {
 		return account;
 	}
 	
-	public static void updateAdminPrivileges(String namespace, String releaseName, String userId) {
+	public static void updateAdminPrivileges(String namespace, String releaseName, String userId) throws Exception {
 		MariaDBConnection connection = null;
 		try {
+			List<Secret> secrets = K8SUtil.getSecrets(namespace, releaseName);
+			if( secrets == null || secrets.isEmpty()) {
+				throw new Exception("등록된 Secret이 없거나 조회 중 오류 발생. [" + namespace +" > "+releaseName +"]");
+			}
+			
+			String password = "";
+			for(Secret secret : secrets) {
+				Map<String, String> secretData = secret.getData();
+				password = secretData.get("mariadb-password");
+				
+				if (password != null && !password.isEmpty()) {
+					password = new String(Base64.getDecoder().decode(password));
+					password = password.trim();
+				}
+				
+				break;
+			}
+			
 			connection = MariaDBConnection.getRootMariaDBConnection(namespace, releaseName);
 			Statement statement = connection.getStatement();
-			String grantAllQuery =   "GRANT ALL PRIVILEGES ON *.* TO '" + userId + "'@'%' WITH GRANT OPTION";
-			String createUserQuery = "GRANT CREATE USER ON *.* TO '" + userId + "'@'%'";
-			logger.debug("query: {}", grantAllQuery);
-			logger.debug("query: {}", createUserQuery);
-
-			statement.executeUpdate(grantAllQuery);
-			statement.executeUpdate(createUserQuery);
-			statement.executeUpdate("flush privileges");
+			
+			statement.executeUpdate("REVOKE ALL PRIVILEGES ON *.* FROM '" + userId + "'@'%';");
+			statement.executeUpdate("GRANT ALL PRIVILEGES ON *.* TO '" + userId + "'@'%' IDENTIFIED BY '"+password+"' WITH GRANT OPTION");
+			statement.executeUpdate("GRANT CREATE USER ON *.* TO '" + userId + "'@'%'");
+			statement.executeUpdate("FLUSH PRIVILEGES");
 		} catch (Exception e) {
 			logger.error("Exception.", e);
+			throw e;
 		} finally {
 			if(connection != null) {
 				connection.close();
