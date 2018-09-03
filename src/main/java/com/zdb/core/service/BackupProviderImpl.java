@@ -343,10 +343,8 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 					scheduleInfo.setFileSumSize(scheduleInfo.getFileSize() + backup.getArchiveFileSize());
 				});
 				scheduleInfo.setExecutionTime(getExecutionTimeConvertion(scheduleInfo.getExecutionMilsec()));
-				
 				scheduleInfolist.add(scheduleInfo);
 			});
-			
 			result = new Result(txId, IResult.OK).putValue(IResult.SCHEDULE_INFO_LIST, scheduleInfolist);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -360,7 +358,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 		if(milsec == 0 ) {
 			return "";
 		}else if (milsec >= 3600000) {
-			return Long.toString(milsec/3600000) + "시간 " + getExecutionTimeConvertion(milsec%600000);
+			return Long.toString(milsec/3600000) + "시간 " + getExecutionTimeConvertion(milsec%3600000);
 		} else if (milsec >= 60000) {
 			return Long.toString(milsec/60000) + "분 " + getExecutionTimeConvertion(milsec%60000);
 		} else {
