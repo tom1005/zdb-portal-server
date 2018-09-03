@@ -996,7 +996,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 						if(!conditions.isEmpty()) {
 							String message = conditions.get(0).getMessage();
 							if(message != null) {
-								log.warn(">>>>>>>>>>>>>>>>>>>>>>>> " + message);
 								eventMessageSet.add(message);
 							} else {
 								EventMetaData findByKindAndName = eventRepository.findByKindAndName("Pod", pod.getMetadata().getName());
