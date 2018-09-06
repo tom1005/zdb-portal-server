@@ -308,7 +308,11 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 					
 					if(lacth.getCount() == 0) {
 						log.info("update admin grant option.");
-						MariaDBAccount.updateAdminPrivileges(service.getNamespace(), service.getServiceName(), account.getUserId());
+						try {
+							MariaDBAccount.updateAdminPrivileges(service.getNamespace(), service.getServiceName(), account.getUserId());
+						} catch (Exception e) {
+							log.error("권한 적용 오류 ", e);
+						}
 						
 						if(service.isBackupEnabled()) {
 							// 스케줄 등록...
