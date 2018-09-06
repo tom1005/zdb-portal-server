@@ -310,8 +310,8 @@ metrics:
     pullPolicy: IfNotPresent
   resources:
     requests:
-      cpu: "300m"
-      memory: "128Mi"
+      cpu: "100m"
+      memory: "64Mi"
     limits:
       cpu: "300m"
       memory: "128Mi"  
