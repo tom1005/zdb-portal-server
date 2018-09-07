@@ -9,8 +9,9 @@ spring:
     active: local
 
 management:
- security:
-  enabled: false
+  security:
+   enabled: false
+  context-path: /actuator
   endpoints:
     enabled-by-default: true
     web:
@@ -32,9 +33,9 @@ spring:
   profiles: local
   datasource:
 #    url: jdbc:mariadb://169.56.94.12:3306/zdb
-    url: jdbc:mariadb://169.56.87.210:3306/zdb
+    url: jdbc:mariadb://169.56.80.186:3306/zdb
     username: admin
-    password: 32763vyJUy
+    password: xxxxxxxx
     driverClassName: org.mariadb.jdbc.Driver
   jpa:
     database-platform: org.hibernate.dialect.MySQLDialect
