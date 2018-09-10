@@ -243,6 +243,7 @@ public class MariaDBAccount {
 			statement.executeUpdate("REVOKE ALL PRIVILEGES ON *.* FROM '" + userId + "'@'%';");
 			statement.executeUpdate("GRANT ALL PRIVILEGES ON *.* TO '" + userId + "'@'%' IDENTIFIED BY '"+password+"' WITH GRANT OPTION");
 			statement.executeUpdate("GRANT CREATE USER ON *.* TO '" + userId + "'@'%'");
+			statement.executeUpdate("UPDATE mysql.user SET super_priv='N' WHERE user <> 'root'");
 			statement.executeUpdate("FLUSH PRIVILEGES");
 		} catch (Exception e) {
 			logger.error("Exception.", e);
