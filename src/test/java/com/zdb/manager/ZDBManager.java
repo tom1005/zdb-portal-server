@@ -303,7 +303,11 @@ public class ZDBManager {
 			
 			//readyReplicas=1, replicas=1
 			int replicas = status.getReplicas().intValue();
-			int readyReplicas = status.getReadyReplicas().intValue();
+			Integer readyReplicas2 = status.getReadyReplicas();
+			int readyReplicas = 0;
+			if(readyReplicas2 != null) {
+			    readyReplicas = readyReplicas2.intValue();
+			}
 			
 			System.out.println(b(namespace, 15) + "  " +b(name, 40) + "  " + b(readyReplicas+ "/"+replicas, 6) + "  " + b(creationTimestamp, 15));
 		}
