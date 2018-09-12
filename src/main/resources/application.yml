@@ -31,10 +31,10 @@ security:
 spring:
   profiles: local
   datasource:
-#    url: jdbc:mariadb://169.56.94.12:3306/zdb
-    url: jdbc:mariadb://169.56.87.210:3306/zdb
-    username: admin
-    password: 32763vyJUy
+    url: jdbc:mariadb://169.56.94.12:3306/zdb
+#    url: jdbc:mariadb://169.56.87.210:3306/zdb
+    username: zdb
+    password: 24cmdshvek!
     driverClassName: org.mariadb.jdbc.Driver
   jpa:
     database-platform: org.hibernate.dialect.MySQLDialect
@@ -56,9 +56,9 @@ k8s:
   
 chart:
   mariadb:
-    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/mariadb/charts/mariadb-4.2.0.tgz"
+    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/mariadb/charts/mariadb-4.2.1.tgz"
   redis:
-    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/redis/charts/redis-3.6.3.tgz"
+    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/redis/charts/redis-3.6.5.tgz"
   
 iam:
     baseUrl: https://zcp-iam.cloudzcp.io:443

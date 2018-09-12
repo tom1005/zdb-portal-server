@@ -70,6 +70,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 	private static final String DEFAULT_USER_PASSWORD = "zdbadmin12#$";
 	private static final String DEFAULT_DATABASE_NAME = "mydb";
 	private static final String DEFAULT_STORAGE_SIZE = "20Gi";
+	private static final String DEFAULT_VERSION = "10.2.14";
 	
 	public void doInstall(Exchange exchange) {
 		String chartUrl = exchange.getProperty(Exchange.CHART_URL, String.class);
@@ -128,6 +129,8 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 					isPublicEnabled = false;
 				}
 				
+				String mariadbVersion = service.getVersion() == null ? DEFAULT_VERSION : service.getVersion();
+				
 				String mariadbDatabase = mariaDBConfig.getMariadbDatabase() == null ? DEFAULT_DATABASE_NAME : mariaDBConfig.getMariadbDatabase();
 				String mariadbUser = mariaDBConfig.getMariadbUser() == null ? DEFAULT_USER : mariaDBConfig.getMariadbUser();
 				String mariadbPassword = mariaDBConfig.getMariadbPassword() == null ? DEFAULT_USER_PASSWORD : mariaDBConfig.getMariadbPassword();
@@ -155,6 +158,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				String slaveMemory = slaveSpec.getMemory();
 				int clusterSlaveCount = service.getClusterSlaveCount() == 0 ? 1 : service.getClusterSlaveCount();
 				
+				inputJson = inputJson.replace("${image.tag}", mariadbVersion); // db version
 				inputJson = inputJson.replace("${rootUser.password}", rootPassword); // configmap
 				inputJson = inputJson.replace("${replication.enabled}", ""+isClusterEnabled); // configmap
 				inputJson = inputJson.replace("${db.user}", mariadbUser);// configmap

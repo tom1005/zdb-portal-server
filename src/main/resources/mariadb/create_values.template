@@ -1,6 +1,9 @@
 ## Bitnami MariaDB image
 ## ref: https://hub.docker.com/r/bitnami/mariadb/tags/
 ##
+image:
+  tag: ${image.tag}
+  
 service:
   ## Kubernetes service type
   type: LoadBalancer
