@@ -16,6 +16,7 @@ import com.zdb.core.service.K8SService;
 import com.zdb.core.util.K8SUtil;
 
 import hapi.release.ReleaseOuterClass.Release;
+import hapi.release.StatusOuterClass.Status.Code;
 import io.fabric8.kubernetes.api.model.Service;
 import lombok.extern.slf4j.Slf4j;
 
@@ -37,6 +38,11 @@ public class ReleaseCollector {
 			List<Release> releaseAllList = K8SUtil.getReleaseAllList();
 			
 			for (Release release : releaseAllList) {
+				
+				if(Code.DELETED == release.getInfo().getStatus().getCode() || Code.FAILED == release.getInfo().getStatus().getCode() || Code.DELETING == release.getInfo().getStatus().getCode() ) {
+					continue;
+				}
+				
 				ReleaseMetaData releaseMeta = repo.findByReleaseName(release.getName());
 				if (releaseMeta == null) {
 					releaseMeta = new ReleaseMetaData();
