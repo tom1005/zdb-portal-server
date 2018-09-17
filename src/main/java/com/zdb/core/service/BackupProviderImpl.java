@@ -105,8 +105,9 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 		Result result = null;
 		try {
 			log.debug("namespace : "+backupEntity.getNamespace()
-			+", serviceName : "+backupEntity.getServiceName()
-			+", serviceType : "+backupEntity.getServiceType());
+
+				+", serviceName : "+backupEntity.getServiceName()
+				+", serviceType : "+backupEntity.getServiceType());
 			
 			StringBuilder sb = new StringBuilder();
 			sb.append(K8SUtil.daemonUrl)
@@ -362,7 +363,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 			return Long.toString(milsec/1000) + "초";
 		}
 	}
-	
+
 	private Date getGmt9Date(Date dt) {
 		if (dt != null) {
 			Calendar cal = Calendar.getInstance();
@@ -374,3 +375,4 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 		}
 	}
 }
+

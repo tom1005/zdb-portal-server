@@ -86,7 +86,7 @@ master:
     log_error=/bitnami/mariadb/logs/mysqld.log
     slow_query_log_file=/bitnami/mariadb/logs/maria_slow.log
     slow_query_log=1
-    long_query_time=5
+    long_query_time=3
     
     # Innodb Config
     innodb_buffer_pool_size=${buffer.pool.size}
@@ -156,6 +156,10 @@ master:
     limits:
       cpu: ${master.resources.limits.cpu}m
       memory: ${master.resources.limits.memory}Mi
+  livenessProbe:
+    enabled: false
+  readinessProbe:
+    enabled: false      
   annotations:
     service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type: private
     
@@ -219,7 +223,7 @@ slave:
     log_error=/bitnami/mariadb/logs/mysqld.log
     slow_query_log_file=/bitnami/mariadb/logs/maria_slow.log
     slow_query_log=1
-    long_query_time=5
+    long_query_time=3
     
     # Innodb Config
     innodb_buffer_pool_size=${buffer.pool.size}
@@ -290,6 +294,10 @@ slave:
     limits:
       cpu: ${slave.resources.limits.cpu}m
       memory: ${slave.resources.limits.memory}Mi
+  livenessProbe:
+    enabled: false
+  readinessProbe:
+    enabled: false       
   annotations:
     service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type: private
     
@@ -300,7 +308,13 @@ metrics:
     repository: prom/mysqld-exporter
     tag: v0.10.0
     pullPolicy: IfNotPresent
-  resources: {}
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "64Mi"
+    limits:
+      cpu: "300m"
+      memory: "128Mi"  
   annotations:
     prometheus.io/scrape: "true"
     prometheus.io/port: "9104"

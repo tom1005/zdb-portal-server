@@ -13,8 +13,10 @@ public class jdbcdemo1 {
     ResultSet rs;
     String variable_value;
     Connection conn = null;
-    String JDBC_URL = "jdbc:mysql:replication://address=(host=169.56.76.138)(port=3306)(type=master),"
-    				+ "address=(host=169.56.70.221)(port=3306)(type=slave)";
+    String JDBC_URL = "jdbc:mysql:replication://address=(host=169.56.87.218)(port=3306)(type=master),"
+    				+ "address=(host=169.56.87.208)(port=3306)(type=slave)";
+//    String JDBC_URL = "jdbc:mysql:replication://address=(host=169.56.76.138)(port=3306)(type=master),"
+//    		+ "address=(host=169.56.70.221)(port=3306)(type=slave)";http://169.56.87.208
  
     
 //    169.56.70.221:3306
@@ -22,6 +24,8 @@ public class jdbcdemo1 {
     props.put("retriesAllDown","5");
     props.put("user", "root");
     props.put("password", "zdb12#$");
+    props.put("user", "admin");
+    props.put("password", "unt40lyv3r");
  
     System.out.println("\n------------ MariaDB Connector/J and MariaDB Replication Testing ------------\n");
  
@@ -60,6 +64,8 @@ public class jdbcdemo1 {
     				variable_value = rs.getString("variable_value");
     				System.out.println("variable_value : " + variable_value);
     			}
+    			conn.createStatement().executeUpdate("insert into ppp.aaaa values('id_"+i+"','name_"+i+"')");
+    			conn.commit();
     		}
     		catch (SQLException e) {
     			System.out.println("Read/write query has failed...");
@@ -75,13 +81,14 @@ public class jdbcdemo1 {
     		System.out.println("Connection read only property set has failed...");
     	}
    		try {
-   			rs = conn.createStatement().executeQuery("SELECT variable_value FROM information_schema.global_variables " +
-                                                                 "WHERE variable_name='hostname'");
+   			rs = conn.createStatement().executeQuery("SELECT variable_value FROM information_schema.global_variables  WHERE variable_name='hostname'");
    			while (rs.next()) {
    				variable_value = rs.getString("variable_value");
    				System.out.println("variable_value : " + variable_value);
    				}
-   			}
+   			conn.createStatement().executeUpdate("insert into ppp.aaaa values('id_"+i+"','name_"+i+"')");
+			conn.commit();	
+   		}
    		catch (SQLException e) {
    			System.out.println("Read only query has failed...");
    			}

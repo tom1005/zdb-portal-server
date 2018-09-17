@@ -1,7 +1,6 @@
 package com.zdb.core.service;
 
 import java.io.FileNotFoundException;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -42,7 +41,6 @@ import com.zdb.core.domain.EventMetaData;
 import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.Exchange;
 import com.zdb.core.domain.IResult;
-import com.zdb.core.domain.Mycnf;
 import com.zdb.core.domain.NamespaceResource;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
@@ -62,6 +60,7 @@ import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.util.DateUtil;
+import com.zdb.core.util.HeapsterMetricUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.NamespaceResourceChecker;
 import com.zdb.core.util.ZDBLogViewer;
@@ -70,22 +69,17 @@ import com.zdb.redis.RedisConnection;
 
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.DoneablePod;
-import io.fabric8.kubernetes.api.model.LoadBalancerIngress;
 import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.NodeList;
 import io.fabric8.kubernetes.api.model.PersistentVolume;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodCondition;
-import io.fabric8.kubernetes.api.model.Service;
-import io.fabric8.kubernetes.api.model.ServicePort;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.DeploymentList;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
-import io.fabric8.kubernetes.client.dsl.LogWatch;
 import io.fabric8.kubernetes.client.dsl.PodResource;
-import io.fabric8.kubernetes.client.dsl.PrettyLoggable;
 import lombok.extern.slf4j.Slf4j;
 import redis.clients.jedis.Jedis;
 
@@ -996,7 +990,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 						if(!conditions.isEmpty()) {
 							String message = conditions.get(0).getMessage();
 							if(message != null) {
-								log.warn(">>>>>>>>>>>>>>>>>>>>>>>> " + message);
 								eventMessageSet.add(message);
 							} else {
 								EventMetaData findByKindAndName = eventRepository.findByKindAndName("Pod", pod.getMetadata().getName());
@@ -1166,74 +1159,88 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	}
 	
 	public Result getPodMetrics(String namespace, String podName) throws Exception {
-		List<Service> services = K8SUtil.getServicesWithNamespace("kube-system");
+//		List<Service> services = K8SUtil.getServicesWithNamespace("kube-system");
+//
+//		for (Service service : services) {
+//			if (service.getMetadata().getName().equals("heapster")) {
+//
+//				String portStr = null;
+//				String ipStr = null;
+//
+//				if ("loadbalancer".equals(service.getSpec().getType().toLowerCase())) {
+//					List<ServicePort> ports = service.getSpec().getPorts();
+//					for (ServicePort port : ports) {
+//						portStr = Integer.toString(port.getPort());
+//						break;
+//					}
+//
+//					if (portStr == null) {
+//						throw new Exception("unknown Service Port");
+//					}
+//
+//					List<LoadBalancerIngress> ingress = service.getStatus().getLoadBalancer().getIngress();
+//					if (ingress != null && ingress.size() > 0) {
+//						ipStr = ingress.get(0).getIp();
+//					} else {
+//						throw new Exception("unknown Service IP Address");
+//					}
+//				} else if ("clusterip".equals(service.getSpec().getType().toLowerCase())) {
+//					List<ServicePort> ports = service.getSpec().getPorts();
+//					for (ServicePort port : ports) {
+//						portStr = Integer.toString(port.getPort());
+//						break;
+//					}
+//					if (portStr == null) {
+//						throw new Exception("unknown Service Port");
+//					}
+//					ipStr = service.getSpec().getClusterIP();
+//				} else {
+//					log.warn("no cluster ip.");
+//				}
+//
+//				if (ipStr == null || portStr == null) {
+//					throw new Exception("unknown Service IP or Port");
+//				}
+//
+//				// http://169.56.71.110/api/v1/model/namespaces/zdb-maria/pod-list/maria-test777-mariadb-0/metrics/cpu-usage
+//
+//				String metricUrl = String.format("http://%s:%s/api/v1/model/namespaces/%s/pod-list/%s/metrics", ipStr, portStr, namespace, podName);
+//
+//				Result result = new Result("", Result.OK);
+//
+//				RestTemplate restTemplate = getRestTemplate();
+//				{
+//					URI uri = URI.create(metricUrl + "/cpu-usage");
+//					Map<String, Object> responseMap = restTemplate.getForObject(uri, Map.class);
+//
+//					result.putValue(IResult.METRICS_CPU_USAGE, ((Map)((List)responseMap.get("items")).get(0)).get("metrics"));
+//				}
+//				{
+//					URI uri = URI.create(metricUrl + "/memory-usage");
+//					Map<String, Object> responseMap = restTemplate.getForObject(uri, Map.class);
+//
+//					result.putValue(IResult.METRICS_MEM_USAGE, ((Map)((List)responseMap.get("items")).get(0)).get("metrics"));
+//				}
+//
+//				return result;
+//			}
+//		}
+		
+		Result result = new Result("", Result.OK);
 
-		for (Service service : services) {
-			if (service.getMetadata().getName().equals("heapster")) {
-
-				String portStr = null;
-				String ipStr = null;
-
-				if ("loadbalancer".equals(service.getSpec().getType().toLowerCase())) {
-					List<ServicePort> ports = service.getSpec().getPorts();
-					for (ServicePort port : ports) {
-						portStr = Integer.toString(port.getPort());
-						break;
-					}
-
-					if (portStr == null) {
-						throw new Exception("unknown Service Port");
-					}
-
-					List<LoadBalancerIngress> ingress = service.getStatus().getLoadBalancer().getIngress();
-					if (ingress != null && ingress.size() > 0) {
-						ipStr = ingress.get(0).getIp();
-					} else {
-						throw new Exception("unknown Service IP Address");
-					}
-				} else if ("clusterip".equals(service.getSpec().getType().toLowerCase())) {
-					List<ServicePort> ports = service.getSpec().getPorts();
-					for (ServicePort port : ports) {
-						portStr = Integer.toString(port.getPort());
-						break;
-					}
-					if (portStr == null) {
-						throw new Exception("unknown Service Port");
-					}
-					ipStr = service.getSpec().getClusterIP();
-				} else {
-					log.warn("no cluster ip.");
-				}
-
-				if (ipStr == null || portStr == null) {
-					throw new Exception("unknown Service IP or Port");
-				}
-
-				// http://169.56.71.110/api/v1/model/namespaces/zdb-maria/pod-list/maria-test777-mariadb-0/metrics/cpu-usage
-
-				String metricUrl = String.format("http://%s:%s/api/v1/model/namespaces/%s/pod-list/%s/metrics", ipStr, portStr, namespace, podName);
-
-				Result result = new Result("", Result.OK);
-
-				RestTemplate restTemplate = getRestTemplate();
-				{
-					URI uri = URI.create(metricUrl + "/cpu-usage");
-					Map<String, Object> responseMap = restTemplate.getForObject(uri, Map.class);
-
-					result.putValue(IResult.METRICS_CPU_USAGE, ((Map)((List)responseMap.get("items")).get(0)).get("metrics"));
-				}
-				{
-					URI uri = URI.create(metricUrl + "/memory-usage");
-					Map<String, Object> responseMap = restTemplate.getForObject(uri, Map.class);
-
-					result.putValue(IResult.METRICS_MEM_USAGE, ((Map)((List)responseMap.get("items")).get(0)).get("metrics"));
-				}
-
-				return result;
-			}
+		HeapsterMetricUtil metricUtil = new HeapsterMetricUtil();
+		try {
+			Object cpuUsage = metricUtil.getCPUUsage(namespace, podName);
+			result.putValue(IResult.METRICS_CPU_USAGE, cpuUsage);
+			Object memoryUsage = metricUtil.getMemoryUsage(namespace, podName);
+			result.putValue(IResult.METRICS_MEM_USAGE, memoryUsage);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result.putValue(IResult.METRICS_CPU_USAGE, "");
+			result.putValue(IResult.METRICS_MEM_USAGE, "");
 		}
 
-		return new Result("", Result.ERROR);
+		return result;
 	}
 	
 	private RestTemplate getRestTemplate() {
