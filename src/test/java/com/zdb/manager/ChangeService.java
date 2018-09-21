@@ -1,28 +1,16 @@
 package com.zdb.manager;
 
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
-import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.DoneableService;
-import io.fabric8.kubernetes.api.model.EmptyDirVolumeSource;
-import io.fabric8.kubernetes.api.model.PersistentVolumeClaimVolumeSource;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.ServiceBuilder;
 import io.fabric8.kubernetes.api.model.ServiceList;
-import io.fabric8.kubernetes.api.model.Volume;
-import io.fabric8.kubernetes.api.model.VolumeMount;
-import io.fabric8.kubernetes.api.model.extensions.DoneableStatefulSet;
-import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
-import io.fabric8.kubernetes.api.model.extensions.StatefulSetBuilder;
-import io.fabric8.kubernetes.api.model.extensions.StatefulSetList;
 import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.ConfigBuilder;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
-import io.fabric8.kubernetes.client.dsl.RollableScalableResource;
 
 public class ChangeService {
 
@@ -33,11 +21,12 @@ public class ChangeService {
 		ChangeService sts = new ChangeService();
 		
 		String namespace = "ns-zdb-02";
-		namespace = "ns-zdb-02";
 		String serviceName = "ns-zdb-02-ppp-mariadb-public";
 		
-		// 1. 기본 sts (data 볼륨 마운트)
+		// 1. Slave To Master
 //		 sts.chageServiceSlaveToMaster(namespace, serviceName);
+		
+		// 1. Master To Slave
 		 sts.chageServiceMasterToSlave(namespace, serviceName);
 		
 	

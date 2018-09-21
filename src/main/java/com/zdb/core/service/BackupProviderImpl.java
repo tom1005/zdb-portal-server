@@ -105,6 +105,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 		Result result = null;
 		try {
 			log.debug("namespace : "+backupEntity.getNamespace()
+
 				+", serviceName : "+backupEntity.getServiceName()
 				+", serviceType : "+backupEntity.getServiceType());
 			
@@ -311,7 +312,6 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 			}
 			List<ScheduleInfoEntity> scheduleInfolist = new ArrayList<ScheduleInfoEntity>();
 			
-			Calendar cal = Calendar.getInstance();
 			schedulelist.forEach(i -> {
 				ScheduleInfoEntity scheduleInfo = new ScheduleInfoEntity();
 				scheduleInfo.setNamespace(i.getNamespace());
@@ -319,23 +319,21 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 				scheduleInfo.setServiceType(i.getServiceType());
 				
 				if(i.getRegisterDate() != null) {
-					cal.setTime(i.getRegisterDate());
-					cal.add(Calendar.HOUR_OF_DAY, 9);
-					scheduleInfo.setRegisterDate(cal.getTime());
+					scheduleInfo.setRegisterDate(getGmt9Date(i.getRegisterDate()));
 				}
 				scheduleInfo.setStartTime(i.getStartTime());
 				scheduleInfo.setStorePeriod(i.getStorePeriod());
 				
 				List<BackupEntity> backuplist = backupRepository.findBackupListByScheduleId(i.getScheduleId());
 				backuplist.forEach(backup -> {
-					if(scheduleInfo.getStartDatetime() == null) {
-						scheduleInfo.setStartDatetime(backup.getStartDatetime());
-						scheduleInfo.setCompleteDatetime(backup.getCompleteDatetime());
+					if(getGmt9Date(scheduleInfo.getStartDatetime()) == null) {
+						scheduleInfo.setStartDatetime(getGmt9Date(backup.getStartDatetime()));
+						scheduleInfo.setCompleteDatetime(getGmt9Date(backup.getCompleteDatetime()));
 						scheduleInfo.setExecutionMilsec(backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime());
 						scheduleInfo.setFileSize(backup.getFileSize());
-					}else if(scheduleInfo.getStartDatetime().before(backup.getStartDatetime())) {
-						scheduleInfo.setStartDatetime(backup.getStartDatetime());
-						scheduleInfo.setCompleteDatetime(backup.getCompleteDatetime());
+					}else if(getGmt9Date(scheduleInfo.getStartDatetime()).before(getGmt9Date(backup.getStartDatetime()))) {
+						scheduleInfo.setStartDatetime(getGmt9Date(backup.getStartDatetime()));
+						scheduleInfo.setCompleteDatetime(getGmt9Date(backup.getCompleteDatetime()));
 						scheduleInfo.setExecutionMilsec(backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime());
 						scheduleInfo.setExecutionTime(getExecutionTimeConvertion(backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime()));
 						scheduleInfo.setFileSize(backup.getFileSize());
@@ -365,4 +363,16 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 			return Long.toString(milsec/1000) + "초";
 		}
 	}
+
+	private Date getGmt9Date(Date dt) {
+		if (dt != null) {
+			Calendar cal = Calendar.getInstance();
+			cal.setTime(dt);
+			cal.add(Calendar.HOUR_OF_DAY, 9);
+			return cal.getTime();
+		} else {
+			return null;
+		}
+	}
 }
+
