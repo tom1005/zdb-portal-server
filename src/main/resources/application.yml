@@ -50,8 +50,8 @@ logging:
   config: classpath:logback-local.xml
 
 k8s:
-#  masterUrl: "https://169.56.69.242:23078"    
-  masterUrl: "https://169.56.69.242:30134"    
+  masterUrl: "https://169.56.69.242:23078"    
+#  masterUrl: "https://169.56.69.242:30134"    
   daemonUrl: "http://localhost:8090" 
   
 chart:
