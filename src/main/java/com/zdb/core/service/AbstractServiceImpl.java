@@ -77,6 +77,7 @@ import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodCondition;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.DeploymentList;
+import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.dsl.PodResource;
@@ -866,6 +867,26 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				return;
 			}
 			
+			// 2018-10-04 수정
+			// StatefulSet 의 실행 인스턴스 수가 0인 경우 오류 메세지.
+			List<StatefulSet> statefulSets = overview.getStatefulSets();
+			for (StatefulSet statefulSet : statefulSets) {
+				Integer replicas = statefulSet.getSpec().getReplicas();
+				
+				String role = "";
+				if ("mariadb".equals(overview.getServiceType())) {
+					role = statefulSet.getMetadata().getLabels().get("component");
+				} else if ("redis".equals(overview.getServiceType())) {
+					role = "master";
+				}
+				if(role == null) {
+					System.out.println();
+				}
+				if( replicas == null || replicas.intValue() == 0) {
+					overview.setStatusMessage(role + " 실행 인스턴스 개수가 0 입니다.");
+					break;
+				}
+			}
 			
 			List<Pod> pods = overview.getPods();
 			
