@@ -84,6 +84,7 @@ master:
     open_files_limit=8192
     transaction-isolation=READ-COMMITTED
     autocommit=0
+    lower_case_table_names=0
     
     # Log Config
     log_error=/bitnami/mariadb/logs/mysqld.log
@@ -221,6 +222,7 @@ slave:
     open_files_limit=8192
     transaction-isolation=READ-COMMITTED
     autocommit=0
+    lower_case_table_names=0
     
     # Log Config
     log_error=/bitnami/mariadb/logs/mysqld.log

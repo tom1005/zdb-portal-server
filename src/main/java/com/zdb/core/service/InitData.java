@@ -47,9 +47,12 @@ public class InitData {
 		defaultConfigMap.put("tmp_table_size", "64M|범위 : 1K ~ 409M|true|numeric");
 		defaultConfigMap.put("transaction-isolation", "READ-COMMITTED||true|-");
 		defaultConfigMap.put("wait_timeout", "3600|범위 : 1 ~ 31536000|true|numeric");
-
+		defaultConfigMap.put("lower_case_table_names", "0|범위 : 1 , 0|true|boolean");
 	}
 
+	public static int defaultConfigMapSize() {
+		return defaultConfigMap.size();
+	}
 	/**
 	 * 
 	 */

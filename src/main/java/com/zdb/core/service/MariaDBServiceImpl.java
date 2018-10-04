@@ -279,6 +279,18 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		if(findAll == null || !findAll.iterator().hasNext()) {
 			InitData.initData(configRepository);
 			findAll = configRepository.findAll();
+		} else {
+			// 2019-10-04 수정
+			// 기본 값 동기화 (추가된경우)
+			int count = 0;
+			for (Mycnf mycnf : findAll) {
+				 count++;
+			}
+			
+			if(InitData.defaultConfigMapSize() != count) {
+				InitData.initData(configRepository);
+				findAll = configRepository.findAll();
+			}
 		}
 		
 		Map<String, Mycnf> mycnfMap = new TreeMap<>();
@@ -679,6 +691,18 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			if (findAll == null || !findAll.iterator().hasNext()) {
 				InitData.initData(configRepository);
 				findAll = configRepository.findAll();
+			} else {
+				// 2019-10-04 수정
+				// 기본 값 동기화 (추가된경우)
+				int count = 0;
+				for (Mycnf mycnf : findAll) {
+					 count++;
+				}
+				
+				if(InitData.defaultConfigMapSize() != count) {
+					InitData.initData(configRepository);
+					findAll = configRepository.findAll();
+				}
 			}
 
 			InputStream is = new ClassPathResource("mariadb/mycnf.template").getInputStream();

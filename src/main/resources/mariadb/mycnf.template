@@ -40,6 +40,7 @@ table_open_cache=${table_open_cache}
 open_files_limit=8192
 transaction-isolation=${transaction-isolation}
 autocommit=${autocommit}
+lower_case_table_names=${lower_case_table_names}
 
 # Log Config
 log_error=/bitnami/mariadb/logs/mysqld.log
