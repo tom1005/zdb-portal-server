@@ -1508,7 +1508,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			Tag findTag = tagRepository.findByNamespaceAndReleaseNameAndTag(tag.getNamespace(), tag.getReleaseName(), tag.getTagName());
 			if(findTag != null) {
 				tagRepository.delete(findTag);
-				return new Result("", Result.OK).putValue(IResult.DELETE_TAG, tag);
+				return new Result("", Result.OK, "태그명 : "+tag.getTagName()).putValue(IResult.DELETE_TAG, tag);
 			} else {
 				return new Result("", Result.ERROR, "이미 삭제 되었거나 존재하지 않는 태그명입니다. [" +tag.getTagName()+ "]");
 			}
@@ -1736,5 +1736,62 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			log.error(e.getMessage(), e);
 			return new Result(txId, Result.ERROR, e.getMessage(), e);
 		}
+	}
+	
+	protected String compareResources(String namespace, String serviceName, ZDBEntity service) {
+		StringBuffer sb = new StringBuffer();
+		
+		try {
+			PodSpec[] podSpec = service.getPodSpec();
+			
+			String master = podSpec[0].getPodType();
+			ResourceSpec masterSpec = podSpec[0].getResourceSpec()[0];
+			String masterResourceType = masterSpec.getResourceType();
+			String masterCpu = masterSpec.getCpu();
+			String masterMemory = masterSpec.getMemory();
+			
+			String slave = master;//podSpec[1].getPodType();
+			ResourceSpec slaveSpec = masterSpec;//podSpec[1].getResourceSpec()[0];
+			String slaveCpu = masterCpu;//slaveSpec.getCpu();
+			String slaveMemory = masterMemory;//slaveSpec.getMemory();
+			
+			ZDBEntity podResources = K8SUtil.getPodResources(service.getNamespace(), service.getServiceType(), service.getServiceName());
+			PodSpec[] currentPodSpecs = podResources.getPodSpec();
+			
+			int masterApplyCpu = Integer.parseInt(masterCpu);
+			int masterApplyMem = Integer.parseInt(masterMemory);
+			
+			int slaveApplyCpu = Integer.parseInt(slaveCpu);
+			int slaveApplyMem = Integer.parseInt(slaveMemory);
+
+			int currentCpu = 0;
+			int currentMemory = 0;
+			
+			for (PodSpec currentPodSpec : currentPodSpecs) {
+				ResourceSpec[] resourceSpec = currentPodSpec.getResourceSpec();
+				String cpu = resourceSpec[0].getCpu();
+				String memory = resourceSpec[0].getMemory();
+				
+				String role = currentPodSpec.getPodType();
+				
+				try {
+					currentCpu = K8SUtil.convertToCpu(cpu);
+					currentMemory = K8SUtil.convertToMemory(memory);
+					
+					if("master".equals(role)) {
+						sb.append(String.format("%s : CPU : %sm ▶ %sm | Mem : %sMi ▶ %sMi\n", currentPodSpec.getPodName(), currentCpu, masterApplyCpu, currentMemory, masterApplyMem));
+					} else if("slave".equals(role)) {
+						sb.append(String.format("%s : CPU : %sm ▶ %sm | Mem : %sMi ▶ %sMi\n", currentPodSpec.getPodName(), currentCpu, slaveApplyCpu, currentMemory, slaveApplyMem));
+					}
+					
+				} catch (Exception e) {
+					log.error(e.getMessage(), e);
+				}
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
+		
+		return sb.toString();
 	}
 }
