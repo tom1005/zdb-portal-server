@@ -15,6 +15,7 @@ import com.google.gson.GsonBuilder;
  *
  */
 public class Result implements IResult {
+	public static final String HISTORY = "history";
 
 	private int code;
 

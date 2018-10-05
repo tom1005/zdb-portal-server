@@ -144,6 +144,8 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		Result result = new Result(txId);
 
 		ReleaseManager releaseManager = null;
+		String historyValue = "";
+		
 		try {
 			final URI uri = URI.create(chartUrl);
 			final URL url = uri.toURL();
@@ -199,7 +201,9 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			
 			String inputJson = IOUtils.toString(is, StandardCharsets.UTF_8.name());
 			
-			
+			// 2018-10-04 추가
+			// 환경설정 변경 이력 
+			historyValue = compareResources(service.getNamespace(), service.getServiceName(), service);
 			
 			inputJson = inputJson.replace("${master.resources.requests.cpu}", masterCpu);// input , *******   필수값  
 			inputJson = inputJson.replace("${master.resources.requests.memory}", masterMemory);// input *******   필수값 
@@ -244,6 +248,9 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 			log.info(service.getServiceName() + " update success!");
 			result = new Result(txId, IResult.RUNNING, "스케일 업 요청됨").putValue(IResult.UPDATE, release);
+			if(!historyValue.isEmpty()) {
+				result.putValue(Result.HISTORY, historyValue);
+			}
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 
@@ -684,7 +691,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	 */
 	public Result updateConfig(String txId, String namespace, String serviceName, Map<String, String> config) throws Exception {
 		Result result = null;
-
+		String historyValue = "";
 		try (final DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
 			Iterable<Mycnf> findAll = configRepository.findAll();
 
@@ -712,6 +719,11 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				inputJson = inputJson.replace("${" + mycnf.getName() + "}", config.get(mycnf.getName()) == null ? mycnf.getValue() : config.get(mycnf.getName()));
 			}
 
+			// 2018-10-04 추가
+			// 환경설정 변경 이력 
+			historyValue = compareVariables(namespace, serviceName, config);
+			
+			//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			List<ConfigMap> items = client.inNamespace(namespace).configMaps().withLabel("release", serviceName).list().getItems();
 			for (ConfigMap configMap : items) {
 				String configMapName = configMap.getMetadata().getName();
@@ -723,10 +735,16 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			MariaDBShutDownUtil.getInstance().doShutdownAndDeleteAllPods(namespace, serviceName);
 
 			result = new Result(txId, IResult.OK, "환경설정 변경 요청됨");
+			if (!historyValue.isEmpty()) {
+				result.putValue(Result.HISTORY, historyValue);
+			}
 
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			result = new Result(txId, IResult.ERROR, "환경설정 변경 오류 - " + e.getMessage());
+			if (!historyValue.isEmpty()) {
+				result.putValue(Result.HISTORY, historyValue);
+			}
 		}
 
 		return result;
@@ -895,5 +913,100 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		}
 		
 		return new Result("", Result.ERROR);
+	}
+	
+	private String compareVariables(String namespace, String releaseName, Map<String, String> newConfig) {
+		Map<String, String> systemConfigMap = new HashMap<>();
+		
+		StringBuffer sb = new StringBuffer();
+		
+		try {
+			List<ConfigMap> configMaps = K8SUtil.getConfigMaps(namespace, releaseName);
+			if(configMaps != null && !configMaps.isEmpty()) {
+				ConfigMap map = configMaps.get(0);
+				Map<String, String> data = map.getData();
+				String cnf = data.get("my.cnf");
+				String[] split = cnf.split("\n");
+				
+				for (String line : split) {
+					String[] params = line.split("=");
+					if(params.length == 2) {
+						String key = params[0].trim();
+						String value = params[1].trim();
+						if(key.startsWith("#")) {
+							continue;
+						}
+						systemConfigMap.put(key, value);
+						
+						String newValue = newConfig.get(key);
+						
+						if(value != null && newValue != null && !value.equals(newValue)) {
+							sb.append(key).append(" : ").append(value).append(" ▶ ").append(newValue).append("\n");
+						}
+					}
+				}
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
+		
+		return sb.toString();
+	}
+	
+	private String compareResources(String namespace, String serviceName, ZDBEntity service) {
+		StringBuffer sb = new StringBuffer();
+		
+		try {
+			PodSpec[] podSpec = service.getPodSpec();
+			
+			String master = podSpec[0].getPodType();
+			ResourceSpec masterSpec = podSpec[0].getResourceSpec()[0];
+			String masterResourceType = masterSpec.getResourceType();
+			String masterCpu = masterSpec.getCpu();
+			String masterMemory = masterSpec.getMemory();
+			
+			String slave = podSpec[1].getPodType();
+			ResourceSpec slaveSpec = podSpec[1].getResourceSpec()[0];
+			String slaveCpu = slaveSpec.getCpu();
+			String slaveMemory = slaveSpec.getMemory();
+			
+			ZDBEntity podResources = K8SUtil.getPodResources(service.getNamespace(), service.getServiceType(), service.getServiceName());
+			PodSpec[] currentPodSpecs = podResources.getPodSpec();
+			
+			int masterApplyCpu = Integer.parseInt(masterCpu);
+			int masterApplyMem = Integer.parseInt(masterMemory);
+			
+			int slaveApplyCpu = Integer.parseInt(slaveCpu);
+			int slaveApplyMem = Integer.parseInt(slaveMemory);
+
+			int currentCpu = 0;
+			int currentMemory = 0;
+			
+			for (PodSpec currentPodSpec : currentPodSpecs) {
+				ResourceSpec[] resourceSpec = currentPodSpec.getResourceSpec();
+				String cpu = resourceSpec[0].getCpu();
+				String memory = resourceSpec[0].getMemory();
+				
+				String role = currentPodSpec.getPodType();
+				
+				try {
+					currentCpu = K8SUtil.convertToCpu(cpu);
+					currentMemory = K8SUtil.convertToMemory(memory);
+					
+					if("master".equals(role)) {
+						sb.append(String.format("%s : CPU : %sm ▶ %sm | Mem : %sMi ▶ %sMi\n", currentPodSpec.getPodName(), currentCpu, masterApplyCpu, currentMemory, masterApplyMem));
+					} else if("slave".equals(role)) {
+						sb.append(String.format("%s : CPU : %sm ▶ %sm | Mem : %sMi ▶ %sMi\n", currentPodSpec.getPodName(), currentCpu, slaveApplyCpu, currentMemory, slaveApplyMem));
+					}
+					
+				} catch (Exception e) {
+					log.error(e.getMessage(), e);
+				}
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
+		
+		return sb.toString();
 	}
 }

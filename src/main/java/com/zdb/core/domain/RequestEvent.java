@@ -77,4 +77,7 @@ public class RequestEvent {
 	@Lob
 	@Column(length=1000000, name = "resultMessage")
 	private String resultMessage;
+	
+	@Column(length=1000000, name = "history")
+	private String history;
 }

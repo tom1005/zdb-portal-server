@@ -1493,13 +1493,13 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			if(findTag == null) {
 				tagRepository.save(tag);
 			} else {
-				return new Result("", Result.ERROR, "Duplicate tag name.");
+				return new Result("", Result.ERROR, "태그명 중복 ["+tag.getTagName() +"]");
 			}
 			
-			return new Result("", Result.OK).putValue(IResult.CREATE_TAG, tag);
+			return new Result("", Result.OK, "태그명 : "+tag.getTagName()).putValue(IResult.CREATE_TAG, tag);
 		}
 		
-		return new Result("", Result.ERROR, "tag is null.");
+		return new Result("", Result.ERROR, "태그 등록 오류 - 입력값이 NULL 입니다.");
 	}
 	
 	@Override
@@ -1510,7 +1510,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				tagRepository.delete(findTag);
 				return new Result("", Result.OK).putValue(IResult.DELETE_TAG, tag);
 			} else {
-				return new Result("", Result.ERROR, "not exist tag. [" +tag.getTagName()+ "]");
+				return new Result("", Result.ERROR, "이미 삭제 되었거나 존재하지 않는 태그명입니다. [" +tag.getTagName()+ "]");
 			}
 		}
 		

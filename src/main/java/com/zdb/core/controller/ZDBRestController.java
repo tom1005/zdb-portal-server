@@ -414,6 +414,13 @@ public class ZDBRestController {
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
 			
+			// 2018-10-05 수정 
+			// history 저장 
+			Object history = result.getResult().get(Result.HISTORY);
+			if (history != null) {
+				event.setHistory("" + history);
+			}
+			
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -742,6 +749,11 @@ public class ZDBRestController {
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
 			
+			Object history = result.getResult().get(Result.HISTORY);
+			if (history != null) {
+				event.setHistory("" + history);
+			}
+			
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -749,6 +761,11 @@ public class ZDBRestController {
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
+			
+			Object history = result.getResult().get(Result.HISTORY);
+			if (history != null) {
+				event.setHistory("" + history);
+			}
 			
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		} finally {
