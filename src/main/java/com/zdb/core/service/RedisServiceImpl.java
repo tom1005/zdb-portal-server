@@ -2,28 +2,27 @@ package com.zdb.core.service;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 
+import org.apache.commons.io.IOUtils;
 import org.microbean.helm.ReleaseManager;
 import org.microbean.helm.Tiller;
 import org.microbean.helm.chart.URLChartLoader;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
-import org.yaml.snakeyaml.DumperOptions;
-import org.yaml.snakeyaml.Yaml;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import com.zdb.core.domain.Connection;
 import com.zdb.core.domain.ConnectionInfo;
 import com.zdb.core.domain.IResult;
@@ -131,8 +130,8 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 	@Override
 	public Result updateScale(String txId, final ZDBEntity service) throws Exception {
 		Result result = new Result(txId);
-
 		ReleaseManager releaseManager = null;
+		String historyValue = "";
 		try {
 			final URI uri = URI.create(chartUrl);
 			final URL url = uri.toURL();
@@ -172,82 +171,120 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 
 			hapi.chart.ConfigOuterClass.Config.Builder valuesBuilder = requestBuilder.getValuesBuilder();
 
-			Map<String, Object> master = new HashMap<String, Object>();
-			Map<String, Object> slave = new HashMap<String, Object>();
-			Map<String, Object> masterResource = new HashMap<String, Object>();
-			Map<String, Object> masterResourceRequests = new HashMap<String, Object>();
-			Map<String, Object> masterResourceLimits = new HashMap<String, Object>();
-			Map<String, Object> slaveResource = new HashMap<String, Object>();
-			Map<String, Object> slaveResourceRequests = new HashMap<String, Object>();
-			Map<String, Object> slaveResourceLimits = new HashMap<String, Object>();
-
-			Map<String, Object> values = new HashMap<String, Object>();
-
-			if (service.getPodSpec() != null) {
-				PodSpec[] podSpec = service.getPodSpec();
-
-				for (PodSpec pod : podSpec) {
-					if (pod.getPodType().equals("master")) {
-						for (ResourceSpec resource : pod.getResourceSpec()) {
-							if (resource.getResourceType().equals("requests")) {
-								masterResourceRequests.put("cpu", resource.getCpu() +"m");
-								masterResourceRequests.put("memory", resource.getMemory() + "Mi");
-
-								masterResource.put("requests", masterResourceRequests);
-							} else if (resource.getResourceType().equals("limits")) {
-								masterResourceLimits.put("cpu", resource.getCpu() +"m");
-								masterResourceLimits.put("memory", resource.getMemory() + "Mi");
-
-								masterResource.put("limits", masterResourceLimits);
-							}
-						}
-					} else if (pod.getPodType().equals("slave")) {
-						for (ResourceSpec resource : pod.getResourceSpec()) {
-							if (resource.getResourceType().equals("requests")) {
-								slaveResourceRequests.put("cpu", resource.getCpu() +"m");
-								slaveResourceRequests.put("memory", resource.getMemory() + "Mi");
-
-								slaveResource.put("requests", slaveResourceRequests);
-							} else if (resource.getResourceType().equals("limits")) {
-								slaveResourceLimits.put("cpu", resource.getCpu() +"m");
-								slaveResourceLimits.put("memory", resource.getMemory() + "Mi");
-
-								slaveResource.put("limits", slaveResourceLimits);
-							}
-						}
-					}
-				}
-
-				master.put("resources", masterResource);
-				slave.put("resources", slaveResource);
-
-				values.put("master", master);
-				values.put("slave", slave);
-			}
+			PodSpec[] podSpec = service.getPodSpec();
 			
-			Secret secret  = K8SUtil.getSecret(service.getNamespace(), service.getServiceName());
-			String password = new String();
+			String master = podSpec[0].getPodType();
+			ResourceSpec masterSpec = podSpec[0].getResourceSpec()[0];
+			String masterResourceType = masterSpec.getResourceType();
+			String masterCpu = masterSpec.getCpu();
+			String masterMemory = masterSpec.getMemory();
 			
-			if (secret != null) {
-				Map<String, String> data = secret.getData();
+			String slave = master;//podSpec[1].getPodType();
+			ResourceSpec slaveSpec = masterSpec;//podSpec[1].getResourceSpec()[0];
+			String slaveCpu = masterCpu;//slaveSpec.getCpu();
+			String slaveMemory = masterMemory;//slaveSpec.getMemory();
+			
+			InputStream is = new ClassPathResource("redis/update_values.template").getInputStream();
+			
+			String inputJson = IOUtils.toString(is, StandardCharsets.UTF_8.name());
+			
+			// 2018-10-04 추가
+			// 환경설정 변경 이력 
+			historyValue = compareResources(service.getNamespace(), service.getServiceName(), service);
+			
+			inputJson = inputJson.replace("${master.resources.requests.cpu}", masterCpu);// input , *******   필수값  
+			inputJson = inputJson.replace("${master.resources.requests.memory}", masterMemory);// input *******   필수값 
+			inputJson = inputJson.replace("${slave.resources.requests.cpu}", slaveCpu);// input*******   필수값 
+			inputJson = inputJson.replace("${slave.resources.requests.memory}", slaveMemory);// input *******   필수값 
+			inputJson = inputJson.replace("${master.resources.limits.cpu}", masterCpu);// input , *******   필수값  
+			inputJson = inputJson.replace("${master.resources.limits.memory}", masterMemory);// input *******   필수값 
+			inputJson = inputJson.replace("${slave.resources.limits.cpu}", slaveCpu);// input*******   필수값 
+			inputJson = inputJson.replace("${slave.resources.limits.memory}", slaveMemory);// input *******   필수값 
+			
+			valuesBuilder.setRaw(inputJson);
 
-				if (!data.isEmpty()) {
-					password = new String(Base64.getDecoder().decode(data.get("redis-password").getBytes()));
-				}
-			}			
 			
-			values.put("password", password );
-			
-			DumperOptions options = new DumperOptions();
-			options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-			options.setPrettyFlow(true);
-
-			Yaml yaml = new Yaml(options);
-			String valueYaml = yaml.dump(values);
+//			Map<String, Object> master = new HashMap<String, Object>();
+//			Map<String, Object> slave = new HashMap<String, Object>();
+//			Map<String, Object> masterResource = new HashMap<String, Object>();
+//			Map<String, Object> masterResourceRequests = new HashMap<String, Object>();
+//			Map<String, Object> masterResourceLimits = new HashMap<String, Object>();
+//			Map<String, Object> slaveResource = new HashMap<String, Object>();
+//			Map<String, Object> slaveResourceRequests = new HashMap<String, Object>();
+//			Map<String, Object> slaveResourceLimits = new HashMap<String, Object>();
+//
+//			Map<String, Object> values = new HashMap<String, Object>();
+//
+//			if (service.getPodSpec() != null) {
+//				PodSpec[] podSpec = service.getPodSpec();
+//
+//				for (PodSpec pod : podSpec) {
+//					if (pod.getPodType().equals("master")) {
+//						for (ResourceSpec resource : pod.getResourceSpec()) {
+//							if (resource.getResourceType().equals("requests")) {
+//								masterResourceRequests.put("cpu", resource.getCpu() +"m");
+//								masterResourceRequests.put("memory", resource.getMemory() + "Mi");
+//
+//								masterResource.put("requests", masterResourceRequests);
+//							} else if (resource.getResourceType().equals("limits")) {
+//								masterResourceLimits.put("cpu", resource.getCpu() +"m");
+//								masterResourceLimits.put("memory", resource.getMemory() + "Mi");
+//
+//								masterResource.put("limits", masterResourceLimits);
+//							}
+//						}
+//					} else if (pod.getPodType().equals("slave")) {
+//						for (ResourceSpec resource : pod.getResourceSpec()) {
+//							if (resource.getResourceType().equals("requests")) {
+//								slaveResourceRequests.put("cpu", resource.getCpu() +"m");
+//								slaveResourceRequests.put("memory", resource.getMemory() + "Mi");
+//
+//								slaveResource.put("requests", slaveResourceRequests);
+//							} else if (resource.getResourceType().equals("limits")) {
+//								slaveResourceLimits.put("cpu", resource.getCpu() +"m");
+//								slaveResourceLimits.put("memory", resource.getMemory() + "Mi");
+//
+//								slaveResource.put("limits", slaveResourceLimits);
+//							}
+//						}
+//					}
+//				}
+//
+//				master.put("resources", masterResource);
+//				slave.put("resources", slaveResource);
+//
+//				values.put("master", master);
+//				values.put("slave", slave);
+//				
+//				Map<String, Object> serviceAccount = new HashMap<String, Object>();
+//				
+//				serviceAccount.put("create", false);
+//				values.put("serviceAccount", serviceAccount);
+//			}
+//			
+//			Secret secret  = K8SUtil.getSecret(service.getNamespace(), service.getServiceName());
+//			String password = new String();
+//			
+//			if (secret != null) {
+//				Map<String, String> data = secret.getData();
+//
+//				if (!data.isEmpty()) {
+//					password = new String(Base64.getDecoder().decode(data.get("redis-password").getBytes()));
+//				}
+//			}			
+//			
+//			values.put("password", password );
+//			
+//			DumperOptions options = new DumperOptions();
+//			options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+//			options.setPrettyFlow(true);
+//
+//			Yaml yaml = new Yaml(options);
+//			String valueYaml = yaml.dump(values);
+// 
+//			log.info("****** YAML Values : " + valueYaml);
  
-			log.info("****** YAML Values : " + valueYaml);
- 
-			valuesBuilder.setRaw(valueYaml);
+//			valuesBuilder.setRaw(valueYaml);
 
 			log.info(service.getServiceName() + " update start.");
 
@@ -255,7 +292,31 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 			final Release release = releaseFuture.get().getRelease();
 
 			if (release != null) {
-				ReleaseMetaData releaseMeta = releaseName;
+//				ReleaseMetaData releaseMeta = releaseName;
+//				if(releaseMeta == null) {
+//					releaseMeta = new ReleaseMetaData();
+//				}
+//				releaseMeta.setAction("UPDATE");
+//				releaseMeta.setApp(release.getChart().getMetadata().getName());
+//				releaseMeta.setAppVersion(release.getChart().getMetadata().getAppVersion());
+//				releaseMeta.setChartVersion(release.getChart().getMetadata().getVersion());
+//				releaseMeta.setChartName(release.getChart().getMetadata().getName());
+//				releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds()));
+//				releaseMeta.setNamespace(service.getNamespace());
+//				releaseMeta.setReleaseName(service.getServiceName());
+//				releaseMeta.setStatus(release.getInfo().getStatus().getCode().name());
+//				releaseMeta.setDescription(release.getInfo().getDescription());
+//			    releaseMeta.setInputValues(valuesBuilder.getRaw());
+//			    releaseMeta.setNotes(release.getInfo().getStatus().getNotes());
+//			    releaseMeta.setManifest(release.getManifest());
+////				releaseMeta.setInputValues(valueYaml);
+//				releaseMeta.setUpdateTime(new Date(System.currentTimeMillis()));
+//
+//				log.info(new Gson().toJson(releaseMeta));
+//
+//				releaseRepository.save(releaseMeta);
+				
+				ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(service.getServiceName());
 				if(releaseMeta == null) {
 					releaseMeta = new ReleaseMetaData();
 				}
@@ -264,24 +325,26 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 				releaseMeta.setAppVersion(release.getChart().getMetadata().getAppVersion());
 				releaseMeta.setChartVersion(release.getChart().getMetadata().getVersion());
 				releaseMeta.setChartName(release.getChart().getMetadata().getName());
-				releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds()));
+				releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds() * 1000L));
 				releaseMeta.setNamespace(service.getNamespace());
 				releaseMeta.setReleaseName(service.getServiceName());
 				releaseMeta.setStatus(release.getInfo().getStatus().getCode().name());
 				releaseMeta.setDescription(release.getInfo().getDescription());
-			    releaseMeta.setInputValues(valuesBuilder.getRaw());
-			    releaseMeta.setNotes(release.getInfo().getStatus().getNotes());
-			    releaseMeta.setManifest(release.getManifest());
-				releaseMeta.setInputValues(valueYaml);
+				releaseMeta.setInputValues(valuesBuilder.getRaw());
+				releaseMeta.setNotes(release.getInfo().getStatus().getNotes());
+				releaseMeta.setManifest(release.getManifest());
 				releaseMeta.setUpdateTime(new Date(System.currentTimeMillis()));
 
 				log.info(new Gson().toJson(releaseMeta));
-
+				
 				releaseRepository.save(releaseMeta);
 			}
 
 			log.info(service.getServiceName() + " update success!");
 			result = new Result(txId, IResult.OK, "scale-up request.").putValue(IResult.UPDATE, release);
+			if(!historyValue.isEmpty()) {
+				result.putValue(Result.HISTORY, historyValue);
+			}
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 

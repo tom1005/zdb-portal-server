@@ -1,0 +1,16 @@
+master:
+  resources:
+    requests:
+      cpu: ${master.resources.requests.cpu}m
+      memory: ${master.resources.requests.memory}Mi
+    limits:
+      cpu: ${master.resources.limits.cpu}m
+      memory: ${master.resources.limits.memory}Mi
+slave:
+  resources:
+    requests:
+      cpu: ${slave.resources.requests.cpu}m
+      memory: ${slave.resources.requests.memory}Mi
+    limits:
+      cpu: ${slave.resources.limits.cpu}m
+      memory: ${slave.resources.limits.memory}Mi
