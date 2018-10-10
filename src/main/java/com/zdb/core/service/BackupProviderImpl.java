@@ -81,7 +81,7 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 						historyValue += "\n";
 					}
 					resultMessage += "백업시간이 " + oldSche.getStartTime() + " 에서 " + entity.getStartTime() + "일 로";
-					historyValue = "Backup Start Time : " + oldSche.getStartTime() + " ▶ " + entity.getStartTime();
+					historyValue += "Backup Start Time : " + oldSche.getStartTime() + " ▶ " + entity.getStartTime();
 					
 				}
 				if(!resultMessage.isEmpty()) {
