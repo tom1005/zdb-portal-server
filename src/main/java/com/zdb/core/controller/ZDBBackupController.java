@@ -140,7 +140,16 @@ public class ZDBBackupController {
 			result = backupProvider.saveSchedule(txId, scheduleEntity);
 			
 			event.setStatus(result.getCode());
-			event.setResultMessage(result.getMessage());
+			if(userInfo.getUserName() == null) {
+				event.setResultMessage(result.getMessage() + " (SYSTEM)");
+			}else {
+				event.setResultMessage(result.getMessage() + " (" + userInfo.getUserName() + ")");
+			}
+			
+			Object history = result.getResult().get(Result.HISTORY);
+			if (history != null) {
+				event.setHistory("" + history);
+			}
 			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -153,11 +162,7 @@ public class ZDBBackupController {
 			}
 			
 			event.setStatus(result.getCode());
-			event.setResultMessage(result.getMessage() + " (" + userInfo.getUserName() + ")");
-			Object history = result.getResult().get(Result.HISTORY);
-			if (history != null) {
-				event.setHistory("" + history);
-			}
+			event.setResultMessage(result.getMessage());
 			
 		} finally {
 			event.setEndTime(new Date(System.currentTimeMillis()));
