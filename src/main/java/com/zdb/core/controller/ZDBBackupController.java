@@ -114,8 +114,9 @@ public class ZDBBackupController {
 		Result result = null;
 
 		RequestEvent event = new RequestEvent();
+		UserInfo userInfo = getUserInfo();
 		try {
-			UserInfo userInfo = getUserInfo();
+			
 			event.setTxId(txId);
 			event.setStartTime(new Date(System.currentTimeMillis()));
 			event.setServiceType(serviceType);
@@ -152,7 +153,7 @@ public class ZDBBackupController {
 			}
 			
 			event.setStatus(result.getCode());
-			event.setResultMessage(result.getMessage());
+			event.setResultMessage(result.getMessage() + "(" + userInfo.getUserName() + ")");
 		} finally {
 			event.setEndTime(new Date(System.currentTimeMillis()));
 			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);

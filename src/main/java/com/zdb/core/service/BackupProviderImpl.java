@@ -58,8 +58,31 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 				entity.setRegisterDate(new Date(System.currentTimeMillis()));
 				entity = scheduleRepository.save(entity);
 			}
-			//2018-07-25 UI backup 목록 오류 수정
-			result = new Result(txid, IResult.OK, "백업 스케쥴 변경 완료.").putValue("backupSchedule", entity);
+			
+			//Backup 메세지 추가
+			String resultMessage = ""; 
+			if(!oldSche.getUseYn().equals(entity.getUseYn())) {
+				if(entity.getUseYn().equals("N")) {
+					resultMessage = "백업이 비활성화 되었습니다.";
+				}else {
+					resultMessage = "백업이 활성화 되었습니다.";
+				}
+			}else {
+				if(oldSche.getStorePeriod() != entity.getStorePeriod()) {
+					resultMessage = "보관기간이 " + oldSche.getStorePeriod() + "일 에서 " + entity.getStorePeriod() + "일 로";
+				}
+				if(!oldSche.getStartTime().equals(entity.getStartTime())) {
+					if(resultMessage.length() != 0) {
+						resultMessage += ", ";
+					}
+					resultMessage = "백업시간이 " + oldSche.getStartTime() + " 에서 " + entity.getStartTime() + "일 로";
+				}
+				resultMessage += " 변경되었습니다.";
+			}
+			
+			
+			
+			result = new Result(txid, IResult.OK, resultMessage).putValue("backupSchedule", entity);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			result = Result.RESULT_FAIL(txid, e);
