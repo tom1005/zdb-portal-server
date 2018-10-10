@@ -153,7 +153,12 @@ public class ZDBBackupController {
 			}
 			
 			event.setStatus(result.getCode());
-			event.setResultMessage(result.getMessage() + "(" + userInfo.getUserName() + ")");
+			event.setResultMessage(result.getMessage() + " (" + userInfo.getUserName() + ")");
+			Object history = result.getResult().get(Result.HISTORY);
+			if (history != null) {
+				event.setHistory("" + history);
+			}
+			
 		} finally {
 			event.setEndTime(new Date(System.currentTimeMillis()));
 			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);

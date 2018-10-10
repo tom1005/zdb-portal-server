@@ -59,30 +59,38 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 				entity = scheduleRepository.save(entity);
 			}
 			
-			//Backup 메세지 추가
 			String resultMessage = ""; 
+			String historyValue = "";
+			
 			if(!oldSche.getUseYn().equals(entity.getUseYn())) {
 				if(entity.getUseYn().equals("N")) {
 					resultMessage = "백업이 비활성화 되었습니다.";
+					historyValue = "Backup : ON ▶ OFF";
 				}else {
 					resultMessage = "백업이 활성화 되었습니다.";
+					historyValue = "Backup : OFF ▶ ON";
 				}
 			}else {
 				if(oldSche.getStorePeriod() != entity.getStorePeriod()) {
 					resultMessage = "보관기간이 " + oldSche.getStorePeriod() + "일 에서 " + entity.getStorePeriod() + "일 로";
+					historyValue = "Store period : " + oldSche.getStorePeriod() + "Day(s) ▶ " + entity.getStorePeriod() + "Day(s)";
 				}
 				if(!oldSche.getStartTime().equals(entity.getStartTime())) {
 					if(resultMessage.length() != 0) {
 						resultMessage += ", ";
 					}
 					resultMessage = "백업시간이 " + oldSche.getStartTime() + " 에서 " + entity.getStartTime() + "일 로";
+					historyValue = "\\nBackup Start Time : " + oldSche.getStartTime() + " ▶ " + entity.getStartTime();
+					historyValue += "\nBackup : OFF ▶ ON";
 				}
 				resultMessage += " 변경되었습니다.";
 			}
 			
-			
-			
 			result = new Result(txid, IResult.OK, resultMessage).putValue("backupSchedule", entity);
+			if(!historyValue.isEmpty()) {
+				result.putValue(Result.HISTORY, historyValue);
+			}
+			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			result = Result.RESULT_FAIL(txid, e);
