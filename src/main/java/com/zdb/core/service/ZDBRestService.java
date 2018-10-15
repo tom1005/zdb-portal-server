@@ -6,6 +6,7 @@ import java.util.Map;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.UserInfo;
+import com.zdb.core.domain.ZDBConfig;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBType;
 
@@ -192,4 +193,12 @@ public interface ZDBRestService {
 	Result getMycnf(String namespace, String releaseName);
 	
 	Result getUserGrants(String namespace, String serviceType, String releaseName);
+
+	Result createZDBConfig(ZDBConfig zdbconfig);
+	
+	Result getZDBConfig(String namespace);
+
+	Result updateZDBConfig(ZDBConfig zdbconfig);
+
+	Result deleteZDBConfig(ZDBConfig zdbConfig);
 }

@@ -29,6 +29,7 @@ import com.zdb.core.domain.Result;
 import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.UserInfo;
 import com.zdb.core.domain.UserNamespaces;
+import com.zdb.core.domain.ZDBConfig;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBType;
@@ -1754,4 +1755,76 @@ public class ZDBRestController {
 		return userInfo;
 	}
 	
+	/**
+	 * Create ZDB Global Configurations
+	 * @return
+	 */
+	@RequestMapping(value = "/zdbconfig", method = RequestMethod.POST)
+	public ResponseEntity<String> createZDBConfig(@RequestBody final ZDBConfig[] zdbConfigs) {
+		try {
+			for (int i=0; i < zdbConfigs.length; i++) {
+				ZDBConfig zdbConfig = zdbConfigs[i];
+				commonService.createZDBConfig(zdbConfig);
+			}
+			return new ResponseEntity<String>("설정값이 저장되었습니다.", HttpStatus.OK);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
+	/**
+	 * Retrieve ZDB Global Configurations
+	 * @return
+	 */
+	@RequestMapping(value = "/{namespace}/zdbconfigs", method = RequestMethod.GET)
+	public ResponseEntity<String> getZDBConfig(@PathVariable("namespace") final String namespace) {
+		try {			
+			Result result = commonService.getZDBConfig(namespace);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
+	/**
+	 * Update ZDB Global Configurations
+	 * @return
+	 */
+	@RequestMapping(value = "/zdbconfig", method = RequestMethod.PUT)
+	public ResponseEntity<String> updateZDBConfigs(@RequestBody final ZDBConfig[] zdbConfigs) {
+		try {
+			for (int i=0; i < zdbConfigs.length; i++) {
+				ZDBConfig zdbConfig = zdbConfigs[i];
+				commonService.updateZDBConfig(zdbConfig);
+			}
+			return new ResponseEntity<String>("설정값이 변경되었습니다.", HttpStatus.OK);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
+	/**
+	 * Delete ZDB Global Configurations
+	 * @return
+	 */
+	@RequestMapping(value = "/zdbconfig", method = RequestMethod.DELETE)
+	public ResponseEntity<String> deleteZDBConfig(@RequestBody final ZDBConfig[] zdbConfigs) {
+		try {
+			for (int i=0; i < zdbConfigs.length; i++) {
+				ZDBConfig zdbConfig = zdbConfigs[i];
+				commonService.deleteZDBConfig(zdbConfig);
+			}
+			return new ResponseEntity<String>("설정값이 삭제되었습니다.", HttpStatus.OK);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
 }
