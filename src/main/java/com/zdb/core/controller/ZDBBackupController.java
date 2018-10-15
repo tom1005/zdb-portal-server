@@ -123,7 +123,8 @@ public class ZDBBackupController {
 			event.setNamespace(namespace);
 			event.setServiceName(scheduleEntity.getServiceName());
 			event.setOperation(RequestEvent.SET_BACKUP_SCHEDULE);
-			event.setUserId(userInfo.getUserId());
+			event.setUserId(userInfo.getUserName());
+			//event.setUserId(userInfo.getUserId());
 			
 			/*
 			1) verifyParameters
@@ -140,11 +141,7 @@ public class ZDBBackupController {
 			result = backupProvider.saveSchedule(txId, scheduleEntity);
 			
 			event.setStatus(result.getCode());
-			if(userInfo.getUserName() == null) {
-				event.setResultMessage(result.getMessage() + " (SYSTEM)");
-			}else {
-				event.setResultMessage(result.getMessage() + " (" + userInfo.getUserName() + ")");
-			}
+			event.setResultMessage(result.getMessage());
 			
 			Object history = result.getResult().get(Result.HISTORY);
 			if (history != null) {
