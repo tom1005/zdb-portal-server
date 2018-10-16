@@ -90,9 +90,11 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 			}
 			
 			result = new Result(txid, IResult.OK, resultMessage).putValue("backupSchedule", entity);
+			/* History에 넣는 부분 제거 -> history에 넣지 않아도 한줄에 정보를 넣어 줄 수 있음
 			if(!historyValue.isEmpty()) {
 				result.putValue(Result.HISTORY, historyValue);
 			}
+			*/
 			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);

@@ -18,6 +18,7 @@ import lombok.NoArgsConstructor;
 @Data
 public class RequestEvent {
 	public static final String CREATE = "서비스 생성";
+	public static final String CREATE_PVC = "스토리지 생성";
 	public static final String UPDATE = "업데이트";
 	public static final String DELETE = "서비스 삭제";
 	public static final String READ = "READ";
@@ -38,10 +39,9 @@ public class RequestEvent {
 	public static final String REQ_BACKUP = "백업 요청";
 	public static final String DELETE_BACKUP_DATA = "백업 데이터 삭제";
 	public static final String RESTORE_BACKUP = "백업 데이터 복원";
-	
 	public static final String CREATE_PUBLIC_SVC = "Public Network 생성";
-	
 	public static final String DELETE_PUBLIC_SVC = "Public Network 삭제";
+	public static final String CREATE_ZDBCONFIG = "Global 환경설정 생성";
 	
 	private String operation;
 
