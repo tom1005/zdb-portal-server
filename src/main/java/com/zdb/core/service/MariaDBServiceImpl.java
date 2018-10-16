@@ -247,10 +247,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			}
 
 			log.info(service.getServiceName() + " update success!");
-			result = new Result(txId, IResult.RUNNING, "스케일 업 요청됨").putValue(IResult.UPDATE, release);
-			if(!historyValue.isEmpty()) {
-				result.putValue(Result.HISTORY, historyValue);
-			}
+			result = new Result(txId, IResult.RUNNING, historyValue).putValue(IResult.UPDATE, release);
+//			if(!historyValue.isEmpty()) {
+//				result.putValue(Result.HISTORY, historyValue);
+//			}
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 
@@ -941,7 +941,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 						String newValue = newConfig.get(key);
 						
 						if(value != null && newValue != null && !value.equals(newValue)) {
-							sb.append(key).append(" : ").append(value).append(" ▶ ").append(newValue).append("\n");
+							sb.append(key).append(" : ").append(value).append(" → ").append(newValue).append("\n");
 						}
 					}
 				}

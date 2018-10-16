@@ -1785,9 +1785,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 					currentMemory = K8SUtil.convertToMemory(memory);
 					
 					if("master".equals(role)) {
-						sb.append(String.format("%s : CPU : %sm ▶ %sm | Mem : %sMi ▶ %sMi\n", currentPodSpec.getPodName(), currentCpu, masterApplyCpu, currentMemory, masterApplyMem));
-					} else if("slave".equals(role)) {
-						sb.append(String.format("%s : CPU : %sm ▶ %sm | Mem : %sMi ▶ %sMi\n", currentPodSpec.getPodName(), currentCpu, slaveApplyCpu, currentMemory, slaveApplyMem));
+						sb.append(String.format("CPU : %sm → %sm | Mem : %sMi → %sMi", currentCpu, masterApplyCpu, currentMemory, masterApplyMem));
 					}
 					
 				} catch (Exception e) {

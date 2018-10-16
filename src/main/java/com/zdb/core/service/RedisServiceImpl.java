@@ -341,7 +341,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 			}
 
 			log.info(service.getServiceName() + " update success!");
-			result = new Result(txId, IResult.OK, "scale-up request.").putValue(IResult.UPDATE, release);
+			result = new Result(txId, IResult.OK, historyValue).putValue(IResult.UPDATE, release);
 			if(!historyValue.isEmpty()) {
 				result.putValue(Result.HISTORY, historyValue);
 			}
