@@ -26,6 +26,11 @@ public class ZDBConfigService {
 	static String backupTimeDBType = "mariadb";
 	static String backupTimeValue = "03:00:00";
 	
+	/* 리소스 가용량 체크 */
+	static String freeResourceCheckConfig = "free_resource_check";
+	static String freeResourceCheckConfigName = "리소스 가용량 체크";
+	static String freeResourceCheckValue = "true";
+	
 	public static int getConfigCount() {
 		return configCount;
 	}
@@ -52,9 +57,16 @@ public class ZDBConfigService {
 		zdbConfigBackupTime.setDbType(backupTimeDBType);
 		zdbConfigBackupTime.setValue(backupTimeValue);
 		
+		ZDBConfig zdbConfigFreeResourceCheck = new ZDBConfig();
+		zdbConfigFreeResourceCheck.setNamespace(globalNamespace);
+		zdbConfigFreeResourceCheck.setConfig(freeResourceCheckConfig);
+		zdbConfigFreeResourceCheck.setConfigName(freeResourceCheckConfigName);
+		zdbConfigFreeResourceCheck.setValue(freeResourceCheckValue);
+		
 		zdbConfigRepository.save(zdbConfigPublicNetwork);
 		zdbConfigRepository.save(zdbConfigBackupDuration);
 		zdbConfigRepository.save(zdbConfigBackupTime);
+		zdbConfigRepository.save(zdbConfigFreeResourceCheck);
 	}
 	
 	public static void updateZDBConfig(ZDBConfigRepository zdbConfigRepository, ZDBConfig zdbConfig) {
