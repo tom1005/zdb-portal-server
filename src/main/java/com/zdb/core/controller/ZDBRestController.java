@@ -1766,7 +1766,6 @@ public class ZDBRestController {
 		return userInfo;
 	}
 	
-<<<<<<< HEAD
 	@RequestMapping(value = "/pvc", method = RequestMethod.POST)
 	public ResponseEntity<String> createPersistentVolumeClaim(@RequestBody final ZDBPersistenceEntity entity,
 			final UriComponentsBuilder ucBuilder) {
@@ -1819,8 +1818,7 @@ public class ZDBRestController {
 		}
 
 	}
-=======
->>>>>>> branch 'dev' of https://github.com/cnpst/zdb-portal-server.git
+
 	/**
 	 * Create ZDB Global Configurations
 	 * @return

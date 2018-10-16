@@ -50,10 +50,11 @@ import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ServiceOverview;
 import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.UserInfo;
+import com.zdb.core.domain.ZDBConfig;
 import com.zdb.core.domain.ZDBEntity;
+import com.zdb.core.domain.ZDBPersistenceEntity;
 import com.zdb.core.domain.ZDBStatus;
 import com.zdb.core.domain.ZDBType;
-import com.zdb.core.domain.ZDBConfig;
 import com.zdb.core.repository.DiskUsageRepository;
 import com.zdb.core.repository.EventRepository;
 import com.zdb.core.repository.MetadataRepository;
@@ -1800,14 +1801,11 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		return sb.toString();
 	}
 	
-<<<<<<< HEAD
 	@Override
 	public Result createPersistentVolumeClaim(String txId, ZDBPersistenceEntity entity) throws Exception {
 		return null;
 	}
 	
-=======
->>>>>>> branch 'dev' of https://github.com/cnpst/zdb-portal-server.git
 	public Result createZDBConfig(ZDBConfig zdbConfig) {
 		try {
 			if( zdbConfig != null) {
