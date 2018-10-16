@@ -734,10 +734,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			// shutdown and pod delete (restart)
 			MariaDBShutDownUtil.getInstance().doShutdownAndDeleteAllPods(namespace, serviceName);
 
-			result = new Result(txId, IResult.OK, "환경설정 변경 요청됨");
-			if (!historyValue.isEmpty()) {
-				result.putValue(Result.HISTORY, historyValue);
-			}
+			result = new Result(txId, IResult.OK, historyValue);
+//			if (!historyValue.isEmpty()) {
+//				result.putValue(Result.HISTORY, historyValue);
+//			}
 
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);

@@ -1470,7 +1470,14 @@ public class K8SService {
 					int index = Integer.parseInt(indexValue) + 1;
 
 					pvcName = name.substring(0, name.length() - 1) + "" + index;
+					
+					while(getPersistentVolumeClaim(namespace, pvcName) != null) {
+						pvcName = name.substring(0, name.length() - 1) + "" + ++index;
+					}
+					
 					persistenceSpec.setPvcName(pvcName);
+				} else {
+					break;
 				}
 			}
 		} catch (Exception e) {
