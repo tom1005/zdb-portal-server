@@ -4,8 +4,11 @@ package com.zdb.core.service;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
 
+import com.zdb.core.domain.IResult;
+import com.zdb.core.domain.PersistenceSpec;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ZDBEntity;
+import com.zdb.core.domain.ZDBPersistenceEntity;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -80,6 +83,20 @@ public class CommonServiceImpl extends AbstractServiceImpl {
 	@Override
 	public Result getUserGrants(String namespace, String serviceType, String releaseName) {
 		return null;
+	}
+
+	@Override
+	public Result createPersistentVolumeClaim(String txId, ZDBPersistenceEntity entity) throws Exception {
+		
+		PersistenceSpec spec = null;
+		try {
+			spec = k8sService.createPersistentVolumeClaim(entity);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result(txId, Result.ERROR, "스토리지 생성 실패 - "+ e.getMessage(), e);
+		}
+		
+		return new Result(txId, IResult.OK, "스토리지 생성 완료.[" + spec.getPvcName() +" | "+ spec.getSize() +"]");
 	}
 
 }

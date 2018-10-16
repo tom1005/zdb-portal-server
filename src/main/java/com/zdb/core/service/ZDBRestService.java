@@ -8,6 +8,7 @@ import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.UserInfo;
 import com.zdb.core.domain.ZDBConfig;
 import com.zdb.core.domain.ZDBEntity;
+import com.zdb.core.domain.ZDBPersistenceEntity;
 import com.zdb.core.domain.ZDBType;
 
 /**

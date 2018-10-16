@@ -53,10 +53,12 @@ import com.zdb.core.domain.UserInfo;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBStatus;
 import com.zdb.core.domain.ZDBType;
+import com.zdb.core.domain.ZDBConfig;
 import com.zdb.core.repository.DiskUsageRepository;
 import com.zdb.core.repository.EventRepository;
 import com.zdb.core.repository.MetadataRepository;
 import com.zdb.core.repository.TagRepository;
+import com.zdb.core.repository.ZDBConfigRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.util.DateUtil;
@@ -111,6 +113,9 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	
 	@Autowired
 	protected TagRepository tagRepository;
+	
+	@Autowired
+	protected ZDBConfigRepository zdbConfigRepository;
 	
 	@Autowired
 	BeanFactory beanFactory;
@@ -1793,5 +1798,76 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		}
 		
 		return sb.toString();
+	}
+	
+	@Override
+	public Result createPersistentVolumeClaim(String txId, ZDBPersistenceEntity entity) throws Exception {
+		return null;
+	}
+	
+	public Result createZDBConfig(ZDBConfig zdbConfig) {
+		try {
+			if( zdbConfig != null) {
+				zdbConfigRepository.save(zdbConfig);
+				return new Result("", Result.OK, "설정값이 저장되었습니다.");
+			} else {
+				return new Result("", Result.ERROR, "설정값이 없습니다.");
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
+	
+	public Result getZDBConfig(String namespace) {
+		try {
+			Iterable<ZDBConfig> findAll = zdbConfigRepository.findByNamespace("global");
+			
+			if(findAll == null || !findAll.iterator().hasNext()) {
+				ZDBConfigService.initZDBConfig(zdbConfigRepository);
+			}
+			else {
+				int count = 0;
+				for (ZDBConfig configList : findAll) {
+					 count++;
+				}
+				if(ZDBConfigService.getConfigCount() != count) {
+					ZDBConfigService.initZDBConfig(zdbConfigRepository);
+				}
+			}
+			List<ZDBConfig> configList = zdbConfigRepository.findByNamespace(namespace);
+			return new Result("", Result.OK).putValue(IResult.ZDBConfig, configList);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
+	
+	public Result updateZDBConfig(ZDBConfig zdbConfig) {
+		try {
+			if( zdbConfig != null) {
+				ZDBConfigService.updateZDBConfig(zdbConfigRepository, zdbConfig);
+				return new Result("", Result.OK, "설정값이 변경되었습니다.");
+			} else {
+				return new Result("", Result.ERROR, "설정값이 없습니다.");
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
+	
+	public Result deleteZDBConfig(ZDBConfig zdbConfig) {
+		try {
+			if( zdbConfig != null) {
+				ZDBConfigService.deleteZDBConfig(zdbConfigRepository, zdbConfig);
+				return new Result("", Result.OK, "설정값이 삭제되었습니다.");
+			} else {
+				return new Result("", Result.ERROR, "설정값이 없습니다.");
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
 	}
 }

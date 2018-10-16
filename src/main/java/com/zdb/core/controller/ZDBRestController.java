@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import com.zdb.core.domain.EventMetaData;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
@@ -29,16 +30,21 @@ import com.zdb.core.domain.Result;
 import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.UserInfo;
 import com.zdb.core.domain.UserNamespaces;
+import com.zdb.core.domain.ZDBConfig;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBMariaDBAccount;
+import com.zdb.core.domain.ZDBPersistenceEntity;
 import com.zdb.core.domain.ZDBType;
+import com.zdb.core.repository.EventRepository;
 import com.zdb.core.repository.UserNamespaceRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
+import com.zdb.core.service.K8SService;
 import com.zdb.core.service.MariaDBServiceImpl;
 import com.zdb.core.service.RedisServiceImpl;
 import com.zdb.core.service.ZDBRestService;
+import com.zdb.core.util.DateUtil;
 
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import lombok.extern.slf4j.Slf4j;
@@ -72,6 +78,9 @@ public class ZDBRestController {
 	
 	@Autowired
 	protected ZDBRepository zdbRepository;
+
+	@Autowired
+	protected K8SService k8sService;
 	
 	@Autowired
 	protected ZDBReleaseRepository releaseRepository;
@@ -1754,4 +1763,200 @@ public class ZDBRestController {
 		return userInfo;
 	}
 	
+	@RequestMapping(value = "/pvc", method = RequestMethod.POST)
+	public ResponseEntity<String> createPersistentVolumeClaim(@RequestBody final ZDBPersistenceEntity entity,
+			final UriComponentsBuilder ucBuilder) {
+
+//		{
+//		  "namespace": "ns-zdb-02",
+//		  "persistenceSpec": {
+//		    "accessMode": "ReadWriteOnce",
+//		    "billingType": "hourly",
+//		    "size": "20Gi",
+//		    "storageClass": "ibmc-block-silver",
+//		    "subPath": "string"
+//		  },
+//		  "podName": "ns-zdb-02-hhh-mariadb-slave-0",
+//		  "serviceName": "ns-zdb-02-hhh",
+//		  "serviceType": "mariadb"
+//		}
+		
+		String txId = txId();
+		RequestEvent event = new RequestEvent();
+		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(entity.getServiceType());
+			event.setNamespace(entity.getNamespace());
+			event.setServiceName(entity.getServiceName());
+			event.setOperation(RequestEvent.CREATE_PVC);
+			event.setUserId(userInfo.getUserId());
+			
+			log.info("{}, {}, {}", userInfo.getUserId(), userInfo.getUserName(), userInfo.getAccessRole());
+
+			//
+			Result result = commonService.createPersistentVolumeClaim(txId, entity);
+
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(e.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}
+
+	}
+	/**
+	 * Create ZDB Global Configurations
+	 * @return
+	 */
+	@RequestMapping(value = "/zdbconfig", method = RequestMethod.POST)
+	public ResponseEntity<String> createZDBConfig(@RequestBody final ZDBConfig[] zdbConfigs) {
+		try {
+			String configs = "";
+			for (int i=0; i < zdbConfigs.length; i++) {
+				ZDBConfig zdbConfig = zdbConfigs[i];
+				commonService.createZDBConfig(zdbConfig);
+				if (i == 0) {
+					configs = configs.concat(zdbConfigs[i].getConfigName());
+				} else {
+					configs = configs.concat(", " + zdbConfigs[i].getConfigName());
+				}
+			}
+			EventMetaData m = new EventMetaData();
+			String namespace = zdbConfigs[0].getNamespace();
+			m.setFirstTimestamp(DateUtil.formatDate(DateUtil.currentDate()));
+			m.setKind("ZDB Global Configuration"); // TODO: UI 추가
+			m.setLastTimestamp(DateUtil.formatDate(DateUtil.currentDate()));
+			m.setMessage("ZDB Global 환경설정 생성 완료 (Namespace: "
+							+ zdbConfigs[0].getNamespace()
+							+ ", Configurations: "
+							+ configs);
+			m.setMetadata("");
+			m.setReason("ZDB Global Configuration Created");
+			m.setUid("");
+			m.setName("ZDB Global Configuration");
+			m.setNamespace(namespace);
+			EventMetaData findByNameAndMessageAndLastTimestamp = eventRepo.findByNameAndMessageAndLastTimestamp(m.getName(), m.getMessage(), m.getLastTimestamp());
+			if(findByNameAndMessageAndLastTimestamp == null) {
+				eventRepo.save(m);
+			}
+			return new ResponseEntity<String>("ZDB Global 설정이 생성되었습니다.", HttpStatus.OK);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
+	/**
+	 * Retrieve ZDB Global Configurations
+	 * @return
+	 */
+	@RequestMapping(value = "/{namespace}/zdbconfigs", method = RequestMethod.GET)
+	public ResponseEntity<String> getZDBConfig(@PathVariable("namespace") final String namespace) {
+		try {			
+			Result result = commonService.getZDBConfig(namespace);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
+	/**
+	 * Update ZDB Global Configurations
+	 * @return
+	 */
+	@RequestMapping(value = "/zdbconfig", method = RequestMethod.PUT)
+	public ResponseEntity<String> updateZDBConfigs(@RequestBody final ZDBConfig[] zdbConfigs) {
+		try {
+			String configs = "";
+			for (int i=0; i < zdbConfigs.length; i++) {
+				ZDBConfig zdbConfig = zdbConfigs[i];
+				commonService.updateZDBConfig(zdbConfig);
+				if (i == 0) {
+					configs = configs.concat(zdbConfigs[i].getConfigName());
+				} else {
+					configs = configs.concat(", " + zdbConfigs[i].getConfigName());
+				}
+			}	
+			EventMetaData m = new EventMetaData();
+			String namespace = zdbConfigs[0].getNamespace();
+			m.setFirstTimestamp(DateUtil.formatDate(DateUtil.currentDate()));
+			m.setKind("ZDB Global Configuration"); // TODO: UI 추가
+			m.setLastTimestamp(DateUtil.formatDate(DateUtil.currentDate()));
+			m.setMessage("ZDB Global 환경설정 변경 완료 (Namespace: "
+					+ zdbConfigs[0].getNamespace()
+					+ ", Configurations: "
+					+ configs);
+			m.setMetadata("");
+			m.setReason("ZDB Global Configuration Updated");
+			m.setUid("");
+			m.setName("ZDB Global Configuration");
+			m.setNamespace(namespace);
+			EventMetaData findByNameAndMessageAndLastTimestamp = eventRepo.findByNameAndMessageAndLastTimestamp(m.getName(), m.getMessage(), m.getLastTimestamp());
+			if(findByNameAndMessageAndLastTimestamp == null) {
+				eventRepo.save(m);
+			}
+			return new ResponseEntity<String>("ZDB Global 설정이 변경되었습니다.", HttpStatus.OK);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
+	/**
+	 * Delete ZDB Global Configurations
+	 * @return
+	 */
+	@RequestMapping(value = "/zdbconfig", method = RequestMethod.DELETE)
+	public ResponseEntity<String> deleteZDBConfig(@RequestBody final ZDBConfig[] zdbConfigs) {
+		try {
+			String configs = "";
+			for (int i=0; i < zdbConfigs.length; i++) {
+				ZDBConfig zdbConfig = zdbConfigs[i];
+				commonService.deleteZDBConfig(zdbConfig);
+				if (i == 0) {
+					configs = configs.concat(zdbConfigs[i].getConfigName());
+				} else {
+					configs = configs.concat(", " + zdbConfigs[i].getConfigName());
+				}
+			}
+			EventMetaData m = new EventMetaData();
+			String namespace = zdbConfigs[0].getNamespace();
+			m.setFirstTimestamp(DateUtil.formatDate(DateUtil.currentDate()));
+			m.setKind("ZDB Global Configuration"); // TODO: UI 추가
+			m.setLastTimestamp(DateUtil.formatDate(DateUtil.currentDate()));
+			m.setMessage("ZDB Global 환경설정 삭제 완료 (Namespace: "
+					+ zdbConfigs[0].getNamespace()
+					+ ", Configurations: "
+					+ configs);
+			m.setMetadata("");
+			m.setReason("ZDB Global Configuration Deleted");
+			m.setUid("");
+			m.setName("ZDB Global Configuration");
+			m.setNamespace(namespace);
+			EventMetaData findByNameAndMessageAndLastTimestamp = eventRepo.findByNameAndMessageAndLastTimestamp(m.getName(), m.getMessage(), m.getLastTimestamp());
+			if(findByNameAndMessageAndLastTimestamp == null) {
+				eventRepo.save(m);
+			}
+			return new ResponseEntity<String>("ZDB Global 설정이 삭제되었습니다.", HttpStatus.OK);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
 }

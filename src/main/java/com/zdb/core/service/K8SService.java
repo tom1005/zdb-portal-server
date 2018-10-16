@@ -6,11 +6,13 @@ import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 
 import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +31,7 @@ import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.ScheduleEntity;
 import com.zdb.core.domain.ServiceOverview;
 import com.zdb.core.domain.Tag;
+import com.zdb.core.domain.ZDBPersistenceEntity;
 import com.zdb.core.domain.ZDBStatus;
 import com.zdb.core.domain.ZDBType;
 import com.zdb.core.repository.DiskUsageRepository;
@@ -43,16 +46,21 @@ import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
+import io.fabric8.kubernetes.api.model.PersistentVolumeClaimBuilder;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaimSpec;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodCondition;
 import io.fabric8.kubernetes.api.model.PodStatus;
+import io.fabric8.kubernetes.api.model.Quantity;
 import io.fabric8.kubernetes.api.model.ResourceRequirements;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.ReplicaSet;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
+import io.fabric8.kubernetes.client.DefaultKubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.Watcher;
 import lombok.extern.slf4j.Slf4j;
 
 @org.springframework.stereotype.Service("k8sService")
@@ -1355,6 +1363,193 @@ public class K8SService {
 		}
 
 		return deleteServiceCount;
+	}
+	
+	/**
+	 * @param namespace
+	 * @param serviceName
+	 * @param podName
+	 * @param persistenceSpec
+	 * @throws Exception
+	 */
+	public PersistenceSpec createPersistentVolumeClaim(ZDBPersistenceEntity entity) throws Exception {
+		
+		String namespace = entity.getNamespace();
+		String serviceName = entity.getServiceName();
+		String podName = entity.getPodName();
+		String serviceType = entity.getServiceType();
+		
+		PersistenceSpec persistenceSpec = entity.getPersistenceSpec();
+		
+		String pvcName = null;
+		String storageSize = "";
+		String billingType = "hourly";
+		String storageClassName = "";
+		
+		if(namespace == null || namespace.isEmpty()) {
+			throw new IllegalArgumentException("namespace 입력하세요.");
+		}
+		
+		if(serviceName == null || serviceName.isEmpty()) {
+			throw new IllegalArgumentException("serviceName 입력하세요.");
+		}
+		
+		if(podName == null || podName.isEmpty()) {
+			throw new IllegalArgumentException("podName 입력하세요.");
+		}
+		
+		if(serviceType == null || serviceType.isEmpty()) {
+			throw new IllegalArgumentException("serviceType 입력하세요.");
+		}
+		
+		if(persistenceSpec != null) {
+			pvcName = persistenceSpec.getPvcName();
+			storageClassName = persistenceSpec.getStorageClass();
+			billingType = persistenceSpec.getBillingType();
+			storageSize = persistenceSpec.getSize();
+			if(storageSize != null && !storageSize.isEmpty()) {
+				if (storageSize.indexOf("Gi") > 0) {
+
+				} else {
+					storageSize = storageSize+"Gi";
+				}
+			} else {
+				throw new IllegalArgumentException("PersistentVolumeClaim storage size 를 입력하세요.");
+			}
+		} else {
+			throw new IllegalArgumentException("PersistentVolumeClaim 정보를 입력하세요.");
+		}
+		
+		String role = "";
+		
+		List<Pod> pods = getPods(namespace, serviceName);
+		for (Pod pod : pods) {
+			
+			String name = pod.getMetadata().getName();
+			if(podName.equals(name)) {
+				serviceType = pod.getMetadata().getLabels().get("app");
+				if ("mariadb".equals(serviceType)) {
+					role = pod.getMetadata().getLabels().get("component");
+				} else if ("redis".equals(serviceType)) {
+					role = pod.getMetadata().getLabels().get("role");
+				}
+				
+				break;
+			}
+		}
+		
+		try {
+			List<PersistentVolumeClaim> pvcList = getPersistentVolumeClaims(namespace, serviceName);
+			for (PersistentVolumeClaim persistentVolumeClaim : pvcList) {
+
+				String svcRole = "";
+				if ("mariadb".equals(serviceType)) {
+					svcRole = persistentVolumeClaim.getMetadata().getLabels().get("component");
+				} else if ("redis".equals(serviceType)) {
+					svcRole = persistentVolumeClaim.getMetadata().getLabels().get("role");
+				}
+
+				if (!role.equals(svcRole)) {
+					continue;
+				}
+
+				if (storageClassName == null || storageClassName.isEmpty()) {
+					storageClassName = persistentVolumeClaim.getSpec().getStorageClassName();
+				}
+				
+				if (billingType == null || billingType.isEmpty()) {
+					billingType = "hourly";
+				}
+				
+				if (pvcName == null || pvcName.isEmpty()) {
+					String name = persistentVolumeClaim.getMetadata().getName();
+
+					// data-ns-zdb-02-demodb-mariadb-slave-0
+					String[] split = name.split("-");
+					String indexValue = split[split.length - 1];
+					int index = Integer.parseInt(indexValue) + 1;
+
+					pvcName = name.substring(0, name.length() - 1) + "" + index;
+					persistenceSpec.setPvcName(pvcName);
+				}
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
+		
+		Map<String, String> labels = new HashMap<>();
+		labels.put("release", serviceName);
+		labels.put("billingType", billingType);
+		
+		if("mariadb".equals(serviceType)) {
+			labels.put("app", "mariadb");
+			labels.put("component", role);
+		} else if("redis".equals(serviceType)) {
+			labels.put("app", "redis");
+			labels.put("role", role);
+		} else {
+			log.error("{} 는 지원하지 않는 서비스 타입입니다.",serviceType);
+		}
+		
+		PersistentVolumeClaimSpec pvcSpec = new PersistentVolumeClaimSpec();
+
+		ResourceRequirements rr = new ResourceRequirements();
+
+		Map<String, Quantity> req = new HashMap<String, Quantity>();
+		req.put("storage", new Quantity(storageSize));
+		rr.setRequests(req);
+		pvcSpec.setResources(rr);
+
+		List<String> access = new ArrayList<String>();
+		access.add("ReadWriteOnce");
+		pvcSpec.setAccessModes(access);
+
+		Map<String, String> annotations = new HashMap<>();
+		annotations.put("volume.beta.kubernetes.io/storage-class", storageClassName);
+		
+		PersistentVolumeClaim pvcCreating = new PersistentVolumeClaimBuilder()
+				.withNewMetadata()
+				.withName(pvcName)
+				.withAnnotations(annotations)
+				.withLabels(labels)
+				.endMetadata()
+				.withSpec(pvcSpec)
+				.build();
+
+		
+		DefaultKubernetesClient kubernetesClient = K8SUtil.kubernetesClient();
+		PersistentVolumeClaim pvc = kubernetesClient.persistentVolumeClaims().inNamespace(namespace).create(pvcCreating);
+
+		final CountDownLatch latch = new CountDownLatch(1);
+		
+		final String _pvcName = pvcName;
+		
+		kubernetesClient.persistentVolumeClaims().inNamespace(namespace).watch(new Watcher<PersistentVolumeClaim>() {
+
+			@Override
+			public void eventReceived(Action action, PersistentVolumeClaim resource) {
+				String status = null;
+				if (resource instanceof PersistentVolumeClaim) {
+					PersistentVolumeClaim meta = (PersistentVolumeClaim) resource;
+					if(_pvcName.equals(meta.getMetadata().getName()))
+					status = meta.getStatus().getPhase();
+					if("Bound".equalsIgnoreCase(status)) {
+						System.out.println(_pvcName + " created.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+						latch.countDown();
+					}
+				}
+			}
+
+			@Override
+			public void onClose(KubernetesClientException cause) {
+				
+			}
+			
+		});
+		
+		latch.await();
+		
+		return persistenceSpec;
 	}
 	
 }
