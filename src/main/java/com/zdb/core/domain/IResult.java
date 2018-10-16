@@ -116,6 +116,8 @@ public interface IResult {
 	
 	public static final String CREATE_PUBLIC_SVC = "createPublicService";
 
+	public static final String ZDBConfig = "zdbConfig";
+
 
 	public int getCode();
 	

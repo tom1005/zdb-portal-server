@@ -1800,11 +1800,14 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		return sb.toString();
 	}
 	
+<<<<<<< HEAD
 	@Override
 	public Result createPersistentVolumeClaim(String txId, ZDBPersistenceEntity entity) throws Exception {
 		return null;
 	}
 	
+=======
+>>>>>>> branch 'dev' of https://github.com/cnpst/zdb-portal-server.git
 	public Result createZDBConfig(ZDBConfig zdbConfig) {
 		try {
 			if( zdbConfig != null) {
