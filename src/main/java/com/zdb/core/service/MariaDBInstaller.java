@@ -39,6 +39,7 @@ import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBType;
 import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
+import com.zdb.core.util.ExecUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.mariadb.MariaDBAccount;
 import com.zdb.mariadb.MariaDBConfiguration;
@@ -310,33 +311,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 					
 					lacth.await(600, TimeUnit.SECONDS);
 					
-					if(lacth.getCount() == 0) {
-						log.info("update admin grant option.");
-						try {
-							MariaDBAccount.updateAdminPrivileges(service.getNamespace(), service.getServiceName(), account.getUserId());
-						} catch (Exception e) {
-							log.error("권한 적용 오류 ", e);
-						}
-						
-						if(service.isBackupEnabled()) {
-							// 스케줄 등록...
-							ScheduleEntity schedule = new ScheduleEntity();
-							schedule.setNamespace(service.getNamespace());
-							schedule.setServiceType(service.getServiceType());
-							schedule.setServiceName(service.getServiceName());
-							schedule.setStartTime("01:00");
-							schedule.setStorePeriod(2);
-							schedule.setUseYn("Y");
-							schedule.setDeleteYn("N");
-							backupProvider.saveSchedule(exchange.getProperty(Exchange.TXID, String.class), schedule);
-						}
-						
-						event.setStatus(IResult.OK);
-						event.setResultMessage("서비스 생성 완료");
-						event.setEndTime(new Date(System.currentTimeMillis()));
-						
-						messageSender.sendToClient("mariadb installer");
-					} else {
+					if(lacth.getCount() > 0) {
 						event.setStatus(IResult.ERROR);
 						event.setResultMessage("서비스 생성 실패. - 10분 타임아웃");
 						event.setEndTime(new Date(System.currentTimeMillis()));
@@ -354,6 +329,45 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 						log.error("{} > {} > {} 권한 변경 실패!", service.getNamespace(), service.getServiceName(), account.getUserId());
 					}
 					
+					log.info("update admin grant option.");
+					try {
+						//MariaDBAccount.updateAdminPrivileges(service.getNamespace(), service.getServiceName(), account.getUserId());
+						
+						Pod pod = k8sService.getPod(service.getNamespace(), service.getServiceName(), "master");
+						if(pod != null) {
+							StringBuffer sb = new StringBuffer();
+							sb.append("REVOKE ALL PRIVILEGES ON *.* FROM '$MARIADB_USER'@'%';");
+							sb.append("GRANT ALL PRIVILEGES ON *.* TO '$MARIADB_USER'@'%' IDENTIFIED BY '$MARIADB_PASSWORD' WITH GRANT OPTION;");
+							sb.append("GRANT CREATE USER ON *.* TO '$MARIADB_USER'@'%';");
+							sb.append("UPDATE mysql.user SET super_priv='N' WHERE user <> 'root' and user <> 'replicator';");
+							sb.append("FLUSH PRIVILEGES;");
+							
+							new ExecUtil().exec(client, service.getNamespace(), "ns-zdb-02-hhh-mariadb-master-0", "exec mysql -uroot -p$MARIADB_ROOT_PASSWORD -e \""+sb.toString()+"\"");
+						} else {
+							
+						}
+					} catch (Exception e) {
+						log.error("권한 적용 오류 ", e);
+					}
+					
+					if(service.isBackupEnabled()) {
+						// 스케줄 등록...
+						ScheduleEntity schedule = new ScheduleEntity();
+						schedule.setNamespace(service.getNamespace());
+						schedule.setServiceType(service.getServiceType());
+						schedule.setServiceName(service.getServiceName());
+						schedule.setStartTime("01:00");
+						schedule.setStorePeriod(2);
+						schedule.setUseYn("Y");
+						schedule.setDeleteYn("N");
+						backupProvider.saveSchedule(exchange.getProperty(Exchange.TXID, String.class), schedule);
+					}
+					
+					event.setStatus(IResult.OK);
+					event.setResultMessage("서비스 생성 완료");
+					event.setEndTime(new Date(System.currentTimeMillis()));
+					
+					messageSender.sendToClient("mariadb installer");
 				} else {
 					event.setStatus(IResult.ERROR);
 					event.setResultMessage("Installation failed." );
