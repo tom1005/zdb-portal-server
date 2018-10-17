@@ -51,9 +51,9 @@ public class NamespaceResourceChecker {
 	
 	private static RestTemplate getRestTemplate() {
 		HttpComponentsClientHttpRequestFactory httpRequestFactory = new HttpComponentsClientHttpRequestFactory();
-        httpRequestFactory.setConnectionRequestTimeout(1000);
-        httpRequestFactory.setConnectTimeout(1000);
-        httpRequestFactory.setReadTimeout(1000);
+        httpRequestFactory.setConnectionRequestTimeout(1000*10);
+        httpRequestFactory.setConnectTimeout(1000*10);
+        httpRequestFactory.setReadTimeout(1000*10);
         
         return new RestTemplate(httpRequestFactory);
 	}
