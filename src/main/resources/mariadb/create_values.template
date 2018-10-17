@@ -31,7 +31,7 @@ replication:
   forcePassword: false
 
 master:
-  antiAffinity: soft
+  antiAffinity: "${master.antiAffinity}"
   persistence:
     enabled: true
     storageClass: "${master.persistence.storageClass}"

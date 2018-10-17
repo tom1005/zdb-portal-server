@@ -186,6 +186,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 					
 				}
 				inputJson = inputJson.replace("${buffer.pool.size}", K8SUtil.getBufferSize(masterMemory));// 자동계산 *******   필수값 
+				inputJson = inputJson.replace("${master.antiAffinity}", "hard"); // 향후 input으로 받을 예정
 				
 				String characterSet = service.getCharacterSet();
 				inputJson = inputJson.replace("${character.set.server}", characterSet == null || characterSet.isEmpty() ? "utf8" : characterSet);
