@@ -340,10 +340,6 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 						if(pod != null) {
 							if(K8SUtil.IsReady(pod)) {
 								System.out.println(pod.getMetadata().getName() +" is ready!!!!!!!");
-								
-								System.out.println("service LB 준비중... 20초 waiting....");
-								Thread.sleep(20 * 1000);
-								System.out.println("권한 적용 실행...");
 								MariaDBAccount.updateAdminPrivileges(service.getNamespace(), service.getServiceName(), account.getUserId());
 								System.out.println("권한 적용 완료...");
 							}
@@ -394,7 +390,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 							log.error("권한 적용 오류 -  master db is null." + service.getNamespace() +" > "+ service.getServiceName());
 						}
 					} catch (Exception e) {
-						log.error("권한 적용 오류 ", e);
+						log.error("권한 적용 오류 ", e.getMessage()); 
 					}
 					
 					if(service.isBackupEnabled()) {

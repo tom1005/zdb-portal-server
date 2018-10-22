@@ -40,6 +40,7 @@ import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.ContainerStatus;
 import io.fabric8.kubernetes.api.model.Event;
 import io.fabric8.kubernetes.api.model.LoadBalancerIngress;
+import io.fabric8.kubernetes.api.model.LoadBalancerStatus;
 import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.NamespaceBuilder;
 import io.fabric8.kubernetes.api.model.NodeList;
@@ -374,6 +375,15 @@ public class K8SUtil {
 			Map<String, String> annotations = svc.getMetadata().getAnnotations();
 			String value = annotations.get("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type");
 			if(value != null && "public".equals(value)) {
+				LoadBalancerStatus loadBalancer = svc.getStatus().getLoadBalancer();
+				if(loadBalancer == null ) {
+					continue;
+				} else {
+					List<LoadBalancerIngress> ingress = loadBalancer.getIngress();
+					if(ingress == null || ingress.isEmpty()) {
+						continue;
+					}
+				}
 				service = svc;
 				break;
 			}

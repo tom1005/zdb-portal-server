@@ -7,7 +7,6 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Base64;
-import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import javax.inject.Inject;
@@ -15,15 +14,9 @@ import javax.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.zdb.core.domain.ServiceOverview;
-import com.zdb.core.domain.ZDBType;
 import com.zdb.core.repository.ZDBMariaDBAccountRepository;
 import com.zdb.core.util.K8SUtil;
 
-import io.fabric8.kubernetes.api.model.Container;
-import io.fabric8.kubernetes.api.model.EnvVar;
-import io.fabric8.kubernetes.api.model.extensions.Deployment;
-import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
 import lombok.extern.slf4j.Slf4j;
 
 /**
