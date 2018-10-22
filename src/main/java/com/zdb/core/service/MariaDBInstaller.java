@@ -344,8 +344,10 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 							sb.append("FLUSH PRIVILEGES;");
 							
 							new ExecUtil().exec(client, service.getNamespace(), pod.getMetadata().getName(), "exec mysql -uroot -p$MARIADB_ROOT_PASSWORD -e \""+sb.toString()+"\"");
-						} else {
 							
+							log.info("update admin grant option. - success!!");
+						} else {
+							log.error("권한 적용 오류 -  master db is null." + service.getNamespace() +" > "+ service.getServiceName());
 						}
 					} catch (Exception e) {
 						log.error("권한 적용 오류 ", e);
