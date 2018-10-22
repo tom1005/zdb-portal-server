@@ -343,7 +343,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 							sb.append("UPDATE mysql.user SET super_priv='N' WHERE user <> 'root' and user <> 'replicator';");
 							sb.append("FLUSH PRIVILEGES;");
 							
-							new ExecUtil().exec(client, service.getNamespace(), "ns-zdb-02-hhh-mariadb-master-0", "exec mysql -uroot -p$MARIADB_ROOT_PASSWORD -e \""+sb.toString()+"\"");
+							new ExecUtil().exec(client, service.getNamespace(), pod.getMetadata().getName(), "exec mysql -uroot -p$MARIADB_ROOT_PASSWORD -e \""+sb.toString()+"\"");
 						} else {
 							
 						}
