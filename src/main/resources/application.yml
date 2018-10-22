@@ -205,7 +205,7 @@ backup:
 spring:
   profiles: prod
   datasource:
-    url: jdbc:mariadb://zdb-portal-db.zdb-system:3306/zdb
+    url: jdbc:mariadb://zdb-portal-db-mariadb.zdb-system:3306/zdb
     username: zdb
     password: 24cmdshvek!
     driverClassName: org.mariadb.jdbc.Driver
