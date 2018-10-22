@@ -335,7 +335,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 					
 					log.info("update admin grant option.");
 					try {
-						MariaDBAccount.updateAdminPrivileges(service.getNamespace(), service.getServiceName(), account.getUserId());
+						//MariaDBAccount.updateAdminPrivileges(service.getNamespace(), service.getServiceName(), account.getUserId());
 						
 						Pod pod = k8sService.getPod(service.getNamespace(), service.getServiceName(), "master");
 						if(pod != null) {
