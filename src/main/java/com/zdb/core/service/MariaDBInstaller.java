@@ -6,8 +6,10 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -52,6 +54,7 @@ import hapi.services.tiller.Tiller.UninstallReleaseRequest;
 import hapi.services.tiller.Tiller.UninstallReleaseResponse;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import lombok.extern.slf4j.Slf4j;
@@ -332,18 +335,49 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 					
 					log.info("update admin grant option.");
 					try {
-						//MariaDBAccount.updateAdminPrivileges(service.getNamespace(), service.getServiceName(), account.getUserId());
+						MariaDBAccount.updateAdminPrivileges(service.getNamespace(), service.getServiceName(), account.getUserId());
 						
 						Pod pod = k8sService.getPod(service.getNamespace(), service.getServiceName(), "master");
 						if(pod != null) {
+//							StringBuffer sb = new StringBuffer();
+//							sb.append("REVOKE ALL PRIVILEGES ON *.* FROM '$MARIADB_USER'@'%';");
+//							sb.append("GRANT ALL PRIVILEGES ON *.* TO '$MARIADB_USER'@'%' IDENTIFIED BY '$MARIADB_PASSWORD' WITH GRANT OPTION;");
+//							sb.append("GRANT CREATE USER ON *.* TO '$MARIADB_USER'@'%';");
+//							sb.append("UPDATE mysql.user SET super_priv='N' WHERE user <> 'root' and user <> 'replicator';");
+//							sb.append("FLUSH PRIVILEGES;");
+//							
+//							log.info("" + sb.toString());
+//							
+//							new ExecUtil().exec(client, service.getNamespace(), pod.getMetadata().getName(), "exec mysql -uroot -p$MARIADB_ROOT_PASSWORD -e \""+sb.toString()+"\"");
+							
+							List<Secret> secrets = K8SUtil.getSecrets(service.getNamespace(), service.getServiceName());
+							if( secrets == null || secrets.isEmpty()) {
+								throw new Exception("등록된 Secret이 없거나 조회 중 오류 발생. [" + service.getNamespace() +" > "+ service.getServiceName() +"]");
+							}
+							
+							String password = "";
+							for(Secret secret : secrets) {
+								Map<String, String> secretData = secret.getData();
+								password = secretData.get("mariadb-password");
+								
+								if (password != null && !password.isEmpty()) {
+									password = new String(Base64.getDecoder().decode(password));
+									password = password.trim();
+								}
+								
+								break;
+							}
+							
 							StringBuffer sb = new StringBuffer();
-							sb.append("REVOKE ALL PRIVILEGES ON *.* FROM '$MARIADB_USER'@'%';");
-							sb.append("GRANT ALL PRIVILEGES ON *.* TO '$MARIADB_USER'@'%' IDENTIFIED BY '$MARIADB_PASSWORD' WITH GRANT OPTION;");
-							sb.append("GRANT CREATE USER ON *.* TO '$MARIADB_USER'@'%';");
+							sb.append("REVOKE ALL PRIVILEGES ON *.* FROM 'admin'@'%';");
+							sb.append("GRANT ALL PRIVILEGES ON *.* TO 'admin'@'%' IDENTIFIED BY '"+password+"' WITH GRANT OPTION;");
+							sb.append("GRANT CREATE USER ON *.* TO 'admin'@'%';");
 							sb.append("UPDATE mysql.user SET super_priv='N' WHERE user <> 'root' and user <> 'replicator';");
 							sb.append("FLUSH PRIVILEGES;");
 							
-							new ExecUtil().exec(client, service.getNamespace(), pod.getMetadata().getName(), "exec mysql -uroot -p$MARIADB_ROOT_PASSWORD -e \""+sb.toString()+"\"");
+							log.info("" + sb.toString());
+							
+							new ExecUtil().exec(client, service.getNamespace(), pod.getMetadata().getName(), "exec mysql -uroot -p'zdb12#$' -e \""+sb.toString()+"\"");
 							
 							log.info("update admin grant option. - success!!");
 						} else {
