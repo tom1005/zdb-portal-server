@@ -103,7 +103,7 @@ public class MariaDBConnection {
 			Class.forName("org.mariadb.jdbc.Driver");
 			String jdbcUrl = url + "?user=" + user + "&password=" + password;
 			logger.debug("jdbcUrl: {}", jdbcUrl);
-			
+			DriverManager.setLoginTimeout(30);
 			connection = DriverManager.getConnection(jdbcUrl);
 		} catch (SQLException sqlException) {
 			throw sqlException;

@@ -27,7 +27,7 @@ public class ExecUtil implements Callback<byte[]> {
 
 	final StringBuffer sb = new StringBuffer();
 	
-	public  String exec(DefaultKubernetesClient client, String namespace, String podName, String command) throws InterruptedException, IOException, Exception {
+	public synchronized String exec(DefaultKubernetesClient client, String namespace, String podName, String command) throws InterruptedException, IOException, Exception {
 		ScheduledExecutorService executorService = Executors.newScheduledThreadPool(20);
 		try {
 			ExecWatch watch = null;

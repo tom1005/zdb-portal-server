@@ -241,6 +241,7 @@ public class MariaDBAccount {
 			Statement statement = connection.getStatement();
 			
 			statement.executeUpdate("REVOKE ALL PRIVILEGES ON *.* FROM '" + userId + "'@'%';");
+			statement.executeUpdate("FLUSH PRIVILEGES");
 			statement.executeUpdate("GRANT ALL PRIVILEGES ON *.* TO '" + userId + "'@'%' IDENTIFIED BY '"+password+"' WITH GRANT OPTION");
 			statement.executeUpdate("GRANT CREATE USER ON *.* TO '" + userId + "'@'%'");
 			statement.executeUpdate("UPDATE mysql.user SET super_priv='N' WHERE user <> 'root' and user <> 'replicator'");
