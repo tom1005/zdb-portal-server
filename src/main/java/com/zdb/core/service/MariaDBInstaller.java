@@ -340,8 +340,31 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 						if(pod != null) {
 							if(K8SUtil.IsReady(pod)) {
 								System.out.println(pod.getMetadata().getName() +" is ready!!!!!!!");
-								MariaDBAccount.updateAdminPrivileges(service.getNamespace(), service.getServiceName(), account.getUserId());
+								//MariaDBAccount.updateAdminPrivileges(service.getNamespace(), service.getServiceName(), account.getUserId());
 								System.out.println("권한 적용 완료...");
+								
+								List<Secret> secrets = K8SUtil.getSecrets(service.getNamespace(), service.getServiceName());
+								if( secrets == null || secrets.isEmpty()) {
+									throw new Exception("등록된 Secret이 없거나 조회 중 오류 발생. [" + service.getNamespace() +" > "+ service.getServiceName() +"]");
+								}
+								String password = "";
+								for(Secret secret : secrets) {
+									Map<String, String> secretData = secret.getData();
+									password = secretData.get("mariadb-password");
+									
+									if (password != null && !password.isEmpty()) {
+										password = new String(Base64.getDecoder().decode(password));
+										password = password.trim();
+									}
+									break;
+								}
+								log.info(new ExecUtil().exec(client, service.getNamespace(), pod.getMetadata().getName(), "exec mysql -uroot -p'zdb12#$' -e \"REVOKE ALL PRIVILEGES ON *.* FROM 'admin'@'%'\""));
+	                            log.info(new ExecUtil().exec(client, service.getNamespace(), pod.getMetadata().getName(), "exec mysql -uroot -p'zdb12#$' -e \"FLUSH PRIVILEGES\""));
+	                            log.info(new ExecUtil().exec(client, service.getNamespace(), pod.getMetadata().getName(), "exec mysql -uroot -p'zdb12#$' -e \"GRANT ALL PRIVILEGES ON *.* TO 'admin'@'%' IDENTIFIED BY '" + password + "' WITH GRANT OPTION\""));
+	                            log.info(new ExecUtil().exec(client, service.getNamespace(), pod.getMetadata().getName(), "exec mysql -uroot -p'zdb12#$' -e \"GRANT CREATE USER ON *.* TO 'admin'@'%'\""));
+	                            log.info(new ExecUtil().exec(client, service.getNamespace(), pod.getMetadata().getName(), "exec mysql -uroot -p'zdb12#$' -e \"UPDATE mysql.user SET super_priv='N' WHERE user <> 'root' and user <> 'replicator'\""));
+	                            log.info(new ExecUtil().exec(client, service.getNamespace(), pod.getMetadata().getName(), "exec mysql -uroot -p'zdb12#$' -e \"FLUSH PRIVILEGES\""));
+								
 							}
 //							StringBuffer sb = new StringBuffer();
 //							sb.append("REVOKE ALL PRIVILEGES ON *.* FROM '$MARIADB_USER'@'%';");
