@@ -237,7 +237,15 @@ public class MariaDBAccount {
 				break;
 			}
 			
-			connection = MariaDBConnection.getRootMariaDBConnection(namespace, releaseName);
+			while(true) {
+				try {
+					connection = MariaDBConnection.getRootMariaDBConnection(namespace, releaseName);
+					break;
+				}catch(Exception e) {
+					Thread.sleep(5000);
+				}
+			}
+			
 			Statement statement = connection.getStatement();
 			
 			statement.executeUpdate("REVOKE ALL PRIVILEGES ON *.* FROM '" + userId + "'@'%';");
