@@ -1180,11 +1180,11 @@ public class K8SService {
 	public Pod getPod(final String namespace, final String serviceName, String role) throws Exception {
 		DefaultKubernetesClient client = K8SUtil.kubernetesClient();
 		
-		List<Pod> pods = client.pods().inNamespace(namespace).list().getItems();
+		List<Pod> pods = client.pods().inNamespace(namespace).withLabel("release", serviceName).list().getItems();
 		
 		for (Pod pod : pods) {
 			String app = pod.getMetadata().getLabels().get("app");
-			
+
 			if("mariadb".equals(app)) {
 				String component = pod.getMetadata().getLabels().get("component");
 				
