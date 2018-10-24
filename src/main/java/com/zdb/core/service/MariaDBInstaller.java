@@ -18,6 +18,7 @@ import org.apache.commons.io.IOUtils;
 import org.microbean.helm.ReleaseManager;
 import org.microbean.helm.Tiller;
 import org.microbean.helm.chart.URLChartLoader;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
@@ -36,12 +37,13 @@ import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ScheduleEntity;
 import com.zdb.core.domain.ServiceSpec;
 import com.zdb.core.domain.Tag;
+import com.zdb.core.domain.ZDBConfig;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBType;
+import com.zdb.core.repository.ZDBConfigRepository;
 import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
-import com.zdb.core.util.ExecUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.mariadb.MariaDBAccount;
 import com.zdb.mariadb.MariaDBConfiguration;
@@ -55,7 +57,6 @@ import hapi.services.tiller.Tiller.UninstallReleaseRequest;
 import hapi.services.tiller.Tiller.UninstallReleaseResponse;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Pod;
-import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import lombok.extern.slf4j.Slf4j;
@@ -69,6 +70,9 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 	public void setStorageClass(String storageType) {
 		storageClass = storageType;
 	}
+	
+	@Autowired
+	protected ZDBConfigRepository zdbConfigRepository;
 		
 	private static final String DEFAULT_ROOT_PASSWORD = "zdb12#$";
 	private static final String DEFAULT_USER = "admin";
@@ -355,13 +359,34 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 					}
 					
 					if(service.isBackupEnabled()) {
-						// 스케줄 등록...
 						ScheduleEntity schedule = new ScheduleEntity();
 						schedule.setNamespace(service.getNamespace());
 						schedule.setServiceType(service.getServiceType());
 						schedule.setServiceName(service.getServiceName());
-						schedule.setStartTime("01:00");
-						schedule.setStorePeriod(2);
+						
+						List<ZDBConfig> zdbConfigList = zdbConfigRepository.findByNamespace(service.getNamespace());
+						if(zdbConfigList.isEmpty()) {
+							zdbConfigList = zdbConfigRepository.findByNamespace("global");
+							if(zdbConfigList.isEmpty()) {
+								schedule.setStartTime(ZDBConfigService.backupTimeValue);
+								schedule.setStorePeriod(Integer.parseInt(ZDBConfigService.backupDuratioValue));
+							} else {
+								zdbConfigList.forEach(zdbConfig -> {
+									if (zdbConfig.getConfig().equals(ZDBConfigService.backupTimeConfig))
+										schedule.setStartTime(zdbConfig.getValue());
+									else if (zdbConfig.getConfig().equals(ZDBConfigService.backupDurationConfig))
+										schedule.setStorePeriod(Integer.parseInt(zdbConfig.getValue()));
+								});
+							}
+						} else {
+							zdbConfigList.forEach(zdbConfig -> {
+								if (zdbConfig.getConfig().equals(ZDBConfigService.backupTimeConfig))
+									schedule.setStartTime(zdbConfig.getValue());
+								else if (zdbConfig.getConfig().equals(ZDBConfigService.backupDurationConfig))
+									schedule.setStorePeriod(Integer.parseInt(zdbConfig.getValue()));
+							});
+						}
+						
 						schedule.setUseYn("Y");
 						schedule.setDeleteYn("N");
 						backupProvider.saveSchedule(exchange.getProperty(Exchange.TXID, String.class), schedule);
@@ -407,7 +432,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 		}
 
 	}
-	
+
 	/**
 	 * @param exchange
 	 * @return
@@ -585,4 +610,5 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 			messageSender.sendToClient("mariadb installer");
 		}
 	}
+	
 }

@@ -60,28 +60,22 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 			}
 			
 			String resultMessage = ""; 
-			String historyValue = "";
 			
-			if(!oldSche.getUseYn().equals(entity.getUseYn())) {
+			if(oldSche != null && !oldSche.getUseYn().equals(entity.getUseYn())) {
 				if(entity.getUseYn().equals("N")) {
 					resultMessage = "백업이 비활성화 되었습니다.";
-					historyValue = "Backup : ON → OFF";
 				}else {
 					resultMessage = "백업이 활성화 되었습니다.";
-					historyValue = "Backup : OFF → ON";
 				}
 			}else {
 				if(oldSche.getStorePeriod() != entity.getStorePeriod()) {
 					resultMessage = "보관기간이 " + oldSche.getStorePeriod() + "일 에서 " + entity.getStorePeriod() + "일 로";
-					historyValue = "Store period : " + oldSche.getStorePeriod() + "Day(s) → " + entity.getStorePeriod() + "Day(s)";
 				}
 				if(!oldSche.getStartTime().equals(entity.getStartTime())) {
 					if(resultMessage.length() != 0) {
 						resultMessage += ", ";
-						historyValue += "\n";
 					}
 					resultMessage += "백업시간이 " + oldSche.getStartTime() + " 에서 " + entity.getStartTime() + "일 로";
-					historyValue += "Backup Start Time : " + oldSche.getStartTime() + " → " + entity.getStartTime();
 					
 				}
 				if(!resultMessage.isEmpty()) {
@@ -90,11 +84,6 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 			}
 			
 			result = new Result(txid, IResult.OK, resultMessage).putValue("backupSchedule", entity);
-			/* History에 넣는 부분 제거 -> history에 넣지 않아도 한줄에 정보를 넣어 줄 수 있음
-			if(!historyValue.isEmpty()) {
-				result.putValue(Result.HISTORY, historyValue);
-			}
-			*/
 			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -223,8 +212,6 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 				}
 				
 			});
-			
-			
 			
 			//2018-07-25 UI backup 목록 오류 수정
 			result = new Result(txid, IResult.OK).putValue("backupList", list);
