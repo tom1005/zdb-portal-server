@@ -45,6 +45,7 @@ import com.zdb.core.util.ExecUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.mariadb.MariaDBAccount;
 import com.zdb.mariadb.MariaDBConfiguration;
+import com.zdb.mariadb.MariaDBConnection;
 
 import hapi.chart.ChartOuterClass.Chart;
 import hapi.release.ReleaseOuterClass.Release;
@@ -247,15 +248,6 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 					
 					tagRepository.save(typeTag);
 					
-//					if (service.getPurpose() != null) {
-//						Tag purposeTag = new Tag();
-//						purposeTag.setNamespace(service.getNamespace());
-//						purposeTag.setReleaseName(service.getServiceName());
-//						purposeTag.setTagName(service.getPurpose().toLowerCase());
-//						
-//						tagRepository.save(purposeTag);
-//					}						
-					
 					// TODO 생성 UI에서 선택 할 수 있는 옵션 추가 후 적용.
 					// LB목록 조회 및 추가 주문 로직 구현 필요.
 					exchange.setProperty(KubernetesConstants.KUBERNETES_SERVICE_NAME, service.getServiceName());
@@ -277,6 +269,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 						@Override
 						public void run() {
 							long s = System.currentTimeMillis();
+							MariaDBConnection connection = null;
 							
 							try {
 								while((System.currentTimeMillis() - s) < 10 * 60 * 1000) {
@@ -289,13 +282,22 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 									}
 									
 									ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(service.getServiceName());
+									
 									if(isAllReady) {
 										if(releaseMeta != null) {
+											while(true) {
+												try {
+													connection = MariaDBConnection.getRootMariaDBConnection(service.getNamespace(), service.getServiceName());
+													break;
+												}catch(Exception e) {
+													Thread.sleep(5000);
+												}
+											}
 											releaseMeta.setStatus("DEPLOYED");
 											releaseRepository.save(releaseMeta);
 										}
 										lacth.countDown();
-										System.out.println("------------------------------------------------- service create success! ------------------------------------------------- ");
+										log.info("------------------------------------------------- service create success! ------------------------------------------------- ");
 										
 										messageSender.sendToClient("mariadb installer");
 										break;
@@ -308,6 +310,10 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 								}
 							} catch (Exception e) {
 								log.error(e.getMessage(), e);
+							} finally {
+								if(connection != null) {
+									connection.close();
+								}
 							}
 
 						}
@@ -325,7 +331,6 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 							if("CREATING".equals(releaseMeta.getStatus())) {
 								releaseMeta.setStatus("ERROR");
 								releaseMeta.setDescription("서비스 생성 실패.(타임아웃)");
-								
 								releaseRepository.save(releaseMeta);
 							}
 						}
@@ -339,52 +344,8 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 						Pod pod = k8sService.getPod(service.getNamespace(), service.getServiceName(), "master");
 						if(pod != null) {
 							if(K8SUtil.IsReady(pod)) {
-								System.out.println(pod.getMetadata().getName() +" is ready!!!!!!!");
 								MariaDBAccount.updateAdminPrivileges(service.getNamespace(), service.getServiceName(), account.getUserId());
-								System.out.println("권한 적용 완료...");
 							}
-//							StringBuffer sb = new StringBuffer();
-//							sb.append("REVOKE ALL PRIVILEGES ON *.* FROM '$MARIADB_USER'@'%';");
-//							sb.append("FLUSH PRIVILEGES;");
-//							sb.append("GRANT ALL PRIVILEGES ON *.* TO '$MARIADB_USER'@'%' IDENTIFIED BY '$MARIADB_PASSWORD' WITH GRANT OPTION;");
-//							sb.append("GRANT CREATE USER ON *.* TO '$MARIADB_USER'@'%';");
-//							sb.append("UPDATE mysql.user SET super_priv='N' WHERE user <> 'root' and user <> 'replicator';");
-//							sb.append("FLUSH PRIVILEGES;");
-//							
-//							log.info("" + sb.toString());
-//							
-//							new ExecUtil().exec(client, service.getNamespace(), pod.getMetadata().getName(), "exec mysql -uroot -p$MARIADB_ROOT_PASSWORD -e \""+sb.toString()+"\"");
-							
-//							List<Secret> secrets = K8SUtil.getSecrets(service.getNamespace(), service.getServiceName());
-//							if( secrets == null || secrets.isEmpty()) {
-//								throw new Exception("등록된 Secret이 없거나 조회 중 오류 발생. [" + service.getNamespace() +" > "+ service.getServiceName() +"]");
-//							}
-//							
-//							String password = "";
-//							for(Secret secret : secrets) {
-//								Map<String, String> secretData = secret.getData();
-//								password = secretData.get("mariadb-password");
-//								
-//								if (password != null && !password.isEmpty()) {
-//									password = new String(Base64.getDecoder().decode(password));
-//									password = password.trim();
-//								}
-//								
-//								break;
-//							}
-//							
-//							StringBuffer sb = new StringBuffer();
-//							sb.append("REVOKE ALL PRIVILEGES ON *.* FROM 'admin'@'%';");
-//							sb.append("FLUSH PRIVILEGES;");
-//							sb.append("GRANT ALL PRIVILEGES ON *.* TO 'admin'@'%' IDENTIFIED BY '"+password+"' WITH GRANT OPTION;");
-//							sb.append("GRANT CREATE USER ON *.* TO 'admin'@'%';");
-//							sb.append("UPDATE mysql.user SET super_priv='N' WHERE user <> 'root' and user <> 'replicator';");
-//							sb.append("FLUSH PRIVILEGES;");
-//							
-//							log.info("" + sb.toString());
-//							
-//							new ExecUtil().exec(K8SUtil.kubernetesClient(), service.getNamespace(), pod.getMetadata().getName(), "exec mysql -uroot -p'zdb12#$' -e \""+sb.toString()+"\"");
-							
 							log.info("admin 권한 적용 완료.");
 						} else {
 							log.error("권한 적용 오류 -  master db is null." + service.getNamespace() +" > "+ service.getServiceName());

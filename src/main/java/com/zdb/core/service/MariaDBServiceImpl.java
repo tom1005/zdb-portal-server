@@ -163,13 +163,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			
 			PodSpec[] podSpec = service.getPodSpec();
 			
-			String master = podSpec[0].getPodType();
 			ResourceSpec masterSpec = podSpec[0].getResourceSpec()[0];
-			String masterResourceType = masterSpec.getResourceType();
 			String masterCpu = masterSpec.getCpu();
 			String masterMemory = masterSpec.getMemory();
 			
-			String slave = podSpec[1].getPodType();
 			ResourceSpec slaveSpec = podSpec[1].getResourceSpec()[0];
 			String slaveCpu = slaveSpec.getCpu();
 			String slaveMemory = slaveSpec.getMemory();
@@ -248,9 +245,6 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 			log.info(service.getServiceName() + " update success!");
 			result = new Result(txId, IResult.RUNNING, historyValue).putValue(IResult.UPDATE, release);
-//			if(!historyValue.isEmpty()) {
-//				result.putValue(Result.HISTORY, historyValue);
-//			}
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 
@@ -348,64 +342,6 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		result = new Result(txId, IResult.OK, "");
 		result.putValue(IResult.MARIADB_CONFIG, mycnfMap.values());
 		
-//		try {
-//			
-//			ServiceOverview serviceWithName = getServiceWithName(namespace, ZDBType.MariaDB.getName(), releaseName);
-//			ZDBStatus status = serviceWithName.getStatus();
-//			
-//			if(status == ZDBStatus.RED) {
-//				ZDBMariaDBConfig findByReleaseName = zdbMariaDBConfigRepository.findByReleaseName(releaseName);
-//				if (findByReleaseName != null) {
-//					Map<String, String> configMap = new HashMap<>();
-//					configMap.put("eventScheduler", findByReleaseName.getEventScheduler() == null ? MariaDBConfiguration.DEFAULT_EVENT_SCHEDULER : findByReleaseName.getEventScheduler());
-//					configMap.put("groupConcatMaxLen", findByReleaseName.getGroupConcatMaxLen() == null ? MariaDBConfiguration.DEFAULT_GROUP_CONCAT_MAX_LEN : findByReleaseName.getGroupConcatMaxLen());
-//					configMap.put("maxConnections", findByReleaseName.getMaxConnections() == null ? MariaDBConfiguration.DEFAULT_MAX_CONNECTIONS : findByReleaseName.getMaxConnections());
-//					configMap.put("waitTimeout", findByReleaseName.getWaitTimeout() == null ? MariaDBConfiguration.DEFAULT_WAIT_TIMEOUT : findByReleaseName.getWaitTimeout());
-//					configMap.put("releaseName", releaseName);
-//
-//					result = new Result(txId, IResult.OK, "");
-//					result.putValue(IResult.MARIADB_CONFIG, configMap);
-//				} else {
-//					return new Result(txId, IResult.ERROR, "DB 실행중이지 않습니다. 상태를 확인하세요.");
-//				}
-//			} else {
-//
-//				String clusterIPAndPort = K8SUtil.getClusterIpAndPort(namespace, releaseName);
-//				log.debug("serviceName: {}, ClusterIpAndPort: {}", releaseName, clusterIPAndPort);
-//
-//				connection = MariaDBConnection.getRootMariaDBConnection(namespace, releaseName);
-//				if (connection == null) {
-//					throw new Exception("cannot connect mariadb. namespace: " + namespace + ", serviceName: " + releaseName);
-//				}
-//
-//				String maxConnections = MariaDBConfiguration.getConfig(zdbMariaDBConfigRepository, connection.getStatement(), namespace, releaseName, "max_connections");
-//				String eventScheduler = MariaDBConfiguration.getConfig(zdbMariaDBConfigRepository, connection.getStatement(), namespace, releaseName, "event_scheduler");
-//				String groupConcatMaxLen = MariaDBConfiguration.getConfig(zdbMariaDBConfigRepository, connection.getStatement(), namespace, releaseName, "group_concat_max_len");
-//				String waitTimeout = MariaDBConfiguration.getConfig(zdbMariaDBConfigRepository, connection.getStatement(), namespace, releaseName, "wait_timeout");
-//
-//				Map<String, String> configMap = new HashMap<>();
-//				configMap.put("eventScheduler", eventScheduler == null ? MariaDBConfiguration.DEFAULT_EVENT_SCHEDULER : eventScheduler);
-//				configMap.put("groupConcatMaxLen", groupConcatMaxLen == null ? MariaDBConfiguration.DEFAULT_GROUP_CONCAT_MAX_LEN : groupConcatMaxLen);
-//				configMap.put("maxConnections", maxConnections == null ? MariaDBConfiguration.DEFAULT_MAX_CONNECTIONS : maxConnections);
-//				configMap.put("waitTimeout", waitTimeout == null ? MariaDBConfiguration.DEFAULT_WAIT_TIMEOUT : waitTimeout);
-//				configMap.put("releaseName", releaseName);
-//
-//				// config 현행
-//				MariaDBConfiguration.setConfig(zdbMariaDBConfigRepository, connection.getStatement(), namespace, releaseName, configMap);
-//
-//				result = new Result(txId, IResult.OK, "");
-//				result.putValue(IResult.MARIADB_CONFIG, configMap);
-//			}
-//		} catch (Exception e) {
-//			log.error(e.getMessage(), e);
-//
-//			return Result.RESULT_FAIL(txId, e);
-//		} finally {
-//			if (connection != null) {
-//				connection.close();
-//			}
-//		}
-
 		return result;
 	}
 	
@@ -543,7 +479,6 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				return Result.RESULT_FAIL(txId, new Exception("cannot update an account. userId: " + userId));
 			}
 			
-			//result.putValue(IResult.ACCOUNT, "");
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
@@ -723,7 +658,6 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			// 환경설정 변경 이력 
 			historyValue = compareVariables(namespace, serviceName, config);
 			
-			//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			List<ConfigMap> items = client.inNamespace(namespace).configMaps().withLabel("release", serviceName).list().getItems();
 			for (ConfigMap configMap : items) {
 				String configMapName = configMap.getMetadata().getName();
@@ -735,9 +669,6 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			MariaDBShutDownUtil.getInstance().doShutdownAndDeleteAllPods(namespace, serviceName);
 
 			result = new Result(txId, IResult.OK, historyValue);
-//			if (!historyValue.isEmpty()) {
-//				result.putValue(Result.HISTORY, historyValue);
-//			}
 
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);

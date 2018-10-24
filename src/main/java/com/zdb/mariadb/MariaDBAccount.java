@@ -233,7 +233,6 @@ public class MariaDBAccount {
 					password = new String(Base64.getDecoder().decode(password));
 					password = password.trim();
 				}
-				
 				break;
 			}
 			
