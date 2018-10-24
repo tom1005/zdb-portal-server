@@ -61,25 +61,27 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 			
 			String resultMessage = ""; 
 			
-			if(oldSche != null && !oldSche.getUseYn().equals(entity.getUseYn())) {
-				if(entity.getUseYn().equals("N")) {
-					resultMessage = "백업이 비활성화 되었습니다.";
-				}else {
-					resultMessage = "백업이 활성화 되었습니다.";
-				}
-			}else {
-				if(oldSche.getStorePeriod() != entity.getStorePeriod()) {
-					resultMessage = "보관기간이 " + oldSche.getStorePeriod() + "일 에서 " + entity.getStorePeriod() + "일 로";
-				}
-				if(!oldSche.getStartTime().equals(entity.getStartTime())) {
-					if(resultMessage.length() != 0) {
-						resultMessage += ", ";
+			if(oldSche != null) {
+				if(!oldSche.getUseYn().equals(entity.getUseYn())) {
+					if(entity.getUseYn().equals("N")) {
+						resultMessage = "백업이 비활성화 되었습니다.";
+					}else {
+						resultMessage = "백업이 활성화 되었습니다.";
 					}
-					resultMessage += "백업시간이 " + oldSche.getStartTime() + " 에서 " + entity.getStartTime() + "일 로";
-					
-				}
-				if(!resultMessage.isEmpty()) {
-					resultMessage += " 변경되었습니다.";
+				}else {
+					if(oldSche.getStorePeriod() != entity.getStorePeriod()) {
+						resultMessage = "보관기간이 " + oldSche.getStorePeriod() + "일 에서 " + entity.getStorePeriod() + "일 로";
+					}
+					if(!oldSche.getStartTime().equals(entity.getStartTime())) {
+						if(resultMessage.length() != 0) {
+							resultMessage += ", ";
+						}
+						resultMessage += "백업시간이 " + oldSche.getStartTime() + " 에서 " + entity.getStartTime() + "일 로";
+						
+					}
+					if(!resultMessage.isEmpty()) {
+						resultMessage += " 변경되었습니다.";
+					}
 				}
 			}
 			

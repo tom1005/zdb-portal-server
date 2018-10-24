@@ -163,7 +163,8 @@ public class ZDBBackupController {
 			
 		} finally {
 			event.setEndTime(new Date(System.currentTimeMillis()));
-			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+			if(!result.getMessage().isEmpty())
+				ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}	
 		return new ResponseEntity<String>(result.toJson(), result.status());
 	}
