@@ -124,7 +124,6 @@ public class ZDBBackupController {
 			event.setServiceName(scheduleEntity.getServiceName());
 			event.setOperation(RequestEvent.SET_BACKUP_SCHEDULE);
 			event.setUserId(userInfo.getUserName());
-			//event.setUserId(userInfo.getUserId());
 			
 			/*
 			1) verifyParameters
@@ -253,7 +252,7 @@ public class ZDBBackupController {
 			event.setNamespace(namespace);
 			event.setServiceName(backupEntity.getServiceName());
 			event.setOperation(RequestEvent.REQ_BACKUP);
-			event.setUserId(userInfo.getUserId());
+			event.setUserId(userInfo.getUserName());
 			
 			/*
 			1) verifyParameters
@@ -374,7 +373,7 @@ public class ZDBBackupController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.DELETE_BACKUP_DATA);
-			event.setUserId(userInfo.getUserId());
+			event.setUserId(userInfo.getUserName());
 			
 			/*
 			1) verifyParameters
@@ -441,7 +440,7 @@ public class ZDBBackupController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.RESTORE_BACKUP);
-			event.setUserId(userInfo.getUserId());
+			event.setUserId(userInfo.getUserName());
 			
 			/*
 			1) verifyParameters
