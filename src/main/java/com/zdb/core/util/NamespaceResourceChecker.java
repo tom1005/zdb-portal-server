@@ -87,34 +87,34 @@ public class NamespaceResourceChecker {
 			}
 			
 			ResourceQuota hard = resource.getHard();
-			Integer cpuLimits = hard.getCpuLimits();
-			CPUUnit cpuLimitsUnit = hard.getCpuLimitsUnit();
-			if(cpuLimitsUnit == CPUUnit.Core) {
-				cpuLimits = cpuLimits * 1000;
+			Integer cpuRequests = hard.getCpuRequests();
+			CPUUnit cpuRequestsUnit = hard.getCpuRequestsUnit();
+			if(cpuRequestsUnit == CPUUnit.Core) {
+				cpuRequests = cpuRequests * 1000;
 			}
 			
-			Integer memLimits = hard.getMemoryLimits();
-			MemoryUnit memRequestsUnit = hard.getMemoryLimitsUnit();
+			Integer memRequests = hard.getMemoryRequests();
+			MemoryUnit memRequestsUnit = hard.getMemoryRequestsUnit();
 			if(memRequestsUnit == MemoryUnit.Gi) {
-				memLimits = memLimits * 1000;
+				memRequests = memRequests * 1000;
 			}
 			
 			ResourceQuota used = resource.getUsed();
-			Integer usedCpuLimits = used.getCpuLimits();
-			CPUUnit usedCpuLimitsUnit = used.getCpuLimitsUnit();
-			if(usedCpuLimitsUnit == CPUUnit.Core) {
-				usedCpuLimits = usedCpuLimits * 1000;
+			Integer usedCpuRequests = used.getCpuRequests();
+			CPUUnit usedCpuRequestsUnit = used.getCpuRequestsUnit();
+			if(usedCpuRequestsUnit == CPUUnit.Core) {
+				usedCpuRequests = usedCpuRequests * 1000;
 			}
 			
-			Integer usedMemLimits = used.getMemoryLimits();
-			MemoryUnit usedMemRequestsUnit = used.getMemoryLimitsUnit();
+			Integer usedMemRequests = used.getMemoryRequests();
+			MemoryUnit usedMemRequestsUnit = used.getMemoryRequestsUnit();
 			
 			if(usedMemRequestsUnit == MemoryUnit.Gi) {
-				usedMemLimits = usedMemLimits * 1000;
+				usedMemRequests = usedMemRequests * 1000;
 			}
 			
-			int availableCpu = cpuLimits - usedCpuLimits;
-			int availableMemory = memLimits - usedMemLimits;
+			int availableCpu = cpuRequests - usedCpuRequests;
+			int availableMemory = memRequests - usedMemRequests;
 			
 			
 			
