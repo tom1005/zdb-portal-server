@@ -149,8 +149,10 @@ public class K8SUtil {
 
 		List<Pod> items = client.inNamespace(namespace).pods().list().getItems();
 		for (Pod pod : items) {
-			if (serviceName.equals(pod.getMetadata().getLabels().get("release"))) {
-				podList.add(pod);
+			if (pod.getMetadata().getLabels() != null) {
+				if (serviceName.equals(pod.getMetadata().getLabels().get("release"))) {
+					podList.add(pod);
+				}
 			}
 		}
 
@@ -162,8 +164,10 @@ public class K8SUtil {
 		
 		List<Pod> items = client.inNamespace(namespace).pods().list().getItems();
 		for (Pod pod : items) {
-			if (serviceName.equals(pod.getMetadata().getLabels().get("release")) & podName.equals(pod.getMetadata().getName())) {
-				return pod;
+			if (pod.getMetadata().getLabels() != null) {
+				if (serviceName.equals(pod.getMetadata().getLabels().get("release")) & podName.equals(pod.getMetadata().getName())) {
+					return pod;
+				}
 			}
 		}		
 		
