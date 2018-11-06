@@ -26,8 +26,8 @@ public class UpdateStatefullset {
 		
 		UpdateStatefullset sts = new UpdateStatefullset();
 
-		String namespace = "ns-zdb-02";
-		String stsName = "ns-zdb-02-uuu-mariadb-slave";//data-ns-zdb-02-0906-mariadb-slave-0
+		String namespace = "gdi-dwp-dev";
+		String stsName = "gdi-dwp-dev-db-mariadb-slave";//data-ns-zdb-02-0906-mariadb-slave-0
 		
 //		String namespace = "lawai-prod";
 //		String stsName = "lawai-prod-lawai-mariadb-slave";//data-ns-zdb-02-0906-mariadb-slave-0
@@ -40,7 +40,7 @@ public class UpdateStatefullset {
 		// 1. 기본 sts (data 볼륨 마운트)
 		 sts.chageMountData(namespace, stsName, pvcName);
 		
-		// 2. data : empty {}, data_org : pvc 마운트
+//		 2. data : empty {}, data_org : pvc 마운트
 //		 sts.chageMount_EmptyData_DataOrg(namespace, stsName, pvcName);
 		
 		// 3.data : data pvc, backup : backup pvc (추가)
