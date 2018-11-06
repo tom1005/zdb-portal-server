@@ -1,7 +1,7 @@
 FROM java:8
 ENV SPRING_ACTIVE_PROFILE prod
-ADD dist/zdb-portal-server-1.0.0.jar zdb-portal-server.jar
+ADD dist/zdb-portal-server-1.0.0.jar zdb-portal-server-1.0.2.jar
 VOLUME /tmp
 VOLUME /target
-RUN bash -c 'touch /zdb-portal-server.jar'
-ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-Dspring.profiles.active=${SPRING_ACTIVE_PROFILE}","-jar","/zdb-portal-server.jar"]
+RUN bash -c 'touch /zdb-portal-server-1.0.2.jar'
+ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-Dspring.profiles.active=${SPRING_ACTIVE_PROFILE}","-jar","/zdb-portal-server-1.0.2.jar"]
