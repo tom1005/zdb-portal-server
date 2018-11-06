@@ -2,12 +2,9 @@
 ## ref: https://hub.docker.com/r/bitnami/mariadb/tags/
 ##
 image:
-  tag: ${image.tag}
-
-image:
   registry: registry.au-syd.bluemix.net
   repository: cloudzdb/mariadb
-  tag: 10.2.14
+  tag: ${image.tag}
   pullPolicy: IfNotPresent
   pullSecrets:
     - zdb-system-secret
