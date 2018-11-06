@@ -77,6 +77,9 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 		RequestEvent event = getRequestEvent(exchange);
 		
 		try{ 
+			
+			chartUrl = "file:///Users/a06919/redis-3.6.5.tgz";
+			
 			// chart 정보 로딩
 			final URI uri = URI.create(chartUrl);
 			final URL url = uri.toURL();
@@ -101,9 +104,32 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 
 				Map<String, Object> values = new HashMap<String, Object>();
 
+//				image:
+//					  registry: docker.io
+//					  repository: bitnami/redis
+//					  tag: 4.0.9
+//					  ## Specify a imagePullPolicy
+//					  ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
+//					  ## ref: http://kubernetes.io/docs/user-guide/images/#pre-pulling-images
+//					  ##
+//					  pullPolicy: Always
+//					  ## Optionally specify an array of imagePullSecrets.
+//					  ## Secrets must be manually created in the namespace.
+//					  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+//					  ##
+//					  pullSecrets:
+//					    - myRegistrKeySecretName
+//				registry.au-syd.bluemix.net/cloudzdb/mysqld-exporter:v0.10.0
+				
 				// Set Redis Version
 				Map<String, Object> imageMap = new HashMap<String, Object>();
 				imageMap.put("tag", service.getVersion());
+				imageMap.put("registry", "registry.au-syd.bluemix.net");
+				imageMap.put("repository", "cloudzdb/redis");
+				
+				List<String> secretName = new ArrayList<>();
+				secretName.add("zdb-system-secret");
+				imageMap.put("pullSecrets", secretName);
 
 				// cluster: enabled: true
 				Map<String, Object> clusterMap = new HashMap<String, Object>();
@@ -198,7 +224,11 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 				metricsService.put("type"			, "ClusterIP");
 				metricsService.put("annotations"	, metricServiceAnnotations);						
 				
+//				metrics:
+//					  enabled: true
+//					  image: oliver006/redis_exporter
 				metrics.put("service", metricsService);
+				metrics.put("image", "cloudzdb/redis_exporter");
 				 
 				masterPodLabels.put("billingType"		, "hourly");
 

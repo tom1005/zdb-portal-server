@@ -3,6 +3,14 @@
 ##
 image:
   tag: ${image.tag}
+
+image:
+  registry: registry.au-syd.bluemix.net
+  repository: cloudzdb/mariadb
+  tag: 10.2.14
+  pullPolicy: IfNotPresent
+  pullSecrets:
+    - zdb-system-secret
   
 service:
   ## Kubernetes service type
@@ -309,8 +317,8 @@ slave:
 metrics:
   enabled: true
   image:
-    registry: docker.io
-    repository: prom/mysqld-exporter
+    registry: registry.au-syd.bluemix.net    
+    repository: cloudzdb/mysqld-exporter
     tag: v0.10.0
     pullPolicy: IfNotPresent
   resources:
