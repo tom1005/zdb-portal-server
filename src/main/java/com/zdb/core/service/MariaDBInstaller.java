@@ -94,7 +94,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 		
 		try{ 
 //			chartUrl = "file:///Users/a06919/git/charts/stable/mariadb/mariadb-4.2.0.tgz";
-			chartUrl = "file:///Users/a06919/mariadb-4.2.2.tgz";
+//			chartUrl = "file:///Users/a06919/mariadb-4.2.2.tgz";
 			/////////////////////////
 			// chart 정로 로딩
 			final URI uri = URI.create(chartUrl);
