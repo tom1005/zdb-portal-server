@@ -1523,63 +1523,65 @@ public class K8SService {
 			log.error("{} 는 지원하지 않는 서비스 타입입니다.",serviceType);
 		}
 		
-		PersistentVolumeClaimSpec pvcSpec = new PersistentVolumeClaimSpec();
-
-		ResourceRequirements rr = new ResourceRequirements();
-
-		Map<String, Quantity> req = new HashMap<String, Quantity>();
-		req.put("storage", new Quantity(storageSize));
-		rr.setRequests(req);
-		pvcSpec.setResources(rr);
-
-		List<String> access = new ArrayList<String>();
-		access.add("ReadWriteOnce");
-		pvcSpec.setAccessModes(access);
-
-		Map<String, String> annotations = new HashMap<>();
-		annotations.put("volume.beta.kubernetes.io/storage-class", storageClassName);
+		new CreatePersistentVolumeClaim().createPersistentVolumeClaim(namespace, storageSize, storageClassName, pvcName, labels);
 		
-		PersistentVolumeClaim pvcCreating = new PersistentVolumeClaimBuilder()
-				.withNewMetadata()
-				.withName(pvcName)
-				.withAnnotations(annotations)
-				.withLabels(labels)
-				.endMetadata()
-				.withSpec(pvcSpec)
-				.build();
-
-		
-		DefaultKubernetesClient kubernetesClient = K8SUtil.kubernetesClient();
-		PersistentVolumeClaim pvc = kubernetesClient.persistentVolumeClaims().inNamespace(namespace).create(pvcCreating);
-
-		final CountDownLatch latch = new CountDownLatch(1);
-		
-		final String _pvcName = pvcName;
-		
-		kubernetesClient.persistentVolumeClaims().inNamespace(namespace).watch(new Watcher<PersistentVolumeClaim>() {
-
-			@Override
-			public void eventReceived(Action action, PersistentVolumeClaim resource) {
-				String status = null;
-				if (resource instanceof PersistentVolumeClaim) {
-					PersistentVolumeClaim meta = (PersistentVolumeClaim) resource;
-					if(_pvcName.equals(meta.getMetadata().getName()))
-					status = meta.getStatus().getPhase();
-					if("Bound".equalsIgnoreCase(status)) {
-						System.out.println(_pvcName + " created.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-						latch.countDown();
-					}
-				}
-			}
-
-			@Override
-			public void onClose(KubernetesClientException cause) {
-				
-			}
-			
-		});
-		
-		latch.await();
+//		PersistentVolumeClaimSpec pvcSpec = new PersistentVolumeClaimSpec();
+//
+//		ResourceRequirements rr = new ResourceRequirements();
+//
+//		Map<String, Quantity> req = new HashMap<String, Quantity>();
+//		req.put("storage", new Quantity(storageSize));
+//		rr.setRequests(req);
+//		pvcSpec.setResources(rr);
+//
+//		List<String> access = new ArrayList<String>();
+//		access.add("ReadWriteOnce");
+//		pvcSpec.setAccessModes(access);
+//
+//		Map<String, String> annotations = new HashMap<>();
+//		annotations.put("volume.beta.kubernetes.io/storage-class", storageClassName);
+//		
+//		PersistentVolumeClaim pvcCreating = new PersistentVolumeClaimBuilder()
+//				.withNewMetadata()
+//				.withName(pvcName)
+//				.withAnnotations(annotations)
+//				.withLabels(labels)
+//				.endMetadata()
+//				.withSpec(pvcSpec)
+//				.build();
+//
+//		
+//		DefaultKubernetesClient kubernetesClient = K8SUtil.kubernetesClient();
+//		PersistentVolumeClaim pvc = kubernetesClient.persistentVolumeClaims().inNamespace(namespace).create(pvcCreating);
+//
+//		final CountDownLatch latch = new CountDownLatch(1);
+//		
+//		final String _pvcName = pvcName;
+//		
+//		kubernetesClient.persistentVolumeClaims().inNamespace(namespace).watch(new Watcher<PersistentVolumeClaim>() {
+//
+//			@Override
+//			public void eventReceived(Action action, PersistentVolumeClaim resource) {
+//				String status = null;
+//				if (resource instanceof PersistentVolumeClaim) {
+//					PersistentVolumeClaim meta = (PersistentVolumeClaim) resource;
+//					if(_pvcName.equals(meta.getMetadata().getName()))
+//					status = meta.getStatus().getPhase();
+//					if("Bound".equalsIgnoreCase(status)) {
+//						System.out.println(_pvcName + " created.!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+//						latch.countDown();
+//					}
+//				}
+//			}
+//
+//			@Override
+//			public void onClose(KubernetesClientException cause) {
+//				
+//			}
+//			
+//		});
+//		
+//		latch.await();
 		
 		return persistenceSpec;
 	}
