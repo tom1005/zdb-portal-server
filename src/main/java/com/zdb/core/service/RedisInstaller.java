@@ -121,6 +121,7 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 //					    - myRegistrKeySecretName
 //				registry.au-syd.bluemix.net/cloudzdb/mysqld-exporter:v0.10.0
 				
+				//TODO 환경변수 처리.
 				// Set Redis Version
 				Map<String, Object> imageMap = new HashMap<String, Object>();
 				imageMap.put("tag", service.getVersion());
@@ -228,7 +229,14 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 //					  enabled: true
 //					  image: oliver006/redis_exporter
 				metrics.put("service", metricsService);
-				metrics.put("image", "cloudzdb/redis_exporter");
+				
+				//TODO 환경변수 처리.
+				Map<String, Object> metricsImageMap = new HashMap<String, Object>();
+				metricsImageMap.put("tag", "v0.19.1");
+				metricsImageMap.put("registry", "registry.au-syd.bluemix.net");
+				metricsImageMap.put("repository", "cloudzdb/redis_exporter");
+				
+				metrics.put("image", metricsImageMap);
 				 
 				masterPodLabels.put("billingType"		, "hourly");
 
