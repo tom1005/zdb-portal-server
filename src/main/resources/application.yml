@@ -181,7 +181,7 @@ storage:
   storageType: AWS_S3
   accessKey: "${storage.accessKey}"
   secretKey: "${storage.secretKey}"
-  endpointUrl: "s3-api.us-geo.objectstorage.softlayer.net"
+  endpointUrl: "s3-api.us-geo.objectstorage.service.networklayer.com"
   apiKey: "na"
   serviceInstanceId: "na"
   location: "us"
