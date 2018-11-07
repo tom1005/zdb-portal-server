@@ -16,5 +16,5 @@ data:
   zdb.portal.server.url: http://api.jp-tok.containers.mybluemix.net
   zcp.access.token.url: https://keycloak.cloudzcp.io/auth/realms/zcp/protocol/openid-connect/token
   zcp.client.secret: 0227b024-6483-4e96-827b-3bc4dd73637e
-  zcp.redirect.url: http://zdb.cloudzcp.io/k8s-login
+  zcp.redirect.url: http://zdb.cloudzcp.io/login
   zcp.user.auth.url: https://keycloak.cloudzcp.io/auth/realms/zcp/protocol/openid-connect/auth  
