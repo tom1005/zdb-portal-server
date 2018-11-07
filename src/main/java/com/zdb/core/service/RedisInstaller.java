@@ -78,7 +78,7 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 		
 		try{ 
 			
-//			chartUrl = "file:///Users/a06919/redis-3.6.5.tgz";
+			chartUrl = "file:///Users/a06919/redis-3.6.5.tgz";
 			
 			// chart 정보 로딩
 			final URI uri = URI.create(chartUrl);
@@ -231,12 +231,7 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 				metrics.put("service", metricsService);
 				
 				//TODO 환경변수 처리.
-				Map<String, Object> metricsImageMap = new HashMap<String, Object>();
-				metricsImageMap.put("tag", "v0.19.1");
-				metricsImageMap.put("registry", "registry.au-syd.bluemix.net");
-				metricsImageMap.put("repository", "cloudzdb/redis_exporter");
-				
-				metrics.put("image", metricsImageMap);
+				metrics.put("image", "registry.au-syd.bluemix.net/cloudzdb/redis_exporter");
 				 
 				masterPodLabels.put("billingType"		, "hourly");
 
