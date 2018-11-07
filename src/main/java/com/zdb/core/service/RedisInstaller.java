@@ -78,7 +78,7 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 		
 		try{ 
 			
-			chartUrl = "file:///Users/a06919/redis-3.6.5.tgz";
+//			chartUrl = "file:///Users/a06919/redis-3.6.5.tgz";
 			
 			// chart 정보 로딩
 			final URI uri = URI.create(chartUrl);
