@@ -336,6 +336,7 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 				values.put("cluster" , clusterMap);
 				values.put("master", master);				
 				values.put("slave" , slave);				
+				values.put("metrics" , metrics);				
 				
 
 				String deployType = service.getDeployType() == null ? "NEW" : service.getDeployType().toUpperCase();
