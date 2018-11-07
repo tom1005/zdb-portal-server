@@ -74,10 +74,12 @@ import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.DoneablePod;
 import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.NodeList;
+import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.api.model.PersistentVolume;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodCondition;
+import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.DeploymentList;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
@@ -242,6 +244,28 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			exchange.setProperty(Exchange.CHART_URL, chartUrl);
 			exchange.setProperty(Exchange.META_REPOSITORY, zdbRepository);
 			exchange.setProperty(Exchange.OPERTAION, EventType.Install);
+			
+			// private docker repository 사용을 위해 namespace 마다 secret 생성 필요
+			try(DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
+				String namespace = service.getNamespace();
+				String secretName = "zdb-system-secret";
+				
+				Secret s = client.inNamespace(namespace).secrets().withName(secretName).get();
+				if(s == null) {
+					// namespace : "zdb-system" 에 환경 구성시 생성한 secret 을 복제한다.  
+					Secret secret = client.inNamespace("zdb-system").secrets().withName(secretName).get();
+					
+					ObjectMeta metadata = new ObjectMeta();
+					metadata.setNamespace(namespace);
+					metadata.setName(secretName);
+					secret.setMetadata(metadata);
+					
+					client.inNamespace(namespace).secrets().create(secret);
+					
+				}
+			} catch (Exception e) {
+				log.error(e.getMessage(), e);
+			}
 			
 			long s = System.currentTimeMillis();
 			// 서비스 명 중복 체크
