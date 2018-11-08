@@ -1,4 +1,4 @@
-package com.zdb.snippet;
+package com.zdb.core.job;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

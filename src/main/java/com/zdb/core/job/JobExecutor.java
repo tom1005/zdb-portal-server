@@ -1,4 +1,4 @@
-package com.zdb.snippet;
+package com.zdb.core.job;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -6,7 +6,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import com.zdb.snippet.Job.JobResult;
+import com.zdb.core.job.Job.JobResult;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -23,7 +23,7 @@ public class JobExecutor {
 		this.countDownLatch = latch;
 
 		if (taskQueue == null) {
-			taskQueue = new ArrayBlockingQueue<Job>(100);
+			taskQueue = new ArrayBlockingQueue<Job>(20);
 		}
 	}
 	
@@ -36,7 +36,7 @@ public class JobExecutor {
 		}
 	}
 	
-	public void putTask(Job[] jobs) {
+	public synchronized void execTask(Job[] jobs) {
 		setContinue(true);
 		
 		if(taskQueue != null) {
@@ -52,11 +52,6 @@ public class JobExecutor {
 	}
 	
 	private void exec() {
-		if( executorService != null) {
-//			executorService.shutdownNow();
-//			executorService = null;
-		}
-		
 		JobHandler.addListener(eventListener);
 		
 		executorService = Executors.newSingleThreadExecutor();

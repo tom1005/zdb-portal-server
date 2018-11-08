@@ -1,22 +1,12 @@
-package com.zdb.snippet;
+package com.zdb.core.job;
 
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import com.zdb.snippet.Job.JobResult;
+import com.zdb.core.job.Job.JobResult;
 
 public class JobHandler {
-	
-	enum JobKind {
-		CREATE_PVC,
-		CREATE_POD,
-		START_POD,
-		DATA_COPY,
-		SHUTDOWN_POD,
-		DELETE_PVC,
-		
-	}
 
 	static JobHandler instance;
 

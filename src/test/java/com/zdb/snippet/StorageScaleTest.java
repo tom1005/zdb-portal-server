@@ -2,7 +2,16 @@ package com.zdb.snippet;
 
 import java.util.concurrent.CountDownLatch;
 
-import com.zdb.snippet.Job.JobResult;
+import com.zdb.core.job.CreatePersistentVolumeClaimsJob;
+import com.zdb.core.job.DataCopyJob;
+import com.zdb.core.job.EventListener;
+import com.zdb.core.job.Job;
+import com.zdb.core.job.JobExecutor;
+import com.zdb.core.job.JobHandler;
+import com.zdb.core.job.JobParameter;
+import com.zdb.core.job.ShutdownServiceJob;
+import com.zdb.core.job.StartServiceJob;
+import com.zdb.core.job.Job.JobResult;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -64,7 +73,7 @@ public class StorageScaleTest {
 
 		JobHandler.addListener(eventListener);
 
-		storageScaleExecutor.putTask(jobs);
+		storageScaleExecutor.execTask(jobs);
 
 		try {
 			latch.await();

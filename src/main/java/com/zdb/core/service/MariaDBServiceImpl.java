@@ -15,6 +15,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 
 import org.apache.commons.io.IOUtils;
@@ -35,14 +36,24 @@ import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.Mycnf;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
+import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
+import com.zdb.core.domain.UserInfo;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBType;
+import com.zdb.core.job.EventListener;
+import com.zdb.core.job.Job;
+import com.zdb.core.job.JobExecutor;
+import com.zdb.core.job.JobHandler;
+import com.zdb.core.job.JobParameter;
+import com.zdb.core.job.ResourceScaleJob;
+import com.zdb.core.job.Job.JobResult;
 import com.zdb.core.repository.MycnfRepository;
 import com.zdb.core.repository.ZDBMariaDBAccountRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
+import com.zdb.core.repository.ZDBRepositoryUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.ZDBLogViewer;
 import com.zdb.mariadb.MariaDBAccount;
@@ -143,17 +154,9 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	public Result updateScale(String txId, final ZDBEntity service) throws Exception {
 		Result result = new Result(txId);
 
-		ReleaseManager releaseManager = null;
 		String historyValue = "";
 		
 		try {
-			final URI uri = URI.create(chartUrl);
-			final URL url = uri.toURL();
-			Chart.Builder chart = null;
-			try (final URLChartLoader chartLoader = new URLChartLoader()) {
-				chart = chartLoader.load(url);
-			}
-
 			// 서비스 명 체크
 			ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(service.getServiceName());
 			if( releaseMetaData == null) {
@@ -180,8 +183,138 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				return new Result(txId, IResult.ERROR, "가용 리소스가 부족합니다.");
 			}
 
-			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
+			// 2018-10-04 추가
+			// 환경설정 변경 이력 
+			historyValue = compareResources(service.getNamespace(), service.getServiceName(), service);
+			
+//			inputJson = inputJson.replace("${master.resources.requests.cpu}", masterCpu);// input , *******   필수값  
+//			inputJson = inputJson.replace("${master.resources.requests.memory}", masterMemory);// input *******   필수값 
+//			inputJson = inputJson.replace("${slave.resources.requests.cpu}", slaveCpu);// input*******   필수값 
+//			inputJson = inputJson.replace("${slave.resources.requests.memory}", slaveMemory);// input *******   필수값 
+//			inputJson = inputJson.replace("${master.resources.limits.cpu}", masterCpu);// input , *******   필수값  
+//			inputJson = inputJson.replace("${master.resources.limits.memory}", masterMemory);// input *******   필수값 
+//			inputJson = inputJson.replace("${slave.resources.limits.cpu}", slaveCpu);// input*******   필수값 
+//			inputJson = inputJson.replace("${slave.resources.limits.memory}", slaveMemory);// input *******   필수값 
 
+			log.info(service.getServiceName() + " update start.");
+
+			JobParameter param = new JobParameter();
+			param.setNamespace(service.getNamespace());
+			param.setServiceType(service.getServiceType());
+			param.setServiceName(service.getServiceName());
+			param.setCpu(masterCpu+"m");
+			param.setMemory(masterMemory+"Mi");
+
+			ResourceScaleJob job1 = new ResourceScaleJob(param);
+
+			Job[] jobs = new Job[] { job1 };
+
+			CountDownLatch latch = new CountDownLatch(jobs.length);
+
+			JobExecutor storageScaleExecutor = new JobExecutor(latch);
+			
+			final String _historyValue = historyValue;
+			
+			EventListener eventListener = new EventListener() {
+
+				@Override
+				public void onEvent(Job job, String event) {
+					log.info(job.getJobName() + "  onEvent - " + event);
+				}
+
+				@Override
+				public void status(Job job, String status) {
+					log.info(job.getJobName() + " : " + status);
+				}
+
+				@Override
+				public void done(Job job, JobResult code, Throwable e) {
+					RequestEvent event = new RequestEvent();
+					
+					event.setTxId(txId);
+					event.setStartTime(new Date(System.currentTimeMillis()));
+					event.setServiceType(service.getServiceType());
+					event.setNamespace(service.getNamespace());
+					event.setServiceName(service.getServiceName());
+					event.setOperation(RequestEvent.SCALE_UP);
+					event.setUserId("SYSTEM");	
+					if(code == JobResult.ERROR) {
+						event.setStatus(IResult.ERROR);
+						event.setResultMessage("처리 중 오류가 발생했습니다. (" + e.getMessage() +")");
+					} else {
+						event.setStatus(IResult.OK);
+						event.setResultMessage("정상 처리되었습니다.");
+					}
+					event.setHistory(_historyValue);
+					event.setEndTime(new Date(System.currentTimeMillis()));
+					ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+				}
+
+			};
+			JobHandler.addListener(eventListener);
+
+			storageScaleExecutor.execTask(jobs);
+			log.info(service.getServiceName() + " update success!");
+			result = new Result(txId, IResult.RUNNING, historyValue);
+		} catch (FileNotFoundException | KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result(txId, Result.UNAUTHORIZED, "Unauthorized", null);
+			} else {
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return Result.RESULT_FAIL(txId, e);
+		} finally {
+		}
+		
+		return result;
+	}
+	
+	public Result updateScale_bak(String txId, final ZDBEntity service) throws Exception {
+		Result result = new Result(txId);
+		
+		ReleaseManager releaseManager = null;
+		String historyValue = "";
+		
+		try {
+			final URI uri = URI.create(chartUrl);
+			final URL url = uri.toURL();
+			Chart.Builder chart = null;
+			try (final URLChartLoader chartLoader = new URLChartLoader()) {
+				chart = chartLoader.load(url);
+			}
+			
+			// 서비스 명 체크
+			ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(service.getServiceName());
+			if( releaseMetaData == null) {
+				String msg = "서비스가 존재하지 않습니다.";
+				return new Result(txId, IResult.ERROR, msg);
+			}
+			
+			PodSpec[] podSpec = service.getPodSpec();
+			
+			ResourceSpec masterSpec = podSpec[0].getResourceSpec()[0];
+			String masterCpu = masterSpec.getCpu();
+			String masterMemory = masterSpec.getMemory();
+			
+			ResourceSpec slaveSpec = podSpec[1].getResourceSpec()[0];
+			String slaveCpu = slaveSpec.getCpu();
+			String slaveMemory = slaveSpec.getMemory();
+			
+			// 가용 리소스 체크
+			// 현재보다 작으면ok
+			// 현재보다 크면 커진 사이즈 만큼 가용량 체크 
+			boolean availableResource = isAvailableScaleUp(service);
+			
+			if(!availableResource) {
+				return new Result(txId, IResult.ERROR, "가용 리소스가 부족합니다.");
+			}
+			
+			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
+			
 			final Tiller tiller = new Tiller(client);
 			releaseManager = new ReleaseManager(tiller);
 			
@@ -191,9 +324,9 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			requestBuilder.setWait(false);
 			
 			requestBuilder.setReuseValues(true);
-
+			
 			hapi.chart.ConfigOuterClass.Config.Builder valuesBuilder = requestBuilder.getValuesBuilder();
-
+			
 			InputStream is = new ClassPathResource("mariadb/update_values.template").getInputStream();
 			
 			String inputJson = IOUtils.toString(is, StandardCharsets.UTF_8.name());
@@ -212,9 +345,9 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			inputJson = inputJson.replace("${slave.resources.limits.memory}", slaveMemory);// input *******   필수값 
 			
 			valuesBuilder.setRaw(inputJson);
-
+			
 			log.info(service.getServiceName() + " update start.");
-
+			
 			final Future<UpdateReleaseResponse> releaseFuture = releaseManager.update(requestBuilder, chart);
 			final Release release = releaseFuture.get().getRelease();
 			
@@ -237,17 +370,17 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				releaseMeta.setNotes(release.getInfo().getStatus().getNotes());
 				releaseMeta.setManifest(release.getManifest());
 				releaseMeta.setUpdateTime(new Date(System.currentTimeMillis()));
-
+				
 				log.info(new Gson().toJson(releaseMeta));
 				
 				releaseRepository.save(releaseMeta);
 			}
-
+			
 			log.info(service.getServiceName() + " update success!");
 			result = new Result(txId, IResult.RUNNING, historyValue).putValue(IResult.UPDATE, release);
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
-
+			
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
 				return new Result(txId, Result.UNAUTHORIZED, "Unauthorized", null);
 			} else {
@@ -265,7 +398,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				}
 			}
 		}
-
+		
 		return result;
 	}
 

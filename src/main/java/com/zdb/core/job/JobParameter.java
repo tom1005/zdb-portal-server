@@ -1,4 +1,4 @@
-package com.zdb.snippet;
+package com.zdb.core.job;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -19,4 +19,6 @@ public class JobParameter {
 	String statefulsetName;
 	String sourcePvc;
 	String targetPvc;
+	String cpu;
+	String memory;
 }

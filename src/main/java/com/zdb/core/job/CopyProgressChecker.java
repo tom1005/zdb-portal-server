@@ -1,4 +1,4 @@
-package com.zdb.snippet;
+package com.zdb.core.job;
 
 import java.util.Map;
 import java.util.TreeMap;
@@ -21,7 +21,7 @@ import io.fabric8.kubernetes.client.utils.BlockingInputStreamPumper;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class CopyProgressChcker {
+public class CopyProgressChecker {
 
 	public Map<String, DiskUsage> getDiskInfo(DefaultKubernetesClient c, String namespace, String podName) {
 
@@ -96,7 +96,7 @@ public class CopyProgressChcker {
 			// List<DiskUsage> diskUsage = DiskUsageChecker.getInstance().getAllDiskUsage();
 			DefaultKubernetesClient kubernetesClient = K8SUtil.kubernetesClient();
 
-			Map<String, DiskUsage> diskInfo = new CopyProgressChcker().getDiskInfo(kubernetesClient, "zdb-test2", "data-copy-pod");
+			Map<String, DiskUsage> diskInfo = new CopyProgressChecker().getDiskInfo(kubernetesClient, "zdb-test2", "data-copy-pod");
 
 			if (diskInfo.containsKey("/data1") && diskInfo.containsKey("/data2")) {
 				DiskUsage data1 = diskInfo.get("/data1");

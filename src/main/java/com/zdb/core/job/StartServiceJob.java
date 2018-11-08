@@ -1,4 +1,4 @@
-package com.zdb.snippet;
+package com.zdb.core.job;
 
 import java.util.Iterator;
 import java.util.List;
@@ -6,7 +6,6 @@ import java.util.concurrent.CountDownLatch;
 
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.PodManager;
-import com.zdb.snippet.JobHandler.JobKind;
 
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaimVolumeSource;

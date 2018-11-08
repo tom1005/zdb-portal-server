@@ -1,9 +1,8 @@
-package com.zdb.snippet;
+package com.zdb.core.job;
 
 import java.util.concurrent.CountDownLatch;
 
 import com.zdb.core.util.K8SUtil;
-import com.zdb.snippet.JobHandler.JobKind;
 
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.extensions.DoneableStatefulSet;

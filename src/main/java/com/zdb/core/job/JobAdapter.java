@@ -1,4 +1,4 @@
-package com.zdb.snippet;
+package com.zdb.core.job;
 
 import lombok.extern.slf4j.Slf4j;
 

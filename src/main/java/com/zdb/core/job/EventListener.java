@@ -1,6 +1,6 @@
-package com.zdb.snippet;
+package com.zdb.core.job;
 
-import com.zdb.snippet.Job.JobResult;
+import com.zdb.core.job.Job.JobResult;
 
 public interface EventListener {
 	public void onEvent(Job job, String event);

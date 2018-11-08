@@ -1,4 +1,4 @@
-package com.zdb.snippet;
+package com.zdb.core.job;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -6,7 +6,6 @@ import java.util.concurrent.CountDownLatch;
 
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.PodManager;
-import com.zdb.snippet.JobHandler.JobKind;
 
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.DoneablePod;
@@ -187,7 +186,7 @@ public class DataCopyJob extends JobAdapter {
 							}
 							
 							DefaultKubernetesClient kubernetesClient = K8SUtil.kubernetesClient();
-							Map<String, DiskUsage> diskInfo = new CopyProgressChcker().getDiskInfo(kubernetesClient, param.getNamespace(), copyPodName);
+							Map<String, DiskUsage> diskInfo = new CopyProgressChecker().getDiskInfo(kubernetesClient, param.getNamespace(), copyPodName);
 
 							if (diskInfo.containsKey("/data1") && diskInfo.containsKey("/data2")) {
 								DiskUsage data1 = diskInfo.get("/data1");

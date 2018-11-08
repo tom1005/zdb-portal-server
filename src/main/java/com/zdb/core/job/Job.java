@@ -1,6 +1,4 @@
-package com.zdb.snippet;
-
-import com.zdb.snippet.JobHandler.JobKind;
+package com.zdb.core.job;
 
 public interface Job {
 
