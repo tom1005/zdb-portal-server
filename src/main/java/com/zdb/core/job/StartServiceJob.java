@@ -99,7 +99,7 @@ public class StartServiceJob extends JobAdapter {
 					.build();
 			
 			statefulSets.withName(statefulSet.getMetadata().getName()).delete();
-			statefulSets.createOrReplace(newSts);
+//			statefulSets.createOrReplace(newSts);
 			
 			final CountDownLatch latch = new CountDownLatch(1);
 			
@@ -139,7 +139,7 @@ public class StartServiceJob extends JobAdapter {
 			latch.await();
 			watch.close();
 			
-			done(JobResult.OK, stsName + " ", null);
+			done(JobResult.OK, stsName + " 스토리지 (" + targetPvc+ ") 마운트 및 서비스 시작 완료", null);
 			
 		} catch (Exception e) {
 			done(JobResult.ERROR, "", e);

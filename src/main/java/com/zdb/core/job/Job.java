@@ -1,6 +1,6 @@
 package com.zdb.core.job;
 
-public interface Job {
+public interface Job extends Runnable{
 
 	enum JobResult {
 		OK, RUNNING, ERROR
@@ -8,9 +8,11 @@ public interface Job {
 
 	public String getJobName();
 
+	public JobParameter getJobParameter();
+	
 	public JobKind getKind();
 
-	public void done(JobResult code, Object obj, Throwable e);
+	public void done(JobResult code, String message, Throwable e);
 
 	public void run();
 

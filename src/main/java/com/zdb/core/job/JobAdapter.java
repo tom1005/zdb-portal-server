@@ -12,8 +12,12 @@ public abstract class JobAdapter implements Job {
 	public JobAdapter(JobParameter param) {
 		this.param = param;
 	}
+	
+	public JobParameter getJobParameter() {
+		return param;
+	}
 
-	public void done(JobResult result, Object message, Throwable e) {
+	public void done(JobResult result, String message, Throwable e) {
 		setStatus(result);
 		
 		if (result == JobResult.OK) {
@@ -24,7 +28,7 @@ public abstract class JobAdapter implements Job {
 			log.error(getJobName() + " error.", e);
 		}
 		
-		JobHandler.getInstance().onDone(this, result, e);
+		JobHandler.getInstance().onDone(this, result, message, e);
 	}
 
 	public void progress(String status) {

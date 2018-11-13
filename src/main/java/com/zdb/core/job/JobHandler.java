@@ -45,10 +45,10 @@ public class JobHandler {
 		}
 	}
 
-	public synchronized void onDone(Job job, JobResult code, Throwable e) {
+	public synchronized void onDone(Job job, JobResult code, String message, Throwable e) {
 		for (Iterator<EventListener> iterator = listeners.iterator(); iterator.hasNext();) {
 			EventListener eventListener = iterator.next();
-			eventListener.done(job, code, e);
+			eventListener.done(job, code, message, e);
 		}
 	}
 	

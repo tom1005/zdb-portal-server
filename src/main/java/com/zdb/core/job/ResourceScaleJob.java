@@ -116,7 +116,7 @@ public class ResourceScaleJob extends JobAdapter {
 			stsWatch.close();
 			podWatch.close();
 			
-			done(JobResult.OK, releaseName +"'s scale up/down", null);
+			done(JobResult.OK, "리소스 설정 변경 완료 (" + releaseName +")", null);
 			
 		} catch (Exception e) {
 			done(JobResult.ERROR, "", e);

@@ -63,7 +63,7 @@ public class ShutdownServiceJob extends JobAdapter {
 							String stsRelease = statefulSet.getMetadata().getLabels().get("release");
 							
 							if(podName.startsWith(stsName) && stsRelease.equals(podRelease)) {
-								progress(podName + " " + action);
+								progress(podName + " | " + action);
 								latch.countDown();
 							}
 						}
@@ -85,7 +85,7 @@ public class ShutdownServiceJob extends JobAdapter {
 			latch.await();
 			watch.close();
 			
-			done(JobResult.OK, stsName +"'s replicas : 0", null);
+			done(JobResult.OK, "서비스를 종료 합니다. (" + stsName +")", null);
 			
 		} catch (Exception e) {
 			done(JobResult.ERROR, "", e);

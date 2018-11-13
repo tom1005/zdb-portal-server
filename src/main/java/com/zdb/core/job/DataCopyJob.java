@@ -26,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class DataCopyJob extends JobAdapter {
-	String cpName  = "cp-job";
+	public static String CP_NAME  = "cp-job";
 	String copyPodName = null;
 	public DataCopyJob(JobParameter param) { 
 		super(param);
@@ -50,7 +50,7 @@ public class DataCopyJob extends JobAdapter {
 		String stsName = param.getStatefulsetName();
 		String sourcePvc = param.getSourcePvc();
 		String targetPvc = param.getTargetPvc();
-		copyPodName = cpName + "-" + stsName;
+		copyPodName = CP_NAME + "-" + stsName;
 
 		try (DefaultKubernetesClient kubernetesClient = K8SUtil.kubernetesClient();) {
 
@@ -118,7 +118,7 @@ public class DataCopyJob extends JobAdapter {
 							progress(copyPodName + " - " + action + " | Status : " + resource.getStatus().getPhase());
 							
 							if (Action.DELETED == action) {
-								progress("Data Copy Pod 삭제 완료. [" + resource.getMetadata().getName() + "]");
+								progress("데이터 복사 Pod 삭제 완료. [" + resource.getMetadata().getName() + "]");
 							} else if (Action.MODIFIED == action) {
 								boolean isReady = PodManager.isReady(resource);
 								if ("Succeeded".equals(resource.getStatus().getPhase())) {
@@ -128,7 +128,7 @@ public class DataCopyJob extends JobAdapter {
 								if (isReady) {
 									latch.countDown();
 
-									progress("Data Copy Pod 생성 완료");
+									progress("데이터 복사 Pod 생성 완료 (" + resource.getMetadata().getName() +")");
 									setStatus(JobResult.RUNNING);
 									
 									copyProgress();
@@ -155,6 +155,7 @@ public class DataCopyJob extends JobAdapter {
 			
 			existPod = pods.withName(copyPodName).get();
 			if (existPod != null) {
+				log.debug(copyPodName +" delete");
 				pods.delete(existPod);
 				
 				Thread.sleep(2000);
@@ -162,7 +163,7 @@ public class DataCopyJob extends JobAdapter {
 			
 			watch.close();
 
-			done(JobResult.OK, sourcePvc +" to "+ targetPvc + " 복사 완료.", null);
+			done(JobResult.OK, "데이터 복사 완료 (" + sourcePvc +" to "+ targetPvc + ")", null);
 		} catch (Exception e) {
 			e.printStackTrace();
 			done(JobResult.ERROR, e.getMessage(), e);
@@ -188,7 +189,7 @@ public class DataCopyJob extends JobAdapter {
 							DefaultKubernetesClient kubernetesClient = K8SUtil.kubernetesClient();
 							Map<String, DiskUsage> diskInfo = new CopyProgressChecker().getDiskInfo(kubernetesClient, param.getNamespace(), copyPodName);
 
-							if (diskInfo.containsKey("/data1") && diskInfo.containsKey("/data2")) {
+							if (diskInfo != null && diskInfo.containsKey("/data1") && diskInfo.containsKey("/data2")) {
 								DiskUsage data1 = diskInfo.get("/data1");
 								double used1 = data1.getUsed();
 								DiskUsage data2 = diskInfo.get("/data2");
@@ -200,13 +201,13 @@ public class DataCopyJob extends JobAdapter {
 								
 								progress(msg);
 								
-								if (percent > 99.5) {
+								if (percent > 99.9) {
 									break;
 								}
 
 							}
 						} catch (Exception e) {
-							e.printStackTrace();
+							log.error(e.getMessage(), e);
 							break;
 						} 
 					}
@@ -214,13 +215,4 @@ public class DataCopyJob extends JobAdapter {
 			}).start();
 		}
 	}
-	
-	
-	
-	
-	public static void main(String[] args) {
-//		DataCopyJob job = new DataCopyJob("zdb-test2", "data-zdb-test2-ns-mariadb-0", "data-zdb-test2-ns-mariadb-1");
-//		job.run();
-	}
-
 }

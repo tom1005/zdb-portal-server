@@ -204,4 +204,8 @@ public interface ZDBRestService {
 	Result updateZDBConfig(ZDBConfig zdbconfig);
 
 	Result deleteZDBConfig(ZDBConfig zdbConfig);
+
+	Result updateStorageScale(String txId, String namespace, String serviceType, String serviceName, String pvcSize) throws Exception;
+	
+//	Result serviceTakeOver(String txId, String namespace, String serviceType, String releaseName) throws Exception;
 }

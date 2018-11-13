@@ -8,6 +8,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import com.zdb.core.util.K8SUtil;
+import com.zdb.core.util.PodManager;
 
 import io.fabric8.kubernetes.api.model.DoneablePod;
 import io.fabric8.kubernetes.api.model.Pod;
@@ -38,6 +39,13 @@ public class CopyProgressChecker {
 		final String cmd = "df -P | grep /data | awk '{print  $2 \" \" $3 \" \"$4 \" \" $5 \" \" $6  }'\n";
 
 		ExecutorService executorService = Executors.newSingleThreadExecutor();
+		
+		Pod pod = c.pods().inNamespace(namespace).withName(podName).get();
+		if(!PodManager.isReady(pod)) {
+			log.error(podName + " status notReady");
+			return null;
+		}
+		
 		try (KubernetesClient client = c;
 				ExecWatch watch = client.pods().inNamespace(namespace).withName(podName).redirectingInput().redirectingOutput().redirectingError().exec();
 
@@ -81,7 +89,7 @@ public class CopyProgressChecker {
 
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			throw KubernetesClientException.launderThrowable(e);
+//			throw KubernetesClientException.launderThrowable(e);
 		} finally {
 			executorService.shutdownNow();
 		}

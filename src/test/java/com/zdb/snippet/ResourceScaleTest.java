@@ -1,14 +1,16 @@
-package com.zdb.scaleup.snippet;
+package com.zdb.snippet;
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import com.zdb.core.job.EventListener;
 import com.zdb.core.job.Job;
+import com.zdb.core.job.Job.JobResult;
 import com.zdb.core.job.JobExecutor;
 import com.zdb.core.job.JobHandler;
 import com.zdb.core.job.JobParameter;
 import com.zdb.core.job.ResourceScaleJob;
-import com.zdb.core.job.Job.JobResult;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -26,6 +28,12 @@ public class ResourceScaleTest {
 //		String podName = "zdb-test2-ns-mariadb-0";
 //		String size = "40Gi";
 //		String statefulsetName = "zdb-test2-ns-mariadb";
+		
+		ExecutorService executorService1 = Executors.newSingleThreadExecutor();
+		
+		ExecutorService executorService2 = Executors.newSingleThreadExecutor();
+		
+		System.out.println();
 
 		JobParameter param = new JobParameter();
 		param.setNamespace(namespace);
@@ -59,7 +67,7 @@ public class ResourceScaleTest {
 			}
 
 			@Override
-			public void done(Job job, JobResult code, Throwable e) {
+			public void done(Job job, JobResult code, String message, Throwable e) {
 				//log.info(job.getJobName() + " complete. [" + code + "]");
 			}
 

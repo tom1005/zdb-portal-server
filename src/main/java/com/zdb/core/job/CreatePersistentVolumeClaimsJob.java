@@ -197,6 +197,7 @@ public class CreatePersistentVolumeClaimsJob extends JobAdapter {
 
 						if (Action.MODIFIED == action) {
 							if ("Bound".equalsIgnoreCase(status)) {
+								log.debug(getJobName() + " / "+ _pvcName + " / "+ status);
 								latch.countDown();
 							}
 						}
@@ -217,7 +218,7 @@ public class CreatePersistentVolumeClaimsJob extends JobAdapter {
 			latch.await();
 			watch.close();
 
-			done(JobResult.OK, _pvcName, null);
+			done(JobResult.OK, "스토리지 생성 완료 ("+ _pvcName + ")", null);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			done(JobResult.ERROR, param.getTargetPvc(), e);

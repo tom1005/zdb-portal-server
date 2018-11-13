@@ -31,6 +31,7 @@ public class RequestEvent {
 	public static final String CREATE_TAG = "태그 추가";
 	public static final String DELETE_TAG = "태그 삭제";
 	public static final String SCALE_UP = "스케일 업";
+	public static final String STORAGE_SCALE_UP = "스토리지 스케일 업";
 	public static final String SCALE_OUT = "스케일 아웃";
 	public static final String UPDATE_CONFIG = "환경설정 변경";
 	public static final String MODIFY_PASSWORD = "비빌번호 변경";

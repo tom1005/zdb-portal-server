@@ -9,6 +9,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -39,17 +40,22 @@ import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
-import com.zdb.core.domain.UserInfo;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBType;
+import com.zdb.core.job.CreatePersistentVolumeClaimsJob;
+import com.zdb.core.job.DataCopyJob;
 import com.zdb.core.job.EventListener;
 import com.zdb.core.job.Job;
+import com.zdb.core.job.Job.JobResult;
 import com.zdb.core.job.JobExecutor;
 import com.zdb.core.job.JobHandler;
 import com.zdb.core.job.JobParameter;
+import com.zdb.core.job.RecoveryStatefulsetJob;
 import com.zdb.core.job.ResourceScaleJob;
-import com.zdb.core.job.Job.JobResult;
+import com.zdb.core.job.ShutdownServiceJob;
+import com.zdb.core.job.StartServiceJob;
+import com.zdb.core.repository.DiskUsageRepository;
 import com.zdb.core.repository.MycnfRepository;
 import com.zdb.core.repository.ZDBMariaDBAccountRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
@@ -64,12 +70,18 @@ import hapi.release.ReleaseOuterClass.Release;
 import hapi.services.tiller.Tiller.UpdateReleaseRequest;
 import hapi.services.tiller.Tiller.UpdateReleaseResponse;
 import io.fabric8.kubernetes.api.model.ConfigMap;
+import io.fabric8.kubernetes.api.model.DoneablePod;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
+import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.kubernetes.api.model.Quantity;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.ServicePort;
+import io.fabric8.kubernetes.api.model.Volume;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
+import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.dsl.PodResource;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -96,6 +108,9 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	
 	@Autowired
 	private ZDBReleaseRepository releaseRepository;
+
+	@Autowired
+	private DiskUsageRepository diskUsageRepository;
 	
 	@Autowired
 	private MycnfRepository configRepository;
@@ -187,15 +202,6 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			// 환경설정 변경 이력 
 			historyValue = compareResources(service.getNamespace(), service.getServiceName(), service);
 			
-//			inputJson = inputJson.replace("${master.resources.requests.cpu}", masterCpu);// input , *******   필수값  
-//			inputJson = inputJson.replace("${master.resources.requests.memory}", masterMemory);// input *******   필수값 
-//			inputJson = inputJson.replace("${slave.resources.requests.cpu}", slaveCpu);// input*******   필수값 
-//			inputJson = inputJson.replace("${slave.resources.requests.memory}", slaveMemory);// input *******   필수값 
-//			inputJson = inputJson.replace("${master.resources.limits.cpu}", masterCpu);// input , *******   필수값  
-//			inputJson = inputJson.replace("${master.resources.limits.memory}", masterMemory);// input *******   필수값 
-//			inputJson = inputJson.replace("${slave.resources.limits.cpu}", slaveCpu);// input*******   필수값 
-//			inputJson = inputJson.replace("${slave.resources.limits.memory}", slaveMemory);// input *******   필수값 
-
 			log.info(service.getServiceName() + " update start.");
 
 			JobParameter param = new JobParameter();
@@ -228,7 +234,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				}
 
 				@Override
-				public void done(Job job, JobResult code, Throwable e) {
+				public void done(Job job, JobResult code, String message, Throwable e) {
 					RequestEvent event = new RequestEvent();
 					
 					event.setTxId(txId);
@@ -240,10 +246,14 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 					event.setUserId("SYSTEM");	
 					if(code == JobResult.ERROR) {
 						event.setStatus(IResult.ERROR);
-						event.setResultMessage("처리 중 오류가 발생했습니다. (" + e.getMessage() +")");
+						event.setResultMessage(job.getJobName() + " 처리 중 오류가 발생했습니다. (" + e.getMessage() +")");
 					} else {
 						event.setStatus(IResult.OK);
-						event.setResultMessage("정상 처리되었습니다.");
+						if(message.isEmpty()) {
+							event.setResultMessage(job.getJobName() + " 정상 처리되었습니다.");
+						} else {
+							event.setResultMessage(message);
+						}
 					}
 					event.setHistory(_historyValue);
 					event.setEndTime(new Date(System.currentTimeMillis()));
@@ -1017,5 +1027,364 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		return sb.toString();
 	}
 	
+	public Result updateStorageScale(String txId, String namespace, String serviceType, String serviceName, String pvcSize) throws Exception {
 
+		Result result = new Result(txId);
+
+		String historyValue = "";
+		
+		try {
+			// 서비스 명 체크
+			ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(serviceName);
+			if( releaseMetaData == null) {
+				String msg = "서비스가 존재하지 않습니다.";
+				return new Result(txId, IResult.ERROR, msg);
+			}
+
+			String accessMode = "ReadWriteOnce";
+			String billingType = "hourly";
+			String storageClass = "ibmc-block-silver";
+
+			String statefulsetName = "";
+
+			Pod pod = k8sService.getPod(namespace, serviceName, "master");
+			
+			if(pod != null) {
+				List<Volume> volumes = pod.getSpec().getVolumes();
+				try {
+					for (Volume volume : volumes) {
+						if("data".equals(volume.getName())) {
+							String claimName = volume.getPersistentVolumeClaim().getClaimName();
+							PersistentVolumeClaim persistentVolumeClaim = K8SUtil.kubernetesClient().inNamespace(namespace).persistentVolumeClaims().withName(claimName).get();
+							storageClass = persistentVolumeClaim.getSpec().getStorageClassName();
+							Quantity quantity = persistentVolumeClaim.getSpec().getResources().getRequests().get("storage");
+							String amount = quantity.getAmount();
+							
+							
+							// 스토리지 사이즈 변경 이력 
+							historyValue = String.format("스토리지 스케일업 : %s -> %s", amount, pvcSize);
+							break;
+						}
+					}
+				} catch (Exception e) {
+					log.error(e.getMessage(), e);
+				}
+			} else {
+				
+			}
+			
+			log.info(serviceName + " update start.");
+			
+			List<Pod> pods = k8sService.getPods(namespace, serviceName);
+			if (pods.size() > 1) {
+				Descending descending = new Descending();
+				Collections.sort(pods, descending);
+			}
+			
+			List<StatefulSet> statefulSets = k8sService.getStatefulSets(namespace, serviceName);
+
+			List<Job> jobList = new ArrayList<>();
+			for (Pod p : pods) {
+				
+				for (StatefulSet sts : statefulSets) {
+					statefulsetName = sts.getMetadata().getName();
+					if(p.getMetadata().getName().startsWith(statefulsetName)) {
+						break;
+					}
+				}
+				
+				if(statefulsetName == null || statefulsetName.isEmpty()) {
+					log.error(p.getMetadata().getName() + " 매칭되는 StatefulSet이 존재하지 않습니다.");
+					break;
+				}
+				
+				JobParameter param = new JobParameter();
+				param.setNamespace(namespace);
+				param.setPodName(p.getMetadata().getName());
+				param.setServiceType(serviceType);
+				param.setServiceName(serviceName);
+				param.setAccessMode(accessMode == null ? "ReadWriteOnce" : accessMode);
+				param.setBillingType(billingType == null ? "hourly" : billingType);
+				param.setSize(pvcSize);
+				param.setStorageClass(storageClass == null ? "ibmc-block-silver" : storageClass);
+				param.setStatefulsetName(statefulsetName);
+
+				CreatePersistentVolumeClaimsJob job1 = new CreatePersistentVolumeClaimsJob(param);
+				ShutdownServiceJob              job2 = new ShutdownServiceJob(param);
+				DataCopyJob                     job3 = new DataCopyJob(param);
+				StartServiceJob                 job4 = new StartServiceJob(param);
+				
+				jobList.add(job1);
+				jobList.add(job2);
+				jobList.add(job3);
+				jobList.add(job4);
+
+			}
+			
+			if (jobList.size() > 0) {
+				CountDownLatch latch = new CountDownLatch(jobList.size());
+
+				JobExecutor storageScaleExecutor = new JobExecutor(latch);
+
+				final String _historyValue = historyValue;
+
+				EventListener eventListener = new EventListener() {
+
+					@Override
+					public void onEvent(Job job, String event) {
+						log.info(job.getJobName() + "  onEvent - " + event);
+					}
+
+					@Override
+					public void status(Job job, String status) {
+						//log.info(job.getJobName() + " : " + status);
+					}
+
+					@Override
+					public void done(Job job, JobResult code, String message, Throwable e) {
+						RequestEvent event = new RequestEvent();
+
+						event.setTxId(txId);
+						event.setStartTime(new Date(System.currentTimeMillis()));
+						event.setServiceType(serviceType);
+						event.setNamespace(namespace);
+						event.setServiceName(serviceName);
+						event.setOperation(RequestEvent.STORAGE_SCALE_UP);
+						event.setUserId("SYSTEM");
+						if (code == JobResult.ERROR) {
+							event.setStatus(IResult.ERROR);
+							event.setResultMessage(job.getJobName() + " 처리 중 오류가 발생했습니다. (" + e.getMessage() + ")");
+						} else {
+							event.setStatus(IResult.OK);
+							if(message == null || message.isEmpty()) {
+								event.setResultMessage(job.getJobName() + " 정상 처리되었습니다.");
+							} else {
+								event.setResultMessage(message);
+							}
+						}
+						event.setHistory(_historyValue);
+						event.setEndTime(new Date(System.currentTimeMillis()));
+						ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+						
+						// 오류시 원복 처리...
+//						CreatePersistentVolumeClaimsJob job1 = new CreatePersistentVolumeClaimsJob(param); 0,4
+//						ShutdownServiceJob              job2 = new ShutdownServiceJob(param); 1,5
+//						DataCopyJob                     job3 = new DataCopyJob(param); 2,6
+//						StartServiceJob                 job4 = new StartServiceJob(param); 3, 7
+						if (code == JobResult.ERROR) {
+							if(job.getClass().getName().equals(ShutdownServiceJob.class.getName())) {
+								if(jobList.indexOf(job) == 1) {
+								    //  1번 job replica 0 -> 1
+									JobParameter param = job.getJobParameter();
+									String stsName = param.getStatefulsetName();
+									JobParameter p = new JobParameter();
+									p.setNamespace(param.getNamespace());
+									p.setStatefulsetName(param.getStatefulsetName());
+									p.setTargetPvc(param.getTargetPvc());
+									
+									RecoveryStatefulsetJob recoveryJob = new RecoveryStatefulsetJob(p);
+									
+									new Thread(recoveryJob, "Recovery Statefulset - "+stsName).start();
+									
+								} else if(jobList.indexOf(job) == 5) {
+									//    5번 job replica 0 -> 1
+									{
+										JobParameter param = job.getJobParameter();
+										String stsName = param.getStatefulsetName();
+										JobParameter p = new JobParameter();
+										p.setNamespace(param.getNamespace());
+										p.setStatefulsetName(param.getStatefulsetName());
+										p.setTargetPvc(param.getTargetPvc());
+										
+										RecoveryStatefulsetJob recoveryJob = new RecoveryStatefulsetJob(p);
+										
+										new Thread(recoveryJob, "Recovery Statefulset - "+stsName).start();
+									}
+									//    1번 job replica 0 -> 1	  & org pvc mount		
+									{
+										Job j = jobList.get(1);
+										JobParameter param = j.getJobParameter();
+										String stsName = param.getStatefulsetName();
+
+										JobParameter p = new JobParameter();
+										p.setNamespace(param.getNamespace());
+										p.setStatefulsetName(param.getStatefulsetName());
+										p.setSourcePvc(param.getSourcePvc());
+										p.setTargetPvc(param.getTargetPvc());
+										
+										RecoveryStatefulsetJob recoveryJob = new RecoveryStatefulsetJob(p);
+										
+										new Thread(recoveryJob, "Recovery Statefulset - "+stsName).start();
+									}
+								}
+								
+								
+							} else if(job.getClass().getName().equals(DataCopyJob.class.getName())) {
+								// copy pod exist ? pod delete : continue;
+								JobParameter param = job.getJobParameter();
+								String namespace = param.getNamespace();
+								String stsName = param.getStatefulsetName();
+								
+								String copyPodName = DataCopyJob.CP_NAME + "-" + stsName;
+								
+								try {
+									PodResource<Pod, DoneablePod> podResource = K8SUtil.kubernetesClient().inNamespace(namespace).pods().withName(copyPodName);
+									Pod copyPod = podResource.get();
+									if(copyPod != null) {
+										podResource.delete();
+									}
+								} catch (Exception e1) {
+									log.error(e.getMessage(), e);
+								}
+								// 
+								// jobList.indexof == 6 ? 
+								//    6번 job replica 0 -> 1 & org pvc mount
+								//    2번 job replica 0 -> 1 & org pvc mount
+								// else
+								//    2번 job replica 0 -> 1 & org pvc mount
+								
+								if(jobList.indexOf(job) == 2) {
+									JobParameter p = new JobParameter();
+									p.setNamespace(namespace);
+									p.setStatefulsetName(stsName);
+									p.setSourcePvc(param.getSourcePvc());
+									p.setTargetPvc(param.getTargetPvc());
+									
+									RecoveryStatefulsetJob recoveryJob = new RecoveryStatefulsetJob(p);
+									
+									new Thread(recoveryJob, "Recovery Statefulset - "+stsName).start();
+								} else if(jobList.indexOf(job) == 6) {
+									{
+										// 6번 job replica 0 -> 1 & org pvc mount
+										JobParameter p = new JobParameter();
+										p.setNamespace(namespace);
+										p.setStatefulsetName(stsName);
+										p.setSourcePvc(param.getSourcePvc());
+										p.setTargetPvc(param.getTargetPvc());
+										
+										RecoveryStatefulsetJob recoveryJob = new RecoveryStatefulsetJob(p);
+										
+										new Thread(recoveryJob, "Recovery Statefulset - "+stsName).start();
+									}
+									
+									{
+										// 2번 job replica 0 -> 1 & org pvc mount
+										Job j = jobList.get(2);
+										param = j.getJobParameter();
+										stsName = param.getStatefulsetName();
+										
+										JobParameter p = new JobParameter();
+										p.setNamespace(param.getNamespace());
+										p.setStatefulsetName(param.getStatefulsetName());
+										p.setSourcePvc(param.getSourcePvc());
+										p.setTargetPvc(param.getTargetPvc());
+										
+										RecoveryStatefulsetJob recoveryJob = new RecoveryStatefulsetJob(p);
+										
+										new Thread(recoveryJob, "Recovery Statefulset - "+stsName).start();
+									}
+								}
+								
+							} else if(job.getClass().getName().equals(StartServiceJob.class.getName())) {
+								// copy pod exist ? pod delete : continue;
+								// 
+								// jobList.indexof == 7 ? 
+								//    7번 job replica 0 -> 1 & org pvc mount
+								//    3번 job replica 0 -> 1 & org pvc mount
+								// else
+								//    3번 job replica 0 -> 1 & org pvc mount
+								
+								if(jobList.indexOf(job) == 3) {
+									// 3번 job replica 0 -> 1 & org pvc mount
+									JobParameter param = job.getJobParameter();
+									String namespace = param.getNamespace();
+									String stsName = param.getStatefulsetName();
+									
+									JobParameter p = new JobParameter();
+									p.setNamespace(namespace);
+									p.setStatefulsetName(stsName);
+									p.setSourcePvc(param.getSourcePvc());
+									p.setTargetPvc(param.getTargetPvc());
+									
+									RecoveryStatefulsetJob recoveryJob = new RecoveryStatefulsetJob(p);
+									
+									new Thread(recoveryJob, "Recovery Statefulset - "+stsName).start();
+								} else if(jobList.indexOf(job) == 7) {
+									{
+										// 7번 job replica 0 -> 1 & org pvc mount
+										JobParameter param = job.getJobParameter();
+										String namespace = param.getNamespace();
+										String stsName = param.getStatefulsetName();
+										
+										JobParameter p = new JobParameter();
+										p.setNamespace(namespace);
+										p.setStatefulsetName(stsName);
+										p.setSourcePvc(param.getSourcePvc());
+										p.setTargetPvc(param.getTargetPvc());
+										
+										RecoveryStatefulsetJob recoveryJob = new RecoveryStatefulsetJob(p);
+										
+										new Thread(recoveryJob, "Recovery Statefulset - "+stsName).start();
+									}
+									
+									{
+										//3번 job replica 0 -> 1 & org pvc mount
+										Job j = jobList.get(3);
+										
+										JobParameter param = j.getJobParameter();
+										String namespace = param.getNamespace();
+										String stsName = param.getStatefulsetName();
+										
+										JobParameter p = new JobParameter();
+										p.setNamespace(namespace);
+										p.setStatefulsetName(stsName);
+										p.setSourcePvc(param.getSourcePvc());
+										p.setTargetPvc(param.getTargetPvc());
+										
+										RecoveryStatefulsetJob recoveryJob = new RecoveryStatefulsetJob(p);
+										
+										new Thread(recoveryJob, "Recovery Statefulset - "+stsName).start();
+									}
+								}
+							}
+						}
+					}
+
+				};
+
+				JobHandler.addListener(eventListener);
+
+				storageScaleExecutor.execTask(jobList.toArray(new Job[] {}));
+
+				log.info(serviceName + " 스토리지 스케일업/다운 요청.");
+				result = new Result(txId, IResult.RUNNING, historyValue);
+			} else {
+				result = new Result(txId, IResult.ERROR, "스토리지 스케일업/다운 실행 오류.");
+			}
+		} catch (KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result(txId, Result.UNAUTHORIZED, "Unauthorized", null);
+			} else {
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return Result.RESULT_FAIL(txId, e);
+		} finally {
+		}
+		
+		return result;
+	
+	}
+	
+	class Descending implements Comparator<Pod> {
+		 
+	    @Override
+	    public int compare(Pod o1, Pod o2) {
+	    		return o2.getMetadata().getName().compareTo(o1.getMetadata().getName());
+	    }
+	 
+	}
 }

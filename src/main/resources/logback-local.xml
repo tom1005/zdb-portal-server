@@ -39,7 +39,7 @@
  	<logger name="com.zdb.core.event.MetaDataWatcher" level="WARN">
 		<appender-ref ref="k8sdailyRollingFileAppender" />
 	</logger>
-	<logger name="com.zdb" level="WARN">
+	<logger name="com.zdb" level="INFO">
 		<appender-ref ref="dailyRollingFileAppender" />
 	</logger>
 	<logger name="io.grpc" level="INFO">

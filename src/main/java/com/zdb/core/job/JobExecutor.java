@@ -36,6 +36,10 @@ public class JobExecutor {
 		}
 	}
 	
+	public boolean isShutdown() {
+		return executorService.isShutdown();
+	}
+	
 	public synchronized void execTask(Job[] jobs) {
 		setContinue(true);
 		
@@ -51,7 +55,7 @@ public class JobExecutor {
 		}
 	}
 	
-	private void exec() {
+	private synchronized void exec() {
 		JobHandler.addListener(eventListener);
 		
 		executorService = Executors.newSingleThreadExecutor();
@@ -71,7 +75,7 @@ public class JobExecutor {
 	EventListener eventListener = new EventAdapter() {
 
 		@Override
-		public void done(Job job, JobResult code, Throwable e) {
+		public void done(Job job, JobResult code, String message, Throwable e) {
 			setContinue(code == JobResult.OK ? true : false);
 		}
 
@@ -92,19 +96,26 @@ public class JobExecutor {
 			int step = 1;
 			long stepTotalCount = countDownLatch.getCount();
 			
-			while (countDownLatch.getCount() > 0) {
+			while (taskQueue.size() > 0) {
 				try {
 					Thread.sleep(100);
 					Job job = (Job) queue.take();
 					
-					log.info("Step[" + (step++) + "/"+ stepTotalCount +"] : "+job.getJobName() +" start.");
+					log.info("Step[" + (step++) + "/"+ stepTotalCount +"] : "+job.getJobName());
 					if(isContinue()) {
 						job.run();
 					} else {
+						taskQueue.clear();
 						shutdown();
 						break;
 					}
 					prevJob = job;
+					
+					if(job.getStatus() == JobResult.ERROR) {
+						taskQueue.clear();
+						shutdown();
+						break;
+					}
 
 					countDownLatch.countDown();
 				} catch (Exception e) {

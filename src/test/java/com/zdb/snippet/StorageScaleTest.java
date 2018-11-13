@@ -65,7 +65,7 @@ public class StorageScaleTest {
 			}
 
 			@Override
-			public void done(Job job, JobResult code, Throwable e) {
+			public void done(Job job, JobResult code, String message, Throwable e) {
 				//log.info(job.getJobName() + " complete. [" + code + "]");
 			}
 

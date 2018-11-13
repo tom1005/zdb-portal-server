@@ -10,7 +10,7 @@ public class EventAdapter implements EventListener {
 	}
 
 	@Override
-	public void done(Job job, JobResult status, Throwable e) {
+	public void done(Job job, JobResult status, String message, Throwable e) {
 		
 	}
 
