@@ -1898,4 +1898,16 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		return null;
 	}
 	
+	public Result serviceOff(String txId, String namespace, String serviceType, String serviceName, String stsName) throws Exception {
+		return null;
+	}
+
+	public Result serviceOn(String txId, String namespace, String serviceType, String serviceName, String stsName) throws Exception {
+		return null;
+	}
+
+	public Result serviceTakeOver(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+		return null;
+	}
+	
 }

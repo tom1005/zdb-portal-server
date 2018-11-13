@@ -206,6 +206,10 @@ public interface ZDBRestService {
 	Result deleteZDBConfig(ZDBConfig zdbConfig);
 
 	Result updateStorageScale(String txId, String namespace, String serviceType, String serviceName, String pvcSize) throws Exception;
+
+	Result serviceOff(String txId, String namespace, String serviceType, String serviceName, String stsName) throws Exception;
 	
-//	Result serviceTakeOver(String txId, String namespace, String serviceType, String releaseName) throws Exception;
+	Result serviceOn(String txId, String namespace, String serviceType, String serviceName, String stsName) throws Exception;
+	
+	Result serviceTakeOver(String txId, String namespace, String serviceType, String serviceName) throws Exception;
 }

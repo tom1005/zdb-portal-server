@@ -53,6 +53,7 @@ import com.zdb.core.job.JobHandler;
 import com.zdb.core.job.JobParameter;
 import com.zdb.core.job.RecoveryStatefulsetJob;
 import com.zdb.core.job.ResourceScaleJob;
+import com.zdb.core.job.ServiceOnOffJob;
 import com.zdb.core.job.ShutdownServiceJob;
 import com.zdb.core.job.StartServiceJob;
 import com.zdb.core.repository.DiskUsageRepository;
@@ -61,6 +62,7 @@ import com.zdb.core.repository.ZDBMariaDBAccountRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
 import com.zdb.core.util.K8SUtil;
+import com.zdb.core.util.PodManager;
 import com.zdb.core.util.ZDBLogViewer;
 import com.zdb.mariadb.MariaDBAccount;
 import com.zdb.mariadb.MariaDBShutDownUtil;
@@ -1386,5 +1388,240 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	    		return o2.getMetadata().getName().compareTo(o1.getMetadata().getName());
 	    }
 	 
+	}
+	
+	@Override
+	public Result serviceOn(String txId, String namespace, String serviceType, String serviceName, String stsName) throws Exception {
+		Result result = new Result(txId);
+
+		String historyValue = "";
+		
+		try {
+			// 서비스 명 체크
+			ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(serviceName);
+			if( releaseMetaData == null) {
+				String msg = "서비스가 존재하지 않습니다.";
+				return new Result(txId, IResult.ERROR, msg);
+			}
+
+			log.info(stsName + " service on.");
+			
+			List<Pod> pods = k8sService.getPods(namespace, serviceName);
+			
+			List<Job> jobList = new ArrayList<>();
+			for (Pod p : pods) {
+				
+				if(p.getMetadata().getName().startsWith(stsName)) {
+					
+					boolean isReady = PodManager.isReady(p);
+					
+					if(isReady) {
+						log.error("서비스가 실행 중입니다.");
+						
+						return new Result(txId, Result.ERROR, "서비스가 실행 중입니다.");
+					}
+					break;
+				}
+			}
+				
+			JobParameter param = new JobParameter();
+			param.setNamespace(namespace);
+			param.setServiceType(serviceType);
+			param.setServiceName(serviceName);
+			param.setStatefulsetName(stsName);
+			param.setToggle(1);
+
+			ServiceOnOffJob job1 = new ServiceOnOffJob(param);
+			
+			jobList.add(job1);
+			
+			if (jobList.size() > 0) {
+				CountDownLatch latch = new CountDownLatch(jobList.size());
+
+				JobExecutor storageScaleExecutor = new JobExecutor(latch);
+
+				final String _historyValue = String.format("서비스 Off -> On (%s)", stsName);
+
+				EventListener eventListener = new EventListener() {
+
+					@Override
+					public void onEvent(Job job, String event) {
+						log.info(job.getJobName() + "  onEvent - " + event);
+					}
+
+					@Override
+					public void status(Job job, String status) {
+						//log.info(job.getJobName() + " : " + status);
+					}
+
+					@Override
+					public void done(Job job, JobResult code, String message, Throwable e) {
+						if (jobList.contains(job)) {
+							RequestEvent event = new RequestEvent();
+
+							event.setTxId(txId);
+							event.setStartTime(new Date(System.currentTimeMillis()));
+							event.setServiceType(serviceType);
+							event.setNamespace(namespace);
+							event.setServiceName(serviceName);
+							event.setOperation(RequestEvent.SERVICE_ON);
+							event.setUserId("SYSTEM");
+							if (code == JobResult.ERROR) {
+								event.setStatus(IResult.ERROR);
+								event.setResultMessage(job.getJobName() + " 처리 중 오류가 발생했습니다. (" + e.getMessage() + ")");
+							} else {
+								event.setStatus(IResult.OK);
+								if (message == null || message.isEmpty()) {
+									event.setResultMessage(job.getJobName() + " 정상 처리되었습니다.");
+								} else {
+									event.setResultMessage(message);
+								}
+							}
+							event.setHistory(_historyValue);
+							event.setEndTime(new Date(System.currentTimeMillis()));
+							ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+
+							JobHandler.removeListener(this);
+						}
+					}
+
+				};
+
+				JobHandler.addListener(eventListener);
+
+				storageScaleExecutor.execTask(jobList.toArray(new Job[] {}));
+
+				log.info(serviceName + " 서비스 On 요청.");
+				result = new Result(txId, IResult.RUNNING, stsName + " 서비스 On 요청.");
+			} else {
+				result = new Result(txId, IResult.ERROR, "서비스 On 실행 오류.");
+			}
+		} catch (KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result(txId, Result.UNAUTHORIZED, "Unauthorized", null);
+			} else {
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return Result.RESULT_FAIL(txId, e);
+		} finally {
+		}
+		
+		return result;
+	}
+	
+	@Override
+	public Result serviceOff(String txId, String namespace, String serviceType, String serviceName, String stsName) throws Exception {
+
+		Result result = new Result(txId);
+
+		String historyValue = "";
+		
+		try {
+			// 서비스 명 체크
+			ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(serviceName);
+			if( releaseMetaData == null) {
+				String msg = "서비스가 존재하지 않습니다.";
+				return new Result(txId, IResult.ERROR, msg);
+			}
+
+			log.info(stsName + " service off.");
+			
+			List<Job> jobList = new ArrayList<>();
+			JobParameter param = new JobParameter();
+			param.setNamespace(namespace);
+			param.setServiceType(serviceType);
+			param.setServiceName(serviceName);
+			param.setStatefulsetName(stsName);
+			param.setToggle(0);
+
+			ServiceOnOffJob job1 = new ServiceOnOffJob(param);
+			
+			jobList.add(job1);
+			
+			if (jobList.size() > 0) {
+				CountDownLatch latch = new CountDownLatch(jobList.size());
+
+				JobExecutor storageScaleExecutor = new JobExecutor(latch);
+
+				final String _historyValue = String.format("서비스 On -> Off (%s)", stsName);
+
+				EventListener eventListener = new EventListener() {
+
+					@Override
+					public void onEvent(Job job, String event) {
+						log.info(job.getJobName() + "  onEvent - " + event);
+					}
+
+					@Override
+					public void status(Job job, String status) {
+						//log.info(job.getJobName() + " : " + status);
+					}
+
+					@Override
+					public void done(Job job, JobResult code, String message, Throwable e) {
+						if (jobList.contains(job)) {
+							RequestEvent event = new RequestEvent();
+
+							event.setTxId(txId);
+							event.setStartTime(new Date(System.currentTimeMillis()));
+							event.setServiceType(serviceType);
+							event.setNamespace(namespace);
+							event.setServiceName(serviceName);
+							event.setOperation(RequestEvent.SERVICE_OFF);
+							event.setUserId("SYSTEM");
+							if (code == JobResult.ERROR) {
+								event.setStatus(IResult.ERROR);
+								event.setResultMessage(job.getJobName() + " 처리 중 오류가 발생했습니다. (" + e.getMessage() + ")");
+							} else {
+								event.setStatus(IResult.OK);
+								if (message == null || message.isEmpty()) {
+									event.setResultMessage(job.getJobName() + " 정상 처리되었습니다.");
+								} else {
+									event.setResultMessage(message);
+								}
+							}
+							event.setHistory(_historyValue);
+							event.setEndTime(new Date(System.currentTimeMillis()));
+							ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+							JobHandler.removeListener(this);
+						}
+					}
+
+				};
+
+				JobHandler.addListener(eventListener);
+
+				storageScaleExecutor.execTask(jobList.toArray(new Job[] {}));
+
+				log.info(serviceName + " 서비스 Off 요청.");
+				result = new Result(txId, IResult.RUNNING, stsName + " 서비스 Off 요청.");
+			} else {
+				result = new Result(txId, IResult.ERROR, "서비스 Off 실행 오류.");
+			}
+		} catch (KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result(txId, Result.UNAUTHORIZED, "Unauthorized", null);
+			} else {
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return Result.RESULT_FAIL(txId, e);
+		} finally {
+		}
+		
+		return result;
+	
+	}
+	
+	@Override
+	public Result serviceTakeOver(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+		return super.serviceTakeOver(txId, namespace, serviceType, serviceName);
 	}
 }

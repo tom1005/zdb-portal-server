@@ -21,4 +21,5 @@ public class JobParameter {
 	String targetPvc;
 	String cpu;
 	String memory;
+	int toggle;
 }
