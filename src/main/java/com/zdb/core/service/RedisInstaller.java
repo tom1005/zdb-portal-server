@@ -155,6 +155,9 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 				Map<String, Object> metricsService 			 = new HashMap<String, Object>();
 				Map<String, Object> metrics 				 = new HashMap<String, Object>();
 				Map<String, String> metricServiceAnnotations = new HashMap<String, String>();
+				Map<String, Object> metricsResources         = new HashMap<String, Object>();
+				Map<String, Object> metricsResourcesRequests = new HashMap<String, Object>();
+				Map<String, Object> metricsResourcesLimits   = new HashMap<String, Object>();
 
 				Boolean isPublicEnabled	= false;
 				int assignedMemory = 0;
@@ -221,14 +224,17 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 								
 				metricServiceAnnotations.put("prometheus.io/scrape", "true");
 				metricServiceAnnotations.put("prometheus.io/port", "9121");
-
 				metricsService.put("type"			, "ClusterIP");
 				metricsService.put("annotations"	, metricServiceAnnotations);						
-				
-//				metrics:
-//					  enabled: true
-//					  image: oliver006/redis_exporter
 				metrics.put("service", metricsService);
+				
+				metricsResourcesRequests.put("cpu", "100m");
+				metricsResourcesRequests.put("memory", "64Mi");
+				metricsResourcesLimits.put("cpu", "300m");
+				metricsResourcesLimits.put("memory", "128Mi");
+				metricsResources.put("requests", metricsResourcesRequests);
+				metricsResources.put("limits", metricsResourcesLimits);
+				metrics.put("resources", metricsResources);
 				
 				//TODO 환경변수 처리.
 				metrics.put("image", "registry.au-syd.bluemix.net/cloudzdb/redis_exporter");
