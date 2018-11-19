@@ -242,6 +242,11 @@ public class EventWatcher<T> implements Watcher<T> {
 
 	@Override
 	public void onClose(KubernetesClientException cause) {
+		if(cause != null) {
+			log.error(cause.getMessage(), cause);
+		} else {
+			log.error("EventWatcher closed...........");
+		}
 	}
 
 }

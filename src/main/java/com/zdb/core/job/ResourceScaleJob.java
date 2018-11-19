@@ -65,7 +65,11 @@ public class ResourceScaleJob extends JobAdapter {
 				
 				@Override
 				public void onClose(KubernetesClientException cause) {
-					
+					if(cause != null) {
+						log.error(cause.getMessage(), cause);
+					} else {
+						log.error("ResourceScaleJob StatefulSet closed...........");
+					}
 				}
 				
 			};
@@ -87,7 +91,11 @@ public class ResourceScaleJob extends JobAdapter {
 				
 				@Override
 				public void onClose(KubernetesClientException cause) {
-					
+					if(cause != null) {
+						log.error(cause.getMessage(), cause);
+					} else {
+						log.error("ResourceScaleJob podWatcher closed...........");
+					}
 				}
 				
 			};
