@@ -24,7 +24,7 @@ public class ZDBConfigService {
 	static String backupTimeConfig = "backup_time";
 	static String backupTimeConfigName = "Backup 시각";
 	static String backupTimeDBType = "mariadb";
-	static String backupTimeValue = "03:00:00";
+	static String backupTimeValue = "03:00";
 	
 	/* 리소스 가용량 체크 */
 	static String freeResourceCheckConfig = "free_resource_check";
