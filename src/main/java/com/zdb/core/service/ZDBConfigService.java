@@ -6,7 +6,7 @@ import com.zdb.core.repository.ZDBConfigRepository;
 public class ZDBConfigService {
 	static String globalNamespace = "global";
 	
-	static int configCount = 3;
+	static int configCount = 4;
 	
 	/* Public Network 사용 여부" */
 	static String publicNetworkConfig = "public_network_enabled";
