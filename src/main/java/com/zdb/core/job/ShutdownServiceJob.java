@@ -75,7 +75,11 @@ public class ShutdownServiceJob extends JobAdapter {
 				
 				@Override
 				public void onClose(KubernetesClientException cause) {
-					
+					if(cause != null) {
+						log.error(cause.getMessage(), cause);
+					} else {
+						log.error("ShutdownServiceJob closed...........");
+					}
 				}
 				
 			};

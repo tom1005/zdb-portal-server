@@ -54,9 +54,9 @@ k8s:
   
 chart:
   mariadb:
-    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/mariadb/charts/mariadb-4.2.3.tgz"
+    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/mariadb-4.2.3.tgz"
   redis:
-    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/redis/charts/redis-3.6.5.tgz"
+    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/redis-3.6.5.tgz"
   
 iam:
     baseUrl: https://pou-dev-internal-iam.cloudzcp.io:443
