@@ -1923,7 +1923,7 @@ public class ZDBRestController {
 			if(findByNameAndMessageAndLastTimestamp == null) {
 				eventRepo.save(m);
 			}
-			return new ResponseEntity<String>("ZDB Global 설정이 생성되었습니다.", HttpStatus.OK);
+			return new ResponseEntity<String>(new Result("", Result.OK, "ZDB Global 설정값이 생성되었습니다.").toJson(), HttpStatus.OK);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
@@ -1982,7 +1982,7 @@ public class ZDBRestController {
 			if(findByNameAndMessageAndLastTimestamp == null) {
 				eventRepo.save(m);
 			}
-			return new ResponseEntity<String>("ZDB Global 설정이 변경되었습니다.", HttpStatus.OK);
+			return new ResponseEntity<String>(new Result("", Result.OK, "ZDB Global 설정값이 변경되었습니다.").toJson(), HttpStatus.OK);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
@@ -2025,7 +2025,8 @@ public class ZDBRestController {
 			if(findByNameAndMessageAndLastTimestamp == null) {
 				eventRepo.save(m);
 			}
-			return new ResponseEntity<String>("ZDB Global 설정이 삭제되었습니다.", HttpStatus.OK);
+			return new ResponseEntity<String>(new Result("", Result.OK, "ZDB Global 설정값이 삭제되었습니다.").toJson(), HttpStatus.OK);
+			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
