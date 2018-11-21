@@ -11,8 +11,14 @@ public class ZDBConfigService {
 	/* Public Network 사용 여부" */
 	static String publicNetworkConfig = "public_network_enabled";
 	static String publicNetworkConfigName = "Public Network 사용 여부";
-	static String publicNetworkDBType = "mariadb";
+	static String publicNetworkDBType = "common";
 	static String publicNetworkValue = "true";
+	
+	/* 리소스 가용량 체크 */
+	static String freeResourceCheckConfig = "free_resource_check";
+	static String freeResourceCheckConfigName = "리소스 가용량 체크";
+	static String freeResourceCheckDBType = "common";
+	static String freeResourceCheckValue = "true";
 	
 	/* Backup 보관 기간 */
 	static String backupDurationConfig = "backup_duration";
@@ -25,11 +31,6 @@ public class ZDBConfigService {
 	static String backupTimeConfigName = "Backup 시각";
 	static String backupTimeDBType = "mariadb";
 	static String backupTimeValue = "03:00";
-	
-	/* 리소스 가용량 체크 */
-	static String freeResourceCheckConfig = "free_resource_check";
-	static String freeResourceCheckConfigName = "리소스 가용량 체크";
-	static String freeResourceCheckValue = "true";
 	
 	public static int getConfigCount() {
 		return configCount;
