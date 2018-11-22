@@ -221,6 +221,7 @@ public class ZDBRestController {
 
 		String txId = txId();
 		RequestEvent event = new RequestEvent();
+		StringBuffer history = new StringBuffer();
 		try {
 			UserInfo userInfo = getUserInfo();
 			event.setTxId(txId);
@@ -231,7 +232,6 @@ public class ZDBRestController {
 			event.setOperation(RequestEvent.CREATE);
 			event.setUserId(userInfo.getUserName());
 			
-			StringBuffer history = new StringBuffer();
 			history.append("Namespace").append(":").append(entity.getNamespace()).append("\n");
 			history.append("ServiceName").append(":").append(entity.getServiceName()).append("\n");
 			history.append("ServiceType").append(":").append(entity.getServiceType()).append("\n");
@@ -255,12 +255,12 @@ public class ZDBRestController {
 				history.append("Storage Size").append(":").append(entity.getPersistenceSpec()[0].getSize()).append("\n");
 				history.append("Database").append(":").append(entity.getMariaDBConfig().getMariadbDatabase()).append("\n");
 				history.append("CharacterSet").append(":").append(entity.getCharacterSet()).append("");
-				
+				event.setHistory(history.toString());
 				result = mariadbService.createDeployment(txId, entity, userInfo);
 				break;
 			case Redis:
 				history.append("Purpose").append(":").append(entity.getPurpose()).append("");
-				
+				event.setHistory(history.toString());
 				result = redisService.createDeployment(txId, entity, userInfo);
 				break;
 			case PostgreSQL:
@@ -278,8 +278,6 @@ public class ZDBRestController {
 				break;
 			}
 			
-			event.setHistory(history.toString());
-
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
 			return new ResponseEntity<String>(result.toJson(), result.status());
