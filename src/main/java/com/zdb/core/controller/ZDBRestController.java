@@ -116,7 +116,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "PersistentVolumeClaim 목록 조회 에러 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -134,7 +134,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "PersistentVolumeClaim 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -152,7 +152,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "서비스 목록 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -197,17 +197,10 @@ public class ZDBRestController {
 
 			return new ResponseEntity<String>(result.toJson(), result.status());
 
-		} catch (FileNotFoundException | KubernetesClientException e) {
-			log.error(e.getMessage(), e);
-			if (e.getMessage().indexOf("Unauthorized") > -1) {
-				return new ResponseEntity<String>("Unauthorized", HttpStatus.UNAUTHORIZED);
-			} else {
-				return new ResponseEntity<String>(e.getMessage(), HttpStatus.UNAUTHORIZED);
-			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "서비스 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 
@@ -238,6 +231,17 @@ public class ZDBRestController {
 			event.setOperation(RequestEvent.CREATE);
 			event.setUserId(userInfo.getUserName());
 			
+			StringBuffer history = new StringBuffer();
+			history.append("Namespace").append(":").append(entity.getNamespace()).append("\n");
+			history.append("ServiceName").append(":").append(entity.getServiceName()).append("\n");
+			history.append("ServiceType").append(":").append(entity.getServiceType()).append("\n");
+			history.append("Version").append(":").append(entity.getVersion()).append("\n");
+			history.append("BackupEnabled").append(":").append(entity.isBackupEnabled()).append("\n");
+			history.append("ClusterEnabled").append(":").append(entity.isClusterEnabled()).append("\n");
+			history.append("CPU").append(":").append(entity.getPodSpec()[0].getResourceSpec()[0].getCpu()+"m").append("\n");
+			history.append("Memory").append(":").append(entity.getPodSpec()[0].getResourceSpec()[0].getMemory()+"Mi").append("\n");
+
+			
 			// mariadb , redis, postgresql, rabbitmq, mongodb
 			ZDBType dbType = ZDBType.getType(serviceType);
 			log.info("{}, {}, {}", userInfo.getUserId(), userInfo.getUserName(), userInfo.getAccessRole());
@@ -247,9 +251,16 @@ public class ZDBRestController {
 			
 			switch (dbType) {
 			case MariaDB:
+				history.append("StorageClass").append(":").append(entity.getPersistenceSpec()[0].getStorageClass()).append("\n");
+				history.append("Storage Size").append(":").append(entity.getPersistenceSpec()[0].getSize()).append("\n");
+				history.append("Database").append(":").append(entity.getMariaDBConfig().getMariadbDatabase()).append("\n");
+				history.append("CharacterSet").append(":").append(entity.getCharacterSet()).append("");
+				
 				result = mariadbService.createDeployment(txId, entity, userInfo);
 				break;
 			case Redis:
+				history.append("Purpose").append(":").append(entity.getPurpose()).append("");
+				
 				result = redisService.createDeployment(txId, entity, userInfo);
 				break;
 			case PostgreSQL:
@@ -266,13 +277,15 @@ public class ZDBRestController {
 				result.setMessage("Not support service type.");
 				break;
 			}
+			
+			event.setHistory(history.toString());
 
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, "서비스 생성 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(e.getMessage());
@@ -315,7 +328,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, RequestEvent.CREATE_PUBLIC_SVC +" 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(e.getMessage());
@@ -357,7 +370,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, RequestEvent.DELETE_PUBLIC_SVC +" 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(e.getMessage());
@@ -436,7 +449,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, RequestEvent.SCALE_UP +" 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
@@ -505,7 +518,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, RequestEvent.STORAGE_SCALE_UP + " 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
@@ -565,7 +578,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, RequestEvent.SCALE_OUT +" 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
@@ -630,7 +643,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, RequestEvent.DELETE +" 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
@@ -688,7 +701,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			com.zdb.core.domain.Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			com.zdb.core.domain.Result result = new Result(txId, IResult.ERROR, RequestEvent.RESTART +" 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
@@ -738,7 +751,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			result = new Result(txId, IResult.ERROR, "환경변수 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -777,7 +790,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			result = new Result(txId, IResult.ERROR, "환경변수 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -838,7 +851,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			result = new Result(txId, IResult.ERROR, RequestEvent.UPDATE_CONFIG +" 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
@@ -870,7 +883,7 @@ public class ZDBRestController {
 
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			result = new Result(txId, IResult.ERROR, "사용자 권한 목록 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -908,7 +921,7 @@ public class ZDBRestController {
 
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			result = new Result(txId, IResult.ERROR, "사용자 권한 등록 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
@@ -952,7 +965,7 @@ public class ZDBRestController {
 
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			result = new Result(txId, IResult.ERROR, "사용자 권한 변경 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
@@ -1018,7 +1031,7 @@ public class ZDBRestController {
 
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			result = new Result(txId, IResult.ERROR, "사용자 권한 정보 삭제 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
@@ -1043,7 +1056,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "로그 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1056,7 +1069,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "로그 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1069,7 +1082,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "로그 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1082,7 +1095,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "환경 설정 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1100,7 +1113,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "이벤트 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1119,7 +1132,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "이벤트 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1148,7 +1161,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "Namespace 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1192,7 +1205,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>("", HttpStatus.OK);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, "사용자 Namespace 등록 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1205,7 +1218,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "전체 서비스 LB 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1218,7 +1231,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "서비스 LB 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1232,7 +1245,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "서비스 LB 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1245,7 +1258,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "서비스 LB 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1265,7 +1278,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "Pod 목록 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1280,7 +1293,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "사용자 권한 목록 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1301,7 +1314,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "Pod 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1321,7 +1334,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "Pod 리소스 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1358,7 +1371,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "DB 연결 정보 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1378,7 +1391,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "Pod 리소스 사용량 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1416,7 +1429,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "가용 리소스 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1485,7 +1498,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "비밀번호 변경 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
@@ -1580,7 +1593,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, "재시작 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
@@ -1624,7 +1637,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "환경 설정 변경 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
@@ -1665,7 +1678,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "태그 생성 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
@@ -1706,7 +1719,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "태그 삭제 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
@@ -1728,7 +1741,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "태그 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1744,7 +1757,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "태그 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1771,7 +1784,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "태그 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1784,7 +1797,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "Node 목록 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}	
@@ -1797,7 +1810,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "Node 수 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}	
@@ -1875,7 +1888,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, "PVC 생성 오류").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(e.getMessage());
@@ -1923,10 +1936,10 @@ public class ZDBRestController {
 			if(findByNameAndMessageAndLastTimestamp == null) {
 				eventRepo.save(m);
 			}
-			return new ResponseEntity<String>(new Result("", Result.OK, "ZDB Global 설정값이 생성되었습니다.").toJson(), HttpStatus.OK);
+			return new ResponseEntity<String>(new Result("", Result.OK, "Global 설정값이 생성되었습니다.").toJson(), HttpStatus.OK);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "ZDB Global 설정 등록 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1942,7 +1955,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "Global 설정 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1985,7 +1998,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(new Result("", Result.OK, "ZDB Global 설정값이 변경되었습니다.").toJson(), HttpStatus.OK);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "ZDB Global 설정값이 변경 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -2029,7 +2042,7 @@ public class ZDBRestController {
 			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(null, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "ZDB Global 설정값이 삭제 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -2092,7 +2105,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_OFF+" 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
@@ -2162,7 +2175,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, e.getMessage()).putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_ON+" 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());

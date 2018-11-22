@@ -105,7 +105,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
-				return new Result("", Result.UNAUTHORIZED, "Unauthorized", null);
+				return new Result("", Result.UNAUTHORIZED, "클러스터에 접근이 불가하거나 인증에 실패 했습니다.", null);
 			} else {
 				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
 			}
@@ -349,7 +349,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 			log.error(e.getMessage(), e);
 
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
-				return new Result(txId, Result.UNAUTHORIZED, "Unauthorized", null);
+				return new Result(txId, Result.UNAUTHORIZED, "클러스터에 접근이 불가하거나 인증에 실패 했습니다.", null);
 			} else {
 				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
 			}
@@ -435,7 +435,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 			log.error(e.getMessage(), e);
 
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
-				return new Result(txId, Result.UNAUTHORIZED, "Unauthorized", null);
+				return new Result(txId, Result.UNAUTHORIZED, "클러스터에 접근이 불가하거나 인증에 실패 했습니다.", null);
 			} else {
 				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
 			}
@@ -666,7 +666,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 			log.error(e.getMessage(), e);
 
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
-				return new Result(txId, Result.UNAUTHORIZED, "Unauthorized", null);
+				return new Result(txId, Result.UNAUTHORIZED, "클러스터에 접근이 불가하거나 인증에 실패 했습니다.", null);
 			} else {
 				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
 			}

@@ -220,7 +220,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 		} catch (KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
-				result = new Result(txid, Result.UNAUTHORIZED, "Unauthorized", null);
+				result = new Result(txid, Result.UNAUTHORIZED, "클러스터에 접근이 불가하거나 인증에 실패 했습니다.", null);
 			} else {
 				result = new Result(txid, Result.UNAUTHORIZED, e.getMessage(), e);
 			}
