@@ -61,7 +61,7 @@ import com.zdb.core.repository.MycnfRepository;
 import com.zdb.core.repository.ZDBMariaDBAccountRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
-import com.zdb.core.util.ExecQueryUtil;
+import com.zdb.core.util.ExecCommandUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.PodManager;
 import com.zdb.core.util.ZDBLogViewer;
@@ -1650,7 +1650,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			Pod pod = k8sService.getPod(namespace, serviceName, "slave");
 			
 			if( pod != null && PodManager.isReady(pod)) {
-				String execQuery = ExecQueryUtil.execQuery(namespace, pod.getMetadata().getName(), sql);
+				String execQuery = ExecCommandUtil.execCmd(namespace, pod.getMetadata().getName(), sql);
 				if(execQuery.indexOf("read_only") > -1) {
 					String[] split = execQuery.split("\n");
 					for (String str : split) {
@@ -1768,6 +1768,65 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			Result result = new Result(txId, Result.OK, "서비스 전환 완료");
 			if (!history.toString().isEmpty()) {
 				result.putValue(Result.HISTORY, history.toString() +" 가 master 에서 slave 로 전환 되었습니다.\nmaster 서비스로 연결된 App.은 slave DB에 읽기/쓰기 됩니다.");
+			}
+			
+			return result;		
+		} catch (FileNotFoundException | KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result(txId, Result.UNAUTHORIZED, "클러스터에 접근이 불가하거나 인증에 실패 했습니다.", null);
+			} else {
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result(txId, Result.ERROR, e.getMessage(), e);
+		}
+	}
+	
+	public Result slowlogRotation(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
+			StringBuffer history = new StringBuffer();
+			
+			Pod pod = k8sService.getPod(namespace, serviceName, "master");
+			
+			if( pod != null && PodManager.isReady(pod)) {
+				{ // slow_query_log 설정 off & 
+					StringBuffer sqlString = new StringBuffer();
+					sqlString.append("set global slow_query_log=0;flush slow logs;");
+					
+					String sql = "/opt/bitnami/mariadb/bin/mysql -uroot -p$MARIADB_ROOT_PASSWORD -e \"" +sqlString.toString()+"\"";
+					ExecCommandUtil.execCmd(namespace, pod.getMetadata().getName(), sql);
+				}
+				
+//				ExecCommandUtil.execCmd(namespace, pod.getMetadata().getName(), "[ -f /bitnami/mariadb/logs/maria_slow-$(date +%Y-%m-%d)3.log ] && echo "aaa" || echo "bbb"");
+				ExecCommandUtil.execCmd(namespace, pod.getMetadata().getName(), "mv /bitnami/mariadb/logs/maria_slow.log /bitnami/mariadb/logs/maria_slow-$(date +%Y-%m-%d).log");
+				
+				{ // slow_query_log 설정 on & 
+					StringBuffer sqlString = new StringBuffer();
+					sqlString.append("set global slow_query_log=on;");
+					
+					String sql = "/opt/bitnami/mariadb/bin/mysql -uroot -p$MARIADB_ROOT_PASSWORD -e \"" +sqlString.toString()+"\"";
+					ExecCommandUtil.execCmd(namespace, pod.getMetadata().getName(), sql);
+				}
+			
+				String result = ExecCommandUtil.execCmd(namespace, pod.getMetadata().getName(), "cd /bitnami/mariadb/logs/;ls -al maria_slow*");
+				
+				String[] split = result.split("\n");
+				for (String str : split) {
+					history.append(str).append("\n");
+					
+					log.info(str);
+				}
+				
+			} else {
+				log.error("{} 의 slave 가 존재하지 않거나 서비스 가용 상태가 아닙니다.", serviceName);
+				return new Result(txId, Result.ERROR, serviceName + "의 master 가 존재하지 않거나 서비스 가용 상태가 아닙니다.");
+			}
+			
+			Result result = new Result(txId, Result.OK, "Slowlog rotation 완료");
+			if (!history.toString().isEmpty()) {
+				result.putValue(Result.HISTORY, history.toString());
 			}
 			
 			return result;		

@@ -18,7 +18,7 @@ import io.fabric8.kubernetes.client.utils.BlockingInputStreamPumper;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class ExecQueryUtil {
+public class ExecCommandUtil {
 
 	public static void main(String[] args) {
 
@@ -28,12 +28,12 @@ public class ExecQueryUtil {
 		
 		String command = " mysql -uroot -p$MARIADB_ROOT_PASSWORD -e \"" +sb.toString()+"\"";
 		
-		System.out.println(">>>"+execQuery("zdb-test2", "zdb-test2-qq-mariadb-slave-0", command)+"<<<");
+		System.out.println(">>>"+execCmd("zdb-test2", "zdb-test2-qq-mariadb-slave-0", command)+"<<<");
 		
 		
 	}
 	
-	public synchronized static String execQuery(String namespace, String podName, String sql) {
+	public synchronized static String execCmd(String namespace, String podName, String sql) {
 		List<String> result = new ArrayList<>();
 		try {
 			final CountDownLatch countDown = new CountDownLatch(1);
@@ -50,8 +50,6 @@ public class ExecQueryUtil {
 				log.error(podName + " 가 존재하지 않습니다.");
 				return null;
 			}
-
-			// String releaseName = pod.getMetadata().getLabels().get("release");
 
 			Boolean ready = podResource.isReady();
 			if (!ready) {

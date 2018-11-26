@@ -2243,4 +2243,63 @@ public class ZDBRestController {
 			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}	
 	}
+	
+	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/slowlogRotation", method = RequestMethod.PUT)
+	public ResponseEntity<String> slowlogRotation(
+			@PathVariable("namespace") final String namespace,
+			@PathVariable("serviceType") final String serviceType, 
+			@PathVariable("serviceName") final String serviceName,
+			final UriComponentsBuilder ucBuilder) {
+		String txId = txId();
+		RequestEvent event = new RequestEvent();
+		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.SLOWLOG_ROTATION);
+			event.setUserId(userInfo.getUserName());	
+			
+			ZDBType dbType = ZDBType.getType(serviceType);
+
+			com.zdb.core.domain.Result result = null;
+
+			switch (dbType) {
+			case MariaDB:
+				result = mariadbService.slowlogRotation(txId, namespace, serviceType, serviceName);
+				break;
+			case Redis:
+				break;
+			default:
+				log.error("Not support.");
+				result.setMessage("Not support service type.");
+				break;
+			}
+
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			// 2018-10-05 수정 
+			// history 저장 
+			Object history = result.getResult().get(Result.HISTORY);
+			if (history != null) {
+				event.setHistory("" + history);
+			}
+			log.info(result.toJson() +"|"+result.status());
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_TAKE_OVER+" 오류!").putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}	
+	}
 }

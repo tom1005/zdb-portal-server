@@ -212,4 +212,6 @@ public interface ZDBRestService {
 	Result serviceOn(String txId, String namespace, String serviceType, String serviceName, String stsName) throws Exception;
 	
 	Result serviceTakeOver(String txId, String namespace, String serviceType, String serviceName) throws Exception;
+
+	Result slowlogRotation(String txId, String namespace, String serviceType, String serviceName) throws Exception;
 }

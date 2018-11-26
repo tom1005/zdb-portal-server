@@ -35,6 +35,7 @@ public class RequestEvent {
 	public static final String SERVICE_ON = "서비스 On";
 	public static final String SERVICE_OFF = "서비스 Off";
 	public static final String SERVICE_TAKE_OVER = "서비스 전환";
+	public static final String SLOWLOG_ROTATION = "Slowlog Rotation";
 	public static final String SCALE_OUT = "스케일 아웃";
 	public static final String UPDATE_CONFIG = "환경설정 변경";
 	public static final String MODIFY_PASSWORD = "비빌번호 변경";
