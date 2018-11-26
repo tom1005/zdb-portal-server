@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.IOUtils;
 import org.microbean.helm.ReleaseManager;
@@ -27,7 +28,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.stereotype.Service;
 
 import com.google.gson.Gson;
 import com.zdb.core.domain.Connection;
@@ -61,6 +61,7 @@ import com.zdb.core.repository.MycnfRepository;
 import com.zdb.core.repository.ZDBMariaDBAccountRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
+import com.zdb.core.util.ExecQueryUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.PodManager;
 import com.zdb.core.util.ZDBLogViewer;
@@ -73,17 +74,27 @@ import hapi.services.tiller.Tiller.UpdateReleaseRequest;
 import hapi.services.tiller.Tiller.UpdateReleaseResponse;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.DoneablePod;
+import io.fabric8.kubernetes.api.model.DoneableService;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Quantity;
 import io.fabric8.kubernetes.api.model.Secret;
+import io.fabric8.kubernetes.api.model.Service;
+import io.fabric8.kubernetes.api.model.ServiceBuilder;
+import io.fabric8.kubernetes.api.model.ServiceList;
 import io.fabric8.kubernetes.api.model.ServicePort;
 import io.fabric8.kubernetes.api.model.Volume;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.Watch;
+import io.fabric8.kubernetes.client.Watcher;
+import io.fabric8.kubernetes.client.Watcher.Action;
+import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.PodResource;
+import io.fabric8.kubernetes.client.dsl.Resource;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -92,7 +103,7 @@ import lombok.extern.slf4j.Slf4j;
  * @author 06919
  *
  */
-@Service("mariadbService")
+@org.springframework.stereotype.Service("mariadbService")
 @Slf4j
 @Configuration
 public class MariaDBServiceImpl extends AbstractServiceImpl {
@@ -1622,6 +1633,154 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	
 	@Override
 	public Result serviceTakeOver(String txId, String namespace, String serviceType, String serviceName) throws Exception {
-		return super.serviceTakeOver(txId, namespace, serviceType, serviceName);
+		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
+			
+//		    Result : 
+//			*************************** 1. row ***************************
+//			Variable_name: read_only
+//			        Value: OFF
+			StringBuffer history = new StringBuffer();
+			
+			StringBuffer sqlString = new StringBuffer();
+			sqlString.append("set global read_only=0;flush privileges;");
+			sqlString.append("show variables like 'read_only'\\G");
+			
+			String sql = " mysql -uroot -p$MARIADB_ROOT_PASSWORD -e \"" +sqlString.toString()+"\"";
+			
+			Pod pod = k8sService.getPod(namespace, serviceName, "slave");
+			
+			if( pod != null && PodManager.isReady(pod)) {
+				String execQuery = ExecQueryUtil.execQuery(namespace, pod.getMetadata().getName(), sql);
+				if(execQuery.indexOf("read_only") > -1) {
+					String[] split = execQuery.split("\n");
+					for (String str : split) {
+						if(str.indexOf("Value:") > -1) {
+							str = str.trim();
+							
+							if(str.endsWith("ON")) {
+								log.error(pod.getMetadata().getName() +"의 read_only 속성이 ON 으로 읽기 전용 상태입니다.");
+								return new Result(txId, Result.ERROR, pod.getMetadata().getName() +"의 read_only 속성이 ON 으로 읽기 전용 상태입니다.");
+							} else if(str.endsWith("OFF")) {
+								history.append(pod.getMetadata().getName() +"의 read_only 속성이 OFF 로 설정 되었습니다. 쓰기 가능한 상태로 설정 되었습니다.\n");
+								log.info(history.toString());
+								break;
+							} 
+						}
+					}
+				}
+			
+			} else {
+				log.error("{} 의 slave 가 존재하지 않거나 서비스 가용 상태가 아닙니다.", serviceName);
+				return new Result(txId, Result.ERROR, serviceName + "의 slave 가 존재하지 않거나 서비스 가용 상태가 아닙니다.");
+			}
+			
+			
+			MixedOperation<io.fabric8.kubernetes.api.model.Service, ServiceList, DoneableService, Resource<io.fabric8.kubernetes.api.model.Service, DoneableService>> services = client.inNamespace(namespace).services();
+			
+			List<Service> items = services.withLabel("release", serviceName).withLabel("component", "master").list().getItems();
+			
+			if(items.size() > 0) {
+				log.info("서비스 전환 대상 서비스가 {}개 존재합니다.", items.size());
+				for (Service service : items) {
+					log.info("	- {}", service.getMetadata().getName());
+				}
+			} else {
+				log.error("서비스 전환 대상 서비스가 없습니다.");
+				return new Result(txId, Result.ERROR, "서비스 전환 대상 서비스가 없습니다.");
+			}
+			
+			final CountDownLatch latch = new CountDownLatch(items.size());
+			
+			List<Service> newSvcItems = new ArrayList<>();
+			
+			for (Service service : items) {
+				service.getMetadata().setUid(null);
+				service.getMetadata().setCreationTimestamp(null);
+				service.getMetadata().setSelfLink(null);
+				service.getMetadata().setResourceVersion(null);
+				
+				Map<String, String> labels = service.getMetadata().getLabels();
+				labels.put("component", "slave");
+				
+				service.getSpec().getPorts().get(0).setNodePort(null);
+				service.getSpec().getSelector().put("component", "slave");
+				service.getSpec().setClusterIP(null);
+				service.getSpec().setSessionAffinity(null);
+				service.getSpec().setExternalTrafficPolicy(null);
+				service.setStatus(null);
+				
+				
+				ServiceBuilder svcBuilder = new ServiceBuilder(service);
+				io.fabric8.kubernetes.api.model.Service newSvc = svcBuilder
+				.editMetadata().withLabels(labels).endMetadata()
+				.build();
+				
+				
+				newSvcItems.add(newSvc);
+				
+			}
+			
+			
+			Watcher<io.fabric8.kubernetes.api.model.Service> watcher = new Watcher<io.fabric8.kubernetes.api.model.Service>() {
+				
+				@Override
+				public void eventReceived(Action action, io.fabric8.kubernetes.api.model.Service svc) {
+					if(svc.getMetadata().getName().startsWith(serviceName)) {
+						System.out.println(action + " / "+ svc.getMetadata().getName() +" / "+ svc.getStatus()  +" \n\n "+ svc );
+						
+						if("MODIFIED".equals(action.toString())) {
+							latch.countDown();
+						}
+					}
+				}
+				
+				@Override
+				public void onClose(KubernetesClientException cause) {
+					if(cause != null) {
+						log.error(cause.getMessage(), cause);
+					} else {
+						log.error("Service watch closed...........");
+					}
+				}
+				
+			};
+			Watch watch = client.inNamespace(namespace).services().watch(watcher);
+				
+			
+			
+			
+			int i = newSvcItems.size();
+			for (Service newSvc : newSvcItems) {
+				
+				history.append(newSvc.getMetadata().getName());
+				if(i > 1 ) {
+					history.append(", ");
+				}				
+				i--;
+				services.createOrReplace(newSvc);
+				
+			}
+			
+			latch.await(15, TimeUnit.SECONDS);
+			
+			watch.close();
+			
+			Result result = new Result(txId, Result.OK, "서비스 전환 완료");
+			if (!history.toString().isEmpty()) {
+				result.putValue(Result.HISTORY, history.toString() +" 가 master 에서 slave 로 전환 되었습니다.\nmaster 서비스로 연결된 App.은 slave DB에 읽기/쓰기 됩니다.");
+			}
+			
+			return result;		
+		} catch (FileNotFoundException | KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result(txId, Result.UNAUTHORIZED, "클러스터에 접근이 불가하거나 인증에 실패 했습니다.", null);
+			} else {
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result(txId, Result.ERROR, e.getMessage(), e);
+		}
 	}
 }
