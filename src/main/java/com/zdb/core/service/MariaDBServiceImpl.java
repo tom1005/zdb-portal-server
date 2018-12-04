@@ -821,8 +821,9 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				client.configMaps().inNamespace(namespace).withName(configMapName).edit().addToData("my.cnf", inputJson).done();
 			}
 
+			// 2018-12-04 환경설정 저장시 즉시 반영이 아닌 설정값 저장만 수행하고 재시작은 사용자가 수행.
 			// shutdown and pod delete (restart)
-			MariaDBShutDownUtil.getInstance().doShutdownAndDeleteAllPods(namespace, serviceName);
+//			MariaDBShutDownUtil.getInstance().doShutdownAndDeleteAllPods(namespace, serviceName);
 
 			result = new Result(txId, IResult.OK, historyValue);
 
