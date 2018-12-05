@@ -1,6 +1,7 @@
 package com.zdb.core.service;
 
 import java.io.FileNotFoundException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -79,6 +80,7 @@ import io.fabric8.kubernetes.api.model.PersistentVolume;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodCondition;
+import io.fabric8.kubernetes.api.model.PodStatus;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.DeploymentList;
@@ -1109,6 +1111,63 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 					}
 				}
 			}
+		} else {
+			// 2018-12-05 추가.
+			// GREEN 일때...
+			// mariadb 환경 설정 값을 변경 후 재시작을 했는지 여부 체크
+			// request_event 테이블 
+			//        # Pod 가 재시작 되지 않음을 의미.
+			//        RequestEvent.UPDATE_CONFIG (환경설정 변경) 의 등록된 시간 > Pod 의 시작 시간) ? "YELLOW" : "GREEN";
+			//        메세지 : 환경설정이 변경되었습니다. Pod 재시작이 필요합니다.
+			RequestEvent requestEvent = zdbRepository.findByServiceNameAndOperation(overview.getNamespace(), serviceName, RequestEvent.UPDATE_CONFIG);
+			if (requestEvent != null) {
+				
+				
+				List<Pod> pods = overview.getPods();
+
+				boolean isPodReady = true;
+				for (Pod pod : pods) {
+					if (!K8SUtil.IsReady(pod)) {
+						isPodReady = false;
+						break;
+					}
+				}
+
+				if (isPodReady) {
+					// RequestEvent.UPDATE_CONFIG
+
+					for (Pod pod : pods) {
+						PodStatus status = pod.getStatus();
+
+						List<PodCondition> conditions = status.getConditions();
+						for (PodCondition condition : conditions) {
+
+							if ("Ready".equals(condition.getType())) {
+								String lastTransitionTime = condition.getLastTransitionTime();
+								lastTransitionTime = lastTransitionTime.replace("T", " ").replace("Z", "");
+
+								SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+								try {
+									Date podUptime = sdf.parse(lastTransitionTime);
+									long eventTime = requestEvent.getStartTime().getTime();
+
+									//RequestEvent.UPDATE_CONFIG "환경설정 변경" 의 등록된 시간 > Pod 의 시작 시간
+									if(eventTime - podUptime.getTime() > 0) {
+										overview.setStatus(ZDBStatus.YELLOW);
+										overview.setStatusMessage("환경 설정이 변경되었습니다.</br>서비스 재시작이 필요합니다.");
+									}
+
+								} finally {
+									// do nothing
+								}
+							}
+
+						}
+					}
+				}
+			}
+			
 		}
 	}
 	

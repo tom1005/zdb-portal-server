@@ -15,7 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
-@Profile({"prod", "zcp-demo"})
+@Profile({"prod"})
 public class DiskUsageCollector {
 	
 	@Autowired

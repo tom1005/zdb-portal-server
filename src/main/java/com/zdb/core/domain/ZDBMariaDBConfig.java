@@ -34,7 +34,11 @@ public class ZDBMariaDBConfig {
 	private String configMapName;
 	
 	@Lob
-	@Column(length=1000000, name = "value")
-	private String value;
+	@Column(length=1000000, name = "beforeValue")
+	private String beforeValue;
+	
+	@Lob
+	@Column(length=1000000, name = "afterValue")
+	private String afterValue;
 
 }

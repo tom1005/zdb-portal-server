@@ -57,7 +57,8 @@ public class AdminService {
 						config.setConfigMapName(configMapName);
 						config.setReleaseName(releaseName);
 						config.setConfigMapName(configMapName);
-						config.setValue(value);
+						config.setBeforeValue("");
+						config.setAfterValue(value);
 						config.setDate(DateUtil.currentDate());
 
 						zdbMariaDBConfigRepository.save(config);

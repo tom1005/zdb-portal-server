@@ -42,6 +42,7 @@ import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBMariaDBAccount;
+import com.zdb.core.domain.ZDBMariaDBConfig;
 import com.zdb.core.domain.ZDBType;
 import com.zdb.core.job.CreatePersistentVolumeClaimsJob;
 import com.zdb.core.job.DataCopyJob;
@@ -59,8 +60,10 @@ import com.zdb.core.job.StartServiceJob;
 import com.zdb.core.repository.DiskUsageRepository;
 import com.zdb.core.repository.MycnfRepository;
 import com.zdb.core.repository.ZDBMariaDBAccountRepository;
+import com.zdb.core.repository.ZDBMariaDBConfigRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
+import com.zdb.core.util.DateUtil;
 import com.zdb.core.util.ExecCommandUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.PodManager;
@@ -87,11 +90,9 @@ import io.fabric8.kubernetes.api.model.Volume;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
-import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watch;
 import io.fabric8.kubernetes.client.Watcher;
-import io.fabric8.kubernetes.client.Watcher.Action;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.PodResource;
 import io.fabric8.kubernetes.client.dsl.Resource;
@@ -115,10 +116,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	
 	@Autowired
 	private ZDBMariaDBAccountRepository zdbMariaDBAccountRepository;
-
-//	@Autowired
-//	private ZDBMariaDBConfigRepository zdbMariaDBConfigRepository;
 	
+	@Autowired
+	private ZDBMariaDBConfigRepository zdbMariaDBConfigRepository;
+
 	@Autowired
 	private ZDBReleaseRepository releaseRepository;
 
@@ -815,9 +816,14 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			historyValue = compareVariables(namespace, serviceName, config);
 			
 			List<ConfigMap> items = client.inNamespace(namespace).configMaps().withLabel("release", serviceName).list().getItems();
+			
+			Map<String, String> beforeDataMap = new HashMap<>();
+			
 			for (ConfigMap configMap : items) {
 				String configMapName = configMap.getMetadata().getName();
+				String beforeValue = configMap.getData().get("my.cnf");
 
+				beforeDataMap.put(configMapName, beforeValue);
 				client.configMaps().inNamespace(namespace).withName(configMapName).edit().addToData("my.cnf", inputJson).done();
 			}
 
@@ -825,6 +831,9 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			// shutdown and pod delete (restart)
 //			MariaDBShutDownUtil.getInstance().doShutdownAndDeleteAllPods(namespace, serviceName);
 
+			// 2018-12-04 my.cnf 변경된 값 저장(master, slave)
+			saveHistory(namespace, serviceName, beforeDataMap);
+			
 			result = new Result(txId, IResult.OK, historyValue);
 
 		} catch (Exception e) {
@@ -836,6 +845,37 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		}
 
 		return result;
+	}
+	
+	/**
+	 * 환경 설정 변경값 저장.
+	 */
+	private void saveHistory(String namespace, String serviceName, Map<String, String> beforeDataMap) throws Exception {
+		try {
+			List<ConfigMap> cmItems = K8SUtil.kubernetesClient().inNamespace(namespace).configMaps().withLabel("release", serviceName).list().getItems();
+			for (ConfigMap configMap : cmItems) {
+
+				String configMapName = configMap.getMetadata().getName();
+				String value = configMap.getData().get("my.cnf");
+				
+				String beforeValue = beforeDataMap.get(configMapName);
+
+				ZDBMariaDBConfig config = new ZDBMariaDBConfig();
+				config.setConfigMapName(configMapName);
+				config.setReleaseName(serviceName);
+				config.setConfigMapName(configMapName);
+				config.setBeforeValue(beforeValue);
+				config.setAfterValue(value);
+				config.setDate(DateUtil.currentDate());
+
+				zdbMariaDBConfigRepository.save(config);
+
+				log.info("{} 의 my.cnf 저장 완료.", configMapName);
+			}
+		} catch (Exception e) {
+			log.error("Configmap (my.cnf) 저장 중 오류 - " + e.getMessage(), e);
+			throw e;
+		}
 	}
 
 	@Override
