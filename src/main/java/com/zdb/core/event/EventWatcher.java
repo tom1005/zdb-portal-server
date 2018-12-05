@@ -45,6 +45,8 @@ public class EventWatcher<T> implements Watcher<T> {
 	EventRepository eventRepo;
 	
 	MetadataRepository metaRepo;
+	
+	boolean isClosed = false;
 
 	public EventWatcher(EventRepository eventRepo, MetadataRepository metaRepo, SimpMessagingTemplate messageSender) {
 		this.eventRepo = eventRepo;
@@ -56,8 +58,14 @@ public class EventWatcher<T> implements Watcher<T> {
 		
 	}
 	
+	public boolean isClosed() {
+		return isClosed;
+	}
+	
 	@Override
 	public void eventReceived(Action action, Object resource) {
+		isClosed = false;
+		
 		String metaToJon = new Gson().toJson(resource);
 		HasMetadata metaObj = (HasMetadata) resource;
 		
@@ -242,6 +250,8 @@ public class EventWatcher<T> implements Watcher<T> {
 
 	@Override
 	public void onClose(KubernetesClientException cause) {
+		isClosed = true;
+		
 		if(cause != null) {
 			log.error(cause.getMessage(), cause);
 		} else {

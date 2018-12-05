@@ -40,6 +40,8 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 	
 	MetadataRepository metaRepo;
 
+	boolean isClosed = false;
+	
 	public MetaDataWatcher(MetadataRepository metaRepo) {
 		this.metaRepo = metaRepo;
 	}
@@ -48,8 +50,14 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 
 	}
 	
+	public boolean isClosed() {
+		return isClosed;
+	}
+	
 	@Override
-	public void eventReceived(Action action, Object resource) {
+	public void eventReceived(Action action, T resource) {
+		isClosed = false;
+		
 		String metaToJon = new Gson().toJson(resource);
 		HasMetadata metaObj = (HasMetadata) resource;
 		
@@ -278,6 +286,8 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 
 	@Override
 	public void onClose(KubernetesClientException cause) {
+		isClosed = true;
+		
 		if(cause != null) {
 			log.error(cause.getMessage(), cause);
 		} else {
