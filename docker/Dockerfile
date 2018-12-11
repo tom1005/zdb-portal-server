@@ -7,5 +7,5 @@ VOLUME /target
 #RUN apt-get update
 #RUN apt-get install -y --no-install-recommends python-software-properties
 #RUN apt-get install -y --no-install-recommends percona-toolkit
-RUN bash -c 'touch /zdb-portal-server-${APP_VERSION}.jar'
-ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-Dspring.profiles.active=${SPRING_ACTIVE_PROFILE}","-jar","/zdb-portal-server-${APP_VERSION}.jar"]
+RUN bash -c 'touch /zdb-portal-server-1.0.4.jar'
+ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-Dspring.profiles.active=${SPRING_ACTIVE_PROFILE}","-jar","/zdb-portal-server-1.0.4.jar"]
