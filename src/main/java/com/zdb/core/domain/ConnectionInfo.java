@@ -50,8 +50,6 @@ public class ConnectionInfo {
 	    switch (dbType) {
 	    case MariaDB:
 	    	// jdbc:mariadb://169.56.77.196:3306/zdb
-	    	// jdbc:mariadb://169.56.77.196:3306/zdb
-//	    	connectionString = String.format("mysql://admin:[password]@%s:%d/%s", conn.getIpAddress(), conn.getPort(), getDbName());
 	    	connectionString = String.format("jdbc:mariadb://%s:%d/%s", conn.getIpAddress(), conn.getPort(), getDbName());
 	    	break;
 	    case Redis:
