@@ -87,6 +87,12 @@ public class NamespaceResourceChecker {
 			}
 			
 			ResourceQuota hard = resource.getHard();
+			ResourceQuota used = resource.getUsed();
+			if(hard == null || used == null) {
+				log.error("네임스페이스[{}] 의 리소스 쿼터가 설정되지 않았습니다.", namespace);
+				throw new ResourceException("네임스페이스["+namespace+"] 의 리소스 쿼터가 설정되지 않았습니다.");
+			}
+			
 			Integer cpuRequests = hard.getCpuRequests();
 			CPUUnit cpuRequestsUnit = hard.getCpuRequestsUnit();
 			if(cpuRequestsUnit == CPUUnit.Core) {
@@ -99,7 +105,7 @@ public class NamespaceResourceChecker {
 				memRequests = memRequests * 1000;
 			}
 			
-			ResourceQuota used = resource.getUsed();
+			
 			Integer usedCpuRequests = used.getCpuRequests();
 			CPUUnit usedCpuRequestsUnit = used.getCpuRequestsUnit();
 			if(usedCpuRequestsUnit == CPUUnit.Core) {
