@@ -122,8 +122,6 @@ public class NamespaceResourceChecker {
 			int availableCpu = cpuRequests - usedCpuRequests;
 			int availableMemory = memRequests - usedMemRequests;
 			
-			
-			
 			int serviceRequestMemory = memory;//K8SUtil.convertToMemory(memory);
 			int serviceRequestCpu = cpu;//K8SUtil.convertToCpu(cpu);
 			
