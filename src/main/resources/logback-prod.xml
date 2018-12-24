@@ -17,11 +17,28 @@
 			<pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %C{2}.%M - %msg%n</pattern>
 		</encoder>
 	</appender>
- 
+
+	<appender name="eventLogAppender" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<prudent>true</prudent>
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>/app/logs/zdb-portal-server-event-%d{yyyyMMdd}.log</fileNamePattern>
+			<maxHistory>7</maxHistory>
+		</rollingPolicy>
+		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+			<level>INFO</level>
+		</filter>
+
+		<encoder>
+			<pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %msg%n</pattern>
+		</encoder>
+	</appender>
+	 
  	<logger name="org.springframework.web" level="INFO"/>
 	<logger name="org.hibernate.SQL" level="INFO"/>
 	<logger name="org.h2.server.web" level="INFO"/> 
- 
+  	<logger name="com.zdb.core.util.EventLog" level="INFO">
+		<appender-ref ref="eventLogAppender" />
+	</logger>	
 	<root level="INFO">
 		<appender-ref ref="dailyRollingFileAppender" />
 	</root>

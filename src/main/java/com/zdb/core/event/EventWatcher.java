@@ -12,6 +12,7 @@ import com.zdb.core.domain.CommonConstants;
 import com.zdb.core.domain.EventMetaData;
 import com.zdb.core.repository.EventRepository;
 import com.zdb.core.repository.MetadataRepository;
+import com.zdb.core.util.EventLog;
 import com.zdb.core.util.K8SUtil;
 
 import io.fabric8.kubernetes.api.model.ConfigMap;
@@ -73,6 +74,9 @@ public class EventWatcher<T> implements Watcher<T> {
 			Event event = (Event) resource;
 			// EventRepository
 			EventMetaData m = new EventMetaData();
+			
+			// write event log 
+			EventLog.printLog(event);
 			
 			try {
 				if( "PersistentVolume".equals(event.getInvolvedObject().getKind())) {
