@@ -39,11 +39,11 @@ public class HeapsterMetricUtil implements Callback<byte[]> {
 	public static void main(String[] args) throws Exception {
 		// curl GET http://heapster.kube-system/api/v1/model/namespaces/zdb-system/pod-list/zdb-system-zdb-mariadb-master-0/metrics/memory-usage
 
-		Object result = new HeapsterMetricUtil().getMemoryUsage("ns-zdb-02", "ns-zdb-02-demodb-mariadb-master-0");
+		Object result = new HeapsterMetricUtil().getMemoryUsage("zdb-test", "zdb-test-qq-mariadb-0");
 
 		System.out.println(result);
 		
-		result = new HeapsterMetricUtil().getCPUUsage("ns-zdb-02", "ns-zdb-02-demodb-mariadb-master-0");
+		result = new HeapsterMetricUtil().getCPUUsage("zdb-test", "zdb-test-qq-mariadb-0");
 
 		System.out.println(result);
 		
