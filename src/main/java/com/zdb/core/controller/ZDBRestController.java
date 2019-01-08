@@ -1170,7 +1170,7 @@ public class ZDBRestController {
 			UserInfo userInfo = getUserInfo();
 			String namespaces = userInfo.getNamespaces();
 			List<String> userNamespaces = new ArrayList<>();
-			if(namespaces != null) {
+			if(namespaces != null && !namespaces.isEmpty()) {
 				String[] split = namespaces.split(",");
 				for (String ns : split) {
 					userNamespaces.add(ns.trim());
