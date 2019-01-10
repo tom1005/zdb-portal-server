@@ -1683,6 +1683,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			StringBuffer history = new StringBuffer();
 			
 			StringBuffer sqlString = new StringBuffer();
+			sqlString.append("stop slave;");
 			sqlString.append("set global read_only=0;flush privileges;");
 			sqlString.append("show variables like 'read_only'\\G");
 			
@@ -1741,7 +1742,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				service.getMetadata().setResourceVersion(null);
 				
 				Map<String, String> labels = service.getMetadata().getLabels();
-				labels.put("component", "slave");
+				
+				// 2019-01-10 수정
+				// service 가 label 은 master 로 표기되어야 함.
+				labels.put("component", "master");
 				
 				service.getSpec().getPorts().get(0).setNodePort(null);
 				service.getSpec().getSelector().put("component", "slave");
