@@ -2242,6 +2242,55 @@ public class ZDBRestController {
 		}	
 	}
 	
+	
+	/**
+	 * Master 장애로 서비스LB 를 Master -> Slave 로 전환 여부를 반환한다.
+	 * 
+	 * Result.message 로 상태값 반환
+	 *  - MasterToSlave (전환된 상태)
+	 *  - MasterToMaster (정상 서비스 상태)
+	 *  - unknown (파라메터 오류 또는 알수 없음)
+	 *  
+	 * @param namespace
+	 * @param serviceType
+	 * @param serviceName
+	 * @param ucBuilder
+	 * @return
+	 */
+	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/svc/status", method = RequestMethod.GET)
+	public ResponseEntity<String> serviceTakeOverStatus (
+			@PathVariable("namespace") final String namespace,
+			@PathVariable("serviceType") final String serviceType, 
+			@PathVariable("serviceName") final String serviceName,
+			final UriComponentsBuilder ucBuilder) {
+		String txId = txId();
+		try {
+			ZDBType dbType = ZDBType.getType(serviceType);
+
+			com.zdb.core.domain.Result result = null;
+
+			switch (dbType) {
+			case MariaDB:
+			case Redis:
+				result = commonService.serviceTakeOverStatus(txId, namespace, serviceType, serviceName);
+				break;
+			default:
+				log.error("Not support.");
+				result.setMessage("Not support service type.");
+				break;
+			}
+
+			log.info(result.toJson() +"|"+result.status());
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_TAKE_OVER_STATUS+" 조회 오류!").putValue(IResult.EXCEPTION, e);
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+		}	
+	}
+	
 	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/slowlogRotation", method = RequestMethod.PUT)
 	public ResponseEntity<String> slowlogRotation(
 			@PathVariable("namespace") final String namespace,

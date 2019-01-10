@@ -211,7 +211,33 @@ public interface ZDBRestService {
 	
 	Result serviceOn(String txId, String namespace, String serviceType, String serviceName, String stsName) throws Exception;
 	
+	/**
+	 * Master 장애로 서비스LB 를 Master -> Slave 로 전환 (MariaDB 만 지원)
+	 * 
+	 * @param txId
+	 * @param namespace
+	 * @param serviceType
+	 * @param serviceName
+	 * @return
+	 * @throws Exception
+	 */
 	Result serviceTakeOver(String txId, String namespace, String serviceType, String serviceName) throws Exception;
+
+	/**
+	 * Master 장애로 서비스LB 를 Master -> Slave 로 전환 여부를 반환한다.
+	 * 
+	 * Result.message 로 상태값 반환
+	 *  - MasterToSlave (전환된 상태)
+	 *  - MasterToMaster (정상 서비스 상태)
+	 *  - unknown (파라메터 오류 또는 알수 없음)
+	 * @param txId
+	 * @param namespace
+	 * @param serviceType
+	 * @param serviceName
+	 * @return
+	 * @throws Exception
+	 */
+	Result serviceTakeOverStatus(String txId, String namespace, String serviceType, String serviceName) throws Exception;
 
 	Result slowlogRotation(String txId, String namespace, String serviceType, String serviceName) throws Exception;
 }

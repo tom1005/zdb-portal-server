@@ -1969,6 +1969,10 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		return null;
 	}
 
+	public Result serviceTakeOverStatus(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+		return null;
+	}
+
 	public Result slowlogRotation(String txId, String namespace, String serviceType, String serviceName) throws Exception {
 		return null;
 	}
