@@ -1,5 +1,8 @@
 package com.zdb.core.event.listener;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -40,9 +43,9 @@ import lombok.extern.slf4j.Slf4j;
 //@Profile({"prod"})
 public class WatchEventListener {
 
-	List<Watch> watchList = new CopyOnWriteArrayList<>();
-	List<EventWatcher<?>> eventWatcherList = new CopyOnWriteArrayList<>();
-	Map<String, MetaDataWatcher<?>> metaDataWatcherMap = new CopyOnWriteMap<>();
+	List<Watch> watchList = Collections.synchronizedList(new ArrayList());
+	List<EventWatcher<?>> eventWatcherList = Collections.synchronizedList(new ArrayList());
+	Map<String, MetaDataWatcher<?>> metaDataWatcherMap = Collections.synchronizedMap(new HashMap());
 
 	@Autowired
 	MetadataRepository metaRepo;
