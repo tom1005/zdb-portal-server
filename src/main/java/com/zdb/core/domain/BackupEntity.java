@@ -45,8 +45,8 @@ public class BackupEntity {
 	private String endpointUrl;
 	private String bucketName;
 	private String type;
-	private long toLsn;
-	private long fromLsn;
-	private String fromBackupId;
+	private long toLsn = 0l;
+	private long fromLsn = 0l;
+	private String fromBackupId = "";
 	
 }
