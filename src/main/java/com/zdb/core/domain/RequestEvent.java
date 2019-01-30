@@ -42,11 +42,14 @@ public class RequestEvent {
 	public static final String SET_BACKUP_SCHEDULE = "스케줄 설정";
 	public static final String EXEC_BACKUP = "백업 실행";
 	public static final String REQ_BACKUP = "백업 요청";
+	public static final String REQ_FULL_BACKUP = "전체 백업 요청";
+	public static final String REQ_INCR_BACKUP = "증분 백업 요청";
 	public static final String DELETE_BACKUP_DATA = "백업 데이터 삭제";
 	public static final String RESTORE_BACKUP = "백업 데이터 복원";
 	public static final String CREATE_PUBLIC_SVC = "Public Network 생성";
 	public static final String DELETE_PUBLIC_SVC = "Public Network 삭제";
 	public static final String CREATE_ZDBCONFIG = "Global 환경설정 생성";
+	public static final String SERVICE_RESTORE_SLAVE = "";
 	
 	private String operation;
 

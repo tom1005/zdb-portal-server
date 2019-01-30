@@ -31,4 +31,7 @@ public class ScheduleEntity {
 	private Date registerDate;
 	private String deleteYn = "N";
 	private Date deleteDate;
+	private String incrementYn = "N";
+	private int incrementPeriod = 12;
+	
 }
