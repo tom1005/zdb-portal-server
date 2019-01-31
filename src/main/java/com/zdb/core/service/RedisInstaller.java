@@ -383,7 +383,7 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 					}
 					releaseMeta.setAction("CREATE");
 					releaseMeta.setApp(release.getChart().getMetadata().getName());
-					releaseMeta.setAppVersion(release.getChart().getMetadata().getAppVersion());
+					releaseMeta.setAppVersion(service.getVersion());
 					releaseMeta.setChartVersion(release.getChart().getMetadata().getVersion());
 					releaseMeta.setChartName(release.getChart().getMetadata().getName());
 					releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds()*1000L));
