@@ -36,7 +36,7 @@ public interface ScheduleEntityRepository extends CrudRepository<ScheduleEntity,
         @Query("select t from ScheduleEntity t where startTime=:startTime and deleteYn='N' order by registerDate asc" )
         List<ScheduleEntity> findCurrentSchedule(@Param("startTime") String startTime);
         
-        @Query("select t from ScheduleEntity t where deleteYn='N' and useYn = 'Y' and startTime<>:currentTime and incrementYn = 'Y' order by registerDate asc" )
+        @Query("select t from ScheduleEntity t where deleteYn='N' and useYn = 'Y' and startTime <> :currentTime and incrementYn = 'Y' order by registerDate asc" )
         List<ScheduleEntity> findCurrentIncrementSchedule(@Param("currentTime") String currentTime);
         
         @Query("select t from ScheduleEntity t" )
