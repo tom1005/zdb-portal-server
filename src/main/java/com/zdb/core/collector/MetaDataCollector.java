@@ -55,7 +55,9 @@ public class MetaDataCollector {
 	};
 	
     public static void putMetaData(String key, HasMetadata value) {
-    	METADATA_CACHE.put(key, value);
+    	synchronized (METADATA_CACHE) {
+		METADATA_CACHE.put(key, value);
+	}
     }
 	
 	@Scheduled(initialDelayString = "20000", fixedRateString = "90000")
