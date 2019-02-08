@@ -44,4 +44,9 @@ public class BackupEntity {
 	private String checkSum;
 	private String endpointUrl;
 	private String bucketName;
+	private String type;
+	private long toLsn = 0l;
+	private long fromLsn = 0l;
+	private String fromBackupId = "";
+	
 }

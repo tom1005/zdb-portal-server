@@ -75,6 +75,10 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			+ ", t.archiveFileSize=:archiveFileSize"
 			+ ", t.checkSum=:checkSum"
 			+ ", t.status=:status "
+			+ ", t.toLsn=:toLsn "
+			+ ", t.fromBackupId=:fromBackupId "
+			+ ", t.fromLsn=:fromLsn "
+			+ ", t.type=:type "
 			+ "WHERE t.backupId=:backupId")
 	int modify2Archived(@Param("createdDatetime") Date createdDatetime
 			, @Param("filePath") String filePath
@@ -85,7 +89,12 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			, @Param("archiveFileSize") long archiveFileSize
 			, @Param("checkSum") String checkSum
 			, @Param("status") String status
-			, @Param("backupId") String backupId);
+			, @Param("backupId") String backupId
+			, @Param("toLsn") long toLsn
+			, @Param("fromBackupId") String fromBackupId
+			, @Param("fromLsn") long fromLsn
+			, @Param("type") String type
+			);
 	
 	@Modifying(clearAutomatically = true)
 	@Transactional
@@ -155,4 +164,12 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 	
 	@Query("select t from BackupEntity t where t.scheduleId=:scheduleId and t.status='OK'" )
 	List<BackupEntity> findBackupListByScheduleId(@Param("scheduleId") String scheduleId);
+	
+	@Query("select t from BackupEntity t where t.namespace=:namespace"
+			+ " and t.serviceType=:serviceType"
+			+ " and t.serviceName=:serviceName"
+			+ " and scheduleYn='Y' and status = 'OK' and toLsn <> 0 and toLsn is not null order by fileName desc" )
+	List<BackupEntity> findFromBackup(@Param("namespace") String namespace
+			, @Param("serviceType") String serviceType
+			, @Param("serviceName") String serviceName);
 }
