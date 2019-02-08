@@ -99,71 +99,74 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 			}
 		} else {
 			String meta = m.getMetadata();
-			HasMetadata hasMetadata = MetaDataCollector.METADATA_CACHE.get(metaObj.getMetadata().getUid());
-			if (resource instanceof Pod) {
-				if(hasMetadata == null) {
-					// send websocket
-					pushData = true;
-					//System.out.println("Cached Pod metadata is null. " + metaObj.getMetadata().getName());
-				} else {
-					try {
-						Pod newPod = (Pod) resource;
-						boolean newPodIsReady = isReady(newPod);
-						
-						Pod oldPod = new Gson().fromJson(meta, Pod.class);
-						boolean oldPodIsReady = isReady(oldPod);
-						
-						if(newPodIsReady != oldPodIsReady) {
-							// send websocket
-							pushData = true;
+			synchronized (MetaDataCollector.METADATA_CACHE) {
+				HasMetadata hasMetadata = MetaDataCollector.METADATA_CACHE.get(metaObj.getMetadata().getUid());
+				if (resource instanceof Pod) {
+					if(hasMetadata == null) {
+						// send websocket
+						pushData = true;
+						//System.out.println("Cached Pod metadata is null. " + metaObj.getMetadata().getName());
+					} else {
+						try {
+							Pod newPod = (Pod) resource;
+							boolean newPodIsReady = isReady(newPod);
 							
-							//System.out.println("Pod metadata is changed." + oldPodIsReady +" -> "+newPodIsReady);
+							Pod oldPod = new Gson().fromJson(meta, Pod.class);
+							boolean oldPodIsReady = isReady(oldPod);
+							
+							if(newPodIsReady != oldPodIsReady) {
+								// send websocket
+								pushData = true;
+								
+								//System.out.println("Pod metadata is changed." + oldPodIsReady +" -> "+newPodIsReady);
+							}
+						} catch (Exception e) {
+							log.error(e.getMessage(), e);
 						}
-					} catch (Exception e) {
-						log.error(e.getMessage(), e);
+					}
+					
+				} else if (resource instanceof PersistentVolumeClaim) {
+					if(hasMetadata == null) {
+						// send websocket
+						pushData = true;
+						//System.out.println("Cached PersistentVolumeClaim metadata is null. " + metaObj.getMetadata().getName());
+					} else {
+						try {
+							PersistentVolumeClaim newPvc = (PersistentVolumeClaim) resource;
+							String newPVCStatus = getStatus(newPvc);
+							
+							PersistentVolumeClaim oldPvc = new Gson().fromJson(meta, PersistentVolumeClaim.class);
+							String oldPVCStatus = getStatus(oldPvc);
+							
+							if(!newPVCStatus.equals(oldPVCStatus)) {
+								// send websocket
+								//System.out.println("PersistentVolumeClaim metadata is changed." + oldPVCStatus +" -> "+newPVCStatus);
+								pushData = true;
+							}
+						} catch (Exception e) {
+							log.error(e.getMessage(), e);
+						}
 					}
 				}
-				
-			} else if (resource instanceof PersistentVolumeClaim) {
-				if(hasMetadata == null) {
-					// send websocket
-					pushData = true;
-					//System.out.println("Cached PersistentVolumeClaim metadata is null. " + metaObj.getMetadata().getName());
-				} else {
-					try {
-						PersistentVolumeClaim newPvc = (PersistentVolumeClaim) resource;
-						String newPVCStatus = getStatus(newPvc);
-						
-						PersistentVolumeClaim oldPvc = new Gson().fromJson(meta, PersistentVolumeClaim.class);
-						String oldPVCStatus = getStatus(oldPvc);
-						
-						if(!newPVCStatus.equals(oldPVCStatus)) {
-							// send websocket
-							//System.out.println("PersistentVolumeClaim metadata is changed." + oldPVCStatus +" -> "+newPVCStatus);
-							pushData = true;
-						}
-					} catch (Exception e) {
-						log.error(e.getMessage(), e);
+			
+	
+				m.setApp(app);
+				m.setUid(metaObj.getMetadata().getUid());
+				m.setStatus(getStatus(metaObj));
+				m.setMetadata(metaToJon);
+				m.setUpdateTime(new Date(System.currentTimeMillis()));
+				m.setAction(action.name());
+		
+				if (isZDBResource(metaObj)) {
+					metaRepo.save(m);
+					
+					MetaDataCollector.putMetaData(metaObj.getMetadata().getUid(), metaObj);
+					
+					// send websocket		
+					if(pushData) {
+						sendWebSocket();
 					}
 				}
-			}
-		}
-
-		m.setApp(app);
-		m.setUid(metaObj.getMetadata().getUid());
-		m.setStatus(getStatus(metaObj));
-		m.setMetadata(metaToJon);
-		m.setUpdateTime(new Date(System.currentTimeMillis()));
-		m.setAction(action.name());
-
-		if (isZDBResource(metaObj)) {
-			metaRepo.save(m);
-			
-			MetaDataCollector.putMetaData(metaObj.getMetadata().getUid(), metaObj);
-			
-			// send websocket		
-			if(pushData) {
-				sendWebSocket();
 			}
 		}
 
