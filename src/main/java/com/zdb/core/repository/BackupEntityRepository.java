@@ -168,7 +168,12 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 	@Query("select t from BackupEntity t where t.namespace=:namespace"
 			+ " and t.serviceType=:serviceType"
 			+ " and t.serviceName=:serviceName"
-			+ " and scheduleYn='Y' and status = 'OK' and toLsn <> 0 and toLsn is not null order by createdDatetime desc" )
+			+ " and scheduleYn='Y'"
+			+ " and status = 'OK'"
+			+ " and toLsn <> 0"
+			+ " and toLsn is not null"
+			+ " and completeDatetime >= date_add(now(), interval -2 day)"
+			+ " order by completeDatetime desc" )
 	List<BackupEntity> findFromBackup(@Param("namespace") String namespace
 			, @Param("serviceType") String serviceType
 			, @Param("serviceName") String serviceName);
