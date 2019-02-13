@@ -172,7 +172,7 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			+ " and status = 'OK'"
 			+ " and toLsn <> 0"
 			+ " and toLsn is not null"
-			+ " and completeDatetime >= date_add(now(), interval -2 day)"
+			//+ " and completeDatetime >= date_add(now(), interval -2 day)"
 			+ " order by completeDatetime desc" )
 	List<BackupEntity> findFromBackup(@Param("namespace") String namespace
 			, @Param("serviceType") String serviceType
