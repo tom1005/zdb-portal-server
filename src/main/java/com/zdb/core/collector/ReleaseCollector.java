@@ -9,6 +9,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.Yaml;
 
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.repository.ZDBReleaseRepository;
@@ -50,7 +52,24 @@ public class ReleaseCollector {
 					releaseMeta.setAction("SYNC");
 				} 
 				releaseMeta.setApp(release.getChart().getMetadata().getName());
-				releaseMeta.setAppVersion(release.getChart().getMetadata().getAppVersion());
+				
+				try {
+					String raw = release.getConfig().getRaw();
+					
+					DumperOptions options = new DumperOptions();
+					options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+					options.setPrettyFlow(true);
+					
+					Yaml yaml = new Yaml(options);
+					
+					Map<String, Map<String, Object>> flesh = yaml.loadAs(raw, Map.class);
+					Object v = flesh.get("image").get("tag");
+					
+					releaseMeta.setAppVersion(""+v);
+				} catch (Exception e) {
+					log.error(e.getMessage(), e);
+				}
+				
 				releaseMeta.setChartVersion(release.getChart().getMetadata().getVersion());
 				releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds() * 1000L));
 				releaseMeta.setNamespace(release.getNamespace());
