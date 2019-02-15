@@ -1673,7 +1673,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	}
 	
 	@Override
-	public Result serviceTakeOver(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+	public Result serviceChaneMasterToSlave(String txId, String namespace, String serviceType, String serviceName) throws Exception {
 		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
 			
 //		    Result : 
@@ -1771,7 +1771,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				@Override
 				public void eventReceived(Action action, io.fabric8.kubernetes.api.model.Service svc) {
 					if(svc.getMetadata().getName().startsWith(serviceName)) {
-						System.out.println(action + " / "+ svc.getMetadata().getName() +" / "+ svc.getStatus()  +" \n\n "+ svc );
+						log.info(action + " / "+ svc.getMetadata().getName() +" / "+ svc.getStatus()  +" \n\n "+ svc );
 						
 						if("MODIFIED".equals(action.toString())) {
 							latch.countDown();
@@ -1813,6 +1813,122 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			Result result = new Result(txId, Result.OK, "서비스 전환 완료");
 			if (!history.toString().isEmpty()) {
 				result.putValue(Result.HISTORY, history.toString() +" 가 master 에서 slave 로 전환 되었습니다.\nmaster 서비스로 연결된 App.은 slave DB에 읽기/쓰기 됩니다.");
+			}
+			
+			return result;		
+		} catch (FileNotFoundException | KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result(txId, Result.UNAUTHORIZED, "클러스터에 접근이 불가하거나 인증에 실패 했습니다.", null);
+			} else {
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result(txId, Result.ERROR, e.getMessage(), e);
+		}
+	}
+	
+	@Override
+	public Result serviceChaneSlaveToMaster(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
+			
+			StringBuffer history = new StringBuffer();
+
+			MixedOperation<io.fabric8.kubernetes.api.model.Service, ServiceList, DoneableService, Resource<io.fabric8.kubernetes.api.model.Service, DoneableService>> services = client.inNamespace(namespace).services();
+			
+			List<Service> items = services.withLabel("release", serviceName).withLabel("component", "master").list().getItems();
+			
+			if(items.size() > 0) {
+				log.info("서비스 전환 대상 서비스가 {}개 존재합니다.", items.size());
+				for (Service service : items) {
+					log.info("	- {}", service.getMetadata().getName());
+				}
+			} else {
+				log.error("서비스 전환 대상 서비스가 없습니다.");
+				return new Result(txId, Result.ERROR, "서비스 전환 대상 서비스가 없습니다.");
+			}
+			
+			final CountDownLatch latch = new CountDownLatch(items.size());
+			
+			List<Service> newSvcItems = new ArrayList<>();
+			
+			for (Service service : items) {
+				service.getMetadata().setUid(null);
+				service.getMetadata().setCreationTimestamp(null);
+				service.getMetadata().setSelfLink(null);
+				service.getMetadata().setResourceVersion(null);
+				
+				Map<String, String> labels = service.getMetadata().getLabels();
+				
+				labels.put("component", "master");
+				
+				service.getSpec().getPorts().get(0).setNodePort(null);
+				service.getSpec().getSelector().put("component", "master");
+				service.getSpec().setClusterIP(null);
+				service.getSpec().setSessionAffinity(null);
+				service.getSpec().setExternalTrafficPolicy(null);
+				service.setStatus(null);
+				
+				
+				ServiceBuilder svcBuilder = new ServiceBuilder(service);
+				io.fabric8.kubernetes.api.model.Service newSvc = svcBuilder
+				.editMetadata().withLabels(labels).endMetadata()
+				.build();
+				
+				
+				newSvcItems.add(newSvc);
+				
+			}
+			
+			
+			Watcher<io.fabric8.kubernetes.api.model.Service> watcher = new Watcher<io.fabric8.kubernetes.api.model.Service>() {
+				
+				@Override
+				public void eventReceived(Action action, io.fabric8.kubernetes.api.model.Service svc) {
+					if(svc.getMetadata().getName().startsWith(serviceName)) {
+						log.info(action + " / "+ svc.getMetadata().getName() +" / "+ svc.getStatus()  +" \n\n "+ svc );
+						
+						if("MODIFIED".equals(action.toString())) {
+							latch.countDown();
+						}
+					}
+				}
+				
+				@Override
+				public void onClose(KubernetesClientException cause) {
+					if(cause != null) {
+						log.error(cause.getMessage(), cause);
+					} else {
+						log.error("Service watch closed...........");
+					}
+				}
+				
+			};
+			Watch watch = client.inNamespace(namespace).services().watch(watcher);
+				
+			
+			
+			
+			int i = newSvcItems.size();
+			for (Service newSvc : newSvcItems) {
+				
+				history.append(newSvc.getMetadata().getName());
+				if(i > 1 ) {
+					history.append(", ");
+				}				
+				i--;
+				services.createOrReplace(newSvc);
+				
+			}
+			
+			latch.await(15, TimeUnit.SECONDS);
+			
+			watch.close();
+			
+			Result result = new Result(txId, Result.OK, "서비스 전환 완료(slave->master)");
+			if (!history.toString().isEmpty()) {
+				result.putValue(Result.HISTORY, history.toString() +" 가 slave 에서 master 로 전환 되었습니다.");
 			}
 			
 			return result;		

@@ -2184,7 +2184,7 @@ public class ZDBRestController {
 	}
 
 	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/svc/masterToslave", method = RequestMethod.PUT)
-	public ResponseEntity<String> serviceTakeOver(
+	public ResponseEntity<String> serviceChangeMasterToSlave(
 			@PathVariable("namespace") final String namespace,
 			@PathVariable("serviceType") final String serviceType, 
 			@PathVariable("serviceName") final String serviceName,
@@ -2198,7 +2198,7 @@ public class ZDBRestController {
 			event.setServiceType(serviceType);
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
-			event.setOperation(RequestEvent.SERVICE_TAKE_OVER);
+			event.setOperation(RequestEvent.SERVICE_MASTER_TO_SLAVE);
 			event.setUserId(userInfo.getUserName());	
 			
 			ZDBType dbType = ZDBType.getType(serviceType);
@@ -2207,7 +2207,7 @@ public class ZDBRestController {
 
 			switch (dbType) {
 			case MariaDB:
-				result = mariadbService.serviceTakeOver(txId, namespace, serviceType, serviceName);
+				result = mariadbService.serviceChaneMasterToSlave(txId, namespace, serviceType, serviceName);
 				break;
 			case Redis:
 				break;
@@ -2230,7 +2230,66 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_TAKE_OVER+" 오류!").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_MASTER_TO_SLAVE+" 오류!").putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}	
+	}
+	
+	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/svc/slaveTomaster", method = RequestMethod.PUT)
+	public ResponseEntity<String> serviceChangeSlaveToMaster(
+			@PathVariable("namespace") final String namespace,
+			@PathVariable("serviceType") final String serviceType, 
+			@PathVariable("serviceName") final String serviceName,
+			final UriComponentsBuilder ucBuilder) {
+		String txId = txId();
+		RequestEvent event = new RequestEvent();
+		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.SERVICE_SLAVE_TO_MASTER);
+			event.setUserId(userInfo.getUserName());	
+			
+			ZDBType dbType = ZDBType.getType(serviceType);
+			
+			com.zdb.core.domain.Result result = null;
+			
+			switch (dbType) {
+			case MariaDB:
+				result = mariadbService.serviceChaneSlaveToMaster(txId, namespace, serviceType, serviceName);
+				break;
+			case Redis:
+				break;
+			default:
+				log.error("Not support.");
+				result.setMessage("Not support service type.");
+				break;
+			}
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			// 2018-10-05 수정 
+			// history 저장 
+			Object history = result.getResult().get(Result.HISTORY);
+			if (history != null) {
+				event.setHistory("" + history);
+			}
+			log.info(result.toJson() +"|"+result.status());
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_SLAVE_TO_MASTER+" 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
@@ -2258,7 +2317,7 @@ public class ZDBRestController {
 	 * @return
 	 */
 	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/svc/status", method = RequestMethod.GET)
-	public ResponseEntity<String> serviceTakeOverStatus (
+	public ResponseEntity<String> serviceFailOverStatus (
 			@PathVariable("namespace") final String namespace,
 			@PathVariable("serviceType") final String serviceType, 
 			@PathVariable("serviceName") final String serviceName,
@@ -2272,7 +2331,7 @@ public class ZDBRestController {
 			switch (dbType) {
 			case MariaDB:
 			case Redis:
-				result = commonService.serviceTakeOverStatus(txId, namespace, serviceType, serviceName);
+				result = commonService.serviceFailOverStatus(txId, namespace, serviceType, serviceName);
 				break;
 			default:
 				log.error("Not support.");
@@ -2284,7 +2343,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_TAKE_OVER_STATUS+" 조회 오류!").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_FAIL_OVER_STATUS+" 조회 오류!").putValue(IResult.EXCEPTION, e);
 			
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		} finally {
@@ -2338,7 +2397,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_TAKE_OVER+" 오류!").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_MASTER_TO_SLAVE+" 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());

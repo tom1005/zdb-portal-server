@@ -14,7 +14,6 @@ import org.springframework.web.util.UriComponentsBuilder;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.Result;
-import com.zdb.core.repository.UserNamespaceRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.service.AdminService;
 
@@ -50,7 +49,7 @@ public class ZDBAdminController {
 			return new ResponseEntity<String>(mycnfBackup + " configmap 이 저장 되었습니다.", HttpStatus.OK);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result("", IResult.ERROR, RequestEvent.SERVICE_TAKE_OVER+" 오류!").putValue(IResult.EXCEPTION, e);
+			Result result = new Result("", IResult.ERROR, "my.cnf Backup 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());

@@ -1965,11 +1965,15 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		return null;
 	}
 
-	public Result serviceTakeOver(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+	public Result serviceChaneMasterToSlave(String txId, String namespace, String serviceType, String serviceName) throws Exception {
 		return null;
 	}
 
-	public Result serviceTakeOverStatus(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+	public Result serviceChaneSlaveToMaster(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+		return null;
+	}
+
+	public Result serviceFailOverStatus(String txId, String namespace, String serviceType, String serviceName) throws Exception {
 		return null;
 	}
 

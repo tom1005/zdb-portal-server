@@ -115,10 +115,10 @@ public class CommonServiceImpl extends AbstractServiceImpl {
 	 *  - unknown
 	 *  
 	 *  
-	 * @see com.zdb.core.service.AbstractServiceImpl#serviceTakeOverStatus(java.lang.String, java.lang.String, java.lang.String, java.lang.String)
+	 * @see com.zdb.core.service.AbstractServiceImpl#serviceFailOverStatus(java.lang.String, java.lang.String, java.lang.String, java.lang.String)
 	 */
 	@Override
-	public Result serviceTakeOverStatus(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+	public Result serviceFailOverStatus(String txId, String namespace, String serviceType, String serviceName) throws Exception {
 		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
 			
 			List<io.fabric8.kubernetes.api.model.Service> services = k8sService.getServices(namespace, serviceName);
