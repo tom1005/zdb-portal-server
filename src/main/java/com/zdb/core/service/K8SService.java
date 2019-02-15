@@ -686,7 +686,7 @@ public class K8SService {
 			for (StatefulSet statefulSet : so.getStatefulSets()) {
 				List<Container> containers = statefulSet.getSpec().getTemplate().getSpec().getContainers();
 				for (Container container : containers) {
-					if ("mariadb".equals(container.getName())) {
+					if (container.getName().endsWith("redis") || container.getName().endsWith("mariadb")) {
 						String image = container.getImage();
 
 						String[] split = image.split(":");
