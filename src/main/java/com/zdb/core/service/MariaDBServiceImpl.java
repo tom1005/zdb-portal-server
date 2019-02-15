@@ -1741,7 +1741,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				service.getMetadata().setResourceVersion(null);
 				
 				Map<String, String> labels = service.getMetadata().getLabels();
-				labels.put("component", "slave");
+				labels.put("component", "master");
 				
 				service.getSpec().getPorts().get(0).setNodePort(null);
 				service.getSpec().getSelector().put("component", "slave");
