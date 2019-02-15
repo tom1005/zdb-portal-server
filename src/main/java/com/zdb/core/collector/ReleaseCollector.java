@@ -9,6 +9,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.Yaml;
 
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.repository.ZDBReleaseRepository;
@@ -17,7 +19,9 @@ import com.zdb.core.util.K8SUtil;
 
 import hapi.release.ReleaseOuterClass.Release;
 import hapi.release.StatusOuterClass.Status.Code;
+import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.Service;
+import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
@@ -50,7 +54,41 @@ public class ReleaseCollector {
 					releaseMeta.setAction("SYNC");
 				} 
 				releaseMeta.setApp(release.getChart().getMetadata().getName());
-				releaseMeta.setAppVersion(release.getChart().getMetadata().getAppVersion());
+				
+				try {
+//					String raw = release.getConfig().getRaw();
+//					
+//					DumperOptions options = new DumperOptions();
+//					options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+//					options.setPrettyFlow(true);
+//					
+//					Yaml yaml = new Yaml(options);
+//					
+//					Map<String, Map<String, Object>> flesh = yaml.loadAs(raw, Map.class);
+//					Object v = flesh.get("image").get("tag");
+					
+					List<StatefulSet> statefulSets = k8sService.getStatefulSets(release.getNamespace(), release.getName());
+					
+					String version = null;
+					for (StatefulSet statefulSet : statefulSets) {
+						List<Container> containers = statefulSet.getSpec().getTemplate().getSpec().getContainers();
+						for (Container container : containers) {
+							if (container.getName().endsWith("redis") || container.getName().endsWith("mariadb")) {
+								String image = container.getImage();
+
+								String[] split = image.split(":");
+
+								version = split[1];
+								break;
+							}
+						}
+					}
+					
+					releaseMeta.setAppVersion(version);
+				} catch (Exception e) {
+					log.error(e.getMessage(), e);
+				}
+				
 				releaseMeta.setChartVersion(release.getChart().getMetadata().getVersion());
 				releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds() * 1000L));
 				releaseMeta.setNamespace(release.getNamespace());

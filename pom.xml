@@ -117,12 +117,17 @@
 			<groupId>redis.clients</groupId>
 			<artifactId>jedis</artifactId>
 		</dependency>
-		
-<!--         <dependency>
+<!-- 		
+        <dependency>
             <groupId>com.ibm.cos</groupId>
             <artifactId>ibm-cos-java-sdk</artifactId>
             <version>2.1.0</version>
-        </dependency> -->
+        </dependency>
+ -->
+ 		<dependency>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpclient</artifactId>
+		</dependency>
 
 		<!-- websocket -->
         <dependency>
@@ -156,8 +161,8 @@
 		    <artifactId>commons-compress</artifactId>
 		    <version>1.18</version>
 		</dependency>
-
-<!-- 		<dependency>
+<!--  
+		<dependency>
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-config</artifactId>
 			<version>4.2.2.RELEASE</version>
@@ -171,7 +176,8 @@
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-messaging</artifactId>
 			<version>4.2.6.RELEASE</version>
-		</dependency> -->
+		</dependency>
+-->
 	</dependencies>
 	<profiles>
 		<profile>
