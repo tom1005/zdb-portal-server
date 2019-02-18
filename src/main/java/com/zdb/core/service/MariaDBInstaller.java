@@ -300,7 +300,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 											releaseRepository.save(releaseMeta);
 										}
 										lacth.countDown();
-										log.info("------------------------------------------------- service create success! ------------------------------------------------- ");
+										log.info("-------------------------- service create success! -- ["+service.getNamespace() +" > "+ service.getServiceName() +"]");
 										
 										messageSender.sendToClient("mariadb installer");
 										break;
@@ -326,14 +326,14 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 					
 					if(lacth.getCount() > 0) {
 						event.setStatus(IResult.ERROR);
-						event.setResultMessage("서비스 생성 실패. - 10분 타임아웃");
+						event.setResultMessage("서비스 생성 실패. - 10분 타임아웃 ["+service.getNamespace() +" > "+ service.getServiceName() +"]");
 						event.setEndTime(new Date(System.currentTimeMillis()));
 						
 						releaseMeta = releaseRepository.findByReleaseName(service.getServiceName());
 						if(releaseMeta != null) {
 							if("CREATING".equals(releaseMeta.getStatus())) {
 								releaseMeta.setStatus("ERROR");
-								releaseMeta.setDescription("서비스 생성 실패.(타임아웃)");
+								releaseMeta.setDescription("서비스 생성 실패.(타임아웃)["+service.getNamespace() +" > "+ service.getServiceName() +"]");
 								releaseRepository.save(releaseMeta);
 							}
 						}
@@ -349,12 +349,12 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 							if(K8SUtil.IsReady(pod)) {
 								MariaDBAccount.updateAdminPrivileges(service.getNamespace(), service.getServiceName(), account.getUserId());
 							}
-							log.info("admin 권한 적용 완료.");
+							log.info("admin 권한 적용 완료 ["+service.getNamespace() +" > "+ service.getServiceName() +"]");
 						} else {
 							log.error("권한 적용 오류 -  master db is null." + service.getNamespace() +" > "+ service.getServiceName());
 						}
 					} catch (Exception e) {
-						log.error("권한 적용 오류 ", e.getMessage()); 
+						log.error("권한 적용 오류 ["+service.getNamespace() +" > "+ service.getServiceName() +"]", e.getMessage()); 
 					}
 					
 					if(service.isBackupEnabled()) {
@@ -392,7 +392,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 					}
 					
 					event.setStatus(IResult.OK);
-					event.setResultMessage("서비스 생성 완료");
+					event.setResultMessage("서비스 생성 완료 ["+service.getNamespace() +" > "+ service.getServiceName() +"]");
 					event.setEndTime(new Date(System.currentTimeMillis()));
 					
 					messageSender.sendToClient("mariadb installer");
@@ -559,11 +559,11 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				// Backup Resource 삭제 요청
 				backupProvider.removeServiceResource(txId, namespace, ZDBType.MariaDB.getName(), serviceName);
 				
-				event.setResultMessage("서비스 삭제 완료");
+				event.setResultMessage("서비스 삭제 완료 ["+namespace +" > "+ serviceName +"]");
 				event.setStatus(IResult.OK);
 				event.setEndTime(new Date(System.currentTimeMillis()));
 			} else {
-				String msg = "설치된 서비스가 존재하지 않습니다.";
+				String msg = "설치된 서비스가 존재하지 않습니다. ["+namespace +" > "+ serviceName +"]";
 				event.setResultMessage(msg);
 				event.setStatus(IResult.ERROR);
 				event.setEndTime(new Date(System.currentTimeMillis()));
