@@ -3,7 +3,9 @@ package com.zdb.core.service;
 
 import java.io.FileNotFoundException;
 import java.util.List;
+import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Service;
 
@@ -12,10 +14,17 @@ import com.zdb.core.domain.PersistenceSpec;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBPersistenceEntity;
+import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.util.K8SUtil;
 
+import io.fabric8.kubernetes.api.model.extensions.DoneableStatefulSet;
+import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
+import io.fabric8.kubernetes.api.model.extensions.StatefulSetBuilder;
+import io.fabric8.kubernetes.api.model.extensions.StatefulSetList;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.dsl.MixedOperation;
+import io.fabric8.kubernetes.client.dsl.RollableScalableResource;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -28,6 +37,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Configuration
 public class CommonServiceImpl extends AbstractServiceImpl {
+	@Autowired
+	protected ZDBRepository zdbRepository;
+	
 	@Override
 	public Result getDeployment(String namespace, String serviceName) throws Exception {
 		return null;
@@ -166,5 +178,106 @@ public class CommonServiceImpl extends AbstractServiceImpl {
 			log.error(e.getMessage(), e);
 			return new Result(txId, Result.ERROR, e.getMessage(), e);
 		}
+	}
+
+
+	/**
+	 * Auto Failover 
+	 *  - On : add label : zdb-failover-enable=true
+	 *        cli : kubectl -n <namespace> label sts <sts_name> "zdb-failover-enable=true" --overwrite
+	 *  - Off : update label : zdb-failover-enable=false
+	 *        cli : kubectl -n <namespace> label sts <sts_name> "zdb-failover-enable=false" --overwrite
+	 *        
+	 * @param txId
+	 * @param namespace
+	 * @param serviceType
+	 * @param serviceName
+	 * @return
+	 * @throws Exception
+	 */
+	@Override
+	public Result updateAutoFailoverEnable(String txId, String namespace, String serviceType, String serviceName, boolean enable) throws Exception {
+		
+		//TODO
+		// 사전 조건 
+		//  - 이미 라벨이 등록되어 있는가? (on, off)
+		//    on  : zdb-failover-enable=true
+		//    off : zdb-failover-enable=false
+		//  - 라벨이 없으면 off
+		//  - Master/Slave 구조 인가?
+		//  
+		Result result = null;
+		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
+			MixedOperation<StatefulSet, StatefulSetList, DoneableStatefulSet, RollableScalableResource<StatefulSet, DoneableStatefulSet>> statefulSets = 
+					client.inNamespace(namespace).apps().statefulSets();
+
+			List<StatefulSet> stsList = statefulSets.withLabel("app", "mariadb").withLabel("release", serviceName).list().getItems();
+			if(stsList == null || stsList.size() < 2) {
+				result = new Result(txId, Result.ERROR , "Master/Slave 로 구성된 서비스에서만 설정 가능합니다. ["+namespace +" > "+ serviceName +"]");
+				return result;
+			}
+			
+			List<StatefulSet> items = statefulSets
+					.withLabel("app", "mariadb")
+					.withLabel("component", "master")
+					.withLabel("release", serviceName)
+					.list().getItems();
+			
+			
+			if(items != null && !items.isEmpty()) {
+				
+				StatefulSet sts = items.get(0);
+				
+				Map<String, String> labels = sts.getMetadata().getLabels();
+				String oldValue = labels.get("zdb-failover-enable");
+				if(oldValue == null || oldValue.isEmpty()) {
+					oldValue = "false";
+				}
+				
+				labels.put("zdb-failover-enable", String.valueOf(enable));
+				
+				StatefulSetBuilder newSts = new StatefulSetBuilder(sts);
+				StatefulSet newSvc = newSts.editMetadata().withLabels(labels).endMetadata().build();
+				
+				statefulSets.createOrReplace(newSvc);
+				
+				result = new Result(txId, Result.OK , "failover 설정 변경 완료. [oldValue : "+oldValue+"; newValue : "+enable+"]");
+			} else {
+				result = new Result(txId, Result.ERROR , "실행중인 서비스가 없습니다. ["+namespace +" > "+ serviceName +"]");
+			}
+
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
+		
+		
+		return result;
+	}
+	
+	@Override
+	public Result getAutoFailoverServices(String txId, String namespace) throws Exception {
+		return getAutoFailoverService(txId, namespace, null);
+	}
+	
+	public Result getAutoFailoverService(String txId, String namespace, String serviceName) throws Exception {
+		Result result = new Result(txId);
+		List<StatefulSet> services = k8sService.getAutoFailoverServices(namespace, serviceName);
+
+		if(services != null && !services.isEmpty()) {
+			String[] array = new String[services.size()];
+			
+			for (int i = 0; i < services.size(); i++) {
+				StatefulSet sts = services.get(i);
+				array[i] = sts.getMetadata().getName();
+			}
+			
+			result.putValue("services", array);
+			result.setCode(Result.OK);
+		} else {
+			result.setCode(Result.OK);
+			result.setMessage("[]");
+		}
+
+		return result;
 	}
 }

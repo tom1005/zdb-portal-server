@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CountDownLatch;
 
 import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,18 +39,17 @@ import com.zdb.core.repository.ScheduleEntityRepository;
 import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.util.K8SUtil;
+import com.zdb.core.util.PodManager;
 
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
-import io.fabric8.kubernetes.api.model.PersistentVolumeClaimBuilder;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaimSpec;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodCondition;
 import io.fabric8.kubernetes.api.model.PodStatus;
-import io.fabric8.kubernetes.api.model.Quantity;
 import io.fabric8.kubernetes.api.model.ResourceRequirements;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
@@ -59,8 +57,7 @@ import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.ReplicaSet;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
-import io.fabric8.kubernetes.client.KubernetesClientException;
-import io.fabric8.kubernetes.client.Watcher;
+import io.fabric8.kubernetes.client.NamespacedKubernetesClient;
 import lombok.extern.slf4j.Slf4j;
 
 @org.springframework.stereotype.Service("k8sService")
@@ -1563,4 +1560,178 @@ public class K8SService {
 		return persistenceSpec;
 	}
 	
+	public List<StatefulSet> getAutoFailoverServices(String namespace, String serviceName) {
+		List<StatefulSet> serviceList = new ArrayList<StatefulSet>();
+		
+		if(namespace == null) {
+			namespace = "-";
+		}
+		if(serviceName == null) {
+			serviceName = "-";
+		}
+
+		try {
+			List<HasMetadata> zdbhaInstances = getZDBHAInstances(namespace, serviceName);
+			for (HasMetadata hasMetadata : zdbhaInstances) {
+
+				// master pod 가 down 상태일 경우에도 체크 대상에는 포함되어야 되기때문에
+				// StatefulSet 으로 부터 대상을 선정한다.
+				if ("StatefulSet".equals(hasMetadata.getKind())) {
+					if (namespace != null && !namespace.isEmpty()) {
+						if ("-".equals(namespace)) {
+							serviceList.add((StatefulSet) hasMetadata);
+						} else {
+							String ns = hasMetadata.getMetadata().getNamespace();
+							if (ns.equals(namespace)) {
+								serviceList.add((StatefulSet) hasMetadata);
+							}
+						}
+					} else {
+						serviceList.add((StatefulSet) hasMetadata);
+					}
+				}
+			}
+		} catch (Exception e) {
+			log.error("AutoFailover 대상 수집중 오류 발생.", e);
+		}
+
+		return serviceList;
+	}
+	
+	public static boolean isFailoverService(String namespace, String serviceName) throws Exception {
+
+		try (DefaultKubernetesClient client = K8SUtil.kubernetesClient();){
+			isFailoverService(client, namespace, serviceName);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
+
+		return false;
+	}	
+	
+	/**
+	 * 이미 failover 된 인스턴스 여부 
+	 * Service 의 label 이 아래 조건인 경우
+	 *  - withLabel("app", "mariadb")
+	 *  - withLabel("component", "master")
+	 * 
+	 * 아래와 같이 selector.component 가 slave 인 경우 failover 된 서비스로 판단 true 반환 
+	 *  => '{"spec": {"selector": {"component": "slave"}}}'
+	 * 
+	 * @param client
+	 * @param namespace
+	 * @param serviceName
+	 * @return
+	 * @throws Exception
+	 */
+	public static boolean isFailoverService(DefaultKubernetesClient client, String namespace, String serviceName) throws Exception {
+
+		try{
+			// app=mariadb,chart=mariadb-4.2.3,component=master,heritage=Tiller,release=zdb-test2-mha
+			if(serviceName != null && !serviceName.isEmpty()) {
+				List<Service> items = client.inNamespace(namespace).services()
+				.withLabel("app", "mariadb")
+				.withLabel("component", "master")
+				.withLabel("release", serviceName)
+				.list().getItems();
+				
+				if(items != null && !items.isEmpty()) {
+					for (Service service : items) {
+						String selector = service.getSpec().getSelector().get("component");
+						if("slave".equals(selector)) {
+							return true;
+						}
+					}
+				} else {
+					log.warn("master 서비스 LB 가 존재하지 않습니다. {}", serviceName);
+					return true;
+				}
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
+
+		return false;
+	}	
+	
+	/**
+	 * zdb-ha-manager를 이용한 auto-failover 를 사용하는 인스턴스 목록 반환.
+	 * 
+	 * 조건 : 
+	 *  # StatefulSet label 에 아래와 같이 설정된 경우 
+	 *  - withLabel("app", "mariadb")
+	 *  - withLabel("zdb-failover-enable", "true")
+	 *  - withLabel("component", "master")
+	 *  
+	 *  위 조건에 맞는 StatefulSet 중에서 이미 failover 된 서비스 제외하고
+	 *  pod slave 상태가 ready = true 의 경우 모니터링 대상에 포함됨. 
+	 *  
+	 * @return
+	 * @throws Exception
+	 */
+	public List<HasMetadata> getZDBHAInstances(String ns, String releaseName) throws Exception {
+
+		List<HasMetadata> haZDBInstanceList = new ArrayList<>();
+		
+		try (DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
+			// app=mariadb,chart=mariadb-4.2.3,component=master,heritage=Tiller,release=zdb-test2-mha
+			NamespacedKubernetesClient namespaceClient = null;
+			if(ns == null || ns.isEmpty() || "-".equals(ns)) {
+				namespaceClient = client.inAnyNamespace();
+			} else {
+				namespaceClient = client.inNamespace(ns);
+			}
+			
+			List<StatefulSet> stsItems = null;
+
+			if(releaseName == null || releaseName.isEmpty() || "-".equals(releaseName)) {
+				stsItems = namespaceClient.apps().statefulSets()
+						.withLabel("app", "mariadb")
+						.withLabel("zdb-failover-enable", "true")
+						.withLabel("component", "master")
+						.list().getItems();
+			} else {
+				stsItems = namespaceClient.apps().statefulSets()
+						.withLabel("app", "mariadb")
+						.withLabel("zdb-failover-enable", "true")
+						.withLabel("component", "master")
+						.withLabel("release", releaseName)
+						.list().getItems();
+			}
+			
+			for (StatefulSet sts : stsItems) {
+				String namespace = sts.getMetadata().getNamespace();
+				String serviceName = sts.getMetadata().getLabels().get("release");
+				
+				// failover 된 서비스는 skip 
+				boolean isFailoverService = isFailoverService(client, namespace, serviceName);
+				if(isFailoverService) {
+					log.warn("{} {} slave failover 된 서비스 입니다.", namespace, serviceName);
+					continue;
+				}
+				
+				// slave 가 live 한 경우만 failover 대상임.
+				List<Pod> podItems = client.inNamespace(namespace).pods()
+						.withLabel("app", "mariadb")
+						.withLabel("release", serviceName)
+						.list().getItems();
+				
+				for (Pod pod : podItems) {
+					String component = pod.getMetadata().getLabels().get("component");
+					
+					if ("slave".equals(component) && PodManager.isReady(pod)) {
+						haZDBInstanceList.add(sts);
+						haZDBInstanceList.addAll(podItems);
+						break;
+					}
+				}
+				
+				
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
+
+		return haZDBInstanceList;
+	}
 }

@@ -52,6 +52,7 @@ public class RequestEvent {
 	public static final String DELETE_PUBLIC_SVC = "Public Network 삭제";
 	public static final String CREATE_ZDBCONFIG = "Global 환경설정 생성";
 	public static final String SERVICE_RESTORE_SLAVE = "";
+	public static final String SET_AUTO_FAILOVER_USABLE = "Auto Failover 설정";
 	
 	private String operation;
 
