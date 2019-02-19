@@ -1,0 +1,44 @@
+#!/bin/bash
+# report_status.sh [mysql user] [mysql password] [cluster name] [interval] [comma separated etcd hosts]
+# Example: 
+# report_status.sh root myS3cret galera_cluster 15 192.168.55.111:2379,192.168.55.112:2379,192.168.55.113:2379
+
+CLUSTER_NAME=$(hostname)
+TTL=10
+ETCD_HOSTS=zdb-etcd.zdb-system:2379
+
+function report_status()
+{
+  key=$1
+  
+  if [ ! -z $key ]; then
+    #check_etcd
+    
+    URL="http://$ETCD_HOSTS/v2/keys/zdb/$CLUSTER_NAME"
+    output=$(mysqladmin status -uroot -p$MARIADB_ROOT_PASSWORD 2> /dev/null)
+    
+    #echo "MARIADB_ROOT_PASSWORD : $MARIADB_ROOT_PASSWORD"
+    #echo "URL : $URL"
+    #echo "output : $output"
+    
+    value=$(echo $output | awk {'print $2'})
+
+	#echo "key = $key"
+	#echo "value = $value"
+
+    if [ ! -z $value ]; then
+      #echo "curl -s $URL/$key -X PUT -d value=$value -d ttl=$TTL"
+      curl -s $URL/$key -X PUT -d value=$value -d ttl=$TTL > /dev/null
+    fi
+  fi
+  
+}
+
+while true;
+do
+  report_status uptime
+
+  # echo "echo $(date "+%Y-%m-%d %H:%M:%S") ------------------------------------------"
+  # report every ttl - 2 to ensure value does not expire
+  sleep $(($TTL - 2))
+done

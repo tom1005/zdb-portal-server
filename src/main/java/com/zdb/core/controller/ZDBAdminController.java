@@ -127,6 +127,62 @@ public class ZDBAdminController {
 	}
 	
 	/**
+	 * failover 기능 활성화를 위한 설정으로 변경.
+	 * 
+	 * 1. report_status shell script configmap 생성
+	 * 2. Satefulset 에 command 추가 
+	 * 3. configmap volumnMount 추가
+	 * 4. volumes 추가 
+	 * 
+	 * Auto Failover 
+	 *  - On : add label : zdb-failover-enable=true
+	 *        cli : kubectl -n <namespace> label sts <sts_name> "zdb-failover-enable=true" --overwrite
+	 *  - Off : update label : zdb-failover-enable=false
+	 *        cli : kubectl -n <namespace> label sts <sts_name> "zdb-failover-enable=false" --overwrite
+	 *        
+	 * @param namespace
+	 * @param serviceType
+	 * @param serviceName
+	 * @param ucBuilder
+	 * @return
+	 */
+	@RequestMapping(value = "/failover/{namespace}/{serviceType}/{serviceName}", method = RequestMethod.PUT)
+	public ResponseEntity<String> addAutoFailover(
+			@PathVariable("namespace") final String namespace,
+			@PathVariable("serviceType") final String serviceType, 
+			@PathVariable("serviceName") final String serviceName,
+			final UriComponentsBuilder ucBuilder) {
+		RequestEvent event = new RequestEvent();
+		String txId = txId();
+		
+		try {
+			event.setTxId(txId);
+			event.setServiceName(serviceName);
+			event.setServiceType(ZDBType.MariaDB.getName());
+			event.setNamespace(namespace);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setOperation(RequestEvent.ADD_AUTO_FAILOVER);
+			
+			Result result = commonService.addAutoFailover(txId, namespace, serviceType, serviceName);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.OK);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result("", IResult.ERROR, "my.cnf Backup 오류!").putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
+		}	
+	}
+	
+	/**
 	 * Statefulset 의 label : zdb-failover-enable=true 가 등록된 서비스 목록.(master)
 	 * 
 	 * @param txId

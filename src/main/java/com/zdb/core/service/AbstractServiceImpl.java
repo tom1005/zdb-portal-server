@@ -1985,6 +1985,11 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	public Result updateAutoFailoverEnable(String txId, String namespace, String serviceType, String serviceName, boolean enable) throws Exception {
 		return null;
 	}
+
+	@Override
+	public Result addAutoFailover(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+		return null;
+	}
 	
 	@Override
 	public Result getAutoFailoverServices(String txId, String namespace) throws Exception {

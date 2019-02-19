@@ -2,11 +2,17 @@ package com.zdb.core.service;
 
 
 import java.io.FileNotFoundException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
 import com.zdb.core.domain.IResult;
@@ -17,6 +23,17 @@ import com.zdb.core.domain.ZDBPersistenceEntity;
 import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.util.K8SUtil;
 
+import io.fabric8.kubernetes.api.model.ConfigMap;
+import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
+import io.fabric8.kubernetes.api.model.ConfigMapList;
+import io.fabric8.kubernetes.api.model.ConfigMapVolumeSource;
+import io.fabric8.kubernetes.api.model.Container;
+import io.fabric8.kubernetes.api.model.DoneableConfigMap;
+import io.fabric8.kubernetes.api.model.EmptyDirVolumeSource;
+import io.fabric8.kubernetes.api.model.PersistentVolumeClaimVolumeSource;
+import io.fabric8.kubernetes.api.model.PodSpec;
+import io.fabric8.kubernetes.api.model.Volume;
+import io.fabric8.kubernetes.api.model.VolumeMount;
 import io.fabric8.kubernetes.api.model.extensions.DoneableStatefulSet;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSetBuilder;
@@ -24,6 +41,7 @@ import io.fabric8.kubernetes.api.model.extensions.StatefulSetList;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
+import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.kubernetes.client.dsl.RollableScalableResource;
 import lombok.extern.slf4j.Slf4j;
 
@@ -198,14 +216,6 @@ public class CommonServiceImpl extends AbstractServiceImpl {
 	@Override
 	public Result updateAutoFailoverEnable(String txId, String namespace, String serviceType, String serviceName, boolean enable) throws Exception {
 		
-		//TODO
-		// 사전 조건 
-		//  - 이미 라벨이 등록되어 있는가? (on, off)
-		//    on  : zdb-failover-enable=true
-		//    off : zdb-failover-enable=false
-		//  - 라벨이 없으면 off
-		//  - Master/Slave 구조 인가?
-		//  
 		Result result = null;
 		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
 			MixedOperation<StatefulSet, StatefulSetList, DoneableStatefulSet, RollableScalableResource<StatefulSet, DoneableStatefulSet>> statefulSets = 
@@ -280,4 +290,231 @@ public class CommonServiceImpl extends AbstractServiceImpl {
 
 		return result;
 	}
+	
+	/**
+	 * Master/Slave 로 구성된 인스턴스
+	 * StatefulSet master 에 edit
+	 * 	- report_status.sh 을 실행 할 수 있도록 configmap 등록
+	 * 	- spec>template>spec>containers>lifecycle : shell command 등록
+	 * 	- spec>template>spec>containers>volumeMounts  :  report-status 추가 
+	 * 	- spec>template>spec>volumes :  report-status 추가
+	 * 	- label 추가 (zdb-failover-enable=true)
+	 * 
+	 * @see com.zdb.core.service.AbstractServiceImpl#addAutoFailover(java.lang.String, java.lang.String, java.lang.String, java.lang.String)
+	 */
+	@Override
+	public Result addAutoFailover(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+		
+		
+		Result result = null;
+		StringBuffer resultMsg = new StringBuffer();
+		
+		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
+			// * - report_status.sh 을 실행 할 수 있도록 configmap 등록
+
+			MixedOperation<ConfigMap, ConfigMapList, DoneableConfigMap, Resource<ConfigMap, DoneableConfigMap>> configMaps = client.inNamespace(namespace).configMaps();
+
+			String cmName = "report-status";
+			ConfigMap configMap = configMaps.withName(cmName).get();
+
+			if (configMap == null) {
+				log.info("create configmap : " + namespace +" > "+ cmName);
+				
+				InputStream is = new ClassPathResource("mariadb/report_status.template").getInputStream();
+
+				String temp = IOUtils.toString(is, StandardCharsets.UTF_8.name());
+
+				Map<String, String> data = new HashMap<>();
+				data.put("report_status.sh", temp);
+
+				Resource<ConfigMap, DoneableConfigMap> configMapResource = client.configMaps().inNamespace(namespace).withName(cmName);
+
+				configMap = configMapResource.createOrReplace(new ConfigMapBuilder().withNewMetadata().withName(cmName).endMetadata().addToData(data).build());
+			
+				log.info("Created configmap : " + namespace +" > "+ cmName);
+				
+			} else {
+				log.info("Exist configmap : " + namespace +" > "+ configMap.getMetadata().getName());
+			}
+
+//			 * 	- spec>template>spec>containers>lifecycle : shell command 등록
+//			 * 	- spec>template>spec>containers>volumeMounts  :  report-status 추가 
+//			 * 	- spec>template>spec>volumes :  report-status 추가
+//			 * 	- label 추가 (zdb-failover-enable=true)
+			MixedOperation<StatefulSet, StatefulSetList, DoneableStatefulSet, RollableScalableResource<StatefulSet, DoneableStatefulSet>> statefulSets = 
+					client.inNamespace(namespace).apps().statefulSets();
+			
+			List<StatefulSet> stsList = statefulSets.withLabel("app", "mariadb").withLabel("release", serviceName).list().getItems();
+			if(stsList == null || stsList.size() < 2) {
+				String msg = "["+namespace+" > "+serviceName+"] 서비스가 없거나 single 서비스 입니다.";
+				result = new Result(txId, Result.ERROR, msg);
+				return result;
+			}
+			
+			for (StatefulSet sts : stsList) {
+				String stsName = sts.getMetadata().getName();
+				log.info("Start update statefulset. " + namespace +" > "+ stsName);
+				
+				PodSpec spec = sts.getSpec().getTemplate().getSpec();
+				List<Container> containers = spec.getContainers();
+				int mariadbIndex = -1;
+				boolean existVolumeMount = false;
+				boolean existVolume = false;
+				boolean existCommand = false;
+				
+				for (int i = 0; i < containers.size(); i++) {
+					Container container = containers.get(i);
+					
+					String name = container.getName();
+					if("mariadb".equals(name)) {
+						mariadbIndex = i;
+						
+						List<VolumeMount> volumeMounts = container.getVolumeMounts();
+						for (VolumeMount vm : volumeMounts) {
+							if("report-status".equals(vm.getName())) {
+								existVolumeMount = true;
+								break;
+							}
+						}
+						
+						try {
+							int size = container.getLifecycle().getPostStart().getExec().getCommand().size();
+							existCommand = size > 0 ? true : false;
+						} catch (Exception e) {
+							existCommand = false;
+						}
+						
+						break;
+					}
+				}
+				
+				if(mariadbIndex == -1) {
+					String msg = "mariadb container 가 존재하지 않습니다. ["+namespace+" > "+serviceName+"]";
+					log.error(msg);
+					
+					result = new Result(txId, Result.ERROR, msg);
+					return result;
+				}
+
+				List<Volume> volumes = spec.getVolumes();
+				for (Volume v : volumes) {
+					if("report-status".equals(v.getName())) {
+						existVolume = true;
+						break;
+					}
+				}
+				
+				
+				StatefulSetBuilder builder = new StatefulSetBuilder(sts);
+
+				Map<String, String> labels = sts.getMetadata().getLabels();
+				
+				boolean buildFlag = false;
+				
+				String labelKey = "zdb-failover-enable";
+				if(!labels.containsKey(labelKey) || !"true".equals(labels.get(labelKey))) {
+					labels.put(labelKey, "true");
+					
+					builder.editMetadata().withLabels(labels).endMetadata();
+					buildFlag = true;
+					
+				}
+				
+				log.info("withLabels : " + stsName);
+				
+				if(!existCommand) {
+					String[] command = new String[] {
+							"/bin/sh",
+							"-c",
+							"/usr/bin/nohup /report_status.sh 1>report.log 2>/dev/null &"
+					};
+					
+					builder.editSpec()
+					.editTemplate().editSpec()
+					.editContainer(mariadbIndex)
+					.editOrNewLifecycle()
+					.editOrNewPostStart()
+					.editOrNewExec()
+					.addToCommand(command)
+					.endExec()
+					.endPostStart()
+					.endLifecycle()
+					.endContainer()
+					.endSpec()
+					.endTemplate()
+					.endSpec();
+
+					buildFlag = true;
+					log.info("addToCommand : " + stsName);
+				} else {
+					log.info("existCommand : " + namespace +" > "+ stsName);
+				}
+				
+				if(!existVolumeMount) {
+					VolumeMount vm = new VolumeMount();
+					vm.setMountPath("/report_status.sh");
+					vm.setName("report-status");
+					vm.setSubPath("report_status.sh");
+					
+					builder
+					.editSpec()
+					.editTemplate()
+					.editSpec()
+					.editContainer(mariadbIndex)
+					.addToVolumeMounts(vm)
+					.endContainer()
+					.endSpec()
+					.endTemplate()
+					.endSpec();
+					
+					buildFlag = true;
+					log.info("addToVolumeMounts : " + stsName);
+				} else {
+					log.info("existVolumeMount : " + namespace +" > "+ stsName);
+				}
+				
+				if(!existVolume) {
+					Volume volume = new Volume();
+					
+					ConfigMapVolumeSource cmvs = new ConfigMapVolumeSource();
+					cmvs.setDefaultMode(484);
+					cmvs.setName("report-status");
+					volume.setConfigMap(cmvs);
+					volume.setName("report-status");
+					
+					builder
+					.editSpec()
+					.editTemplate()
+					.editSpec()
+					.addToVolumes(volume)
+					.endSpec()
+					.endTemplate()
+					.endSpec();
+					
+					buildFlag = true;
+					log.info("addToVolumes : " + stsName);
+				} else {
+					log.info("existVolume : " + namespace +" > "+ stsName);
+				}
+				
+				if (buildFlag) {
+					StatefulSet newSvc = builder.build();
+
+					statefulSets.createOrReplace(newSvc);
+					log.info("End statefulset update. " + namespace +" > "+ stsName);
+					resultMsg.append("Update statefulset. " + namespace +" > "+ stsName).append("\n");
+				} else {
+					log.info("Skip update statefulset. " + namespace +" > "+ stsName);
+				}
+				
+			}
+					
+			result = new Result(txId, Result.OK , resultMsg.toString());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		} 
+		return result;
+	
+	}
+	
 }
