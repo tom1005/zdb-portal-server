@@ -2408,4 +2408,16 @@ public class ZDBRestController {
 			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}	
 	}
+	
+	@RequestMapping(value = "/workerpools", method = RequestMethod.GET)
+	public ResponseEntity<String> getWorkerPools() throws Exception {
+		try {
+			Result result = commonService.getWorkerPools();
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(null, IResult.ERROR, RequestEvent.WORKER_POOLS_READ + " 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}	
 }

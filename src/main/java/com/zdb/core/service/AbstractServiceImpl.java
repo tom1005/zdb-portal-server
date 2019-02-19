@@ -2000,4 +2000,14 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	public Result getAutoFailoverService(String txId, String namespace, String releaseName) throws Exception {
 		return null;
 	}
+	
+	public Result getWorkerPools() throws Exception {
+		try {
+			List<String> workerPools = k8sService.getWorkerPools();
+			return new Result("", Result.OK).putValue(IResult.WORKER_POOLS, workerPools);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
 }

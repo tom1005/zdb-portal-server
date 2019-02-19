@@ -305,4 +305,7 @@ public interface ZDBRestService {
 	 * @throws Exception
 	 */
 	Result getAutoFailoverService(String txId, String namespace, String serviceName) throws Exception;
+	
+	Result getWorkerPools() throws Exception;
+
 }

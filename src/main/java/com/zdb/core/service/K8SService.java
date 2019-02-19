@@ -1734,4 +1734,20 @@ public class K8SService {
 
 		return haZDBInstanceList;
 	}
+	
+	public List<String> getWorkerPools() throws Exception {
+		List<String> workerPools = new ArrayList<>();
+		NodeList nodeList = K8SUtil.kubernetesClient().nodes().list();
+		List<Node> nodes = nodeList.getItems();
+		for (Node node : nodes) {
+			String role = node.getMetadata().getLabels().get("role");
+			String workerPool = node.getMetadata().getLabels().get("worker-pool");
+			if ("zdb".equals(role) && workerPool != null) {
+				workerPools.add(node.getMetadata().getLabels().get("worker-pool"));
+			}
+			HashSet<String> distinctData = new HashSet<String>(workerPools);
+			workerPools = new ArrayList<String>(distinctData);
+		}
+		return workerPools;
+	}
 }
