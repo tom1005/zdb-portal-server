@@ -54,6 +54,7 @@ public class RequestEvent {
 	public static final String SERVICE_RESTORE_SLAVE = "";
 	public static final String SET_AUTO_FAILOVER_USABLE = "Auto Failover 설정";
 	public static final String ADD_AUTO_FAILOVER = "Auto Failover 환경 등록";
+	public static final String CHANGE_PORT = "포트 변경";
 	
 	private String operation;
 

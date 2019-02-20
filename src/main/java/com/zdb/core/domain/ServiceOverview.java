@@ -56,6 +56,8 @@ public class ServiceOverview {
 	
 	private boolean backupEnabled;
 	
+	private boolean failoverEnabled;
+	
 	private List<PersistentVolumeClaim> persistentVolumeClaims = new ArrayList<>();
 	
 	private List<Deployment> deployments = new ArrayList<>();

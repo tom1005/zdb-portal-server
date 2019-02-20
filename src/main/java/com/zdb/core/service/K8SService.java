@@ -544,6 +544,9 @@ public class K8SService {
 		// 클러스터 사용 여부 
 		so.setClusterEnabled(isClusterEnabled(so));
 		
+		// failover 사용 여부
+		so.setFailoverEnabled(isFailoverEnabled(so));
+		
 		// 태그 정보 
 
 		List<Tag> tagList = tagRepository.findByNamespaceAndReleaseName(namespace, serviceName);
@@ -1052,6 +1055,26 @@ public class K8SService {
 		} else {
 			return false;
 		}
+	}
+	
+	private boolean isFailoverEnabled(ServiceOverview so) {
+		if (ZDBType.MariaDB.name().toLowerCase().equals(so.getServiceType().toLowerCase())) {
+			if(so.getStatefulSets().size() > 1) {
+//				"zdb-failover-enable", "true"
+				List<StatefulSet> stsList = so.getStatefulSets();
+				for (StatefulSet statefulSet : stsList) {
+					Map<String, String> labels = statefulSet.getMetadata().getLabels();
+					String enable = labels.get("zdb-failover-enable");
+					if(enable != null && "true".equals(enable)) {
+						return true;
+					}
+					
+				}
+				
+			}
+		}
+		
+		return false;
 	}
 	
 	private ZDBStatus getStatus(ServiceOverview so) {
@@ -1601,7 +1624,31 @@ public class K8SService {
 	public static boolean isFailoverService(String namespace, String serviceName) throws Exception {
 
 		try (DefaultKubernetesClient client = K8SUtil.kubernetesClient();){
-			isFailoverService(client, namespace, serviceName);
+			return isFailoverService(client, namespace, serviceName);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
+
+		return false;
+	}	
+	
+	public static boolean isFailoverEnable(String namespace, String serviceName) throws Exception {
+
+		try (DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
+			if (serviceName != null && !serviceName.isEmpty()) {
+				List<StatefulSet> items = client.inNamespace(namespace).apps().statefulSets()
+						.withLabel("app", "mariadb")
+						.withLabel("component", "master")
+						.withLabel("zdb-failover-enable", "true")
+						.withLabel("release", serviceName).list().getItems();
+
+				if (items != null && !items.isEmpty()) {
+					return true;
+				} else {
+					return false;
+				}
+			}
+			return false;
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 		}

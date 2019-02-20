@@ -22,15 +22,18 @@ public class LabelUpdateExample {
 		try {
 			MixedOperation<StatefulSet, StatefulSetList, DoneableStatefulSet, RollableScalableResource<StatefulSet, DoneableStatefulSet>> statefulSets = K8SUtil.kubernetesClient().inNamespace("zdb-test2").apps()
 					.statefulSets();
-			StatefulSet sts = statefulSets.withName("zdb-test2-mha-mariadb-master").get();
+//			StatefulSet sts = statefulSets.withName("zdb-test2-mha-mariadb-master").get();
 
-			Map<String, String> labels = sts.getMetadata().getLabels();
-			labels.put("zdb-failover-enable", "false");
-
-			StatefulSetBuilder newSts = new StatefulSetBuilder(sts);
-			StatefulSet newSvc = newSts.editMetadata().withLabels(labels).endMetadata().build();
-
-			statefulSets.createOrReplace(newSvc);
+//			Map<String, String> labels = sts.getMetadata().getLabels();
+//			labels.put("zdb-failover-enable", "false");
+//
+//			StatefulSetBuilder newSts = new StatefulSetBuilder(sts);
+//			StatefulSet newSvc = newSts.editMetadata().withLabels(labels).endMetadata().build();
+//
+//			statefulSets.createOrReplace(newSvc);
+			
+			statefulSets.withName("zdb-test2-mha-mariadb-master").edit().editMetadata().addToLabels("zdb-failover-enable", "true").endMetadata().done();
+			
 
 		} catch (Exception e) {
 			// TODO: handle exception
