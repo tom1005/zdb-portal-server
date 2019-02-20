@@ -45,6 +45,8 @@ import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.Namespace;
+import io.fabric8.kubernetes.api.model.Node;
+import io.fabric8.kubernetes.api.model.NodeList;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaimSpec;
 import io.fabric8.kubernetes.api.model.Pod;
@@ -1780,5 +1782,21 @@ public class K8SService {
 		}
 
 		return haZDBInstanceList;
+	}
+	
+	public List<String> getWorkerPools() throws Exception {
+		List<String> workerPools = new ArrayList<>();
+		NodeList nodeList = K8SUtil.kubernetesClient().nodes().list();
+		List<Node> nodes = nodeList.getItems();
+		for (Node node : nodes) {
+			String role = node.getMetadata().getLabels().get("role");
+			String workerPool = node.getMetadata().getLabels().get("worker-pool");
+			if ("zdb".equals(role) && workerPool != null) {
+				workerPools.add(node.getMetadata().getLabels().get("worker-pool"));
+			}
+			HashSet<String> distinctData = new HashSet<String>(workerPools);
+			workerPools = new ArrayList<String>(distinctData);
+		}
+		return workerPools;
 	}
 }
