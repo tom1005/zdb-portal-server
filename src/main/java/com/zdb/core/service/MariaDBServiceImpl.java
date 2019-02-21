@@ -2371,7 +2371,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 					Volume volume = new Volume();
 					
 					ConfigMapVolumeSource cmvs = new ConfigMapVolumeSource();
-					cmvs.setDefaultMode(484);
+					cmvs.setDefaultMode(493); // 0755
 					cmvs.setName("report-status");
 					volume.setConfigMap(cmvs);
 					volume.setName("report-status");
