@@ -2320,7 +2320,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 					String[] command = new String[] {
 							"/bin/sh",
 							"-c",
-							"/usr/bin/nohup /report_status.sh 1>report.log 2>/dev/null &"
+							"/usr/bin/nohup /report_status.sh 1>/tmp/report.log 2>/dev/null &"
 					};
 					
 					builder.editSpec()
