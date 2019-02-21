@@ -2591,7 +2591,7 @@ public class ZDBRestController {
 		}	
 	}	
 	
-	@RequestMapping(value = "/{namespace}/{serviceType}/{serviceName}/chnagePort", method = RequestMethod.PUT)
+	@RequestMapping(value = "/{namespace}/{serviceType}/{serviceName}/changePort", method = RequestMethod.PUT)
 	public ResponseEntity<String> changePort(@PathVariable("namespace") final String namespace, 
 										 @PathVariable("serviceType") final String serviceType, 
 			        				     @PathVariable("serviceName") final String serviceName, 
