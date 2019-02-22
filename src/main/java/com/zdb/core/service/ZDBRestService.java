@@ -274,16 +274,16 @@ public interface ZDBRestService {
 	 */
 	Result updateAutoFailoverEnable(String txId, String namespace, String serviceType, String serviceName, boolean enable) throws Exception;
 
-	/**
-	 * 
-	 * @param txId
-	 * @param namespace
-	 * @param serviceType
-	 * @param serviceName
-	 * @return
-	 * @throws Exception
-	 */
-	Result addAutoFailover(String txId, String namespace, String serviceType, String serviceName) throws Exception;
+//	/**
+//	 * 
+//	 * @param txId
+//	 * @param namespace
+//	 * @param serviceType
+//	 * @param serviceName
+//	 * @return
+//	 * @throws Exception
+//	 */
+//	Result addAutoFailover(String txId, String namespace, String serviceType, String serviceName) throws Exception;
 	
 	/**
 	 * Statefulset 의 label : zdb-failover-enable=true 가 등록된 서비스 목록.(master)

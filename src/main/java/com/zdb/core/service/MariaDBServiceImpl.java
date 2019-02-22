@@ -28,6 +28,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
 
 import com.google.gson.Gson;
 import com.zdb.core.domain.Connection;
@@ -2123,17 +2130,58 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				
 				StatefulSet sts = items.get(0);
 				
-				Map<String, String> labels = sts.getMetadata().getLabels();
-				String oldValue = labels.get("zdb-failover-enable");
-				if(oldValue == null || oldValue.isEmpty()) {
-					oldValue = "false";
+				String name = sts.getMetadata().getName();
+				
+				///////////////////////////////////////////////////////
+				if(enable) {
+					Result addAutoFailover = addAutoFailover(client, sts);
+					
+					if(!addAutoFailover.isOK()) {
+						return addAutoFailover;
+					}
 				}
 				
-//				labels.put("zdb-failover-enable", String.valueOf(enable));
+				long s = System.currentTimeMillis();
 				
-				statefulSets.withName(sts.getMetadata().getName()).edit().editMetadata().addToLabels("zdb-failover-enable", String.valueOf(enable)).endMetadata().done();
+				while(true) {
+					Thread.sleep(1000);
+					
+					Pod pod = K8SUtil.kubernetesClient().inNamespace(namespace).pods().withName(name+"-0").get();
+					boolean ready = PodManager.isReady(pod);
+					
+					if(ready) {
+						break;
+					}
+					
+					if ((System.currentTimeMillis() - s) > 60 * 1000) {
+						log.error("failover enable timeout");
+						break;
+					}
+				}
 				
-//				statefulSets.createOrReplace(newSvc);
+				RestTemplate rest = K8SUtil.getRestTemplate();
+				String idToken = System.getProperty("token");
+				String masterUrl = System.getProperty("masterUrl");
+
+				HttpHeaders headers = new HttpHeaders();
+				List<MediaType> mediaTypeList = new ArrayList<MediaType>();
+				mediaTypeList.add(MediaType.APPLICATION_JSON);
+				headers.setAccept(mediaTypeList);
+				headers.add("Authorization", "Bearer " + idToken);
+				headers.set("Content-Type", "application/json-patch+json");
+				
+				String data = "[{\"op\":\"add\",\"path\":\"/metadata/labels/zdb-failover-enable\",\"value\":\""+enable+"\"}]";
+			    
+				HttpEntity<String> requestEntity = new HttpEntity<>(data, headers);
+
+				String endpoint = masterUrl + "/apis/apps/v1/namespaces/{namespace}/statefulsets/{name}";
+				ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.PATCH, requestEntity, String.class, namespace, name);
+
+				if (response.getStatusCode() == HttpStatus.OK) {
+					String body = response.getBody();
+					System.out.println(body);
+				}
+				/////////////////////////
 				
 				String enableStr = enable ? "On" : "Off";
 				
@@ -2187,19 +2235,19 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	 * 	- spec>template>spec>volumes :  report-status 추가
 	 * 	- label 추가 (zdb-failover-enable=true)
 	 * 
-	 * @see com.zdb.core.service.AbstractServiceImpl#addAutoFailover(java.lang.String, java.lang.String, java.lang.String, java.lang.String)
 	 */
-	@Override
-	public Result addAutoFailover(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+	public Result addAutoFailover(DefaultKubernetesClient client, StatefulSet sts) throws Exception {
 		
 		
 		Result result = null;
 		StringBuffer resultMsg = new StringBuffer();
 		boolean status = false;
 		
-		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
+		try{
 			// * - report_status.sh 을 실행 할 수 있도록 configmap 등록
-
+			String namespace = sts.getMetadata().getNamespace();
+			String stsName = sts.getMetadata().getName();
+			
 			MixedOperation<ConfigMap, ConfigMapList, DoneableConfigMap, Resource<ConfigMap, DoneableConfigMap>> configMaps = client.inNamespace(namespace).configMaps();
 
 			String cmName = "report-status";
@@ -2233,21 +2281,8 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			MixedOperation<StatefulSet, StatefulSetList, DoneableStatefulSet, RollableScalableResource<StatefulSet, DoneableStatefulSet>> statefulSets = 
 					client.inNamespace(namespace).apps().statefulSets();
 			
-			List<StatefulSet> stsList = statefulSets.withLabel("app", "mariadb").withLabel("release", serviceName).list().getItems();
-			if(stsList == null || stsList.size() < 2) {
-				String msg = "["+namespace+" > "+serviceName+"] 서비스가 없거나 single 서비스 입니다.";
-				result = new Result(txId, Result.ERROR, msg);
-				return result;
-			}
-			
-			for (StatefulSet sts : stsList) {
-				String stsName = sts.getMetadata().getName();
-				
+			{				
 				Map<String, String> labels = sts.getMetadata().getLabels();
-				
-				if(!"master".equals(labels.get("component"))) {
-					continue;
-				}
 				
 				log.info("Start update statefulset. " + namespace +" > "+ stsName);
 				
@@ -2285,10 +2320,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				}
 				
 				if(mariadbIndex == -1) {
-					String msg = "mariadb container 가 존재하지 않습니다. ["+namespace+" > "+serviceName+"]";
+					String msg = "mariadb container 가 존재하지 않습니다. ["+namespace+" > "+stsName+"]";
 					log.error(msg);
 					
-					result = new Result(txId, Result.ERROR, msg);
+					result = new Result("", Result.ERROR, msg);
 					return result;
 				}
 
@@ -2300,21 +2335,20 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 					}
 				}
 				
-				
 				StatefulSetBuilder builder = new StatefulSetBuilder(sts);
 
 				boolean buildFlag = false;
 				
-				String labelKey = "zdb-failover-enable";
-				if(!labels.containsKey(labelKey) || !"true".equals(labels.get(labelKey))) {
-					labels.put(labelKey, "true");
-					
-					builder.editMetadata().withLabels(labels).endMetadata();
-					buildFlag = true;
-					
-				}
-				
-				log.info("withLabels : " + stsName);
+//				String labelKey = "zdb-failover-enable";
+//				if(!labels.containsKey(labelKey) || !"true".equals(labels.get(labelKey))) {
+//					labels.put(labelKey, "true");
+//					
+//					builder.editMetadata().withLabels(labels).endMetadata();
+//					buildFlag = true;
+//					
+//				}
+//				
+//				log.info("withLabels : " + stsName);
 				
 				if(!existCommand) {
 					String[] command = new String[] {
@@ -2390,7 +2424,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				} else {
 					log.info("existVolume : " + namespace +" > "+ stsName);
 				}
-				
+
 				if (buildFlag) {
 					status = true;
 					StatefulSet newSvc = builder.build();
@@ -2405,14 +2439,14 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			}
 			
 			if(!status) {
-				resultMsg.append("이미 설정된 서비스 입니다. " + namespace +" > "+ serviceName).append("\n");
+				resultMsg.append("이미 설정된 서비스 입니다. " + namespace +" > "+ stsName);
 			}
 					
-			result = new Result(txId, Result.OK , "Auto Failover 설정 등록 완료.");
+			result = new Result("", Result.OK , "Auto Failover 설정 등록 완료.");
 			result.putValue(Result.HISTORY, resultMsg.toString());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, Result.ERROR , resultMsg.toString(), e);
+			result = new Result("", Result.ERROR , resultMsg.toString(), e);
 		} 
 		return result;
 	

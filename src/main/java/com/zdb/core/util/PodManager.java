@@ -69,12 +69,14 @@ public class PodManager {
 	
 	public static boolean isInitialized(Pod pod) {
 		try {
-			PodStatus status = pod.getStatus();
-			
-			List<PodCondition> conditions = status.getConditions();
-			for (PodCondition condition : conditions) {
-				if ("Initialized".equals(condition.getType())) {
-					return Boolean.parseBoolean(condition.getStatus());
+			if (pod != null) {
+				PodStatus status = pod.getStatus();
+
+				List<PodCondition> conditions = status.getConditions();
+				for (PodCondition condition : conditions) {
+					if ("Initialized".equals(condition.getType())) {
+						return Boolean.parseBoolean(condition.getStatus());
+					}
 				}
 			}
 		} catch (Exception e) {
@@ -86,38 +88,41 @@ public class PodManager {
 	
 	public static boolean isReady(Pod pod) {
 		try {
-			PodStatus status = pod.getStatus();
-			
-			List<PodCondition> conditions = status.getConditions();
-			for (PodCondition condition : conditions) {
-				if ("Ready".equals(condition.getType())) {
-					return Boolean.parseBoolean(condition.getStatus());
+			if (pod != null) {
+				PodStatus status = pod.getStatus();
+
+				List<PodCondition> conditions = status.getConditions();
+				for (PodCondition condition : conditions) {
+					if ("Ready".equals(condition.getType())) {
+						return Boolean.parseBoolean(condition.getStatus());
+					}
 				}
 			}
-			
+
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		
+
 		return false;
 	}
 	
 	public static String getPodLastTransitionTime(Pod pod) {
 		try {
-			PodStatus status = pod.getStatus();
-			
-			List<PodCondition> conditions = status.getConditions();
-			for (PodCondition condition : conditions) {
-				if ("Ready".equals(condition.getType())) {
-					
-					String lastTransitionTime = condition.getLastTransitionTime();
-					lastTransitionTime = lastTransitionTime.replace("T", " ").replace("Z", "");
-					//lastTransitionTime = elapsedTime(lastTransitionTime);
-					
-					return lastTransitionTime;
+			if (pod != null) {
+				PodStatus status = pod.getStatus();
+
+				List<PodCondition> conditions = status.getConditions();
+				for (PodCondition condition : conditions) {
+					if ("Ready".equals(condition.getType())) {
+
+						String lastTransitionTime = condition.getLastTransitionTime();
+						lastTransitionTime = lastTransitionTime.replace("T", " ").replace("Z", "");
+						// lastTransitionTime = elapsedTime(lastTransitionTime);
+
+						return lastTransitionTime;
+					}
 				}
 			}
-			
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -127,15 +132,16 @@ public class PodManager {
 	
 	public static boolean isPodScheduled(Pod pod) {
 		try {
-			PodStatus status = pod.getStatus();
-			
-			List<PodCondition> conditions = status.getConditions();
-			for (PodCondition condition : conditions) {
-				if ("PodScheduled".equals(condition.getType())) {
-					return Boolean.parseBoolean(condition.getStatus());
+			if (pod != null) {
+				PodStatus status = pod.getStatus();
+
+				List<PodCondition> conditions = status.getConditions();
+				for (PodCondition condition : conditions) {
+					if ("PodScheduled".equals(condition.getType())) {
+						return Boolean.parseBoolean(condition.getStatus());
+					}
 				}
 			}
-			
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -146,17 +152,19 @@ public class PodManager {
 	public static boolean isContainerReady(Pod pod) {
 		boolean isContainerReady = false;
 		try {
-			PodStatus status = pod.getStatus();
-			
-			List<ContainerStatus> containerStatuses = status.getContainerStatuses();
-			
-			for (ContainerStatus containerStatus : containerStatuses) {
-				Boolean ready = containerStatus.getReady();
-				if (!ready.booleanValue()) {
-					isContainerReady = false;
-					break;
-				} else {
-					isContainerReady = true;
+			if (pod != null) {
+				PodStatus status = pod.getStatus();
+
+				List<ContainerStatus> containerStatuses = status.getContainerStatuses();
+
+				for (ContainerStatus containerStatus : containerStatuses) {
+					Boolean ready = containerStatus.getReady();
+					if (!ready.booleanValue()) {
+						isContainerReady = false;
+						break;
+					} else {
+						isContainerReady = true;
+					}
 				}
 			}
 		} catch (Exception e) {

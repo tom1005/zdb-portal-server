@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
@@ -12,12 +13,20 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
 import org.microbean.helm.ReleaseManager;
 import org.microbean.helm.Tiller;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.web.client.RestTemplate;
 
 import com.zdb.core.domain.CommonConstants;
 import com.zdb.core.domain.Exchange;
@@ -47,14 +56,12 @@ import io.fabric8.kubernetes.api.model.NodeList;
 import io.fabric8.kubernetes.api.model.ObjectReference;
 import io.fabric8.kubernetes.api.model.PersistentVolume;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
-import io.fabric8.kubernetes.api.model.PersistentVolumeClaimBuilder;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaimList;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaimSpec;
 import io.fabric8.kubernetes.api.model.PersistentVolumeList;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodCondition;
 import io.fabric8.kubernetes.api.model.PodStatus;
-import io.fabric8.kubernetes.api.model.Quantity;
 import io.fabric8.kubernetes.api.model.ResourceRequirements;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.SecretList;
@@ -71,7 +78,6 @@ import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.ConfigBuilder;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
-import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.dsl.LogWatch;
 import io.fabric8.kubernetes.client.dsl.PrettyLoggable;
 import lombok.extern.slf4j.Slf4j;
@@ -887,6 +893,42 @@ public class K8SUtil {
 
 		return client;
 
+	}
+	
+	/**
+	 * HTTP Client
+	 * 
+	 * @return
+	 * @throws Exception
+	 */
+	public static RestTemplate getRestTemplate() throws Exception {
+		TrustManager[] trustManagers = new TrustManager[] { new X509TrustManager() {
+			public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+				return null;
+			}
+
+			public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) {
+			}
+
+			public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) {
+			}
+		} };
+
+		SSLContext sslContext = SSLContext.getInstance("TLSv1.2");
+		sslContext.init(null, trustManagers, new SecureRandom());
+
+		SSLConnectionSocketFactory csf = new SSLConnectionSocketFactory(sslContext);
+		CloseableHttpClient httpClient = HttpClients.custom().setSSLSocketFactory(csf).build();
+
+		HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory();
+		requestFactory.setHttpClient(httpClient);
+		requestFactory.setConnectionRequestTimeout(1000 * 20);
+		requestFactory.setConnectTimeout(1000 * 10);
+		requestFactory.setReadTimeout(1000 * 10);
+
+		RestTemplate restTemplate = new RestTemplate(requestFactory);
+
+		return restTemplate;
 	}
 
 	/**

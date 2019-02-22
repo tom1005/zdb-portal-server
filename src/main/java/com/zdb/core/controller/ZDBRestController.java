@@ -2503,7 +2503,7 @@ public class ZDBRestController {
 			event.setStartTime(new Date(System.currentTimeMillis()));
 			event.setOperation(RequestEvent.ADD_AUTO_FAILOVER);
 			
-			Result result = mariadbService.addAutoFailover(txId, namespace, serviceType, serviceName);
+			Result result = mariadbService.updateAutoFailoverEnable(txId, namespace, serviceType, serviceName, true);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
