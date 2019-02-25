@@ -19,7 +19,9 @@ import com.zdb.core.util.K8SUtil;
 
 import hapi.release.ReleaseOuterClass.Release;
 import hapi.release.StatusOuterClass.Status.Code;
+import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.Service;
+import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
@@ -54,18 +56,35 @@ public class ReleaseCollector {
 				releaseMeta.setApp(release.getChart().getMetadata().getName());
 				
 				try {
-					String raw = release.getConfig().getRaw();
+//					String raw = release.getConfig().getRaw();
+//					
+//					DumperOptions options = new DumperOptions();
+//					options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+//					options.setPrettyFlow(true);
+//					
+//					Yaml yaml = new Yaml(options);
+//					
+//					Map<String, Map<String, Object>> flesh = yaml.loadAs(raw, Map.class);
+//					Object v = flesh.get("image").get("tag");
 					
-					DumperOptions options = new DumperOptions();
-					options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-					options.setPrettyFlow(true);
+					List<StatefulSet> statefulSets = k8sService.getStatefulSets(release.getNamespace(), release.getName());
 					
-					Yaml yaml = new Yaml(options);
+					String version = null;
+					for (StatefulSet statefulSet : statefulSets) {
+						List<Container> containers = statefulSet.getSpec().getTemplate().getSpec().getContainers();
+						for (Container container : containers) {
+							if (container.getName().endsWith("redis") || container.getName().endsWith("mariadb")) {
+								String image = container.getImage();
+
+								String[] split = image.split(":");
+
+								version = split[1];
+								break;
+							}
+						}
+					}
 					
-					Map<String, Map<String, Object>> flesh = yaml.loadAs(raw, Map.class);
-					Object v = flesh.get("image").get("tag");
-					
-					releaseMeta.setAppVersion(""+v);
+					releaseMeta.setAppVersion(version);
 				} catch (Exception e) {
 					log.error(e.getMessage(), e);
 				}

@@ -681,29 +681,6 @@ public class K8SService {
 		return 0;
 	}
 	
-	private String getVersion(ServiceOverview so) {
-		try {
-			for (StatefulSet statefulSet : so.getStatefulSets()) {
-				List<Container> containers = statefulSet.getSpec().getTemplate().getSpec().getContainers();
-				for (Container container : containers) {
-					if ("mariadb".equals(container.getName())) {
-						String image = container.getImage();
-
-						String[] split = image.split(":");
-
-						return split[1];
-					}
-				}
-			}
-		} catch (Exception e) {
-
-		}
-
-		return "unknown";
-	}
-	
-
-	
 	private PersistenceSpec getPersistenceSpec(ServiceOverview so, String podName) {
 		PersistenceSpec pSpec = new PersistenceSpec();
 		

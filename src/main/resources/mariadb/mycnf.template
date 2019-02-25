@@ -24,7 +24,7 @@ max_connections=${max_connections}
 # Common Config
 back_log=${back_log}
 join_buffer_size=${join_buffer_size}
-max_allowed_packet=16M
+max_allowed_packet=${max_allowed_packet}
 max_heap_table_size=16M
 performance_schema
 read_buffer_size=${read_buffer_size}
@@ -99,7 +99,7 @@ log_error=/bitnami/mariadb/logs/mysqld_safe.log
 
 [mysqldump]
 quick
-max_allowed_packet=16M
+max_allowed_packet=${max_allowed_packet}
 
 [client]
 port=3306
