@@ -52,7 +52,7 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 								, entity.getServiceName());
 			if (oldSche != null) {
 				log.debug("update : "+entity);
-				scheduleRepository.modify(entity.getStartTime(), entity.getStorePeriod(), entity.getUseYn(), oldSche.getScheduleId());
+				scheduleRepository.modify(entity.getStartTime(), entity.getStorePeriod(), entity.getUseYn(), entity.getIncrementYn(), entity.getIncrementPeriod() ,oldSche.getScheduleId());
 				entity.setScheduleId(oldSche.getScheduleId());
 			} else {
 				entity.setRegisterDate(new Date(System.currentTimeMillis()));

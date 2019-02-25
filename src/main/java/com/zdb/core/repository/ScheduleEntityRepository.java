@@ -49,10 +49,14 @@ public interface ScheduleEntityRepository extends CrudRepository<ScheduleEntity,
                         + ", t.storePeriod=:storePeriod"
                         + ", t.deleteYn='N'"
                         + ", t.useYn=:useYn "
+                        + ", t.incrementYn=:incrementYn "
+                        + ", t.incrementPeriod=:incrementPeriod "
                         + "WHERE t.scheduleId=:scheduleId")
         int modify(@Param("startTime") String startTime
                         , @Param("storePeriod") int storePeriod
                         , @Param("useYn") String useYn
+                        , @Param("incrementYn") String incrementYn
+                        , @Param("incrementPeriod") int incrementPeriod
                         , @Param("scheduleId") String scheduleId);
 
         @Modifying(clearAutomatically = true)
@@ -74,4 +78,14 @@ public interface ScheduleEntityRepository extends CrudRepository<ScheduleEntity,
                 + "where t.useYn = 'Y' "
                 + "and t.deleteYn = 'N'" )
 		List<ScheduleEntity> findScheduleByNamespace();
+        
+        @Modifying(clearAutomatically = true)
+        @Transactional
+        @Query("UPDATE ScheduleEntity t SET"
+                        + ", t.useYn=:useYn "
+                        + ", t.incrementYn=:incrementYn "
+                        + "WHERE t.scheduleId=:scheduleId")
+        int modify2Restore(@Param("useYn") String useYn
+                        , @Param("incrementYn") String incrementYn
+                        , @Param("scheduleId") String scheduleId);
 }
