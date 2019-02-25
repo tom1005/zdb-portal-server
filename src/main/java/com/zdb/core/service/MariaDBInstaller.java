@@ -83,6 +83,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 		String chartUrl = exchange.getProperty(Exchange.CHART_URL, String.class);
 		
 		ZDBEntity service = exchange.getProperty(Exchange.ZDBENTITY, ZDBEntity.class);
+		
 		ZDBRepository metaRepository = exchange.getProperty(Exchange.META_REPOSITORY, ZDBRepository.class);
 
 		ReleaseManager releaseManager = null;
@@ -166,6 +167,9 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				String slaveMemory = slaveSpec.getMemory();
 				int clusterSlaveCount = service.getClusterSlaveCount() == 0 ? 1 : service.getClusterSlaveCount();
 				
+				String masterNodeAffinityValues = masterSpec.getWorkerPool();
+				String slaveNodeAffinityValues = slaveSpec.getWorkerPool();
+				
 				inputJson = inputJson.replace("${image.tag}", mariadbVersion); // db version
 				inputJson = inputJson.replace("${rootUser.password}", rootPassword); // configmap
 				inputJson = inputJson.replace("${replication.enabled}", ""+isClusterEnabled); // configmap
@@ -194,6 +198,8 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				}
 				inputJson = inputJson.replace("${buffer.pool.size}", K8SUtil.getBufferSize(masterMemory));// 자동계산 *******   필수값 
 				inputJson = inputJson.replace("${master.antiAffinity}", "hard"); // 향후 input으로 받을 예정
+				inputJson = inputJson.replace("${master.affinity.nodeAffinity.values}", masterNodeAffinityValues);
+				inputJson = inputJson.replace("${slave.affinity.nodeAffinity.values}", slaveNodeAffinityValues);
 				
 				String characterSet = service.getCharacterSet();
 				inputJson = inputJson.replace("${character.set.server}", characterSet == null || characterSet.isEmpty() ? "utf8" : characterSet);
