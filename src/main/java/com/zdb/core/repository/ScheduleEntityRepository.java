@@ -81,8 +81,8 @@ public interface ScheduleEntityRepository extends CrudRepository<ScheduleEntity,
         
         @Modifying(clearAutomatically = true)
         @Transactional
-        @Query("UPDATE ScheduleEntity t SET"
-                        + ", t.useYn=:useYn "
+        @Query("UPDATE ScheduleEntity t SET "
+                        + " t.useYn=:useYn "
                         + ", t.incrementYn=:incrementYn "
                         + "WHERE t.scheduleId=:scheduleId")
         int modify2Restore(@Param("useYn") String useYn
