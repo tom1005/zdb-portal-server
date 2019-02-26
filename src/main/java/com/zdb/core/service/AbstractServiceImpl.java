@@ -1890,7 +1890,12 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	public Result createZDBConfig(ZDBConfig zdbConfig) {
 		try {
 			if( zdbConfig != null) {
-				zdbConfigRepository.save(zdbConfig);
+				List<ZDBConfig> findByConfig = zdbConfigRepository.findByNamespaceAndConfig(zdbConfig.getNamespace(), zdbConfig.getConfig());
+				if(findByConfig != null && !findByConfig.isEmpty()) {
+					zdbConfigRepository.updateZDBConfig(zdbConfig.getNamespace(), zdbConfig.getConfig(), zdbConfig.getValue());
+				} else {
+					zdbConfigRepository.save(zdbConfig);
+				}
 				return new Result("", Result.OK, "설정값이 저장되었습니다.");
 			} else {
 				return new Result("", Result.ERROR, "설정값이 없습니다.");
