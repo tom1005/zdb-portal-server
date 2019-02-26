@@ -86,6 +86,10 @@ public class ServiceOverview {
 	
 	private Map<String, DiskUsage> diskUsageOfPodMap = new HashMap<>();
 	
+	private Object metricsCpuUsage;
+	
+	private Object metricsMemoryUsage;
+	
 	/**
 	 * @return
 	 */

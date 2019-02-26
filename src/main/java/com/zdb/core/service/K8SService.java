@@ -38,6 +38,7 @@ import com.zdb.core.repository.MetadataRepository;
 import com.zdb.core.repository.ScheduleEntityRepository;
 import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
+import com.zdb.core.util.HeapsterMetricUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.PodManager;
 
@@ -650,6 +651,23 @@ public class K8SService {
 				String podName = pod.getMetadata().getName();
 				DiskUsage disk = diskRepository.findOne(podName);
 				so.getDiskUsageOfPodMap().put(podName, disk);
+			}
+
+			// metric 정보를 ui 에 담에서 전송...
+			for (Pod pod : so.getPods()) {
+				if (PodManager.isReady(pod)) {
+					String podName = pod.getMetadata().getName();
+
+					HeapsterMetricUtil metricUtil = new HeapsterMetricUtil();
+					try {
+						Object cpuUsage = metricUtil.getCPUUsage(namespace, podName);
+						so.setMetricsCpuUsage(cpuUsage);
+						Object memoryUsage = metricUtil.getMemoryUsage(namespace, podName);
+						so.setMetricsMemoryUsage(memoryUsage);
+					} catch (Exception e) {
+						log.error(e.getMessage(), e);
+					}
+				}
 			}
 		}
 	}
