@@ -52,19 +52,30 @@ public class HeapsterMetricUtil implements Callback<byte[]> {
 	StringBuffer sb = new StringBuffer();
 	
 	public  Object getMemoryUsage(String namespace, String podName) throws InterruptedException, IOException, Exception {
-		String result = getMetric(namespace, podName, "memory-usage");
+		try {
+			String result = getMetric(namespace, podName, "memory-usage");
 
-		Gson gson = new GsonBuilder().create();
-		java.util.Map<String, Object> object = gson.fromJson(result, java.util.Map.class);
-		return ((Map) ((List) object.get("items")).get(0)).get("metrics");
+			Gson gson = new GsonBuilder().create();
+			java.util.Map<String, Object> object = gson.fromJson(result, java.util.Map.class);
+			return ((Map) ((List) object.get("items")).get(0)).get("metrics");
+		} catch (Exception e) {
+		}
+		
+		return null;
 	}
 	
 	public Object getCPUUsage(String namespace, String podName) throws InterruptedException, IOException, Exception {
-		String result = getMetric(namespace, podName, "cpu-usage");
+		try {
+			String result = getMetric(namespace, podName, "cpu-usage");
 
-		Gson gson = new GsonBuilder().create();
-		java.util.Map<String, Object> object = gson.fromJson(result, java.util.Map.class);
-		return ((Map) ((List) object.get("items")).get(0)).get("metrics");
+			Gson gson = new GsonBuilder().create();
+			java.util.Map<String, Object> object = gson.fromJson(result, java.util.Map.class);
+			return ((Map) ((List) object.get("items")).get(0)).get("metrics");
+		} catch (Exception e) {
+			
+		}
+		
+		return null;
 	}
 	
 	public synchronized String getMetric(String namespace, String podName, String metric) throws InterruptedException, IOException, Exception {

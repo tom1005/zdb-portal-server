@@ -658,12 +658,12 @@ public class K8SService {
 				if (PodManager.isReady(pod)) {
 					String podName = pod.getMetadata().getName();
 
-					HeapsterMetricUtil metricUtil = new HeapsterMetricUtil();
 					try {
+						HeapsterMetricUtil metricUtil = new HeapsterMetricUtil();
 						Object cpuUsage = metricUtil.getCPUUsage(namespace, podName);
-						so.setMetricsCpuUsage(cpuUsage);
+						so.getCpuUsageOfPodMap().put(podName, cpuUsage);
 						Object memoryUsage = metricUtil.getMemoryUsage(namespace, podName);
-						so.setMetricsMemoryUsage(memoryUsage);
+						so.getMemoryUsageOfPodMap().put(podName, memoryUsage);
 					} catch (Exception e) {
 						log.error(e.getMessage(), e);
 					}
