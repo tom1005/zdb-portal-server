@@ -14,4 +14,6 @@ public class ResourceSpec {
 	String cpu;
 	
 	String memory;	
+	
+	String workerPool;
 }
