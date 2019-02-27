@@ -2226,7 +2226,7 @@ public class ZDBRestController {
 			if (history != null) {
 				event.setHistory("" + history);
 			}
-			log.info(result.toJson() +"|"+result.status());
+			log.debug(result.toJson() +"|"+result.status());
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -2285,7 +2285,7 @@ public class ZDBRestController {
 			if (history != null) {
 				event.setHistory("" + history);
 			}
-			log.info(result.toJson() +"|"+result.status());
+			log.debug(result.toJson() +"|"+result.status());
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);

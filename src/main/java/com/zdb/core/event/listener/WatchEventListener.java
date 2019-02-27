@@ -6,12 +6,11 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CopyOnWriteArrayList;
 
-import org.apache.mina.util.CopyOnWriteMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -40,7 +39,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
-//@Profile({"prod"})
+@Profile({"prod"})
 public class WatchEventListener {
 
 	List<Watch> watchList = Collections.synchronizedList(new ArrayList());

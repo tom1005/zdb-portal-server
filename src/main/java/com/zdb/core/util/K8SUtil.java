@@ -88,7 +88,7 @@ public class K8SUtil {
 
 	private static String profile;
 
-	private static String masterUrl;
+	public static String MASTER_URL;
 
 	public static String daemonUrl;
 	
@@ -99,7 +99,7 @@ public class K8SUtil {
 
 	@Value("${k8s.masterUrl}")
 	public void setMasterUrl(String url) {
-		masterUrl = url;
+		MASTER_URL = url;
 	}
 
 	@Value("${k8s.daemonUrl}")
@@ -418,7 +418,8 @@ public class K8SUtil {
 			if( ingress != null && ingress.size() > 0) {
 				return ingress.get(0).getIp() + ":" + portStr;
 			} else {
-				throw new Exception("unknown ServicePort");
+//				throw new Exception("unknown ServicePort");
+				return service.getMetadata().getName()+"."+service.getMetadata().getNamespace() + ":" + portStr;
 			}
 		} else if ("clusterip".equals(service.getSpec().getType().toLowerCase())) {
 			List<ServicePort> ports = service.getSpec().getPorts();
@@ -860,32 +861,15 @@ public class K8SUtil {
 	 * @throws KubernetesClientException
 	 */
 	public static DefaultKubernetesClient kubernetesClient() throws Exception {
-		String idToken = null;
+		String idToken = getToken();
+		String masterUrl = getMasterURL();
 
-		if (profile == null || "local".equals(profile)) {
-			idToken = System.getProperty("token");
-			masterUrl = System.getProperty("masterUrl");
-			
-			if(idToken == null || masterUrl == null) {
-				System.err.println("VM arguments 설정 후 실행 하세요...\n-DmasterUrl=xxx.xxx.xxx.xx:12345 -Dtoken=xxxxxx");
-				System.exit(-1);
-			}
-			
-		} else if ("prod".equals(profile) || "zcp-demo".equals(profile)) {
-			File tokenFile = new File("/var/run/secrets/kubernetes.io/serviceaccount/token");
 
-			log.debug("Token File exists :" + tokenFile.exists());
-
-			if (tokenFile.exists()) {
-				try {
-					idToken = readFile(tokenFile);
-				} catch (Exception e) {
-					log.error(e.getMessage(), e);
-				}
-			} else {
-				throw new FileNotFoundException("Token file does not exist.");
-			}
+		if(idToken == null || masterUrl == null) {
+			System.err.println("VM arguments 설정 후 실행 하세요...\n-DmasterUrl=xxx.xxx.xxx.xx:12345 -Dtoken=xxxxxx");
+			System.exit(-1);
 		}
+
 		System.setProperty(Config.KUBERNETES_AUTH_TRYSERVICEACCOUNT_SYSTEM_PROPERTY, "false");
 		
 		Config config = new ConfigBuilder().withMasterUrl(masterUrl).withOauthToken(idToken).withTrustCerts(true).withWatchReconnectLimit(-1).build();
@@ -893,6 +877,39 @@ public class K8SUtil {
 
 		return client;
 
+	}
+	
+	static String idToken = null;
+
+	public static String getMasterURL() {
+		if(MASTER_URL == null || MASTER_URL.isEmpty()) {
+			MASTER_URL = System.getProperty("masterUrl");
+		}
+		
+		return MASTER_URL;
+	}
+	
+	public static String getToken() {
+
+		if(idToken != null) {
+			return idToken;
+		}
+		
+		File tokenFile = new File("/var/run/secrets/kubernetes.io/serviceaccount/token");
+
+		log.debug("Token File exists :" + tokenFile.exists());
+		if (tokenFile.exists()) {
+			try {
+				idToken = readFile(tokenFile);
+			} catch (Exception e) {
+				log.error(e.getMessage(), e);
+			}
+		} else {
+			idToken = System.getProperty("token");
+		}
+		
+		
+		return idToken;
 	}
 	
 	/**

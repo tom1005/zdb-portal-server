@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.IOUtils;
 import org.microbean.helm.ReleaseManager;
@@ -34,6 +33,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.MessagingException;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.client.RestTemplate;
 
 import com.google.gson.Gson;
@@ -47,6 +48,7 @@ import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
+import com.zdb.core.domain.ServiceOverview;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBMariaDBConfig;
@@ -90,12 +92,12 @@ import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.DoneableConfigMap;
 import io.fabric8.kubernetes.api.model.DoneablePod;
 import io.fabric8.kubernetes.api.model.DoneableService;
+import io.fabric8.kubernetes.api.model.LoadBalancerIngress;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Quantity;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
-import io.fabric8.kubernetes.api.model.ServiceBuilder;
 import io.fabric8.kubernetes.api.model.ServiceList;
 import io.fabric8.kubernetes.api.model.ServicePort;
 import io.fabric8.kubernetes.api.model.Volume;
@@ -107,8 +109,6 @@ import io.fabric8.kubernetes.api.model.extensions.StatefulSetBuilder;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSetList;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
-import io.fabric8.kubernetes.client.Watch;
-import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.PodResource;
 import io.fabric8.kubernetes.client.dsl.Resource;
@@ -145,6 +145,9 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	
 	@Autowired
 	private MycnfRepository configRepository;
+	
+	@Autowired
+	private SimpMessagingTemplate messageSender;
 
 	@Override
 	public Result getDeployment(String namespace, String serviceName) {
@@ -726,7 +729,12 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				String ip = new String();
 				
 				if ("LoadBalancer".equals(service.getSpec().getType())) {
-					ip = service.getStatus().getLoadBalancer().getIngress().get(0).getIp();
+					List<LoadBalancerIngress> ingress = service.getStatus().getLoadBalancer().getIngress();
+					if(ingress != null && ingress.size() > 0) {
+						ip = ingress.get(0).getIp();
+					} else {
+						ip = service.getMetadata().getName()+"."+service.getMetadata().getNamespace();
+					}
 				} else if ("ClusterIP".equals(service.getSpec().getType())) {
 					ip = service.getSpec().getClusterIP();
 				}
@@ -1551,6 +1559,21 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 							ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 
 							JobHandler.removeListener(this);
+							
+							// send websocket
+							
+							try {
+								ServiceOverview serviceOverview = k8sService.getServiceWithName(namespace, serviceType, serviceName);
+								
+								Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
+								messageSender.convertAndSend("/service/" + serviceOverview.getServiceName(), r);
+								
+							} catch (MessagingException e1) {
+								e1.printStackTrace();
+							} catch (Exception e1) {
+								e1.printStackTrace();
+							}
+							
 						}
 					}
 
@@ -1657,6 +1680,18 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 							event.setEndTime(new Date(System.currentTimeMillis()));
 							ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 							JobHandler.removeListener(this);
+							
+							try {
+								ServiceOverview serviceOverview = k8sService.getServiceWithName(namespace, serviceType, serviceName);
+								
+								Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
+								messageSender.convertAndSend("/service/" + serviceOverview.getServiceName(), r);
+								
+							} catch (MessagingException e1) {
+								e1.printStackTrace();
+							} catch (Exception e1) {
+								e1.printStackTrace();
+							}
 						}
 					}
 
@@ -1691,6 +1726,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	
 	@Override
 	public Result serviceChaneMasterToSlave(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+		Result result = null;
 		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
 			
 //		    Result : 
@@ -1753,86 +1789,50 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			List<Service> newSvcItems = new ArrayList<>();
 			
 			for (Service service : items) {
-				service.getMetadata().setUid(null);
-				service.getMetadata().setCreationTimestamp(null);
-				service.getMetadata().setSelfLink(null);
-				service.getMetadata().setResourceVersion(null);
+				RestTemplate rest = K8SUtil.getRestTemplate();
+				String idToken = System.getProperty("token");
+				String masterUrl = System.getProperty("masterUrl");
 				
-				Map<String, String> labels = service.getMetadata().getLabels();
+				HttpHeaders headers = new HttpHeaders();
+				headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
+				headers.set("Authorization", "Bearer " + idToken);
+				headers.set("Content-Type", "application/json-patch+json");
 				
-				// 2019-01-10 수정
-				// service 가 label 은 master 로 표기되어야 함.
-				labels.put("component", "master");
+//					{ "spec": { "selector": { "component": "slave", } } }
 				
-				service.getSpec().getPorts().get(0).setNodePort(null);
-				service.getSpec().getSelector().put("component", "slave");
-				service.getSpec().setClusterIP(null);
-				service.getSpec().setSessionAffinity(null);
-				service.getSpec().setExternalTrafficPolicy(null);
-				service.setStatus(null);
+				String data = "[{\"op\":\"replace\",\"path\":\"/spec/selector/component\",\"value\":\"slave\"}]";
+			    
+				HttpEntity<String> requestEntity = new HttpEntity<>(data, headers);
+
+				String endpoint = masterUrl + "/api/v1/namespaces/{namespace}/services/{name}";
+				ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.PATCH, requestEntity, String.class, namespace, service.getMetadata().getName());
 				
-				
-				ServiceBuilder svcBuilder = new ServiceBuilder(service);
-				io.fabric8.kubernetes.api.model.Service newSvc = svcBuilder
-				.editMetadata().withLabels(labels).endMetadata()
-				.build();
-				
-				
-				newSvcItems.add(newSvc);
-				
-			}
-			
-			
-			Watcher<io.fabric8.kubernetes.api.model.Service> watcher = new Watcher<io.fabric8.kubernetes.api.model.Service>() {
-				
-				@Override
-				public void eventReceived(Action action, io.fabric8.kubernetes.api.model.Service svc) {
-					if(svc.getMetadata().getName().startsWith(serviceName)) {
-						log.info(action + " / "+ svc.getMetadata().getName() +" / "+ svc.getStatus()  +" \n\n "+ svc );
+				if (response.getStatusCode() == HttpStatus.OK) {
+					result = new Result(txId, Result.OK, "서비스 L/B가 Slave 인스턴스로 전환 되었습니다.");
+					if (!history.toString().isEmpty()) {
+						result.putValue(Result.HISTORY, history.toString() +" 가 master 에서 slave 로 전환 되었습니다.\nmaster 서비스로 연결된 App.은 slave DB에 읽기/쓰기 됩니다.");
+					}
+					
+					// send websocket
+					try {
+						ServiceOverview serviceOverview = k8sService.getServiceWithName(namespace, serviceType, serviceName);
 						
-						if("MODIFIED".equals(action.toString())) {
-							latch.countDown();
-						}
+						Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
+						messageSender.convertAndSend("/service/" + serviceOverview.getServiceName(), r);
+					} catch (MessagingException e1) {
+						e1.printStackTrace();
+					} catch (Exception e1) {
+						e1.printStackTrace();
 					}
+				} else {
+					System.err.println("HttpStatus ; " + response.getStatusCode());
+					
+					log.error(response.getBody());
+					result = new Result(txId, Result.ERROR, "서비스 전환 오류.");
 				}
-				
-				@Override
-				public void onClose(KubernetesClientException cause) {
-					if(cause != null) {
-						log.error(cause.getMessage(), cause);
-					} else {
-						log.error("Service watch closed...........");
-					}
-				}
-				
-			};
-			Watch watch = client.inNamespace(namespace).services().watch(watcher);
-				
-			
-			
-			
-			int i = newSvcItems.size();
-			for (Service newSvc : newSvcItems) {
-				
-				history.append(newSvc.getMetadata().getName());
-				if(i > 1 ) {
-					history.append(", ");
-				}				
-				i--;
-				services.createOrReplace(newSvc);
-				
 			}
 			
-			latch.await(15, TimeUnit.SECONDS);
-			
-			watch.close();
-			
-			Result result = new Result(txId, Result.OK, "서비스 전환 완료");
-			if (!history.toString().isEmpty()) {
-				result.putValue(Result.HISTORY, history.toString() +" 가 master 에서 slave 로 전환 되었습니다.\nmaster 서비스로 연결된 App.은 slave DB에 읽기/쓰기 됩니다.");
-			}
-			
-			return result;		
+			return result;	
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
@@ -1848,6 +1848,8 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	
 	@Override
 	public Result serviceChaneSlaveToMaster(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+		Result result = null;
+		
 		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
 			
 			StringBuffer history = new StringBuffer();
@@ -1866,89 +1868,53 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				return new Result(txId, Result.ERROR, "서비스 전환 대상 서비스가 없습니다.");
 			}
 			
-			final CountDownLatch latch = new CountDownLatch(items.size());
-			
-			List<Service> newSvcItems = new ArrayList<>();
-			
 			for (Service service : items) {
-				service.getMetadata().setUid(null);
-				service.getMetadata().setCreationTimestamp(null);
-				service.getMetadata().setSelfLink(null);
-				service.getMetadata().setResourceVersion(null);
+				RestTemplate rest = K8SUtil.getRestTemplate();
+				String idToken = K8SUtil.getToken();
+				String masterUrl = K8SUtil.getMasterURL();
 				
-				Map<String, String> labels = service.getMetadata().getLabels();
+				HttpHeaders headers = new HttpHeaders();
+				headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
+				headers.set("Authorization", "Bearer " + idToken);
+				headers.set("Content-Type", "application/json-patch+json");
 				
-				labels.put("component", "master");
+//					{ "spec": { "selector": { "component": "slave", } } }
+				String data = "[{\"op\":\"replace\",\"path\":\"/spec/selector/component\",\"value\":\"master\"}]";
+			    
+				HttpEntity<String> requestEntity = new HttpEntity<>(data, headers);
+
+				String name = service.getMetadata().getName();
+				String endpoint = masterUrl + "/api/v1/namespaces/{namespace}/services/{name}";
+				ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.PATCH, requestEntity, String.class, namespace, name);
 				
-				service.getSpec().getPorts().get(0).setNodePort(null);
-				service.getSpec().getSelector().put("component", "master");
-				service.getSpec().setClusterIP(null);
-				service.getSpec().setSessionAffinity(null);
-				service.getSpec().setExternalTrafficPolicy(null);
-				service.setStatus(null);
-				
-				
-				ServiceBuilder svcBuilder = new ServiceBuilder(service);
-				io.fabric8.kubernetes.api.model.Service newSvc = svcBuilder
-				.editMetadata().withLabels(labels).endMetadata()
-				.build();
-				
-				
-				newSvcItems.add(newSvc);
-				
-			}
-			
-			
-			Watcher<io.fabric8.kubernetes.api.model.Service> watcher = new Watcher<io.fabric8.kubernetes.api.model.Service>() {
-				
-				@Override
-				public void eventReceived(Action action, io.fabric8.kubernetes.api.model.Service svc) {
-					if(svc.getMetadata().getName().startsWith(serviceName)) {
-						log.info(action + " / "+ svc.getMetadata().getName() +" / "+ svc.getStatus()  +" \n\n "+ svc );
+				if (response.getStatusCode() == HttpStatus.OK) {
+					
+//					result = new Result(txId, Result.OK, "서비스 전환 완료(slave->master)");
+					result = new Result(txId, Result.OK, "서비스 L/B가 Master 인스턴스로 전환 되었습니다.");
+					if (!history.toString().isEmpty()) {
+						result.putValue(Result.HISTORY, history.toString() +" 가 slave 에서 master 로 전환 되었습니다.");
+					}
+					
+					// websocket send.
+					try {
+						ServiceOverview serviceOverview = k8sService.getServiceWithName(namespace, serviceType, serviceName);
 						
-						if("MODIFIED".equals(action.toString())) {
-							latch.countDown();
-						}
+						Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
+						messageSender.convertAndSend("/service/" + serviceOverview.getServiceName(), r);
+					} catch (MessagingException e1) {
+						e1.printStackTrace();
+					} catch (Exception e1) {
+						e1.printStackTrace();
 					}
+				} else {
+					System.err.println("HttpStatus ; " + response.getStatusCode());
+					
+					log.error(response.getBody());
+					result = new Result(txId, Result.ERROR, "서비스 전환 오류.");
 				}
-				
-				@Override
-				public void onClose(KubernetesClientException cause) {
-					if(cause != null) {
-						log.error(cause.getMessage(), cause);
-					} else {
-						log.error("Service watch closed...........");
-					}
-				}
-				
-			};
-			Watch watch = client.inNamespace(namespace).services().watch(watcher);
-				
-			
-			
-			
-			int i = newSvcItems.size();
-			for (Service newSvc : newSvcItems) {
-				
-				history.append(newSvc.getMetadata().getName());
-				if(i > 1 ) {
-					history.append(", ");
-				}				
-				i--;
-				services.createOrReplace(newSvc);
-				
 			}
 			
-			latch.await(15, TimeUnit.SECONDS);
-			
-			watch.close();
-			
-			Result result = new Result(txId, Result.OK, "서비스 전환 완료(slave->master)");
-			if (!history.toString().isEmpty()) {
-				result.putValue(Result.HISTORY, history.toString() +" 가 slave 에서 master 로 전환 되었습니다.");
-			}
-			
-			return result;		
+			return result;	
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
@@ -2160,8 +2126,8 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				}
 				
 				RestTemplate rest = K8SUtil.getRestTemplate();
-				String idToken = System.getProperty("token");
-				String masterUrl = System.getProperty("masterUrl");
+				String idToken = K8SUtil.getToken();
+				String masterUrl = K8SUtil.getMasterURL();
 
 				HttpHeaders headers = new HttpHeaders();
 				List<MediaType> mediaTypeList = new ArrayList<MediaType>();
@@ -2177,16 +2143,16 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				String endpoint = masterUrl + "/apis/apps/v1/namespaces/{namespace}/statefulsets/{name}";
 				ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.PATCH, requestEntity, String.class, namespace, name);
 
+				String enableStr = enable ? "On" : "Off";
+				String message = "Auto Failover 설정 변경. ["+enableStr+"]";
+
 				if (response.getStatusCode() == HttpStatus.OK) {
-					String body = response.getBody();
-					System.out.println(body);
+					result = new Result(txId, Result.OK , message);
+				} else {
+					result = new Result(txId, Result.ERROR , message +" 처리중 오류가 발생 했습니다.");
 				}
 				/////////////////////////
 				
-				String enableStr = enable ? "On" : "Off";
-				
-				String message = "Failover 설정 변경. ["+enableStr+"]";
-				result = new Result(txId, Result.OK , message);
 				result.putValue(Result.HISTORY, message);
 			} else {
 				result = new Result(txId, Result.ERROR , "실행중인 서비스가 없습니다. ["+namespace +" > "+ serviceName +"]");
@@ -2194,6 +2160,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
+			result = new Result(txId, Result.ERROR , "Auto Failover 설정 변경중 오류가 발생 했습니다.");
 		}
 		
 		return result;
@@ -2282,7 +2249,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 					client.inNamespace(namespace).apps().statefulSets();
 			
 			{				
-				Map<String, String> labels = sts.getMetadata().getLabels();
+//				Map<String, String> labels = sts.getMetadata().getLabels();
 				
 				log.info("Start update statefulset. " + namespace +" > "+ stsName);
 				

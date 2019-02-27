@@ -11,6 +11,6 @@ public class EventLog {
 	public static void printLog(Event event ) {
 		Gson gson = new GsonBuilder().create();
 		String json = gson.toJson(event);
-		log.info(json);
+		log.debug(json);
 	}
 }

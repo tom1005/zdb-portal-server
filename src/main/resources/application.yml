@@ -31,7 +31,7 @@ security:
 spring:
   profiles: local
   datasource:
-    url: jdbc:mariadb://169.56.174.11:3306/zdb
+    url: jdbc:mariadb://169.56.174.21:3306/zdb
     username: zdb
     password: 24cmdshvek!
     driverClassName: org.mariadb.jdbc.Driver
@@ -49,7 +49,7 @@ logging:
   config: classpath:logback-local.xml
 
 k8s:
-  masterUrl: "https://169.56.69.242:26239"    
+  masterUrl: "https://169.56.69.242:20292"    
   daemonUrl: "http://localhost:8090" 
   
 chart:

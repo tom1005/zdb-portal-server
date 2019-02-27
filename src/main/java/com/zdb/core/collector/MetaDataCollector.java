@@ -14,7 +14,6 @@ import org.springframework.stereotype.Component;
 import com.google.gson.Gson;
 import com.zdb.core.domain.MetaData;
 import com.zdb.core.repository.MetadataRepository;
-import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.util.DateUtil;
 import com.zdb.core.util.K8SUtil;
 
@@ -34,11 +33,11 @@ import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
-//@Profile({"prod"})
+@Profile({"prod"})
 public class MetaDataCollector {
 	
-	@Autowired
-	ZDBReleaseRepository repo;
+//	@Autowired
+//	ZDBReleaseRepository repo;
 	
 	@Autowired
 	MetadataRepository metaRepo;
