@@ -120,7 +120,7 @@ public class ReleaseCollector {
 					}
 				}
 				releaseMeta.setPublicEnabled(publicEnabled);
-				 log.info("{} ------- {}", releaseMeta.getReleaseName(), releaseMeta.getStatus());
+//				 log.info("{} ------- {}", releaseMeta.getReleaseName(), releaseMeta.getStatus());
 
 				repo.save(releaseMeta);
 			}

@@ -68,7 +68,6 @@ public class EventWatcher<T> implements Watcher<T> {
 		isClosed = false;
 		
 		String metaToJon = new Gson().toJson(resource);
-		HasMetadata metaObj = (HasMetadata) resource;
 		
 		if (resource instanceof Event) {
 			Event event = (Event) resource;

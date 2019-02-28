@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -34,17 +36,20 @@ import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.ReplicaSet;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
+import io.fabric8.kubernetes.client.DefaultKubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watch;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
-@Profile({"prod"})
+//@Profile({"prod"})
 public class WatchEventListener {
 
-	List<Watch> watchList = Collections.synchronizedList(new ArrayList());
-	List<EventWatcher<?>> eventWatcherList = Collections.synchronizedList(new ArrayList());
-	Map<String, MetaDataWatcher<?>> metaDataWatcherMap = Collections.synchronizedMap(new HashMap());
+	List<Watch> watchList = Collections.synchronizedList(new ArrayList<>());
+	List<EventWatcher<?>> eventWatcherList = Collections.synchronizedList(new ArrayList<>());
+	Map<String, MetaDataWatcher<?>> metaDataWatcherMap = Collections.synchronizedMap(new HashMap<>());
+	Map<String, CountDownLatch> watcherCountDownLatch = Collections.synchronizedMap(new HashMap<>());
 
 	@Autowired
 	MetadataRepository metaRepo;
@@ -64,62 +69,6 @@ public class WatchEventListener {
 	
 	private boolean isShutdown;
 	
-	@Scheduled(initialDelayString = "10000", fixedRateString = "3000")
-	public void watcherHealthCheck() {
-		if(isShutdown) {
-			return;
-		}
-		log.debug(">>>>>>>>>>>>> watcherHealthCheck <<<<<<<<<<<<<<<<<");
-		
-		for (Iterator<EventWatcher<?>> iterator = eventWatcherList.iterator(); iterator.hasNext();) {
-			EventWatcher<?> eventWatcher = iterator.next();
-			
-			if(eventWatcher.isClosed()) {
-				iterator.remove();
-				
-				sleep(500);
-				log.warn("EventWatcher 재시작...");
-				runEventWatcher();
-			}
-		}
-		
-		for (Iterator<String> iterator = metaDataWatcherMap.keySet().iterator(); iterator.hasNext();) {
-			String key = iterator.next();
-			MetaDataWatcher<?> metadataWatcher = metaDataWatcherMap.get(key);
-			
-			if(metadataWatcher.isClosed()) {
- 				iterator.remove();
-				
-				sleep(500);
-				log.warn(key +" MetaDataWatcher 재시작...");
-				if("StatefulSet".equals(key)) {
-					runStatefulSetMetaDataWatcher();
-				} else if("ConfigMap".equals(key)) {
-					runConfigMapMetaDataWatcher();
-				} else if("PersistentVolumeClaim".equals(key)) {
-					runPersistentVolumeClaimMetaDataWatcher();
-				} else if("Service".equals(key)) {
-					runServiceMetaDataWatcher();
-				} else if("Namespace".equals(key)) {
-					runNamespaceMetaDataWatcher();
-				} else if("Deployment".equals(key)) {
-					runDeploymentMetaDataWatcher();
-				} else if("Pod".equals(key)) {
-					runPodMetaDataWatcher();
-				} else if("ReplicaSet".equals(key)) {
-					runReplicaSetMetaDataWatcher();
-				}
-			}
-		}
-	}
-	
-	public void sleep(int s) {
-		try {
-			Thread.sleep(s);
-		} catch (Exception e) {
-		}
-	}
-
 	@EventListener
 	public void handleEvent(Object event) {
 
@@ -153,15 +102,24 @@ public class WatchEventListener {
 				log.info("================================Add ReplicaSet Watch=======================================");
 				runReplicaSetMetaDataWatcher();
 
-				log.info("================================Add ReplicaSet Watch=======================================");
 			} catch (Exception e) {
 				log.error(e.getMessage(), e);
 			}
 
 		} else if (event instanceof ContextClosedEvent) {
 			isShutdown = true;
-			for (Watch watch : watchList) {
-				watch.close();
+			
+		}
+	}
+	
+	public void countDown() {
+		for (Iterator<String> iterator = watcherCountDownLatch.keySet().iterator(); iterator.hasNext();) {
+			String key = iterator.next();
+			CountDownLatch latch = watcherCountDownLatch.get(key);
+
+			try {
+				latch.countDown();
+			} catch (Exception e) {
 			}
 		}
 	}
@@ -171,16 +129,42 @@ public class WatchEventListener {
 
 			@Override
 			public void run() {
-				Watch replicaSetsWatcher;
-				try {
-					MetaDataWatcher<ReplicaSet> watcher = new MetaDataWatcher<ReplicaSet>(metaRepo);
-					metaDataWatcherMap.put("ReplicaSet", watcher);
-					
-					replicaSetsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().extensions().replicaSets().watch(watcher);
-					watchList.add(replicaSetsWatcher);
-				} catch (Exception e) {
-					log.error(e.getMessage(), e);
+				while (true) {
+
+					final CountDownLatch closeLatch = new CountDownLatch(1);
+					watcherCountDownLatch.put("ReplicaSet", closeLatch);
+
+					try (final DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
+
+						try (Watch watch = client.inAnyNamespace().extensions().replicaSets().watch(new MetaDataWatcher<ReplicaSet>(metaRepo) {
+							@Override
+							public void onClose(KubernetesClientException e) {
+								if (e != null) {
+									closeLatch.countDown();
+								}
+								super.onClose(e);
+							}
+						})) {
+							closeLatch.await(60 * 60, TimeUnit.SECONDS);
+						} catch (KubernetesClientException | InterruptedException e) {
+							log.error("ReplicaSet MetaDataWatcher - Could not watch resources", e);
+						}
+					} catch (Exception e) {
+						log.error(e.getMessage(), e);
+
+						Throwable[] suppressed = e.getSuppressed();
+						if (suppressed != null) {
+							for (Throwable t : suppressed) {
+								log.error(t.getMessage(), t);
+							}
+						}
+					}
+
+					if (isShutdown) {
+						break;
+					}
 				}
+			
 			}
 		}).start();
 	}
@@ -190,19 +174,43 @@ public class WatchEventListener {
 
 			@Override
 			public void run() {
-				Watch podsWatcher;
-				try {
-					MetaDataWatcher<Pod> watcher = new MetaDataWatcher<Pod>(metaRepo) {
-						protected void sendWebSocket() {
-							messageSender.sendToClient("pods");
+				while (true) {
+
+					final CountDownLatch closeLatch = new CountDownLatch(1);
+					watcherCountDownLatch.put("Pod", closeLatch);
+					try (final DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
+
+						try (Watch watch = client.inAnyNamespace().pods().watch(new MetaDataWatcher<Pod>(metaRepo) {
+							protected void sendWebSocket() {
+								messageSender.sendToClient("pods");
+							}
+							
+							@Override
+							public void onClose(KubernetesClientException e) {
+								if (e != null) {
+									closeLatch.countDown();
+								}
+								super.onClose(e);
+							}
+						})) {
+							closeLatch.await(60 * 60, TimeUnit.SECONDS);
+						} catch (KubernetesClientException | InterruptedException e) {
+							log.error("Pods MetaDataWatcher - Could not watch resources", e);
 						}
-					};
-					metaDataWatcherMap.put("Pod", watcher);
-					
-					podsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().pods().watch(watcher);
-					watchList.add(podsWatcher);
-				} catch (Exception e) {
-					log.error(e.getMessage(), e);
+					} catch (Exception e) {
+						log.error(e.getMessage(), e);
+
+						Throwable[] suppressed = e.getSuppressed();
+						if (suppressed != null) {
+							for (Throwable t : suppressed) {
+								log.error(t.getMessage(), t);
+							}
+						}
+					}
+
+					if (isShutdown) {
+						break;
+					}
 				}
 			}
 		}).start();
@@ -213,15 +221,39 @@ public class WatchEventListener {
 
 			@Override
 			public void run() {
-				Watch deploymentsWatcher;
-				try {
-					MetaDataWatcher<Deployment> watcher = new MetaDataWatcher<Deployment>(metaRepo);
-					metaDataWatcherMap.put("Deployment", watcher);
-					
-					deploymentsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().extensions().deployments().watch(watcher);
-					watchList.add(deploymentsWatcher);
-				} catch (Exception e) {
-					log.error(e.getMessage(), e);
+				while (true) {
+
+					final CountDownLatch closeLatch = new CountDownLatch(1);
+					watcherCountDownLatch.put("Deployment", closeLatch);
+					try (final DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
+
+						try (Watch watch = client.inAnyNamespace().extensions().deployments().watch(new MetaDataWatcher<Deployment>(metaRepo) {
+							@Override
+							public void onClose(KubernetesClientException e) {
+								if (e != null) {
+									closeLatch.countDown();
+								}
+								super.onClose(e);
+							}
+						})) {
+							closeLatch.await(60 * 60, TimeUnit.SECONDS);
+						} catch (KubernetesClientException | InterruptedException e) {
+							log.error("Deployments MetaDataWatcher - Could not watch resources", e);
+						}
+					} catch (Exception e) {
+						log.error(e.getMessage(), e);
+
+						Throwable[] suppressed = e.getSuppressed();
+						if (suppressed != null) {
+							for (Throwable t : suppressed) {
+								log.error(t.getMessage(), t);
+							}
+						}
+					}
+
+					if (isShutdown) {
+						break;
+					}
 				}
 			}
 		}).start();
@@ -232,15 +264,39 @@ public class WatchEventListener {
 
 			@Override
 			public void run() {
-				Watch namesapcesWatcher;
-				try {
-					MetaDataWatcher<Namespace> watcher = new MetaDataWatcher<Namespace>(metaRepo);
-					metaDataWatcherMap.put("Namespace", watcher);
-					
-					namesapcesWatcher = K8SUtil.kubernetesClient().inAnyNamespace().namespaces().watch(watcher);
-					watchList.add(namesapcesWatcher);
-				} catch (Exception e) {
-					log.error(e.getMessage(), e);
+				while (true) {
+
+					final CountDownLatch closeLatch = new CountDownLatch(1);
+					watcherCountDownLatch.put("Namespace", closeLatch);
+					try (final DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
+
+						try (Watch watch = client.inAnyNamespace().namespaces().watch(new MetaDataWatcher<Namespace>(metaRepo) {
+							@Override
+							public void onClose(KubernetesClientException e) {
+								if (e != null) {
+									closeLatch.countDown();
+								}
+								super.onClose(e);
+							}
+						})) {
+							closeLatch.await(60 * 60, TimeUnit.SECONDS);
+						} catch (KubernetesClientException | InterruptedException e) {
+							log.error("Namespaces MetaDataWatcher - Could not watch resources", e);
+						}
+					} catch (Exception e) {
+						log.error(e.getMessage(), e);
+
+						Throwable[] suppressed = e.getSuppressed();
+						if (suppressed != null) {
+							for (Throwable t : suppressed) {
+								log.error(t.getMessage(), t);
+							}
+						}
+					}
+
+					if (isShutdown) {
+						break;
+					}
 				}
 			}
 		}).start();
@@ -251,16 +307,41 @@ public class WatchEventListener {
 
 			@Override
 			public void run() {
-				Watch servicesWatcher;
-				try {
-					MetaDataWatcher<Service> watcher = new MetaDataWatcher<Service>(metaRepo);
-					metaDataWatcherMap.put("Service", watcher);
-					
-					servicesWatcher = K8SUtil.kubernetesClient().inAnyNamespace().services().watch(watcher);
-					watchList.add(servicesWatcher);
-				} catch (Exception e) {
-					log.error(e.getMessage(), e);
+				while (true) {
+
+					final CountDownLatch closeLatch = new CountDownLatch(1);
+					watcherCountDownLatch.put("Service", closeLatch);
+					try (final DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
+
+						try (Watch watch = client.inAnyNamespace().services().watch(new MetaDataWatcher<Service>(metaRepo) {
+							@Override
+							public void onClose(KubernetesClientException e) {
+								if (e != null) {
+									closeLatch.countDown();
+								}
+								super.onClose(e);
+							}
+						})) {
+							closeLatch.await(60 * 60, TimeUnit.SECONDS);
+						} catch (KubernetesClientException | InterruptedException e) {
+							log.error("Services MetaDataWatcher - Could not watch resources", e);
+						}
+					} catch (Exception e) {
+						log.error(e.getMessage(), e);
+
+						Throwable[] suppressed = e.getSuppressed();
+						if (suppressed != null) {
+							for (Throwable t : suppressed) {
+								log.error(t.getMessage(), t);
+							}
+						}
+					}
+
+					if (isShutdown) {
+						break;
+					}
 				}
+
 			}
 		}).start();
 	}
@@ -270,19 +351,43 @@ public class WatchEventListener {
 
 			@Override
 			public void run() {
-				Watch persistentVolumeClaimsWatcher;
-				try {
-					MetaDataWatcher<PersistentVolumeClaim> watcher = new MetaDataWatcher<PersistentVolumeClaim>(metaRepo) {
-						protected void sendWebSocket() {
-							messageSender.sendToClient("persistentVolumeClaims");
+				while (true) {
+
+					final CountDownLatch closeLatch = new CountDownLatch(1);
+					watcherCountDownLatch.put("PersistentVolumeClaim", closeLatch);
+					try (final DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
+
+						try (Watch watch = client.inAnyNamespace().persistentVolumeClaims().watch(new MetaDataWatcher<PersistentVolumeClaim>(metaRepo) {
+							protected void sendWebSocket() {
+								messageSender.sendToClient("persistentVolumeClaims");
+							}
+
+							@Override
+							public void onClose(KubernetesClientException e) {
+								if (e != null) {
+									closeLatch.countDown();
+								}
+								super.onClose(e);
+							}
+						})) {
+							closeLatch.await(60 * 60, TimeUnit.SECONDS);
+						} catch (KubernetesClientException | InterruptedException e) {
+							log.error("PersistentVolumeClaims MetaDataWatcher - Could not watch resources", e);
 						}
-					};
-					metaDataWatcherMap.put("PersistentVolumeClaim", watcher);
-					
-					persistentVolumeClaimsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().persistentVolumeClaims().watch(watcher);
-					watchList.add(persistentVolumeClaimsWatcher);
-				} catch (Exception e) {
-					log.error(e.getMessage(), e);
+					} catch (Exception e) {
+						log.error(e.getMessage(), e);
+
+						Throwable[] suppressed = e.getSuppressed();
+						if (suppressed != null) {
+							for (Throwable t : suppressed) {
+								log.error(t.getMessage(), t);
+							}
+						}
+					}
+
+					if (isShutdown) {
+						break;
+					}
 				}
 			}
 		}).start();
@@ -293,17 +398,42 @@ public class WatchEventListener {
 
 			@Override
 			public void run() {
-				Watch configMapWatcher;
-				try {
-					MetaDataWatcher<ConfigMap> watcher = new MetaDataWatcher<ConfigMap>(metaRepo);
-					metaDataWatcherMap.put("ConfigMap", watcher);
-					
-					configMapWatcher = K8SUtil.kubernetesClient().inAnyNamespace().configMaps().watch(watcher);
-					watchList.add(configMapWatcher);
-				} catch (Exception e) {
-					log.error(e.getMessage(), e);
+				while (true) {
+
+					final CountDownLatch closeLatch = new CountDownLatch(1);
+					watcherCountDownLatch.put("ConfigMap", closeLatch);
+					try (final DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
+
+						try (Watch watch = client.inAnyNamespace().configMaps().watch(new MetaDataWatcher<ConfigMap>(metaRepo) {
+							@Override
+							public void onClose(KubernetesClientException e) {
+								if (e != null) {
+									closeLatch.countDown();
+								}
+								super.onClose(e);
+							}
+						})) {
+							closeLatch.await(60 * 60, TimeUnit.SECONDS);
+						} catch (KubernetesClientException | InterruptedException e) {
+							log.error("ConfigMaps MetaDataWatcher - Could not watch resources", e);
+						}
+					} catch (Exception e) {
+						log.error(e.getMessage(), e);
+
+						Throwable[] suppressed = e.getSuppressed();
+						if (suppressed != null) {
+							for (Throwable t : suppressed) {
+								log.error(t.getMessage(), t);
+							}
+						}
+					}
+
+					if (isShutdown) {
+						break;
+					}
 				}
 			}
+					
 		}).start();
 	}
 
@@ -312,17 +442,41 @@ public class WatchEventListener {
 
 			@Override
 			public void run() {
-				Watch statefulSetsWatcher;
-				try {
-					MetaDataWatcher<StatefulSet> metadataWatcher = new MetaDataWatcher<StatefulSet>(metaRepo);
-					metaDataWatcherMap.put("StatefulSet", metadataWatcher);
-					
-					statefulSetsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().apps().statefulSets().watch(metadataWatcher);
-					watchList.add(statefulSetsWatcher);
-				} catch (Exception e) {
-					log.error(e.getMessage(), e);
-				}
+				while (true) {
 
+					final CountDownLatch closeLatch = new CountDownLatch(1);
+					watcherCountDownLatch.put("StatefulSet", closeLatch);
+					try (final DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
+
+						try (Watch watch = client.inAnyNamespace().apps().statefulSets().watch(new MetaDataWatcher<StatefulSet>(metaRepo) {
+							@Override
+							public void onClose(KubernetesClientException e) {
+								if (e != null) {
+									closeLatch.countDown();
+								}
+								super.onClose(e);
+							}
+						})) {
+							closeLatch.await(60 * 60, TimeUnit.SECONDS);
+						} catch (KubernetesClientException | InterruptedException e) {
+							log.error("StatefulSets MetaDataWatcher - Could not watch resources", e);
+						}
+					} catch (Exception e) {
+						log.error(e.getMessage(), e);
+
+						Throwable[] suppressed = e.getSuppressed();
+						if (suppressed != null) {
+							for (Throwable t : suppressed) {
+								log.error(t.getMessage(), t);
+							}
+						}
+					}
+
+					if (isShutdown) {
+						break;
+					}
+				}
+							
 			}
 		}).start();
 	}
@@ -332,19 +486,43 @@ public class WatchEventListener {
 
 			@Override
 			public void run() {
-				Watch eventsWatcher;
-				try {
-					EventWatcher<Event> eventWatcher = new EventWatcher<Event>(eventRepo, metaRepo, messagingTemplate) {
-						protected void sendWebSocket() {
-							messageSender.sendToClient("events");
+				while (true) {
+
+					final CountDownLatch closeLatch = new CountDownLatch(1);
+					watcherCountDownLatch.put("Event", closeLatch);
+					try (final DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
+
+						try (Watch watch = client.inAnyNamespace().events().watch(new EventWatcher<Event>(eventRepo, metaRepo, messagingTemplate) {
+							protected void sendWebSocket() {
+								messageSender.sendToClient("events");
+							}
+
+							@Override
+							public void onClose(KubernetesClientException e) {
+								if (e != null) {
+									closeLatch.countDown();
+								}
+								super.onClose(e);
+							}
+						})) {
+							closeLatch.await(60 * 30, TimeUnit.SECONDS);
+						} catch (KubernetesClientException | InterruptedException e) {
+							log.error("EventWatcher - Could not watch resources", e);
 						}
-					};
-					eventWatcherList.add(eventWatcher);
-					
-					eventsWatcher = K8SUtil.kubernetesClient().inAnyNamespace().events().watch(eventWatcher);
-					watchList.add(eventsWatcher);
-				} catch (Exception e) {
-					log.error(e.getMessage(), e);
+					} catch (Exception e) {
+						log.error(e.getMessage(), e);
+
+						Throwable[] suppressed = e.getSuppressed();
+						if (suppressed != null) {
+							for (Throwable t : suppressed) {
+								log.error(t.getMessage(), t);
+							}
+						}
+					}
+
+					if (isShutdown) {
+						break;
+					}
 				}
 			}
 		}).start();

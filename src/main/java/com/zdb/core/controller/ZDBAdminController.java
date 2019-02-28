@@ -14,6 +14,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.Result;
+import com.zdb.core.event.listener.WatchEventListener;
 import com.zdb.core.service.AdminService;
 
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +37,9 @@ public class ZDBAdminController {
 	@Autowired
 	protected AdminService adminService;
 	
+	@Autowired
+	protected WatchEventListener watchEventListener;
+	
 	@RequestMapping(value = "/mariadb/cm/backup", method = RequestMethod.PUT)
 	public ResponseEntity<String> mycnfBackup(final UriComponentsBuilder ucBuilder) {
 		RequestEvent event = new RequestEvent();
@@ -46,6 +50,25 @@ public class ZDBAdminController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			Result result = new Result("", IResult.ERROR, "my.cnf Backup 오류!").putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+		}	
+	}
+	
+	@RequestMapping(value = "/watcher/restart", method = RequestMethod.PUT)
+	public ResponseEntity<String> watcherRestart(final UriComponentsBuilder ucBuilder) {
+		RequestEvent event = new RequestEvent();
+		try {
+			watchEventListener.countDown();
+			
+			return new ResponseEntity<String>("watcherRestart", HttpStatus.OK);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result("", IResult.ERROR, "Watcher Restart 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
