@@ -32,7 +32,6 @@ public class JobExecutor {
 		
 		if(executorService != null && !executorService.isTerminated()) {
 			executorService.shutdownNow();
-			System.out.println("shutdownNow.");
 		}
 	}
 	
