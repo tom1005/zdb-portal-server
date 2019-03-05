@@ -31,10 +31,10 @@ public class LabelUpdateExample {
 
 	private static final Logger logger = LoggerFactory.getLogger(LabelUpdateExample.class);
 
-	public static void main3(String[] args) throws Exception {
-		curl();
+	public static void main(String[] args) throws Exception {
+		curl_status();
 	}
-	public static void main(String[] args) {
+	public static void main3(String[] args) {
 		try {			
 			// pod 재사작 발생함.
 //			K8SUtil.kubernetesClient().inNamespace("zdb-test2").apps().statefulSets().withName("zdb-test2-mha-mariadb-master").edit()
@@ -109,10 +109,13 @@ public class LabelUpdateExample {
 	public static void curl() throws Exception {
 //		curl --request GET --insecure \
 //		--header "Authorization: Bearer $KUBE_TOKEN"  \
-//		https://169.56.69.242:26239/apis/apps/v1/namespaces/zdb-test2/statefulsets/zdb-test2-ha-2-mariadb-master
+//		https://169.56.69.242:20292/apis/apps/v1/namespaces/zdb-test2/statefulsets/zdb-test2-ha-2-mariadb-master
 		
 		String idToken = System.getProperty("token");
 		String masterUrl = System.getProperty("masterUrl");
+		
+		String namespace = "zdb-test2";
+		String name = "zdb-test2-ha-2-mariadb-master";
 
 		
 		HttpHeaders requestHeaders = new HttpHeaders();
@@ -126,9 +129,48 @@ public class LabelUpdateExample {
 
 		RestTemplate rest = getRestTemplate();
 		
-		String endpoint = "https://169.56.69.242:26239/apis/apps/v1/namespaces/zdb-test2/statefulsets/zdb-test2-ha-2-mariadb-master";
-		ResponseEntity<Object> response = rest.exchange(endpoint, HttpMethod.GET, requestEntity, Object.class);
-		System.out.println(response.getBody());
+		String endpoint = "https://169.56.69.242:20292/apis/apps/v1/namespaces/zdb-test2/statefulsets/zdb-test2-ha-2-mariadb-master";
+		ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.PATCH, requestEntity, String.class);
+
+		if (response.getStatusCode() == HttpStatus.OK) {
+			String body = response.getBody();
+			System.out.println(body);
+		}
+	}
+
+	public static void curl_status() throws Exception {
+//		curl --request GET --insecure \
+//		--header "Authorization: Bearer $KUBE_TOKEN"  \
+//		https://169.56.69.242:20292/apis/apps/v1/namespaces/zdb-test2/statefulsets/zdb-test2-ha-2-mariadb-master
+		
+		long s = System.currentTimeMillis();
+		
+		String idToken = System.getProperty("token");
+		String masterUrl = System.getProperty("masterUrl");
+		
+		String namespace = "zdb-ha";
+		String name = "zdb-ha-failover-mariadb-master-0";
+		
+		HttpHeaders requestHeaders = new HttpHeaders();
+		List<MediaType> mediaTypeList = new ArrayList<MediaType>();
+		mediaTypeList.add(MediaType.APPLICATION_JSON);
+		requestHeaders.setAccept(mediaTypeList);
+		requestHeaders.add("Authorization", "Bearer " + idToken);
+		requestHeaders.set("Content-Type", "application/json-patch+json");
+		
+		HttpEntity<?> requestEntity = new HttpEntity<Object>(requestHeaders);
+		
+		RestTemplate rest = getRestTemplate();
+		///api/v1/namespaces/{namespace}/pods/{name}/status
+		String endpoint = "https://169.56.69.242:20292/api/v1/namespaces/{namespace}/pods/{name}/status";
+		ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.GET, requestEntity, String.class, namespace, name);
+
+		if (response.getStatusCode() == HttpStatus.OK) {
+			String body = response.getBody();
+			System.out.println(body);
+		}
+		
+		System.out.println((System.currentTimeMillis() -s));
 	}
 	
 	
@@ -154,8 +196,8 @@ public class LabelUpdateExample {
 		HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory();
 		requestFactory.setHttpClient(httpClient);
 		requestFactory.setConnectionRequestTimeout(1000 * 20);
-		requestFactory.setConnectTimeout(1000 * 10);
-		requestFactory.setReadTimeout(1000 * 10);
+		requestFactory.setConnectTimeout(1000 * 30);
+		requestFactory.setReadTimeout(1000 * 30);
 
 		RestTemplate restTemplate = new RestTemplate(requestFactory);
 

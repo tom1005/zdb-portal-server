@@ -26,8 +26,8 @@ public class UpdateStatefullset {
 		
 		UpdateStatefullset sts = new UpdateStatefullset();
 
-		String namespace = "zdb-test2";
-		String stsName = "zdb-test2-pns-mariadb-slave";//data-ns-zdb-02-0906-mariadb-slave-0
+		String namespace = "zdb-ha";
+		String stsName = "zdb-ha-pns-mariadb-master";//data-ns-zdb-02-0906-mariadb-slave-0
 		
 //		String namespace = "lawai-prod";
 //		String stsName = "lawai-prod-lawai-mariadb-slave";//data-ns-zdb-02-0906-mariadb-slave-0
