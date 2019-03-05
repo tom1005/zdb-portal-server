@@ -98,7 +98,7 @@ public class K8SClientRedisTest {
 	@Test
 	public void testPodList() throws Exception {
 
-		List<Pod> items = K8SUtil.getPodList("zdb-maria", "mariadb-test-mariadb");
+		List<Pod> items = K8SUtil.getPods("zdb-maria", "mariadb-test-mariadb");
 		assertEquals(items.size(), 6);
 		for (Pod rs : items) {
 				System.out.println(rs.getMetadata().getName() +"\t"+rs);
