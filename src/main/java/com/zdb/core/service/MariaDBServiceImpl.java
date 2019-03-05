@@ -38,6 +38,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.client.RestTemplate;
 
 import com.google.gson.Gson;
+import com.zdb.core.collector.MetaDataCollector;
 import com.zdb.core.domain.Connection;
 import com.zdb.core.domain.ConnectionInfo;
 import com.zdb.core.domain.DBUser;
@@ -1483,7 +1484,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 			log.info(stsName + " service on.");
 			
-			List<Pod> pods = k8sService.getPods(namespace, serviceName);
+			List<Pod> pods = K8SUtil.getPods(namespace, serviceName);
 			
 			List<Job> jobList = new ArrayList<>();
 			for (Pod p : pods) {
@@ -1543,26 +1544,30 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 							event.setServiceName(serviceName);
 							event.setOperation(RequestEvent.SERVICE_ON);
 							event.setUserId("SYSTEM");
-							if (code == JobResult.ERROR) {
-								event.setStatus(IResult.ERROR);
-								event.setResultMessage(job.getJobName() + " 처리 중 오류가 발생했습니다. (" + e.getMessage() + ")");
-							} else {
-								event.setStatus(IResult.OK);
-								if (message == null || message.isEmpty()) {
-									event.setResultMessage(job.getJobName() + " 정상 처리되었습니다.");
+							try {
+								if (code == JobResult.ERROR) {
+									event.setStatus(IResult.ERROR);
+									event.setResultMessage(job.getJobName() + " 처리 중 오류가 발생했습니다. (" + e.getMessage() + ")");
 								} else {
-									event.setResultMessage(message);
+									
+									List<StatefulSet> statefulSets = K8SUtil.getStatefulSets(namespace, serviceName);
+									metaDataCollector.save(statefulSets);
+									
+									event.setStatus(IResult.OK);
+									if (message == null || message.isEmpty()) {
+										event.setResultMessage(job.getJobName() + " 정상 처리되었습니다.");
+									} else {
+										event.setResultMessage(message);
+									}
 								}
-							}
-							event.setHistory(_historyValue);
-							event.setEndTime(new Date(System.currentTimeMillis()));
-							ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-
-							JobHandler.removeListener(this);
+								event.setHistory(_historyValue);
+								event.setEndTime(new Date(System.currentTimeMillis()));
+								ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+	
+								JobHandler.removeListener(this);
 							
 							// send websocket
 							
-							try {
 								ServiceOverview serviceOverview = k8sService.getServiceWithName(namespace, serviceType, serviceName);
 								
 								Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
@@ -1583,10 +1588,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 				storageScaleExecutor.execTask(jobList.toArray(new Job[] {}));
 
-				log.info(serviceName + " 서비스 On 요청.");
-				result = new Result(txId, IResult.RUNNING, stsName + " 서비스 On 요청.");
+				log.info(serviceName + " 서비스 시 요청.");
+				result = new Result(txId, IResult.RUNNING, stsName + " 서비스 시작 요청.");
 			} else {
-				result = new Result(txId, IResult.ERROR, "서비스 On 실행 오류.");
+				result = new Result(txId, IResult.ERROR, "서비스 시작 실행 오류.");
 			}
 		} catch (KubernetesClientException e) {
 			log.error(e.getMessage(), e);
@@ -1605,6 +1610,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		return result;
 	}
 	
+	
+	@Autowired
+	private MetaDataCollector metaDataCollector;
+	
 	@Override
 	public Result serviceOff(String txId, String namespace, String serviceType, String serviceName, String stsName) throws Exception {
 
@@ -1620,7 +1629,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				return new Result(txId, IResult.ERROR, msg);
 			}
 
-			log.info(stsName + " service off.");
+			log.info(stsName + " service shutdown.");
 			
 			List<Job> jobList = new ArrayList<>();
 			JobParameter param = new JobParameter();
@@ -1639,7 +1648,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 				JobExecutor storageScaleExecutor = new JobExecutor(latch);
 
-				final String _historyValue = String.format("서비스 On -> Off (%s)", stsName);
+				final String _historyValue = String.format("서비스 종료(%s)", stsName);
 
 				EventListener eventListener = new EventListener() {
 
@@ -1665,23 +1674,27 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 							event.setServiceName(serviceName);
 							event.setOperation(RequestEvent.SERVICE_OFF);
 							event.setUserId("SYSTEM");
-							if (code == JobResult.ERROR) {
-								event.setStatus(IResult.ERROR);
-								event.setResultMessage(job.getJobName() + " 처리 중 오류가 발생했습니다. (" + e.getMessage() + ")");
-							} else {
-								event.setStatus(IResult.OK);
-								if (message == null || message.isEmpty()) {
-									event.setResultMessage(job.getJobName() + " 정상 처리되었습니다.");
-								} else {
-									event.setResultMessage(message);
-								}
-							}
-							event.setHistory(_historyValue);
-							event.setEndTime(new Date(System.currentTimeMillis()));
-							ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-							JobHandler.removeListener(this);
-							
 							try {
+								if (code == JobResult.ERROR) {
+									event.setStatus(IResult.ERROR);
+									event.setResultMessage(job.getJobName() + " 처리 중 오류가 발생했습니다. (" + e.getMessage() + ")");
+								} else {
+									
+									List<StatefulSet> statefulSets = K8SUtil.getStatefulSets(namespace, serviceName);
+									metaDataCollector.save(statefulSets);
+									
+									event.setStatus(IResult.OK);
+									if (message == null || message.isEmpty()) {
+										event.setResultMessage(job.getJobName() + " 정상 처리되었습니다.");
+									} else {
+										event.setResultMessage(message);
+									}
+								}
+								event.setHistory(_historyValue);
+								event.setEndTime(new Date(System.currentTimeMillis()));
+								ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+								JobHandler.removeListener(this);
+							
 								ServiceOverview serviceOverview = k8sService.getServiceWithName(namespace, serviceType, serviceName);
 								
 								Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
@@ -1701,10 +1714,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 				storageScaleExecutor.execTask(jobList.toArray(new Job[] {}));
 
-				log.info(serviceName + " 서비스 Off 요청.");
-				result = new Result(txId, IResult.RUNNING, stsName + " 서비스 Off 요청.");
+				log.info(serviceName + " 서비스 종료 요청.");
+				result = new Result(txId, IResult.RUNNING, stsName + " 서비스 종료 요청.");
 			} else {
-				result = new Result(txId, IResult.ERROR, "서비스 Off 실행 오류.");
+				result = new Result(txId, IResult.ERROR, "서비스 종료 실행 오류.");
 			}
 		} catch (KubernetesClientException e) {
 			log.error(e.getMessage(), e);
