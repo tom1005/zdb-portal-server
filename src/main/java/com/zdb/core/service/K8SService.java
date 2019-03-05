@@ -219,18 +219,19 @@ public class K8SService {
 	 */
 	public List<StatefulSet> getStatefulSets(final String namespace, final String serviceName) throws Exception {
 
-		List<StatefulSet> list = new ArrayList<>();
-		
-		List<MetaData> metaList = metadataRepository.findNamespaceAndReleaseNameAndKind(namespace, serviceName, "StatefulSet");
-		
-		for (MetaData metaData : metaList) {
-			String meta = metaData.getMetadata();
-			StatefulSet pvc = new Gson().fromJson(meta, StatefulSet.class);
-			
-			list.add(pvc);
-		}
-		
-		return list;
+//		List<StatefulSet> list = new ArrayList<>();
+//		
+//		List<MetaData> metaList = metadataRepository.findNamespaceAndReleaseNameAndKind(namespace, serviceName, "StatefulSet");
+//		
+//		for (MetaData metaData : metaList) {
+//			String meta = metaData.getMetadata();
+//			StatefulSet pvc = new Gson().fromJson(meta, StatefulSet.class);
+//			
+//			list.add(pvc);
+//		}
+//		
+//		return list;
+		return K8SUtil.getStatefulSets(namespace, serviceName);
 	}
 	
 	/**
@@ -242,17 +243,18 @@ public class K8SService {
 	public List<HasMetadata> getServiceOverviewMeta(final String namespace, final String serviceName, boolean isDetail) throws Exception {
 
 		List<HasMetadata> list = new ArrayList<>();
+		long s = System.currentTimeMillis();
 		
 		List<MetaData> metaList = metadataRepository.findNamespaceAndReleaseName(namespace, serviceName);
 		
 		for (MetaData metaData : metaList) {
 			String meta = metaData.getMetadata();
 			if("StatefulSet".equals(metaData.getKind())) {
-				StatefulSet data = new Gson().fromJson(meta, StatefulSet.class);
-				list.add(data);
+//				StatefulSet data = new Gson().fromJson(meta, StatefulSet.class);
+//				list.add(data);
 			} else if("Pod".equals(metaData.getKind())) {
-				Pod data = new Gson().fromJson(meta, Pod.class);
-				list.add(data);
+//				Pod data = new Gson().fromJson(meta, Pod.class);
+//				list.add(data);
 			} else if("ReplicaSet".equals(metaData.getKind())) {
 				ReplicaSet data = new Gson().fromJson(meta, ReplicaSet.class);
 				list.add(data);
@@ -273,7 +275,7 @@ public class K8SService {
 				list.add(data);
 			}
 		}
-		
+//		System.out.println(">>>>>>>>>>>> getServiceOverviewMeta : " + (System.currentTimeMillis() - s));
 		return list;
 	}
 	
@@ -528,18 +530,16 @@ public class K8SService {
 
 		List<HasMetadata> serviceOverviewMeta = getServiceOverviewMeta(namespace, serviceName, detail);
 		
-		List<StatefulSet> statefulSets = new ArrayList<>();
-		List<Pod> pods = new ArrayList<>();
 		List<ReplicaSet> replicaSets = new ArrayList<>();
 		for (HasMetadata obj : serviceOverviewMeta) {
-			if (obj instanceof StatefulSet) {
-				statefulSets.add((StatefulSet) obj);
-			} else if (obj instanceof Pod) {
-				pods.add((Pod) obj);
-			} else if (obj instanceof ReplicaSet) {
+			if (obj instanceof ReplicaSet) {
 				replicaSets.add((ReplicaSet) obj);
 			}
 		}
+		
+		List<Pod> pods = K8SUtil.getPods(namespace, serviceName);
+		List<StatefulSet> statefulSets = K8SUtil.getStatefulSets(namespace, serviceName);
+		
 		so.getPods().addAll(pods);
 		so.getStatefulSets().addAll(statefulSets);
 		so.getReplicaSets().addAll(replicaSets);
@@ -1180,18 +1180,19 @@ public class K8SService {
 	 */
 	public List<Pod> getPods(final String namespace, final String serviceName) throws Exception {
 
-		List<Pod> list = new ArrayList<>();
-		
-		List<MetaData> metaList = metadataRepository.findNamespaceAndReleaseNameAndKind(namespace, serviceName, "Pod");
-		
-		for (MetaData metaData : metaList) {
-			String meta = metaData.getMetadata();
-			Pod pod = new Gson().fromJson(meta, Pod.class);
-			
-			list.add(pod);
-		}
-		
-		return list;
+//		List<Pod> list = new ArrayList<>();
+//		
+//		List<MetaData> metaList = metadataRepository.findNamespaceAndReleaseNameAndKind(namespace, serviceName, "Pod");
+//		
+//		for (MetaData metaData : metaList) {
+//			String meta = metaData.getMetadata();
+//			Pod pod = new Gson().fromJson(meta, Pod.class);
+//			
+//			list.add(pod);
+//		}
+//		
+//		return list;
+		return K8SUtil.getPods(namespace, serviceName);
 	}
 	
 	public Pod getPod(final String namespace, final String serviceName, String role) throws Exception {
