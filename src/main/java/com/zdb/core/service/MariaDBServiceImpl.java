@@ -1797,14 +1797,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				return new Result(txId, Result.ERROR, "서비스 전환 대상 서비스가 없습니다.");
 			}
 			
-			final CountDownLatch latch = new CountDownLatch(items.size());
-			
-			List<Service> newSvcItems = new ArrayList<>();
-			
 			for (Service service : items) {
 				RestTemplate rest = K8SUtil.getRestTemplate();
-				String idToken = System.getProperty("token");
-				String masterUrl = System.getProperty("masterUrl");
+				String idToken = K8SUtil.getToken();
+				String masterUrl = K8SUtil.getMasterURL();
 				
 				HttpHeaders headers = new HttpHeaders();
 				headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
