@@ -54,7 +54,7 @@ k8s:
   
 chart:
   mariadb:
-    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/mariadb-4.2.5.tgz"
+    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/mariadb-4.2.4.tgz"
   redis:
     url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/redis-3.6.5.tgz"
   
