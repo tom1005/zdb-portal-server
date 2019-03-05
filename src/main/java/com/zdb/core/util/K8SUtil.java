@@ -136,7 +136,7 @@ public class K8SUtil {
 	 */
 	public static List<Pod> getActivePodList(String namespace, String serviceName) throws Exception {
 		List<Pod> podList = new ArrayList<>();
-		List<Pod> items = getPodList(namespace, serviceName);
+		List<Pod> items = getPods(namespace, serviceName);
 		for (Pod pod : items) {
 			String phase = pod.getStatus().getPhase();
 
@@ -148,22 +148,22 @@ public class K8SUtil {
 		return podList;
 	}
 
-	public static List<Pod> getPodList(String namespace, String serviceName) throws Exception {
-		DefaultKubernetesClient client = kubernetesClient();
-
-		List<Pod> podList = new ArrayList<>();
-
-		List<Pod> items = client.inNamespace(namespace).pods().list().getItems();
-		for (Pod pod : items) {
-			if (pod.getMetadata().getLabels() != null) {
-				if (serviceName.equals(pod.getMetadata().getLabels().get("release"))) {
-					podList.add(pod);
-				}
-			}
-		}
-
-		return podList;
-	}
+//	public static List<Pod> getPodList(String namespace, String serviceName) throws Exception {
+//		DefaultKubernetesClient client = kubernetesClient();
+//
+//		List<Pod> podList = new ArrayList<>();
+//
+//		List<Pod> items = client.inNamespace(namespace).pods().list().getItems();
+//		for (Pod pod : items) {
+//			if (pod.getMetadata().getLabels() != null) {
+//				if (serviceName.equals(pod.getMetadata().getLabels().get("release"))) {
+//					podList.add(pod);
+//				}
+//			}
+//		}
+//
+//		return podList;
+//	}
 	
 	public static Pod getPodWithName(String namespace, String serviceName, String podName) throws Exception {
 		DefaultKubernetesClient client = kubernetesClient();
