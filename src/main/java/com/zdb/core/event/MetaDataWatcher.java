@@ -11,6 +11,7 @@ import com.zdb.core.domain.MetaData;
 import com.zdb.core.repository.MetadataRepository;
 import com.zdb.core.util.DateUtil;
 import com.zdb.core.util.K8SUtil;
+import com.zdb.core.util.PodManager;
 
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.ContainerStatus;
@@ -147,8 +148,9 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 							log.error(e.getMessage(), e);
 						}
 					}
+				} else if (resource instanceof StatefulSet) {
+					pushData = true;
 				}
-			
 	
 				m.setApp(app);
 				m.setUid(metaObj.getMetadata().getUid());
@@ -159,7 +161,6 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 		
 				if (isZDBResource(metaObj)) {
 					metaRepo.save(m);
-					
 					MetaDataCollector.putMetaData(metaObj.getMetadata().getUid(), metaObj);
 					
 					// send websocket		

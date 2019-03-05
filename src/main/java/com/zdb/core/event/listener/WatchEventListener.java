@@ -1,10 +1,8 @@
 package com.zdb.core.event.listener;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -16,7 +14,6 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import com.zdb.core.event.EventWatcher;
@@ -43,12 +40,9 @@ import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
-//@Profile({"prod"})
+@Profile({"prod"})
 public class WatchEventListener {
 
-	List<Watch> watchList = Collections.synchronizedList(new ArrayList<>());
-	List<EventWatcher<?>> eventWatcherList = Collections.synchronizedList(new ArrayList<>());
-	Map<String, MetaDataWatcher<?>> metaDataWatcherMap = Collections.synchronizedMap(new HashMap<>());
 	Map<String, CountDownLatch> watcherCountDownLatch = Collections.synchronizedMap(new HashMap<>());
 
 	@Autowired
@@ -75,28 +69,29 @@ public class WatchEventListener {
 		if (event instanceof ApplicationReadyEvent) {
 			isShutdown = false;
 			try {
-				log.info("================================Add Event Watch=======================================");
+
+				log.info("================================Add Event Watch============================================");
 				runEventWatcher();
 
-				log.info("================================Add StatefulSet Watch=======================================");
+				log.info("================================Add StatefulSet Watch======================================");
 				runStatefulSetMetaDataWatcher();
 
-				log.info("================================Add ConfigMap Watch=======================================");
+				log.info("================================Add ConfigMap Watch========================================");
 				runConfigMapMetaDataWatcher();
 
-				log.info("================================Add PersistentVolumeClaim Watch=======================================");
+				log.info("================================Add PersistentVolumeClaim Watch============================");
 				runPersistentVolumeClaimMetaDataWatcher();
 
-				log.info("================================Add Service Watch=======================================");
+				log.info("================================Add Service Watch==========================================");
 				runServiceMetaDataWatcher();
 
-				log.info("================================Add Namespace Watch=======================================");
+				log.info("================================Add Namespace Watch========================================");
 				runNamespaceMetaDataWatcher();
 
 				log.info("================================Add Deployment Watch=======================================");
 				runDeploymentMetaDataWatcher();
 
-				log.info("================================Add Pod Watch=======================================");
+				log.info("================================Add Pod Watch==============================================");
 				runPodMetaDataWatcher();
 
 				log.info("================================Add ReplicaSet Watch=======================================");
@@ -108,7 +103,7 @@ public class WatchEventListener {
 
 		} else if (event instanceof ContextClosedEvent) {
 			isShutdown = true;
-			
+			countDown();
 		}
 	}
 	
@@ -193,7 +188,7 @@ public class WatchEventListener {
 								super.onClose(e);
 							}
 						})) {
-							closeLatch.await(60 * 60, TimeUnit.SECONDS);
+							closeLatch.await(60 * 10, TimeUnit.SECONDS);
 						} catch (KubernetesClientException | InterruptedException e) {
 							log.error("Pods MetaDataWatcher - Could not watch resources", e);
 						}
@@ -236,7 +231,7 @@ public class WatchEventListener {
 								super.onClose(e);
 							}
 						})) {
-							closeLatch.await(60 * 60, TimeUnit.SECONDS);
+							closeLatch.await(60 * 10, TimeUnit.SECONDS);
 						} catch (KubernetesClientException | InterruptedException e) {
 							log.error("Deployments MetaDataWatcher - Could not watch resources", e);
 						}
@@ -322,7 +317,7 @@ public class WatchEventListener {
 								super.onClose(e);
 							}
 						})) {
-							closeLatch.await(60 * 60, TimeUnit.SECONDS);
+							closeLatch.await(60 * 10, TimeUnit.SECONDS);
 						} catch (KubernetesClientException | InterruptedException e) {
 							log.error("Services MetaDataWatcher - Could not watch resources", e);
 						}
@@ -370,7 +365,7 @@ public class WatchEventListener {
 								super.onClose(e);
 							}
 						})) {
-							closeLatch.await(60 * 60, TimeUnit.SECONDS);
+							closeLatch.await(60 * 10, TimeUnit.SECONDS);
 						} catch (KubernetesClientException | InterruptedException e) {
 							log.error("PersistentVolumeClaims MetaDataWatcher - Could not watch resources", e);
 						}
@@ -449,6 +444,10 @@ public class WatchEventListener {
 					try (final DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
 
 						try (Watch watch = client.inAnyNamespace().apps().statefulSets().watch(new MetaDataWatcher<StatefulSet>(metaRepo) {
+							protected void sendWebSocket() {
+								messageSender.sendToClient("statefulSets");
+							}
+							
 							@Override
 							public void onClose(KubernetesClientException e) {
 								if (e != null) {
@@ -457,7 +456,7 @@ public class WatchEventListener {
 								super.onClose(e);
 							}
 						})) {
-							closeLatch.await(60 * 60, TimeUnit.SECONDS);
+							closeLatch.await(60 * 10, TimeUnit.SECONDS);
 						} catch (KubernetesClientException | InterruptedException e) {
 							log.error("StatefulSets MetaDataWatcher - Could not watch resources", e);
 						}
