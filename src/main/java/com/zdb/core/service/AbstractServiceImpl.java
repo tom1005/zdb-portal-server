@@ -1210,7 +1210,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	public Result getPods(String namespace, String serviceType, String serviceName) throws Exception {
 
 		try {
-			List<Pod> pods = K8SUtil.getPodList(namespace, serviceName);
+			List<Pod> pods = K8SUtil.getPods(namespace, serviceName);
 			
 			if (pods != null) {
 				return new Result("", Result.OK).putValue(IResult.PODS, pods);
