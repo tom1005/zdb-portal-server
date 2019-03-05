@@ -1570,7 +1570,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 							
 								ServiceOverview serviceOverview = k8sService.getServiceWithName(namespace, serviceType, serviceName);
 								
-								Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
+								Result r = Result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
 								messageSender.convertAndSend("/service/" + serviceOverview.getServiceName(), r);
 								
 							} catch (MessagingException e1) {
@@ -1697,14 +1697,14 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 							
 								ServiceOverview serviceOverview = k8sService.getServiceWithName(namespace, serviceType, serviceName);
 								
-								Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
+								Result r = Result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
 								messageSender.convertAndSend("/service/" + serviceOverview.getServiceName(), r);
 								
 							} catch (MessagingException e1) {
 								e1.printStackTrace();
 							} catch (Exception e1) {
 								e1.printStackTrace();
-							}
+							}	
 						}
 					}
 
@@ -1830,7 +1830,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 					try {
 						ServiceOverview serviceOverview = k8sService.getServiceWithName(namespace, serviceType, serviceName);
 						
-						Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
+						Result r = Result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
 						messageSender.convertAndSend("/service/" + serviceOverview.getServiceName(), r);
 					} catch (MessagingException e1) {
 						e1.printStackTrace();
@@ -1912,7 +1912,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 					try {
 						ServiceOverview serviceOverview = k8sService.getServiceWithName(namespace, serviceType, serviceName);
 						
-						Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
+						Result r = Result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
 						messageSender.convertAndSend("/service/" + serviceOverview.getServiceName(), r);
 					} catch (MessagingException e1) {
 						e1.printStackTrace();
