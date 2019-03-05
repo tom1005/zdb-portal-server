@@ -196,7 +196,7 @@ public class MetaDataCollector {
 		return flag;
 	}
 	
-	private void save(List<? extends HasMetadata> metadataList) {
+	public void save(List<? extends HasMetadata> metadataList) {
 		for (HasMetadata metaObj : metadataList) {
 			
 			putMetaData(metaObj.getMetadata().getUid(), metaObj);
