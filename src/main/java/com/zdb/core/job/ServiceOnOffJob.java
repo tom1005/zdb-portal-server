@@ -57,7 +57,12 @@ public class ServiceOnOffJob extends JobAdapter {
 			MixedOperation<StatefulSet, StatefulSetList, DoneableStatefulSet, RollableScalableResource<StatefulSet, DoneableStatefulSet>> statefulSets = kubernetesClient.inNamespace(namespace).apps().statefulSets();
 			
 			StatefulSet statefulSet = statefulSets.withName(stsName).get();
-//			StatefulSetBuilder stsBuilder = new StatefulSetBuilder(statefulSet);
+			
+			if(statefulSet == null) {
+				log.error("StatefulSet : "+stsName + "는 등록된 서비스가 아닙니다.");
+				done(JobResult.ERROR, stsName +" 서비스를 종료 오류.", null);
+				return;
+			}
 			
 			long replicas = statefulSet.getSpec().getReplicas();
 			
