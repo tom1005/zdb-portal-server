@@ -1,18 +1,15 @@
-package com.zdb.core.event;
+package com.zdb.core;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import java.util.Set;
 
 import com.google.gson.Gson;
 import com.zdb.core.collector.MetaDataCollector;
 import com.zdb.core.domain.CommonConstants;
 import com.zdb.core.domain.EventMetaData;
-import com.zdb.core.repository.EventRepository;
-import com.zdb.core.repository.MetadataRepository;
-import com.zdb.core.util.EventLog;
 import com.zdb.core.util.K8SUtil;
 
 import io.fabric8.kubernetes.api.model.ConfigMap;
@@ -39,20 +36,11 @@ import lombok.extern.slf4j.Slf4j;
  * @param <T>
  */
 @Slf4j
-public class EventWatcher<T> implements Watcher<T> {
-	
-	private SimpMessagingTemplate messageSender;
-	
-	EventRepository eventRepo;
-	
-	MetadataRepository metaRepo;
+public class EventWatcherT<T> implements Watcher<T> {
 	
 	boolean isClosed = false;
 
-	public EventWatcher(EventRepository eventRepo, MetadataRepository metaRepo, SimpMessagingTemplate messageSender) {
-		this.eventRepo = eventRepo;
-		this.metaRepo = metaRepo;
-		this.messageSender = messageSender;
+	public EventWatcherT() {
 	}
 	
 	protected void sendWebSocket() {
@@ -63,11 +51,15 @@ public class EventWatcher<T> implements Watcher<T> {
 		return isClosed;
 	}
 	
+	
+	static Set<String> uidSet = new HashSet<>();
+	
 	@Override
 	public void eventReceived(Action action, Object resource) {
 		isClosed = false;
 		
 		String metaToJon = new Gson().toJson(resource);
+		HasMetadata metaObj = (HasMetadata) resource;
 		
 		if (resource instanceof Event) {
 			Event event = (Event) resource;
@@ -75,8 +67,15 @@ public class EventWatcher<T> implements Watcher<T> {
 			EventMetaData m = new EventMetaData();
 			
 			// write event log 
-			EventLog.printLog(event);
+//			EventLog.printLog(event);
+//			Gson gson = new GsonBuilder().create();
+//			String json = gson.toJson(event);
+//			log.info(json);
 			
+			
+			log.info("{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}", uidSet.contains(event.getMetadata().getUid()), action, event.getFirstTimestamp(), event.getLastTimestamp(), event.getMetadata().getNamespace(), event.getMetadata().getName(), event.getKind(), event.getCount(), event.getType(), event.getReason(), event.getMessage());
+			
+			uidSet.add(event.getMetadata().getUid());
 			try {
 				if( "PersistentVolume".equals(event.getInvolvedObject().getKind())) {
 					return;
@@ -141,18 +140,18 @@ public class EventWatcher<T> implements Watcher<T> {
 			} catch (Exception e) {
 				log.error(e.getMessage(), e);
 			}
-			EventMetaData findByNameAndMessageAndLastTimestamp = eventRepo.findByNameAndMessageAndLastTimestamp(m.getName(), m.getMessage(), m.getLastTimestamp());
-			if(findByNameAndMessageAndLastTimestamp == null) {
-
-				// TODO 아래 메세지에 대해 어떻게 처리 할지 결정필요....
-				if(event.getMessage().indexOf("Ensuring load balancer") > -1) {
-					return;
-				}
-				if(event.getMessage().indexOf("Error on cloud load balancer") > -1) {
-					return;
-				}
-				eventRepo.save(m);
-			} 
+//			EventMetaData findByNameAndMessageAndLastTimestamp = eventRepo.findByNameAndMessageAndLastTimestamp(m.getName(), m.getMessage(), m.getLastTimestamp());
+//			if(findByNameAndMessageAndLastTimestamp == null) {
+//
+//				// TODO 아래 메세지에 대해 어떻게 처리 할지 결정필요....
+//				if(event.getMessage().indexOf("Ensuring load balancer") > -1) {
+//					return;
+//				}
+//				if(event.getMessage().indexOf("Error on cloud load balancer") > -1) {
+//					return;
+//				}
+//				eventRepo.save(m);
+//			} 
 		} 
 	}
 	

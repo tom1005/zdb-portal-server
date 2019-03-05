@@ -34,7 +34,9 @@ public class RequestEvent {
 	public static final String STORAGE_SCALE_UP = "스토리지 스케일 업";
 	public static final String SERVICE_ON = "서비스 On";
 	public static final String SERVICE_OFF = "서비스 Off";
-	public static final String SERVICE_TAKE_OVER = "서비스 전환";
+	public static final String SERVICE_MASTER_TO_SLAVE = "서비스 전환(Master To Slave)";
+	public static final String SERVICE_SLAVE_TO_MASTER = "서비스 전환(Slave To Master)";
+	public static final String SERVICE_FAIL_OVER_STATUS = "서비스 전환 상태";
 	public static final String SLOWLOG_ROTATION = "Slowlog Rotation";
 	public static final String SCALE_OUT = "스케일 아웃";
 	public static final String UPDATE_CONFIG = "환경설정 변경";
@@ -50,6 +52,10 @@ public class RequestEvent {
 	public static final String DELETE_PUBLIC_SVC = "Public Network 삭제";
 	public static final String CREATE_ZDBCONFIG = "Global 환경설정 생성";
 	public static final String SERVICE_RESTORE_SLAVE = "";
+	public static final String SET_AUTO_FAILOVER_USABLE = "Auto Failover 설정";
+	public static final String ADD_AUTO_FAILOVER = "Auto Failover 환경 등록";
+	public static final String CHANGE_PORT = "포트 변경";
+	public static final String WORKER_POOLS_READ = "Worker Pools 조회";
 	
 	private String operation;
 

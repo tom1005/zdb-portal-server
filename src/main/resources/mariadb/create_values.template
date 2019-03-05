@@ -37,6 +37,9 @@ replication:
 
 master:
   antiAffinity: "${master.antiAffinity}"
+  affinity:
+    nodeAffinity:
+      values: "${master.affinity.nodeAffinity.values}"
   persistence:
     enabled: true
     storageClass: "${master.persistence.storageClass}"
@@ -175,6 +178,9 @@ master:
 slave:
   replicas: 1
   antiAffinity: soft
+  affinity:
+    nodeAffinity:
+      values: "${slave.affinity.nodeAffinity.values}"
   persistence:
     enabled: true
     storageClass: "${slave.persistence.storageClass}"

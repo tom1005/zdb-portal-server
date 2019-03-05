@@ -56,6 +56,8 @@ public class ServiceOverview {
 	
 	private boolean backupEnabled;
 	
+	private boolean failoverEnabled;
+	
 	private List<PersistentVolumeClaim> persistentVolumeClaims = new ArrayList<>();
 	
 	private List<Deployment> deployments = new ArrayList<>();
@@ -83,6 +85,10 @@ public class ServiceOverview {
 	private Map<String, PersistenceSpec> persistenceSpecOfPodMap = new HashMap<>();
 	
 	private Map<String, DiskUsage> diskUsageOfPodMap = new HashMap<>();
+
+	private Map<String, Object> cpuUsageOfPodMap = new HashMap<>();
+	
+	private Map<String, Object> memoryUsageOfPodMap = new HashMap<>();
 	
 	/**
 	 * @return

@@ -15,6 +15,10 @@ import com.zdb.core.domain.ZDBType;
  * ZDBRestService interface
  * 
  */
+/**
+ * @author a06919
+ *
+ */
 public interface ZDBRestService {
 	
 	static final int MAX_QUEUE_SIZE = 10;
@@ -211,7 +215,97 @@ public interface ZDBRestService {
 	
 	Result serviceOn(String txId, String namespace, String serviceType, String serviceName, String stsName) throws Exception;
 	
-	Result serviceTakeOver(String txId, String namespace, String serviceType, String serviceName) throws Exception;
+	/**
+	 * Master 장애로 서비스LB 를 Master -> Slave 로 전환 (MariaDB 만 지원)
+	 * 
+	 * @param txId
+	 * @param namespace
+	 * @param serviceType
+	 * @param serviceName
+	 * @return
+	 * @throws Exception
+	 */
+	Result serviceChaneMasterToSlave(String txId, String namespace, String serviceType, String serviceName) throws Exception;
+
+	/**
+	 * 
+	 * Master 장애로 서비스LB 를 Master -> Slave 로 전환 후 다시 Slave -> Master 로 복원(MariaDB 만 지원)
+	 * 
+	 * @param txId
+	 * @param namespace
+	 * @param serviceType
+	 * @param serviceName
+	 * @return
+	 * @throws Exception
+	 */
+	Result serviceChaneSlaveToMaster(String txId, String namespace, String serviceType, String serviceName) throws Exception;
+
+	/**
+	 * Master 장애로 서비스LB 를 Master -> Slave 로 전환 여부를 반환한다.
+	 * 
+	 * Result.message 로 상태값 반환
+	 *  - MasterToSlave (전환된 상태)
+	 *  - MasterToMaster (정상 서비스 상태)
+	 *  - unknown (파라메터 오류 또는 알수 없음)
+	 * @param txId
+	 * @param namespace
+	 * @param serviceType
+	 * @param serviceName
+	 * @return
+	 * @throws Exception
+	 */
+	Result serviceFailOverStatus(String txId, String namespace, String serviceType, String serviceName) throws Exception;
 
 	Result slowlogRotation(String txId, String namespace, String serviceType, String serviceName) throws Exception;
+	
+	/**
+	 * Auto Failover 
+	 *  - On : add label : zdb-failover-enable=true
+	 *        cli : kubectl -n <namespace> label sts <sts_name> "zdb-failover-enable=true" --overwrite
+	 *  - Off : update label : zdb-failover-enable=false
+	 *        cli : kubectl -n <namespace> label sts <sts_name> "zdb-failover-enable=false" --overwrite
+	 *        
+	 * @param txId
+	 * @param namespace
+	 * @param serviceType
+	 * @param serviceName
+	 * @return
+	 * @throws Exception
+	 */
+	Result updateAutoFailoverEnable(String txId, String namespace, String serviceType, String serviceName, boolean enable) throws Exception;
+
+//	/**
+//	 * 
+//	 * @param txId
+//	 * @param namespace
+//	 * @param serviceType
+//	 * @param serviceName
+//	 * @return
+//	 * @throws Exception
+//	 */
+//	Result addAutoFailover(String txId, String namespace, String serviceType, String serviceName) throws Exception;
+	
+	/**
+	 * Statefulset 의 label : zdb-failover-enable=true 가 등록된 서비스 목록.(master)
+	 * 
+	 * @param txId
+	 * @param namespace
+	 * @return
+	 * @throws Exception
+	 */
+	Result getAutoFailoverServices(String txId, String namespace) throws Exception;
+
+	/**
+	 * Statefulset 의 label : zdb-failover-enable=true 가 등록된 서비스.(master)
+	 * 
+	 * @param txId
+	 * @param namespace
+	 * @param serviceName
+	 * @return
+	 * @throws Exception
+	 */
+	Result getAutoFailoverService(String txId, String namespace, String serviceName) throws Exception;
+	
+	Result getWorkerPools() throws Exception;
+
 }

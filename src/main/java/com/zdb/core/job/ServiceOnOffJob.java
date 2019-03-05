@@ -1,10 +1,17 @@
 package com.zdb.core.job;
 
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
+
 import com.zdb.core.util.K8SUtil;
 
 import io.fabric8.kubernetes.api.model.extensions.DoneableStatefulSet;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
-import io.fabric8.kubernetes.api.model.extensions.StatefulSetBuilder;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSetList;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
@@ -50,7 +57,12 @@ public class ServiceOnOffJob extends JobAdapter {
 			MixedOperation<StatefulSet, StatefulSetList, DoneableStatefulSet, RollableScalableResource<StatefulSet, DoneableStatefulSet>> statefulSets = kubernetesClient.inNamespace(namespace).apps().statefulSets();
 			
 			StatefulSet statefulSet = statefulSets.withName(stsName).get();
-			StatefulSetBuilder stsBuilder = new StatefulSetBuilder(statefulSet);
+			
+			if(statefulSet == null) {
+				log.error("StatefulSet : "+stsName + "는 등록된 서비스가 아닙니다.");
+				done(JobResult.ERROR, stsName +" 서비스를 종료 오류.", null);
+				return;
+			}
 			
 			long replicas = statefulSet.getSpec().getReplicas();
 			
@@ -66,17 +78,46 @@ public class ServiceOnOffJob extends JobAdapter {
 				
 				return;
 			} else {
-				StatefulSet newSts = stsBuilder.editSpec().withReplicas(toggle).endSpec().build();
+//				StatefulSet newSts = stsBuilder.editSpec().withReplicas(toggle).endSpec().build();
+//				statefulSets.createOrReplace(newSts);
 				
-				statefulSets.createOrReplace(newSts);
-				if (toggle == 1) {
-					done(JobResult.OK, stsName +" 서비스를 시작 했습니다.", null);
+				RestTemplate rest = K8SUtil.getRestTemplate();
+				String idToken = K8SUtil.getToken();
+				String masterUrl = K8SUtil.getMasterURL();
+				
+				HttpHeaders headers = new HttpHeaders();
+				headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
+				headers.set("Authorization", "Bearer " + idToken);
+				headers.set("Content-Type", "application/json-patch+json");
+				
+				String data = "[{\"op\":\"add\",\"path\":\"/spec/replicas\",\"value\":"+toggle+"}]";
+			    
+				HttpEntity<String> requestEntity = new HttpEntity<>(data, headers);
+
+				String endpoint = masterUrl + "/apis/apps/v1/namespaces/{namespace}/statefulsets/{name}/scale";
+				ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.PATCH, requestEntity, String.class, namespace, stsName);
+				
+				if (response.getStatusCode() == HttpStatus.OK) {
+					if (toggle == 1) {
+						done(JobResult.OK, stsName +" 서비스를 시작 했습니다.", null);
+					} else {
+						done(JobResult.OK, stsName +" 서비스를 종료 했습니다.", null);
+					}
 				} else {
-					done(JobResult.OK, stsName +" 서비스를 종료 했습니다.", null);
+					if (toggle == 1) {
+						done(JobResult.ERROR, stsName +" 서비스를 시작 오류.", null);
+					} else {
+						done(JobResult.ERROR, stsName +" 서비스를 종료 오류.", null);
+					}
+					
+					log.error(response.getBody());
+					
 				}
+				
 			}
 			
 		} catch (Exception e) {
+			e.printStackTrace();
 			done(JobResult.ERROR, "", e);
 		}
 		

@@ -26,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
-@Profile({"prod"})
+//@Profile({"prod"})
 public class ReleaseCollector {
 	
 	@Autowired
@@ -85,6 +85,9 @@ public class ReleaseCollector {
 					}
 					
 					releaseMeta.setAppVersion(version);
+					if(releaseMeta.getClusterEnabled() == null) {
+						releaseMeta.setClusterEnabled(statefulSets.size() > 1 ? true : false);
+					}
 				} catch (Exception e) {
 					log.error(e.getMessage(), e);
 				}
@@ -117,7 +120,7 @@ public class ReleaseCollector {
 					}
 				}
 				releaseMeta.setPublicEnabled(publicEnabled);
-				// log.info(new Gson().toJson(release));
+//				 log.info("{} ------- {}", releaseMeta.getReleaseName(), releaseMeta.getStatus());
 
 				repo.save(releaseMeta);
 			}
@@ -128,27 +131,12 @@ public class ReleaseCollector {
 			Iterable<ReleaseMetaData> findAll = repo.findAll();
 			for (ReleaseMetaData releaseMeta : findAll) {
 				String releaseName = releaseMeta.getReleaseName();
-				
-				// 동기화시 동기화 시점에 생성된 경우 삭제상태로 변경되는 케이스가 발생하여 최초 생성 후 5분이내의 경우 동기화 대상에서 제외.
-				Date createD = releaseMeta.getCreateTime();
-				long createTime = createD.getTime();
-				
-				long currentTime = System.currentTimeMillis();
-				if((currentTime - createTime) < 5 * 60 * 1000) {
-					continue;
-				}
-				
-				boolean exist = false;
-				for (Release release : releaseAllList) {
-					String name = release.getName();
-					
-					if(releaseName.equals(name)) {
-						exist = true;
-						break;
-					}
-				}
-				
-				if(!exist) {
+
+				String namespace = releaseMeta.getNamespace();
+
+				List<StatefulSet> items = K8SUtil.kubernetesClient().inNamespace(namespace).apps().statefulSets().withLabel("release", releaseName).list().getItems();
+
+				if (items == null || items.isEmpty()) {
 					releaseMeta.setStatus("DELETED");
 					repo.save(releaseMeta);
 				}

@@ -5,7 +5,9 @@ import java.util.List;
 import com.zdb.core.util.K8SUtil;
 
 import io.fabric8.kubernetes.api.model.Event;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class PodEvent {
 
 	public static void main(String[] args) {
@@ -13,9 +15,12 @@ public class PodEvent {
 			//getPodResources("zdb-maria", "mariadb", "maria-test009");
 			List<Event> podEvent = K8SUtil.getPodEvent("zdb-dev-test2", "zdb-206-mariadb-master-0");
 			
-			for (Event event : podEvent) {
-				System.out.println(event.getFirstTimestamp() +" | "+ event.getLastTimestamp()+" | "+ event.getSource().getComponent() +"/"+ event.getSource().getHost() +" | "+event.getMessage());
-			}
+//			for (Pod pod : pods) {
+//				log.info("Pod : {} {}",pod.getMetadata().getName(), PodManager.isReady(pod));
+//			}
+			
+			
+			
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.IOUtils;
 import org.microbean.helm.ReleaseManager;
@@ -28,8 +27,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.MessagingException;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.web.client.RestTemplate;
 
 import com.google.gson.Gson;
+import com.zdb.core.collector.MetaDataCollector;
 import com.zdb.core.domain.Connection;
 import com.zdb.core.domain.ConnectionInfo;
 import com.zdb.core.domain.DBUser;
@@ -40,6 +49,7 @@ import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
+import com.zdb.core.domain.ServiceOverview;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBMariaDBConfig;
@@ -76,26 +86,34 @@ import hapi.release.ReleaseOuterClass.Release;
 import hapi.services.tiller.Tiller.UpdateReleaseRequest;
 import hapi.services.tiller.Tiller.UpdateReleaseResponse;
 import io.fabric8.kubernetes.api.model.ConfigMap;
+import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
+import io.fabric8.kubernetes.api.model.ConfigMapList;
+import io.fabric8.kubernetes.api.model.ConfigMapVolumeSource;
+import io.fabric8.kubernetes.api.model.Container;
+import io.fabric8.kubernetes.api.model.DoneableConfigMap;
 import io.fabric8.kubernetes.api.model.DoneablePod;
 import io.fabric8.kubernetes.api.model.DoneableService;
+import io.fabric8.kubernetes.api.model.LoadBalancerIngress;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Quantity;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
-import io.fabric8.kubernetes.api.model.ServiceBuilder;
 import io.fabric8.kubernetes.api.model.ServiceList;
 import io.fabric8.kubernetes.api.model.ServicePort;
 import io.fabric8.kubernetes.api.model.Volume;
+import io.fabric8.kubernetes.api.model.VolumeMount;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
+import io.fabric8.kubernetes.api.model.extensions.DoneableStatefulSet;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
+import io.fabric8.kubernetes.api.model.extensions.StatefulSetBuilder;
+import io.fabric8.kubernetes.api.model.extensions.StatefulSetList;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
-import io.fabric8.kubernetes.client.Watch;
-import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.PodResource;
 import io.fabric8.kubernetes.client.dsl.Resource;
+import io.fabric8.kubernetes.client.dsl.RollableScalableResource;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -128,6 +146,9 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	
 	@Autowired
 	private MycnfRepository configRepository;
+	
+	@Autowired
+	private SimpMessagingTemplate messageSender;
 
 	@Override
 	public Result getDeployment(String namespace, String serviceName) {
@@ -709,7 +730,12 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				String ip = new String();
 				
 				if ("LoadBalancer".equals(service.getSpec().getType())) {
-					ip = service.getStatus().getLoadBalancer().getIngress().get(0).getIp();
+					List<LoadBalancerIngress> ingress = service.getStatus().getLoadBalancer().getIngress();
+					if(ingress != null && ingress.size() > 0) {
+						ip = ingress.get(0).getIp();
+					} else {
+						ip = service.getMetadata().getName()+"."+service.getMetadata().getNamespace();
+					}
 				} else if ("ClusterIP".equals(service.getSpec().getType())) {
 					ip = service.getSpec().getClusterIP();
 				}
@@ -1458,7 +1484,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 			log.info(stsName + " service on.");
 			
-			List<Pod> pods = k8sService.getPods(namespace, serviceName);
+			List<Pod> pods = K8SUtil.getPods(namespace, serviceName);
 			
 			List<Job> jobList = new ArrayList<>();
 			for (Pod p : pods) {
@@ -1518,22 +1544,41 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 							event.setServiceName(serviceName);
 							event.setOperation(RequestEvent.SERVICE_ON);
 							event.setUserId("SYSTEM");
-							if (code == JobResult.ERROR) {
-								event.setStatus(IResult.ERROR);
-								event.setResultMessage(job.getJobName() + " 처리 중 오류가 발생했습니다. (" + e.getMessage() + ")");
-							} else {
-								event.setStatus(IResult.OK);
-								if (message == null || message.isEmpty()) {
-									event.setResultMessage(job.getJobName() + " 정상 처리되었습니다.");
+							try {
+								if (code == JobResult.ERROR) {
+									event.setStatus(IResult.ERROR);
+									event.setResultMessage(job.getJobName() + " 처리 중 오류가 발생했습니다. (" + e.getMessage() + ")");
 								} else {
-									event.setResultMessage(message);
+									
+									List<StatefulSet> statefulSets = K8SUtil.getStatefulSets(namespace, serviceName);
+									metaDataCollector.save(statefulSets);
+									
+									event.setStatus(IResult.OK);
+									if (message == null || message.isEmpty()) {
+										event.setResultMessage(job.getJobName() + " 정상 처리되었습니다.");
+									} else {
+										event.setResultMessage(message);
+									}
 								}
+								event.setHistory(_historyValue);
+								event.setEndTime(new Date(System.currentTimeMillis()));
+								ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+	
+								JobHandler.removeListener(this);
+							
+							// send websocket
+							
+								ServiceOverview serviceOverview = k8sService.getServiceWithName(namespace, serviceType, serviceName);
+								
+								Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
+								messageSender.convertAndSend("/service/" + serviceOverview.getServiceName(), r);
+								
+							} catch (MessagingException e1) {
+								e1.printStackTrace();
+							} catch (Exception e1) {
+								e1.printStackTrace();
 							}
-							event.setHistory(_historyValue);
-							event.setEndTime(new Date(System.currentTimeMillis()));
-							ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-
-							JobHandler.removeListener(this);
+							
 						}
 					}
 
@@ -1543,10 +1588,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 				storageScaleExecutor.execTask(jobList.toArray(new Job[] {}));
 
-				log.info(serviceName + " 서비스 On 요청.");
-				result = new Result(txId, IResult.RUNNING, stsName + " 서비스 On 요청.");
+				log.info(serviceName + " 서비스 시 요청.");
+				result = new Result(txId, IResult.RUNNING, stsName + " 서비스 시작 요청.");
 			} else {
-				result = new Result(txId, IResult.ERROR, "서비스 On 실행 오류.");
+				result = new Result(txId, IResult.ERROR, "서비스 시작 실행 오류.");
 			}
 		} catch (KubernetesClientException e) {
 			log.error(e.getMessage(), e);
@@ -1565,6 +1610,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		return result;
 	}
 	
+	
+	@Autowired
+	private MetaDataCollector metaDataCollector;
+	
 	@Override
 	public Result serviceOff(String txId, String namespace, String serviceType, String serviceName, String stsName) throws Exception {
 
@@ -1580,7 +1629,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				return new Result(txId, IResult.ERROR, msg);
 			}
 
-			log.info(stsName + " service off.");
+			log.info(stsName + " service shutdown.");
 			
 			List<Job> jobList = new ArrayList<>();
 			JobParameter param = new JobParameter();
@@ -1599,7 +1648,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 				JobExecutor storageScaleExecutor = new JobExecutor(latch);
 
-				final String _historyValue = String.format("서비스 On -> Off (%s)", stsName);
+				final String _historyValue = String.format("서비스 종료(%s)", stsName);
 
 				EventListener eventListener = new EventListener() {
 
@@ -1625,21 +1674,37 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 							event.setServiceName(serviceName);
 							event.setOperation(RequestEvent.SERVICE_OFF);
 							event.setUserId("SYSTEM");
-							if (code == JobResult.ERROR) {
-								event.setStatus(IResult.ERROR);
-								event.setResultMessage(job.getJobName() + " 처리 중 오류가 발생했습니다. (" + e.getMessage() + ")");
-							} else {
-								event.setStatus(IResult.OK);
-								if (message == null || message.isEmpty()) {
-									event.setResultMessage(job.getJobName() + " 정상 처리되었습니다.");
+							try {
+								if (code == JobResult.ERROR) {
+									event.setStatus(IResult.ERROR);
+									event.setResultMessage(job.getJobName() + " 처리 중 오류가 발생했습니다. (" + e.getMessage() + ")");
 								} else {
-									event.setResultMessage(message);
+									
+									List<StatefulSet> statefulSets = K8SUtil.getStatefulSets(namespace, serviceName);
+									metaDataCollector.save(statefulSets);
+									
+									event.setStatus(IResult.OK);
+									if (message == null || message.isEmpty()) {
+										event.setResultMessage(job.getJobName() + " 정상 처리되었습니다.");
+									} else {
+										event.setResultMessage(message);
+									}
 								}
+								event.setHistory(_historyValue);
+								event.setEndTime(new Date(System.currentTimeMillis()));
+								ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+								JobHandler.removeListener(this);
+							
+								ServiceOverview serviceOverview = k8sService.getServiceWithName(namespace, serviceType, serviceName);
+								
+								Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
+								messageSender.convertAndSend("/service/" + serviceOverview.getServiceName(), r);
+								
+							} catch (MessagingException e1) {
+								e1.printStackTrace();
+							} catch (Exception e1) {
+								e1.printStackTrace();
 							}
-							event.setHistory(_historyValue);
-							event.setEndTime(new Date(System.currentTimeMillis()));
-							ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-							JobHandler.removeListener(this);
 						}
 					}
 
@@ -1649,10 +1714,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 				storageScaleExecutor.execTask(jobList.toArray(new Job[] {}));
 
-				log.info(serviceName + " 서비스 Off 요청.");
-				result = new Result(txId, IResult.RUNNING, stsName + " 서비스 Off 요청.");
+				log.info(serviceName + " 서비스 종료 요청.");
+				result = new Result(txId, IResult.RUNNING, stsName + " 서비스 종료 요청.");
 			} else {
-				result = new Result(txId, IResult.ERROR, "서비스 Off 실행 오류.");
+				result = new Result(txId, IResult.ERROR, "서비스 종료 실행 오류.");
 			}
 		} catch (KubernetesClientException e) {
 			log.error(e.getMessage(), e);
@@ -1673,7 +1738,8 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	}
 	
 	@Override
-	public Result serviceTakeOver(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+	public Result serviceChaneMasterToSlave(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+		Result result = null;
 		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
 			
 //		    Result : 
@@ -1683,6 +1749,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			StringBuffer history = new StringBuffer();
 			
 			StringBuffer sqlString = new StringBuffer();
+			sqlString.append("stop slave;");
 			sqlString.append("set global read_only=0;flush privileges;");
 			sqlString.append("show variables like 'read_only'\\G");
 			
@@ -1735,83 +1802,132 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			List<Service> newSvcItems = new ArrayList<>();
 			
 			for (Service service : items) {
-				service.getMetadata().setUid(null);
-				service.getMetadata().setCreationTimestamp(null);
-				service.getMetadata().setSelfLink(null);
-				service.getMetadata().setResourceVersion(null);
+				RestTemplate rest = K8SUtil.getRestTemplate();
+				String idToken = System.getProperty("token");
+				String masterUrl = System.getProperty("masterUrl");
 				
-				Map<String, String> labels = service.getMetadata().getLabels();
-				labels.put("component", "master");
+				HttpHeaders headers = new HttpHeaders();
+				headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
+				headers.set("Authorization", "Bearer " + idToken);
+				headers.set("Content-Type", "application/json-patch+json");
 				
-				service.getSpec().getPorts().get(0).setNodePort(null);
-				service.getSpec().getSelector().put("component", "slave");
-				service.getSpec().setClusterIP(null);
-				service.getSpec().setSessionAffinity(null);
-				service.getSpec().setExternalTrafficPolicy(null);
-				service.setStatus(null);
+//					{ "spec": { "selector": { "component": "slave", } } }
 				
+				String data = "[{\"op\":\"replace\",\"path\":\"/spec/selector/component\",\"value\":\"slave\"}]";
+			    
+				HttpEntity<String> requestEntity = new HttpEntity<>(data, headers);
+
+				String endpoint = masterUrl + "/api/v1/namespaces/{namespace}/services/{name}";
+				ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.PATCH, requestEntity, String.class, namespace, service.getMetadata().getName());
 				
-				ServiceBuilder svcBuilder = new ServiceBuilder(service);
-				io.fabric8.kubernetes.api.model.Service newSvc = svcBuilder
-				.editMetadata().withLabels(labels).endMetadata()
-				.build();
-				
-				
-				newSvcItems.add(newSvc);
-				
-			}
-			
-			
-			Watcher<io.fabric8.kubernetes.api.model.Service> watcher = new Watcher<io.fabric8.kubernetes.api.model.Service>() {
-				
-				@Override
-				public void eventReceived(Action action, io.fabric8.kubernetes.api.model.Service svc) {
-					if(svc.getMetadata().getName().startsWith(serviceName)) {
-						System.out.println(action + " / "+ svc.getMetadata().getName() +" / "+ svc.getStatus()  +" \n\n "+ svc );
+				if (response.getStatusCode() == HttpStatus.OK) {
+					result = new Result(txId, Result.OK, "서비스 L/B가 Slave 인스턴스로 전환 되었습니다.");
+					if (!history.toString().isEmpty()) {
+						result.putValue(Result.HISTORY, history.toString() +" 가 master 에서 slave 로 전환 되었습니다.\nmaster 서비스로 연결된 App.은 slave DB에 읽기/쓰기 됩니다.");
+					}
+					
+					// send websocket
+					try {
+						ServiceOverview serviceOverview = k8sService.getServiceWithName(namespace, serviceType, serviceName);
 						
-						if("MODIFIED".equals(action.toString())) {
-							latch.countDown();
-						}
+						Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
+						messageSender.convertAndSend("/service/" + serviceOverview.getServiceName(), r);
+					} catch (MessagingException e1) {
+						e1.printStackTrace();
+					} catch (Exception e1) {
+						e1.printStackTrace();
 					}
+				} else {
+					System.err.println("HttpStatus ; " + response.getStatusCode());
+					
+					log.error(response.getBody());
+					result = new Result(txId, Result.ERROR, "서비스 전환 오류.");
 				}
-				
-				@Override
-				public void onClose(KubernetesClientException cause) {
-					if(cause != null) {
-						log.error(cause.getMessage(), cause);
-					} else {
-						log.error("Service watch closed...........");
-					}
-				}
-				
-			};
-			Watch watch = client.inNamespace(namespace).services().watch(watcher);
-				
-			
-			
-			
-			int i = newSvcItems.size();
-			for (Service newSvc : newSvcItems) {
-				
-				history.append(newSvc.getMetadata().getName());
-				if(i > 1 ) {
-					history.append(", ");
-				}				
-				i--;
-				services.createOrReplace(newSvc);
-				
 			}
 			
-			latch.await(15, TimeUnit.SECONDS);
+			return result;	
+		} catch (FileNotFoundException | KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result(txId, Result.UNAUTHORIZED, "클러스터에 접근이 불가하거나 인증에 실패 했습니다.", null);
+			} else {
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result(txId, Result.ERROR, e.getMessage(), e);
+		}
+	}
+	
+	@Override
+	public Result serviceChaneSlaveToMaster(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+		Result result = null;
+		
+		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
 			
-			watch.close();
+			StringBuffer history = new StringBuffer();
+
+			MixedOperation<io.fabric8.kubernetes.api.model.Service, ServiceList, DoneableService, Resource<io.fabric8.kubernetes.api.model.Service, DoneableService>> services = client.inNamespace(namespace).services();
 			
-			Result result = new Result(txId, Result.OK, "서비스 전환 완료");
-			if (!history.toString().isEmpty()) {
-				result.putValue(Result.HISTORY, history.toString() +" 가 master 에서 slave 로 전환 되었습니다.\nmaster 서비스로 연결된 App.은 slave DB에 읽기/쓰기 됩니다.");
+			List<Service> items = services.withLabel("release", serviceName).withLabel("component", "master").list().getItems();
+			
+			if(items.size() > 0) {
+				log.info("서비스 전환 대상 서비스가 {}개 존재합니다.", items.size());
+				for (Service service : items) {
+					log.info("	- {}", service.getMetadata().getName());
+				}
+			} else {
+				log.error("서비스 전환 대상 서비스가 없습니다.");
+				return new Result(txId, Result.ERROR, "서비스 전환 대상 서비스가 없습니다.");
 			}
 			
-			return result;		
+			for (Service service : items) {
+				RestTemplate rest = K8SUtil.getRestTemplate();
+				String idToken = K8SUtil.getToken();
+				String masterUrl = K8SUtil.getMasterURL();
+				
+				HttpHeaders headers = new HttpHeaders();
+				headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
+				headers.set("Authorization", "Bearer " + idToken);
+				headers.set("Content-Type", "application/json-patch+json");
+				
+//					{ "spec": { "selector": { "component": "slave", } } }
+				String data = "[{\"op\":\"replace\",\"path\":\"/spec/selector/component\",\"value\":\"master\"}]";
+			    
+				HttpEntity<String> requestEntity = new HttpEntity<>(data, headers);
+
+				String name = service.getMetadata().getName();
+				String endpoint = masterUrl + "/api/v1/namespaces/{namespace}/services/{name}";
+				ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.PATCH, requestEntity, String.class, namespace, name);
+				
+				if (response.getStatusCode() == HttpStatus.OK) {
+					
+//					result = new Result(txId, Result.OK, "서비스 전환 완료(slave->master)");
+					result = new Result(txId, Result.OK, "서비스 L/B가 Master 인스턴스로 전환 되었습니다.");
+					if (!history.toString().isEmpty()) {
+						result.putValue(Result.HISTORY, history.toString() +" 가 slave 에서 master 로 전환 되었습니다.");
+					}
+					
+					// websocket send.
+					try {
+						ServiceOverview serviceOverview = k8sService.getServiceWithName(namespace, serviceType, serviceName);
+						
+						Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
+						messageSender.convertAndSend("/service/" + serviceOverview.getServiceName(), r);
+					} catch (MessagingException e1) {
+						e1.printStackTrace();
+					} catch (Exception e1) {
+						e1.printStackTrace();
+					}
+				} else {
+					System.err.println("HttpStatus ; " + response.getStatusCode());
+					
+					log.error(response.getBody());
+					result = new Result(txId, Result.ERROR, "서비스 전환 오류.");
+				}
+			}
+			
+			return result;	
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
@@ -1883,4 +1999,465 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			return new Result(txId, Result.ERROR, e.getMessage(), e);
 		}
 	}
+	
+
+	
+	/* (non-Javadoc)
+	 * Master 장애로 서비스LB 를 Master -> Slave 로 전환 여부를 반환한다.
+	 * 
+	 * Result.message 로 상태값 반환
+	 *  - MasterToSlave
+	 *  - MasterToMaster
+	 *  - unknown
+	 *  
+	 *  
+	 * @see com.zdb.core.service.AbstractServiceImpl#serviceFailOverStatus(java.lang.String, java.lang.String, java.lang.String, java.lang.String)
+	 */
+	@Override
+	public Result serviceFailOverStatus(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
+			
+			List<io.fabric8.kubernetes.api.model.Service> services = k8sService.getServices(namespace, serviceName);
+			for (io.fabric8.kubernetes.api.model.Service service : services) {
+				String sName = service.getMetadata().getName();
+				String role = null;
+				
+				String selectorTarget = null;
+				if("redis".equals(serviceType)) {
+					if(sName.endsWith("master")) {
+						role = "master";
+					}
+					
+					selectorTarget = service.getSpec().getSelector().get("role");
+					
+				} else if("mariadb".equals(serviceType)) {
+					role = service.getMetadata().getLabels().get("component");
+					
+					selectorTarget = service.getSpec().getSelector().get("component");
+				}
+				
+				if(!"master".equals(role)) {
+					continue;
+				}
+				
+				// takeover 된 상태
+				Result result = new Result(txId, Result.OK);
+				if("master".equals(role) && "slave".equals(selectorTarget)) {
+//					return new Result(txId, Result.OK, "MasterToSlave");
+					result.putValue("status", "MasterToSlave");
+					return result;
+				} else if("master".equals(role) && "master".equals(selectorTarget)) {
+//					return new Result(txId, Result.OK, "MasterToMaster");
+					result.putValue("status", "MasterToMaster");
+					return result;
+				} else {
+					return new Result(txId, Result.ERROR, "unknown");
+				}
+			}
+
+			return new Result(txId, Result.ERROR, "unknown");
+		} catch (FileNotFoundException | KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result(txId, Result.UNAUTHORIZED, "클러스터에 접근이 불가하거나 인증에 실패 했습니다.", null);
+			} else {
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result(txId, Result.ERROR, e.getMessage(), e);
+		}
+	}
+
+
+	/**
+	 * Auto Failover 
+	 *  - On : add label : zdb-failover-enable=true
+	 *        cli : kubectl -n <namespace> label sts <sts_name> "zdb-failover-enable=true" --overwrite
+	 *  - Off : update label : zdb-failover-enable=false
+	 *        cli : kubectl -n <namespace> label sts <sts_name> "zdb-failover-enable=false" --overwrite
+	 *        
+	 * @param txId
+	 * @param namespace
+	 * @param serviceType
+	 * @param serviceName
+	 * @return
+	 * @throws Exception
+	 */
+	@Override
+	public Result updateAutoFailoverEnable(String txId, String namespace, String serviceType, String serviceName, boolean enable) throws Exception {
+		
+		Result result = null;
+		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
+			MixedOperation<StatefulSet, StatefulSetList, DoneableStatefulSet, RollableScalableResource<StatefulSet, DoneableStatefulSet>> statefulSets = 
+					client.inNamespace(namespace).apps().statefulSets();
+
+			List<StatefulSet> stsList = statefulSets.withLabel("app", "mariadb").withLabel("release", serviceName).list().getItems();
+			if(stsList == null || stsList.size() < 2) {
+				result = new Result(txId, Result.ERROR , "Master/Slave 로 구성된 서비스에서만 설정 가능합니다. ["+namespace +" > "+ serviceName +"]");
+				return result;
+			}
+			
+			List<StatefulSet> items = statefulSets
+					.withLabel("app", "mariadb")
+					.withLabel("component", "master")
+					.withLabel("release", serviceName)
+					.list().getItems();
+			
+			
+			if(items != null && !items.isEmpty()) {
+				
+				StatefulSet sts = items.get(0);
+				
+				String name = sts.getMetadata().getName();
+				
+				///////////////////////////////////////////////////////
+				if(enable) {
+					Result addAutoFailover = addAutoFailover(client, sts);
+					
+					if(!addAutoFailover.isOK()) {
+						return addAutoFailover;
+					}
+				}
+				
+				long s = System.currentTimeMillis();
+				
+				while(true) {
+					Thread.sleep(1000);
+					
+					Pod pod = K8SUtil.kubernetesClient().inNamespace(namespace).pods().withName(name+"-0").get();
+					boolean ready = PodManager.isReady(pod);
+					
+					if(ready) {
+						break;
+					}
+					
+					if ((System.currentTimeMillis() - s) > 60 * 1000) {
+						log.error("failover enable timeout");
+						break;
+					}
+				}
+				
+				RestTemplate rest = K8SUtil.getRestTemplate();
+				String idToken = K8SUtil.getToken();
+				String masterUrl = K8SUtil.getMasterURL();
+
+				HttpHeaders headers = new HttpHeaders();
+				List<MediaType> mediaTypeList = new ArrayList<MediaType>();
+				mediaTypeList.add(MediaType.APPLICATION_JSON);
+				headers.setAccept(mediaTypeList);
+				headers.add("Authorization", "Bearer " + idToken);
+				headers.set("Content-Type", "application/json-patch+json");
+				
+				String data = "[{\"op\":\"add\",\"path\":\"/metadata/labels/zdb-failover-enable\",\"value\":\""+enable+"\"}]";
+			    
+				HttpEntity<String> requestEntity = new HttpEntity<>(data, headers);
+
+				String endpoint = masterUrl + "/apis/apps/v1/namespaces/{namespace}/statefulsets/{name}";
+				ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.PATCH, requestEntity, String.class, namespace, name);
+
+				String enableStr = enable ? "On" : "Off";
+				String message = "Auto Failover 설정 변경. ["+enableStr+"]";
+
+				if (response.getStatusCode() == HttpStatus.OK) {
+					result = new Result(txId, Result.OK , message);
+				} else {
+					result = new Result(txId, Result.ERROR , message +" 처리중 오류가 발생 했습니다.");
+				}
+				/////////////////////////
+				
+				result.putValue(Result.HISTORY, message);
+			} else {
+				result = new Result(txId, Result.ERROR , "실행중인 서비스가 없습니다. ["+namespace +" > "+ serviceName +"]");
+			}
+
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(txId, Result.ERROR , "Auto Failover 설정 변경중 오류가 발생 했습니다.");
+		}
+		
+		return result;
+	}
+	
+	@Override
+	public Result getAutoFailoverServices(String txId, String namespace) throws Exception {
+		return getAutoFailoverService(txId, namespace, null);
+	}
+	
+	public Result getAutoFailoverService(String txId, String namespace, String serviceName) throws Exception {
+		Result result = new Result(txId);
+		List<StatefulSet> services = k8sService.getAutoFailoverServices(namespace, serviceName);
+
+		if(services != null && !services.isEmpty()) {
+			String[] array = new String[services.size()];
+			
+			for (int i = 0; i < services.size(); i++) {
+				StatefulSet sts = services.get(i);
+				array[i] = sts.getMetadata().getName();
+			}
+			
+			result.putValue("services", array);
+			result.setCode(Result.OK);
+		} else {
+			result.setCode(Result.OK);
+			result.setMessage("[]");
+		}
+
+		return result;
+	}
+	
+	/**
+	 * Master/Slave 로 구성된 인스턴스
+	 * StatefulSet master 에 edit
+	 * 	- report_status.sh 을 실행 할 수 있도록 configmap 등록
+	 * 	- spec>template>spec>containers>lifecycle : shell command 등록
+	 * 	- spec>template>spec>containers>volumeMounts  :  report-status 추가 
+	 * 	- spec>template>spec>volumes :  report-status 추가
+	 * 	- label 추가 (zdb-failover-enable=true)
+	 * 
+	 */
+	public Result addAutoFailover(DefaultKubernetesClient client, StatefulSet sts) throws Exception {
+		
+		
+		Result result = null;
+		StringBuffer resultMsg = new StringBuffer();
+		boolean status = false;
+		
+		try{
+			// * - report_status.sh 을 실행 할 수 있도록 configmap 등록
+			String namespace = sts.getMetadata().getNamespace();
+			String stsName = sts.getMetadata().getName();
+			
+			MixedOperation<ConfigMap, ConfigMapList, DoneableConfigMap, Resource<ConfigMap, DoneableConfigMap>> configMaps = client.inNamespace(namespace).configMaps();
+
+			String cmName = "report-status";
+			ConfigMap configMap = configMaps.withName(cmName).get();
+
+			if (configMap == null) {
+				log.info("create configmap : " + namespace +" > "+ cmName);
+				
+				InputStream is = new ClassPathResource("mariadb/report_status.template").getInputStream();
+
+				String temp = IOUtils.toString(is, StandardCharsets.UTF_8.name());
+
+				Map<String, String> data = new HashMap<>();
+				data.put("report_status.sh", temp);
+
+				Resource<ConfigMap, DoneableConfigMap> configMapResource = client.configMaps().inNamespace(namespace).withName(cmName);
+
+				configMap = configMapResource.createOrReplace(new ConfigMapBuilder().withNewMetadata().withName(cmName).endMetadata().addToData(data).build());
+			
+				log.info("Created configmap : " + namespace +" > "+ cmName);
+				
+				status = true;
+			} else {
+				log.info("Exist configmap : " + namespace +" > "+ configMap.getMetadata().getName());
+			}
+
+//			 * 	- spec>template>spec>containers>lifecycle : shell command 등록
+//			 * 	- spec>template>spec>containers>volumeMounts  :  report-status 추가 
+//			 * 	- spec>template>spec>volumes :  report-status 추가
+//			 * 	- label 추가 (zdb-failover-enable=true)
+			MixedOperation<StatefulSet, StatefulSetList, DoneableStatefulSet, RollableScalableResource<StatefulSet, DoneableStatefulSet>> statefulSets = 
+					client.inNamespace(namespace).apps().statefulSets();
+			
+			{				
+//				Map<String, String> labels = sts.getMetadata().getLabels();
+				
+				log.info("Start update statefulset. " + namespace +" > "+ stsName);
+				
+				io.fabric8.kubernetes.api.model.PodSpec spec = sts.getSpec().getTemplate().getSpec();
+				List<Container> containers = spec.getContainers();
+				int mariadbIndex = -1;
+				boolean existVolumeMount = false;
+				boolean existVolume = false;
+				boolean existCommand = false;
+				
+				for (int i = 0; i < containers.size(); i++) {
+					Container container = containers.get(i);
+					
+					String name = container.getName();
+					if("mariadb".equals(name)) {
+						mariadbIndex = i;
+						
+						List<VolumeMount> volumeMounts = container.getVolumeMounts();
+						for (VolumeMount vm : volumeMounts) {
+							if("report-status".equals(vm.getName())) {
+								existVolumeMount = true;
+								break;
+							}
+						}
+						
+						try {
+							int size = container.getLifecycle().getPostStart().getExec().getCommand().size();
+							existCommand = size > 0 ? true : false;
+						} catch (Exception e) {
+							existCommand = false;
+						}
+						
+						break;
+					}
+				}
+				
+				if(mariadbIndex == -1) {
+					String msg = "mariadb container 가 존재하지 않습니다. ["+namespace+" > "+stsName+"]";
+					log.error(msg);
+					
+					result = new Result("", Result.ERROR, msg);
+					return result;
+				}
+
+				List<Volume> volumes = spec.getVolumes();
+				for (Volume v : volumes) {
+					if("report-status".equals(v.getName())) {
+						existVolume = true;
+						break;
+					}
+				}
+				
+				StatefulSetBuilder builder = new StatefulSetBuilder(sts);
+
+				boolean buildFlag = false;
+				
+//				String labelKey = "zdb-failover-enable";
+//				if(!labels.containsKey(labelKey) || !"true".equals(labels.get(labelKey))) {
+//					labels.put(labelKey, "true");
+//					
+//					builder.editMetadata().withLabels(labels).endMetadata();
+//					buildFlag = true;
+//					
+//				}
+//				
+//				log.info("withLabels : " + stsName);
+				
+				if(!existCommand) {
+					String[] command = new String[] {
+							"/bin/sh",
+							"-c",
+							"/usr/bin/nohup /report_status.sh 1>/tmp/report.log 2>/dev/null &"
+					};
+					
+					builder.editSpec()
+					.editTemplate().editSpec()
+					.editContainer(mariadbIndex)
+					.editOrNewLifecycle()
+					.editOrNewPostStart()
+					.editOrNewExec()
+					.addToCommand(command)
+					.endExec()
+					.endPostStart()
+					.endLifecycle()
+					.endContainer()
+					.endSpec()
+					.endTemplate()
+					.endSpec();
+
+					buildFlag = true;
+					log.info("addToCommand : " + stsName);
+				} else {
+					log.info("existCommand : " + namespace +" > "+ stsName);
+				}
+				
+				if(!existVolumeMount) {
+					VolumeMount vm = new VolumeMount();
+					vm.setMountPath("/report_status.sh");
+					vm.setName("report-status");
+					vm.setSubPath("report_status.sh");
+					
+					builder
+					.editSpec()
+					.editTemplate()
+					.editSpec()
+					.editContainer(mariadbIndex)
+					.addToVolumeMounts(vm)
+					.endContainer()
+					.endSpec()
+					.endTemplate()
+					.endSpec();
+					
+					buildFlag = true;
+					log.info("addToVolumeMounts : " + stsName);
+				} else {
+					log.info("existVolumeMount : " + namespace +" > "+ stsName);
+				}
+				
+				if(!existVolume) {
+					Volume volume = new Volume();
+					
+					ConfigMapVolumeSource cmvs = new ConfigMapVolumeSource();
+					cmvs.setDefaultMode(493); // 0755
+					cmvs.setName("report-status");
+					volume.setConfigMap(cmvs);
+					volume.setName("report-status");
+					
+					builder
+					.editSpec()
+					.editTemplate()
+					.editSpec()
+					.addToVolumes(volume)
+					.endSpec()
+					.endTemplate()
+					.endSpec();
+					
+					buildFlag = true;
+					log.info("addToVolumes : " + stsName);
+				} else {
+					log.info("existVolume : " + namespace +" > "+ stsName);
+				}
+
+				if (buildFlag) {
+					status = true;
+					StatefulSet newSvc = builder.build();
+
+					statefulSets.createOrReplace(newSvc);
+					log.info("End statefulset update. " + namespace +" > "+ stsName);
+					resultMsg.append("Update statefulset. " + namespace +" > "+ stsName).append("\n");
+				} else {
+					log.info("Skip update statefulset. " + namespace +" > "+ stsName);
+				}
+				
+			}
+			
+			if(!status) {
+				resultMsg.append("이미 설정된 서비스 입니다. " + namespace +" > "+ stsName);
+			}
+					
+			result = new Result("", Result.OK , "Auto Failover 설정 등록 완료.");
+			result.putValue(Result.HISTORY, resultMsg.toString());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result("", Result.ERROR , resultMsg.toString(), e);
+		} 
+		return result;
+	
+	}
+	
+
+	public Result changePort(String txId, String namespace, String serviceName, String port) {
+		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
+			StringBuffer history = new StringBuffer();
+			
+			history.append("포트 변경 : xxxx > " + port);
+			
+			Result result = new Result(txId, Result.OK, "포트 변경 완료");
+			if (!history.toString().isEmpty()) {
+				result.putValue(Result.HISTORY, history.toString());
+			}
+			
+			return result;		
+		} catch (FileNotFoundException | KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result(txId, Result.UNAUTHORIZED, "포트 변경중 오류가 발생했습니다.", null);
+			} else {
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result(txId, Result.ERROR, e.getMessage(), e);
+		}
+	}
+	
+	
+	
 }

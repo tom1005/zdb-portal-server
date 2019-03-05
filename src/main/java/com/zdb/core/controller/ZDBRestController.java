@@ -1170,7 +1170,7 @@ public class ZDBRestController {
 			UserInfo userInfo = getUserInfo();
 			String namespaces = userInfo.getNamespaces();
 			List<String> userNamespaces = new ArrayList<>();
-			if(namespaces != null) {
+			if(namespaces != null && !namespaces.isEmpty()) {
 				String[] split = namespaces.split(",");
 				for (String ns : split) {
 					userNamespaces.add(ns.trim());
@@ -2184,7 +2184,7 @@ public class ZDBRestController {
 	}
 
 	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/svc/masterToslave", method = RequestMethod.PUT)
-	public ResponseEntity<String> serviceTakeOver(
+	public ResponseEntity<String> serviceChangeMasterToSlave(
 			@PathVariable("namespace") final String namespace,
 			@PathVariable("serviceType") final String serviceType, 
 			@PathVariable("serviceName") final String serviceName,
@@ -2198,7 +2198,7 @@ public class ZDBRestController {
 			event.setServiceType(serviceType);
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
-			event.setOperation(RequestEvent.SERVICE_TAKE_OVER);
+			event.setOperation(RequestEvent.SERVICE_MASTER_TO_SLAVE);
 			event.setUserId(userInfo.getUserName());	
 			
 			ZDBType dbType = ZDBType.getType(serviceType);
@@ -2207,7 +2207,7 @@ public class ZDBRestController {
 
 			switch (dbType) {
 			case MariaDB:
-				result = mariadbService.serviceTakeOver(txId, namespace, serviceType, serviceName);
+				result = mariadbService.serviceChaneMasterToSlave(txId, namespace, serviceType, serviceName);
 				break;
 			case Redis:
 				break;
@@ -2226,11 +2226,11 @@ public class ZDBRestController {
 			if (history != null) {
 				event.setHistory("" + history);
 			}
-			log.info(result.toJson() +"|"+result.status());
+			log.debug(result.toJson() +"|"+result.status());
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_TAKE_OVER+" 오류!").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_MASTER_TO_SLAVE+" 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
@@ -2239,6 +2239,114 @@ public class ZDBRestController {
 		} finally {
 			event.setEndTime(new Date(System.currentTimeMillis()));
 			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}	
+	}
+	
+	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/svc/slaveTomaster", method = RequestMethod.PUT)
+	public ResponseEntity<String> serviceChangeSlaveToMaster(
+			@PathVariable("namespace") final String namespace,
+			@PathVariable("serviceType") final String serviceType, 
+			@PathVariable("serviceName") final String serviceName,
+			final UriComponentsBuilder ucBuilder) {
+		String txId = txId();
+		RequestEvent event = new RequestEvent();
+		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.SERVICE_SLAVE_TO_MASTER);
+			event.setUserId(userInfo.getUserName());	
+			
+			ZDBType dbType = ZDBType.getType(serviceType);
+			
+			com.zdb.core.domain.Result result = null;
+			
+			switch (dbType) {
+			case MariaDB:
+				result = mariadbService.serviceChaneSlaveToMaster(txId, namespace, serviceType, serviceName);
+				break;
+			case Redis:
+				break;
+			default:
+				log.error("Not support.");
+				result.setMessage("Not support service type.");
+				break;
+			}
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			// 2018-10-05 수정 
+			// history 저장 
+			Object history = result.getResult().get(Result.HISTORY);
+			if (history != null) {
+				event.setHistory("" + history);
+			}
+			log.debug(result.toJson() +"|"+result.status());
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_SLAVE_TO_MASTER+" 오류!").putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}	
+	}
+	
+	
+	/**
+	 * Master 장애로 서비스LB 를 Master -> Slave 로 전환 여부를 반환한다.
+	 * 
+	 * Result.message 로 상태값 반환
+	 *  - MasterToSlave (전환된 상태)
+	 *  - MasterToMaster (정상 서비스 상태)
+	 *  - unknown (파라메터 오류 또는 알수 없음)
+	 *  
+	 * @param namespace
+	 * @param serviceType
+	 * @param serviceName
+	 * @param ucBuilder
+	 * @return
+	 */
+	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/svc/status", method = RequestMethod.GET)
+	public ResponseEntity<String> serviceFailOverStatus (
+			@PathVariable("namespace") final String namespace,
+			@PathVariable("serviceType") final String serviceType, 
+			@PathVariable("serviceName") final String serviceName,
+			final UriComponentsBuilder ucBuilder) {
+		String txId = txId();
+		try {
+			ZDBType dbType = ZDBType.getType(serviceType);
+
+			com.zdb.core.domain.Result result = null;
+
+			switch (dbType) {
+			case MariaDB:
+			case Redis:
+				result = mariadbService.serviceFailOverStatus(txId, namespace, serviceType, serviceName);
+				break;
+			default:
+				log.error("Not support.");
+				result.setMessage("Not support service type.");
+				break;
+			}
+
+			log.debug(result.toJson() +"|"+result.status());
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_FAIL_OVER_STATUS+" 조회 오류!").putValue(IResult.EXCEPTION, e);
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
 		}	
 	}
 	
@@ -2289,7 +2397,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_TAKE_OVER+" 오류!").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_MASTER_TO_SLAVE+" 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
@@ -2300,4 +2408,257 @@ public class ZDBRestController {
 			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}	
 	}
+	
+	/**
+	 * Auto Failover 
+	 *  - On : add label : zdb-failover-enable=true
+	 *        cli : kubectl -n <namespace> label sts <sts_name> "zdb-failover-enable=true" --overwrite
+	 *  - Off : update label : zdb-failover-enable=false
+	 *        cli : kubectl -n <namespace> label sts <sts_name> "zdb-failover-enable=false" --overwrite
+	 *        
+	 * @param namespace
+	 * @param serviceType
+	 * @param serviceName
+	 * @param enable
+	 * @param ucBuilder
+	 * @return
+	 */
+	@RequestMapping(value = "/failover/{namespace}/{serviceType}/{serviceName}/{enable}", method = RequestMethod.PUT)
+	public ResponseEntity<String> updateAutoFailoverEnable(
+			@PathVariable("namespace") final String namespace,
+			@PathVariable("serviceType") final String serviceType, 
+			@PathVariable("serviceName") final String serviceName,
+			@PathVariable("enable") final Boolean enable,
+			final UriComponentsBuilder ucBuilder) {
+		RequestEvent event = new RequestEvent();
+		String txId = txId();
+		
+		try {
+			event.setTxId(txId);
+			event.setServiceName(serviceName);
+			event.setServiceType(ZDBType.MariaDB.getName());
+			event.setNamespace(namespace);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setOperation(RequestEvent.SET_AUTO_FAILOVER_USABLE);
+			
+			Result result = mariadbService.updateAutoFailoverEnable(txId, namespace, serviceType, serviceName, enable);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			Object history = result.getResult().get(Result.HISTORY);
+			if (history != null) {
+				event.setHistory("" + history);
+			}
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.OK);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result("", IResult.ERROR, RequestEvent.SET_AUTO_FAILOVER_USABLE + " 오류!").putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}	
+	}
+	
+	/**
+	 * failover 기능 활성화를 위한 설정으로 변경.
+	 * 
+	 * 1. report_status shell script configmap 생성
+	 * 2. Satefulset 에 command 추가 
+	 * 3. configmap volumnMount 추가
+	 * 4. volumes 추가 
+	 * 
+	 * Auto Failover 
+	 *  - On : add label : zdb-failover-enable=true
+	 *        cli : kubectl -n <namespace> label sts <sts_name> "zdb-failover-enable=true" --overwrite
+	 *  - Off : update label : zdb-failover-enable=false
+	 *        cli : kubectl -n <namespace> label sts <sts_name> "zdb-failover-enable=false" --overwrite
+	 *        
+	 * @param namespace
+	 * @param serviceType
+	 * @param serviceName
+	 * @param ucBuilder
+	 * @return
+	 */
+	@RequestMapping(value = "/failover/{namespace}/{serviceType}/{serviceName}", method = RequestMethod.PUT)
+	public ResponseEntity<String> addAutoFailover(
+			@PathVariable("namespace") final String namespace,
+			@PathVariable("serviceType") final String serviceType, 
+			@PathVariable("serviceName") final String serviceName,
+			final UriComponentsBuilder ucBuilder) {
+		RequestEvent event = new RequestEvent();
+		String txId = txId();
+		
+		try {
+			event.setTxId(txId);
+			event.setServiceName(serviceName);
+			event.setServiceType(ZDBType.MariaDB.getName());
+			event.setNamespace(namespace);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setOperation(RequestEvent.ADD_AUTO_FAILOVER);
+			
+			Result result = mariadbService.updateAutoFailoverEnable(txId, namespace, serviceType, serviceName, true);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			Object history = result.getResult().get(Result.HISTORY);
+			if (history != null) {
+				event.setHistory("" + history);
+			}
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.OK);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result("", IResult.ERROR, RequestEvent.ADD_AUTO_FAILOVER + " 오류!").putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}	
+	}
+	
+	/**
+	 * Statefulset 의 label : zdb-failover-enable=true 가 등록된 서비스 목록.(master)
+	 * 
+	 * @param txId
+	 * @param namespace
+	 * @return
+	 * @throws Exception
+	 */
+	@RequestMapping(value = "/failover/{namespace}/services", method = RequestMethod.GET)
+	public ResponseEntity<String> getAutoFailoverServices(
+			@PathVariable("namespace") final String namespace,
+			final UriComponentsBuilder ucBuilder) {
+		RequestEvent event = new RequestEvent();
+		String txId = txId();
+		
+		try {
+			Result result = mariadbService.getAutoFailoverServices(txId, namespace);
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.OK);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result("", IResult.ERROR, "조회 오류!").putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+		}	
+	}	
+	
+	/**
+	 * Statefulset 의 label : zdb-failover-enable=true 가 등록된 서비스 목록.(master)
+	 * 
+	 * @param txId
+	 * @param namespace
+	 * @return
+	 * @throws Exception
+	 */
+	@RequestMapping(value = "/failover/{namespace}/{serviceName}/service", method = RequestMethod.GET)
+	public ResponseEntity<String> getAutoFailoverService(
+			@PathVariable("namespace") final String namespace,
+			@PathVariable("serviceName") final String serviceName,
+			final UriComponentsBuilder ucBuilder) {
+		RequestEvent event = new RequestEvent();
+		String txId = txId();
+		
+		try {
+			Result result = mariadbService.getAutoFailoverService(txId, namespace, serviceName);
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.OK);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(txId, IResult.ERROR, "조회 오류!").putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+		}	
+	}	
+	
+	@RequestMapping(value = "/{namespace}/{serviceType}/{serviceName}/changePort", method = RequestMethod.PUT)
+	public ResponseEntity<String> changePort(@PathVariable("namespace") final String namespace, 
+										 @PathVariable("serviceType") final String serviceType, 
+			        				     @PathVariable("serviceName") final String serviceName, 
+			        				     @RequestBody final String port) {
+		String txId = txId();
+		
+		RequestEvent event = new RequestEvent();
+		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.CHANGE_PORT);
+			event.setUserId(userInfo.getUserName());
+			
+			ZDBType dbType = ZDBType.getType(serviceType);
+
+			com.zdb.core.domain.Result result = null;
+
+			switch (dbType) {
+			case MariaDB:
+				result = ((MariaDBServiceImpl)mariadbService).changePort(txId, namespace, serviceName, port);
+				break;
+			case Redis:
+				result.setMessage("Not support service type.");
+				break;
+			default:
+				log.error("Not support.");
+				result.setMessage("Not support service type.");
+				break;
+			}
+
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			Object history = result.getResult().get(Result.HISTORY);
+			if (history != null) {
+				event.setHistory("" + history);
+			}
+			
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+
+			Result result = new Result(null, IResult.ERROR, "포트 변경 오류!").putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}	
+	}
+
+	@RequestMapping(value = "/workerpools", method = RequestMethod.GET)
+	public ResponseEntity<String> getWorkerPools() throws Exception {
+		try {
+			Result result = commonService.getWorkerPools();
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(null, IResult.ERROR, RequestEvent.WORKER_POOLS_READ + " 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}	
 }

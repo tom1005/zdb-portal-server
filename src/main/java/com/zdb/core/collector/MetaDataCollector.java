@@ -14,7 +14,6 @@ import org.springframework.stereotype.Component;
 import com.google.gson.Gson;
 import com.zdb.core.domain.MetaData;
 import com.zdb.core.repository.MetadataRepository;
-import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.util.DateUtil;
 import com.zdb.core.util.K8SUtil;
 
@@ -37,8 +36,8 @@ import lombok.extern.slf4j.Slf4j;
 @Profile({"prod"})
 public class MetaDataCollector {
 	
-	@Autowired
-	ZDBReleaseRepository repo;
+//	@Autowired
+//	ZDBReleaseRepository repo;
 	
 	@Autowired
 	MetadataRepository metaRepo;
@@ -56,8 +55,8 @@ public class MetaDataCollector {
 	
     public static void putMetaData(String key, HasMetadata value) {
     	synchronized (METADATA_CACHE) {
-		METADATA_CACHE.put(key, value);
-	}
+    		METADATA_CACHE.put(key, value);
+    	}
     }
 	
 	@Scheduled(initialDelayString = "20000", fixedRateString = "90000")
@@ -197,7 +196,7 @@ public class MetaDataCollector {
 		return flag;
 	}
 	
-	private void save(List<? extends HasMetadata> metadataList) {
+	public void save(List<? extends HasMetadata> metadataList) {
 		for (HasMetadata metaObj : metadataList) {
 			
 			putMetaData(metaObj.getMetadata().getUid(), metaObj);

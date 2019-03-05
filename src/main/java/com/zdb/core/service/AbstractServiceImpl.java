@@ -1210,7 +1210,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	public Result getPods(String namespace, String serviceType, String serviceName) throws Exception {
 
 		try {
-			List<Pod> pods = K8SUtil.getPodList(namespace, serviceName);
+			List<Pod> pods = K8SUtil.getPods(namespace, serviceName);
 			
 			if (pods != null) {
 				return new Result("", Result.OK).putValue(IResult.PODS, pods);
@@ -1269,73 +1269,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	}
 	
 	public Result getPodMetrics(String namespace, String podName) throws Exception {
-//		List<Service> services = K8SUtil.getServicesWithNamespace("kube-system");
-//
-//		for (Service service : services) {
-//			if (service.getMetadata().getName().equals("heapster")) {
-//
-//				String portStr = null;
-//				String ipStr = null;
-//
-//				if ("loadbalancer".equals(service.getSpec().getType().toLowerCase())) {
-//					List<ServicePort> ports = service.getSpec().getPorts();
-//					for (ServicePort port : ports) {
-//						portStr = Integer.toString(port.getPort());
-//						break;
-//					}
-//
-//					if (portStr == null) {
-//						throw new Exception("unknown Service Port");
-//					}
-//
-//					List<LoadBalancerIngress> ingress = service.getStatus().getLoadBalancer().getIngress();
-//					if (ingress != null && ingress.size() > 0) {
-//						ipStr = ingress.get(0).getIp();
-//					} else {
-//						throw new Exception("unknown Service IP Address");
-//					}
-//				} else if ("clusterip".equals(service.getSpec().getType().toLowerCase())) {
-//					List<ServicePort> ports = service.getSpec().getPorts();
-//					for (ServicePort port : ports) {
-//						portStr = Integer.toString(port.getPort());
-//						break;
-//					}
-//					if (portStr == null) {
-//						throw new Exception("unknown Service Port");
-//					}
-//					ipStr = service.getSpec().getClusterIP();
-//				} else {
-//					log.warn("no cluster ip.");
-//				}
-//
-//				if (ipStr == null || portStr == null) {
-//					throw new Exception("unknown Service IP or Port");
-//				}
-//
-//				// http://169.56.71.110/api/v1/model/namespaces/zdb-maria/pod-list/maria-test777-mariadb-0/metrics/cpu-usage
-//
-//				String metricUrl = String.format("http://%s:%s/api/v1/model/namespaces/%s/pod-list/%s/metrics", ipStr, portStr, namespace, podName);
-//
-//				Result result = new Result("", Result.OK);
-//
-//				RestTemplate restTemplate = getRestTemplate();
-//				{
-//					URI uri = URI.create(metricUrl + "/cpu-usage");
-//					Map<String, Object> responseMap = restTemplate.getForObject(uri, Map.class);
-//
-//					result.putValue(IResult.METRICS_CPU_USAGE, ((Map)((List)responseMap.get("items")).get(0)).get("metrics"));
-//				}
-//				{
-//					URI uri = URI.create(metricUrl + "/memory-usage");
-//					Map<String, Object> responseMap = restTemplate.getForObject(uri, Map.class);
-//
-//					result.putValue(IResult.METRICS_MEM_USAGE, ((Map)((List)responseMap.get("items")).get(0)).get("metrics"));
-//				}
-//
-//				return result;
-//			}
-//		}
-		
 		Result result = new Result("", Result.OK);
 
 		HeapsterMetricUtil metricUtil = new HeapsterMetricUtil();
@@ -1890,7 +1823,12 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	public Result createZDBConfig(ZDBConfig zdbConfig) {
 		try {
 			if( zdbConfig != null) {
-				zdbConfigRepository.save(zdbConfig);
+				List<ZDBConfig> findByConfig = zdbConfigRepository.findByNamespaceAndConfig(zdbConfig.getNamespace(), zdbConfig.getConfig());
+				if(findByConfig != null && !findByConfig.isEmpty()) {
+					zdbConfigRepository.updateZDBConfig(zdbConfig.getNamespace(), zdbConfig.getConfig(), zdbConfig.getValue());
+				} else {
+					zdbConfigRepository.save(zdbConfig);
+				}
 				return new Result("", Result.OK, "설정값이 저장되었습니다.");
 			} else {
 				return new Result("", Result.ERROR, "설정값이 없습니다.");
@@ -1965,7 +1903,15 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		return null;
 	}
 
-	public Result serviceTakeOver(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+	public Result serviceChaneMasterToSlave(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+		return null;
+	}
+
+	public Result serviceChaneSlaveToMaster(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+		return null;
+	}
+
+	public Result serviceFailOverStatus(String txId, String namespace, String serviceType, String serviceName) throws Exception {
 		return null;
 	}
 
@@ -1973,4 +1919,28 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		return null;
 	}
 	
+	@Override
+	public Result updateAutoFailoverEnable(String txId, String namespace, String serviceType, String serviceName, boolean enable) throws Exception {
+		return null;
+	}
+
+	@Override
+	public Result getAutoFailoverServices(String txId, String namespace) throws Exception {
+		return null;
+	}
+
+	@Override
+	public Result getAutoFailoverService(String txId, String namespace, String releaseName) throws Exception {
+		return null;
+	}
+	
+	public Result getWorkerPools() throws Exception {
+		try {
+			List<String> workerPools = k8sService.getWorkerPools();
+			return new Result("", Result.OK).putValue(IResult.WORKER_POOLS, workerPools);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
 }

@@ -13,7 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class JobExecutor {
 	
-	static BlockingQueue<Job> taskQueue = null;
+	BlockingQueue<Job> taskQueue = null;
 	
 	ExecutorService executorService = null;
 	
@@ -32,7 +32,6 @@ public class JobExecutor {
 		
 		if(executorService != null && !executorService.isTerminated()) {
 			executorService.shutdownNow();
-			System.out.println("shutdownNow.");
 		}
 	}
 	

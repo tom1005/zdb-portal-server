@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
@@ -12,12 +13,20 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
 import org.microbean.helm.ReleaseManager;
 import org.microbean.helm.Tiller;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
+import org.springframework.web.client.RestTemplate;
 
 import com.zdb.core.domain.CommonConstants;
 import com.zdb.core.domain.Exchange;
@@ -47,14 +56,12 @@ import io.fabric8.kubernetes.api.model.NodeList;
 import io.fabric8.kubernetes.api.model.ObjectReference;
 import io.fabric8.kubernetes.api.model.PersistentVolume;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
-import io.fabric8.kubernetes.api.model.PersistentVolumeClaimBuilder;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaimList;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaimSpec;
 import io.fabric8.kubernetes.api.model.PersistentVolumeList;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodCondition;
 import io.fabric8.kubernetes.api.model.PodStatus;
-import io.fabric8.kubernetes.api.model.Quantity;
 import io.fabric8.kubernetes.api.model.ResourceRequirements;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.SecretList;
@@ -71,7 +78,6 @@ import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.ConfigBuilder;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
-import io.fabric8.kubernetes.client.Watcher;
 import io.fabric8.kubernetes.client.dsl.LogWatch;
 import io.fabric8.kubernetes.client.dsl.PrettyLoggable;
 import lombok.extern.slf4j.Slf4j;
@@ -82,7 +88,7 @@ public class K8SUtil {
 
 	private static String profile;
 
-	private static String masterUrl;
+	public static String MASTER_URL;
 
 	public static String daemonUrl;
 	
@@ -93,7 +99,7 @@ public class K8SUtil {
 
 	@Value("${k8s.masterUrl}")
 	public void setMasterUrl(String url) {
-		masterUrl = url;
+		MASTER_URL = url;
 	}
 
 	@Value("${k8s.daemonUrl}")
@@ -130,7 +136,7 @@ public class K8SUtil {
 	 */
 	public static List<Pod> getActivePodList(String namespace, String serviceName) throws Exception {
 		List<Pod> podList = new ArrayList<>();
-		List<Pod> items = getPodList(namespace, serviceName);
+		List<Pod> items = getPods(namespace, serviceName);
 		for (Pod pod : items) {
 			String phase = pod.getStatus().getPhase();
 
@@ -142,22 +148,22 @@ public class K8SUtil {
 		return podList;
 	}
 
-	public static List<Pod> getPodList(String namespace, String serviceName) throws Exception {
-		DefaultKubernetesClient client = kubernetesClient();
-
-		List<Pod> podList = new ArrayList<>();
-
-		List<Pod> items = client.inNamespace(namespace).pods().list().getItems();
-		for (Pod pod : items) {
-			if (pod.getMetadata().getLabels() != null) {
-				if (serviceName.equals(pod.getMetadata().getLabels().get("release"))) {
-					podList.add(pod);
-				}
-			}
-		}
-
-		return podList;
-	}
+//	public static List<Pod> getPodList(String namespace, String serviceName) throws Exception {
+//		DefaultKubernetesClient client = kubernetesClient();
+//
+//		List<Pod> podList = new ArrayList<>();
+//
+//		List<Pod> items = client.inNamespace(namespace).pods().list().getItems();
+//		for (Pod pod : items) {
+//			if (pod.getMetadata().getLabels() != null) {
+//				if (serviceName.equals(pod.getMetadata().getLabels().get("release"))) {
+//					podList.add(pod);
+//				}
+//			}
+//		}
+//
+//		return podList;
+//	}
 	
 	public static Pod getPodWithName(String namespace, String serviceName, String podName) throws Exception {
 		DefaultKubernetesClient client = kubernetesClient();
@@ -412,7 +418,8 @@ public class K8SUtil {
 			if( ingress != null && ingress.size() > 0) {
 				return ingress.get(0).getIp() + ":" + portStr;
 			} else {
-				throw new Exception("unknown ServicePort");
+//				throw new Exception("unknown ServicePort");
+				return service.getMetadata().getName()+"."+service.getMetadata().getNamespace() + ":" + portStr;
 			}
 		} else if ("clusterip".equals(service.getSpec().getType().toLowerCase())) {
 			List<ServicePort> ports = service.getSpec().getPorts();
@@ -854,32 +861,15 @@ public class K8SUtil {
 	 * @throws KubernetesClientException
 	 */
 	public static DefaultKubernetesClient kubernetesClient() throws Exception {
-		String idToken = null;
+		String idToken = getToken();
+		String masterUrl = getMasterURL();
 
-		if (profile == null || "local".equals(profile)) {
-			idToken = System.getProperty("token");
-			masterUrl = System.getProperty("masterUrl");
-			
-			if(idToken == null || masterUrl == null) {
-				System.err.println("VM arguments 설정 후 실행 하세요...\n-DmasterUrl=xxx.xxx.xxx.xx:12345 -Dtoken=xxxxxx");
-				System.exit(-1);
-			}
-			
-		} else if ("prod".equals(profile) || "zcp-demo".equals(profile)) {
-			File tokenFile = new File("/var/run/secrets/kubernetes.io/serviceaccount/token");
 
-			log.debug("Token File exists :" + tokenFile.exists());
-
-			if (tokenFile.exists()) {
-				try {
-					idToken = readFile(tokenFile);
-				} catch (Exception e) {
-					log.error(e.getMessage(), e);
-				}
-			} else {
-				throw new FileNotFoundException("Token file does not exist.");
-			}
+		if(idToken == null || masterUrl == null) {
+			System.err.println("VM arguments 설정 후 실행 하세요...\n-DmasterUrl=xxx.xxx.xxx.xx:12345 -Dtoken=xxxxxx");
+			System.exit(-1);
 		}
+
 		System.setProperty(Config.KUBERNETES_AUTH_TRYSERVICEACCOUNT_SYSTEM_PROPERTY, "false");
 		
 		Config config = new ConfigBuilder().withMasterUrl(masterUrl).withOauthToken(idToken).withTrustCerts(true).withWatchReconnectLimit(-1).build();
@@ -887,6 +877,75 @@ public class K8SUtil {
 
 		return client;
 
+	}
+	
+	static String idToken = null;
+
+	public static String getMasterURL() {
+		if(MASTER_URL == null || MASTER_URL.isEmpty()) {
+			MASTER_URL = System.getProperty("masterUrl");
+		}
+		
+		return MASTER_URL;
+	}
+	
+	public static String getToken() {
+
+		if(idToken != null) {
+			return idToken;
+		}
+		
+		File tokenFile = new File("/var/run/secrets/kubernetes.io/serviceaccount/token");
+
+		log.debug("Token File exists :" + tokenFile.exists());
+		if (tokenFile.exists()) {
+			try {
+				idToken = readFile(tokenFile);
+			} catch (Exception e) {
+				log.error(e.getMessage(), e);
+			}
+		} else {
+			idToken = System.getProperty("token");
+		}
+		
+		
+		return idToken;
+	}
+	
+	/**
+	 * HTTP Client
+	 * 
+	 * @return
+	 * @throws Exception
+	 */
+	public static RestTemplate getRestTemplate() throws Exception {
+		TrustManager[] trustManagers = new TrustManager[] { new X509TrustManager() {
+			public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+				return null;
+			}
+
+			public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) {
+			}
+
+			public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) {
+			}
+		} };
+
+		SSLContext sslContext = SSLContext.getInstance("TLSv1.2");
+		sslContext.init(null, trustManagers, new SecureRandom());
+
+		SSLConnectionSocketFactory csf = new SSLConnectionSocketFactory(sslContext);
+		CloseableHttpClient httpClient = HttpClients.custom().setSSLSocketFactory(csf).build();
+
+		HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory();
+		requestFactory.setHttpClient(httpClient);
+		requestFactory.setConnectionRequestTimeout(1000 * 20);
+		requestFactory.setConnectTimeout(1000 * 10);
+		requestFactory.setReadTimeout(1000 * 10);
+
+		RestTemplate restTemplate = new RestTemplate(requestFactory);
+
+		return restTemplate;
 	}
 
 	/**

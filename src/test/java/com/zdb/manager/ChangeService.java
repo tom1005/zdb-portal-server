@@ -2,6 +2,16 @@ package com.zdb.manager;
 
 import java.util.Map;
 
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
+
+import com.zdb.core.util.K8SUtil;
+
 import io.fabric8.kubernetes.api.model.DoneableService;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.ServiceBuilder;
@@ -20,16 +30,17 @@ public class ChangeService {
 		
 		ChangeService sts = new ChangeService();
 		
-		String namespace = "ns-zdb-02";
-		String serviceName = "ns-zdb-02-ppp-mariadb-public";
+		String namespace = "zdb-ha";
+		String serviceName = "zdb-ha-failover-mariadb";
+		String role = "slave";
 		
 		// 1. Slave To Master
 //		 sts.chageServiceSlaveToMaster(namespace, serviceName);
 		
 		// 1. Master To Slave
-		 sts.chageServiceMasterToSlave(namespace, serviceName);
+//		 sts.chageServiceMasterToSlave(namespace, serviceName);
 		
-	
+		 sts.chageServiceMasterToSlaveByREST_API(namespace, serviceName, role);
 	}
 	
 	/**
@@ -71,6 +82,46 @@ public class ChangeService {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+	
+	public void chageServiceMasterToSlaveByREST_API(String namespace, String serviceName, String role) {
+
+		try {
+			
+			RestTemplate rest = K8SUtil.getRestTemplate();
+			String idToken = System.getProperty("token");
+			String masterUrl = System.getProperty("masterUrl");
+			
+//			String namespace = "zdb-ha";
+//			String name = "zdb-ha-test2-mariadb-master";
+			
+			
+			HttpHeaders headers = new HttpHeaders();
+			headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
+			headers.set("Authorization", "Bearer " + idToken);
+			headers.set("Content-Type", "application/json-patch+json");
+			
+//			{ "spec": { "selector": { "component": "slave", } } }
+			
+			String data = "[{\"op\":\"replace\",\"path\":\"/spec/selector/component\",\"value\":\""+role+"\"}]";
+		    
+			HttpEntity<String> requestEntity = new HttpEntity<>(data, headers);
+
+			String endpoint = masterUrl + "/api/v1/namespaces/{namespace}/services/{name}";
+			ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.PATCH, requestEntity, String.class, namespace, serviceName);
+			
+			if (response.getStatusCode() == HttpStatus.OK) {
+				String body = response.getBody();
+				System.out.println(body);
+			} else {
+				System.err.println("HttpStatus ; " + response.getStatusCode());
+				
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+	
 	}
 	
 	public void chageServiceSlaveToMaster(String namespace, String serviceName) {
