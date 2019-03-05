@@ -2339,7 +2339,7 @@ public class ZDBRestController {
 				break;
 			}
 
-			log.info(result.toJson() +"|"+result.status());
+			log.debug(result.toJson() +"|"+result.status());
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
