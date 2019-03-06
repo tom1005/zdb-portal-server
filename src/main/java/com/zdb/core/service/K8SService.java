@@ -1,6 +1,7 @@
 package com.zdb.core.service;
 
 import java.io.ByteArrayInputStream;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
@@ -60,6 +61,7 @@ import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.ReplicaSet;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.NamespacedKubernetesClient;
 import lombok.extern.slf4j.Slf4j;
 
@@ -110,7 +112,6 @@ public class K8SService {
 	 * @throws Exception
 	 */
 	public PersistentVolumeClaim getPersistentVolumeClaim(final String namespace, final String pvcName) throws Exception {
-		log.error("2*********** {}, {}, {}" ,namespace, pvcName, "PersistentVolumeClaim");
 		MetaData metaData = metadataRepository.findNamespaceAndNameAndKind(namespace, pvcName, "PersistentVolumeClaim");
 		
 		if (metaData != null) {
@@ -174,18 +175,20 @@ public class K8SService {
 	 * @throws Exception
 	 */
 	public List<io.fabric8.kubernetes.api.model.Service> getServices(final String namespace, final String serviceName) throws Exception {
-		List<io.fabric8.kubernetes.api.model.Service> list = new ArrayList<>();
+//		List<io.fabric8.kubernetes.api.model.Service> list = new ArrayList<>();
+//		
+//		List<MetaData> metaList = metadataRepository.findNamespaceAndReleaseNameAndKind(namespace, serviceName, "Service");
+//		
+//		for (MetaData metaData : metaList) {
+//			String meta = metaData.getMetadata();
+//			io.fabric8.kubernetes.api.model.Service pvc = new Gson().fromJson(meta, io.fabric8.kubernetes.api.model.Service.class);
+//			
+//			list.add(pvc);
+//		}
+//		
+//		return list;
 		
-		List<MetaData> metaList = metadataRepository.findNamespaceAndReleaseNameAndKind(namespace, serviceName, "Service");
-		
-		for (MetaData metaData : metaList) {
-			String meta = metaData.getMetadata();
-			io.fabric8.kubernetes.api.model.Service pvc = new Gson().fromJson(meta, io.fabric8.kubernetes.api.model.Service.class);
-			
-			list.add(pvc);
-		}
-		
-		return list;
+		return K8SUtil.getServices(namespace, serviceName);
 	
 	}
 	
@@ -550,6 +553,11 @@ public class K8SService {
 		// failover 사용 여부
 		so.setFailoverEnabled(isFailoverEnabled(so));
 		
+		// failover 상태 
+		//   - 정상 : MasterToMaster, 
+		//   - failover 된 상태 : MasterToSlave
+		so.setServiceFailOverStatus(getServiceFailOverStatus(namespace, "mariadb", serviceName));
+		
 		// 태그 정보 
 
 		List<Tag> tagList = tagRepository.findByNamespaceAndReleaseName(namespace, serviceName);
@@ -669,6 +677,59 @@ public class K8SService {
 					}
 				}
 			}
+		}
+	}
+	
+	/**
+	 * @param namespace
+	 * @param serviceType
+	 * @param serviceName
+	 * @return
+	 * @throws Exception
+	 */
+	public String getServiceFailOverStatus(String namespace, String serviceType, String serviceName) throws Exception {
+		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
+			
+			List<io.fabric8.kubernetes.api.model.Service> services = getServices(namespace, serviceName);
+			for (io.fabric8.kubernetes.api.model.Service service : services) {
+				String sName = service.getMetadata().getName();
+				String role = null;
+				
+				String selectorTarget = null;
+				if("redis".equals(serviceType)) {
+					if(sName.endsWith("master")) {
+						role = "master";
+					}
+					
+					selectorTarget = service.getSpec().getSelector().get("role");
+					
+				} else if("mariadb".equals(serviceType)) {
+					role = service.getMetadata().getLabels().get("component");
+					
+					selectorTarget = service.getSpec().getSelector().get("component");
+				}
+				
+				if(!"master".equals(role)) {
+					continue;
+				}
+				
+				// takeover 된 상태
+				if("master".equals(role) && "slave".equals(selectorTarget)) {
+					return "MasterToSlave";
+				} else if("master".equals(role) && "master".equals(selectorTarget)) {
+					return "MasterToMaster";
+				} else {
+					return "unknown";
+				}
+			}
+
+			return "unknown";
+		} catch (FileNotFoundException | KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			throw e;
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			throw e;
 		}
 	}
 	

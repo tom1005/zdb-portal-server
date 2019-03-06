@@ -9,8 +9,8 @@ import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -40,7 +40,6 @@ import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
-@Profile({"prod"})
 public class WatchEventListener {
 
 	Map<String, CountDownLatch> watcherCountDownLatch = Collections.synchronizedMap(new HashMap<>());
@@ -62,6 +61,9 @@ public class WatchEventListener {
 	private ZDBRestService commonService;
 	
 	private boolean isShutdown;
+
+	@Value("${spring.profiles.active}")
+    private String profile;
 	
 	@EventListener
 	public void handleEvent(Object event) {
@@ -69,7 +71,9 @@ public class WatchEventListener {
 		if (event instanceof ApplicationReadyEvent) {
 			isShutdown = false;
 			try {
-
+				if ("local".equals(profile)) {
+					return;
+				}
 				log.info("================================Add Event Watch============================================");
 				runEventWatcher();
 

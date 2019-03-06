@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Profile;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -33,11 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
-@Profile({"prod"})
 public class MetaDataCollector {
-	
-//	@Autowired
-//	ZDBReleaseRepository repo;
 	
 	@Autowired
 	MetadataRepository metaRepo;
@@ -58,10 +54,16 @@ public class MetaDataCollector {
     		METADATA_CACHE.put(key, value);
     	}
     }
-	
+
+    @Value("${spring.profiles.active}")
+    private String profile;
+
 	@Scheduled(initialDelayString = "20000", fixedRateString = "90000")
 	public void collect() {
 		try {
+			if ("local".equals(profile)) {
+				return;
+			}
 			long s = System.currentTimeMillis();
 			List<Namespace> namespaces = K8SUtil.getNamespaces();
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();

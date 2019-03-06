@@ -2015,47 +2015,16 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	 */
 	@Override
 	public Result serviceFailOverStatus(String txId, String namespace, String serviceType, String serviceName) throws Exception {
-		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
-			
-			List<io.fabric8.kubernetes.api.model.Service> services = k8sService.getServices(namespace, serviceName);
-			for (io.fabric8.kubernetes.api.model.Service service : services) {
-				String sName = service.getMetadata().getName();
-				String role = null;
-				
-				String selectorTarget = null;
-				if("redis".equals(serviceType)) {
-					if(sName.endsWith("master")) {
-						role = "master";
-					}
-					
-					selectorTarget = service.getSpec().getSelector().get("role");
-					
-				} else if("mariadb".equals(serviceType)) {
-					role = service.getMetadata().getLabels().get("component");
-					
-					selectorTarget = service.getSpec().getSelector().get("component");
-				}
-				
-				if(!"master".equals(role)) {
-					continue;
-				}
-				
-				// takeover 된 상태
+		try {
+			String status = k8sService.getServiceFailOverStatus(namespace, serviceType, serviceName);
+			if("unknown".equals(status)) {
+				return new Result(txId, Result.ERROR, "unknown");
+			} else {
 				Result result = new Result(txId, Result.OK);
-				if("master".equals(role) && "slave".equals(selectorTarget)) {
-//					return new Result(txId, Result.OK, "MasterToSlave");
-					result.putValue("status", "MasterToSlave");
-					return result;
-				} else if("master".equals(role) && "master".equals(selectorTarget)) {
-//					return new Result(txId, Result.OK, "MasterToMaster");
-					result.putValue("status", "MasterToMaster");
-					return result;
-				} else {
-					return new Result(txId, Result.ERROR, "unknown");
-				}
+				result.putValue("status", status);
+				return result;
 			}
 
-			return new Result(txId, Result.ERROR, "unknown");
 		} catch (FileNotFoundException | KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 			if (e.getMessage().indexOf("Unauthorized") > -1) {

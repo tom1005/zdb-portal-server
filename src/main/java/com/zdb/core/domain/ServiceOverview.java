@@ -58,6 +58,8 @@ public class ServiceOverview {
 	
 	private boolean failoverEnabled;
 	
+	private String serviceFailOverStatus;
+	
 	private List<PersistentVolumeClaim> persistentVolumeClaims = new ArrayList<>();
 	
 	private List<Deployment> deployments = new ArrayList<>();
