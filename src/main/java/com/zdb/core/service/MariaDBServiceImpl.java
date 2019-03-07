@@ -917,10 +917,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		try {
 			// shutdown and pod delete (restart)
 			MariaDBShutDownUtil.getInstance().doShutdownAndDeleteAllPods(namespace, serviceName);
-			result = new Result(txId, IResult.OK, "서비스 재시작 요청됨");
+			result = new Result(txId, IResult.OK, serviceName + "<br>서비스 재시작(Master/Slave)");
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, "서비스 재시작 오류. - " + e.getMessage());
+			result = new Result(txId, IResult.ERROR, serviceName + "<br>서비스 재시작 오류");
 		}
 
 		return result;
@@ -935,10 +935,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		try {
 			// shutdown and pod delete (restart)
 			MariaDBShutDownUtil.getInstance().doShutdownAndDeletePod(namespace, serviceName, podName);
-			result = new Result(txId, IResult.OK, "Pod 재시작 요청됨");
+			result = new Result(txId, IResult.OK, podName + "<br>재시작");
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, "Pod 재시작 오류. - " + e.getMessage());
+			result = new Result(txId, IResult.ERROR, podName + "<br>재시작 오류");
 		}
 
 		return result;
@@ -1716,7 +1716,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				storageScaleExecutor.execTask(jobList.toArray(new Job[] {}));
 
 				log.info(serviceName + " 서비스 셧다운 요청.");
-				result = new Result(txId, IResult.RUNNING, stsName + " 서비스를 셧다운 합니다.");
+				result = new Result(txId, IResult.RUNNING, stsName + "<br>서비스를 셧다운 합니다.");
 			} else {
 				result = new Result(txId, IResult.ERROR, "서비스 셧다운 실행 오류.");
 			}
@@ -1739,7 +1739,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	}
 	
 	@Override
-	public Result serviceChaneMasterToSlave(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+	public Result serviceChangeMasterToSlave(String txId, String namespace, String serviceType, String serviceName) throws Exception {
 		Result result = null;
 		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
 			
@@ -1860,7 +1860,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	}
 	
 	@Override
-	public Result serviceChaneSlaveToMaster(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+	public Result serviceChangeSlaveToMaster(String txId, String namespace, String serviceType, String serviceName) throws Exception {
 		Result result = null;
 		
 		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {

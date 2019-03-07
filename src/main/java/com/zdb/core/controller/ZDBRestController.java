@@ -2207,7 +2207,7 @@ public class ZDBRestController {
 
 			switch (dbType) {
 			case MariaDB:
-				result = mariadbService.serviceChaneMasterToSlave(txId, namespace, serviceType, serviceName);
+				result = mariadbService.serviceChangeMasterToSlave(txId, namespace, serviceType, serviceName);
 				break;
 			case Redis:
 				break;
@@ -2266,7 +2266,7 @@ public class ZDBRestController {
 			
 			switch (dbType) {
 			case MariaDB:
-				result = mariadbService.serviceChaneSlaveToMaster(txId, namespace, serviceType, serviceName);
+				result = mariadbService.serviceChangeSlaveToMaster(txId, namespace, serviceType, serviceName);
 				break;
 			case Redis:
 				break;
