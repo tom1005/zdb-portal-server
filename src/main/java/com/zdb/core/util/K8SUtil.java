@@ -1477,7 +1477,7 @@ public class K8SUtil {
 	          if (role.equals(redisRole)) {
 	        	  String loadbalancerType = service.getMetadata().getAnnotations().get("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type");
 	        	  
-	      		  if ("local".equals(profile)) {
+	      		  if (!"prod".equals(profile)) {
 		        	  if ("public".equals(loadbalancerType)) {
 		        		  ip = service.getStatus().getLoadBalancer().getIngress().get(0).getIp();
 			        	  continue;  

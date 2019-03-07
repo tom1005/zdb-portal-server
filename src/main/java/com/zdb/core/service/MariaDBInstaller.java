@@ -22,6 +22,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
 import com.google.gson.Gson;
+import com.zdb.core.collector.MetaDataCollector;
 import com.zdb.core.domain.Exchange;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.KubernetesConstants;
@@ -68,6 +69,9 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 	public void setStorageClass(String storageType) {
 		storageClass = storageType;
 	}
+	
+	@Autowired
+	private MetaDataCollector metaDataCollector;
 	
 	@Autowired
 	protected ZDBConfigRepository zdbConfigRepository;
@@ -289,6 +293,8 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 										boolean isReady = K8SUtil.IsReady(pod);
 										isAllReady = isAllReady && isReady;
 									}
+									
+									metaDataCollector.save(pods);
 									
 									ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(service.getServiceName());
 									

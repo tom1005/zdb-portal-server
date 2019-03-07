@@ -56,6 +56,7 @@ import com.zdb.core.domain.ZDBMariaDBConfig;
 import com.zdb.core.domain.ZDBType;
 import com.zdb.core.job.CreatePersistentVolumeClaimsJob;
 import com.zdb.core.job.DataCopyJob;
+import com.zdb.core.job.EnableAutofailover;
 import com.zdb.core.job.EventListener;
 import com.zdb.core.job.Job;
 import com.zdb.core.job.Job.JobResult;
@@ -1588,7 +1589,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 				storageScaleExecutor.execTask(jobList.toArray(new Job[] {}));
 
-				log.info(serviceName + " 서비스 시 요청.");
+				log.info(serviceName + " 서비스 시작 요청.");
 				result = new Result(txId, IResult.RUNNING, stsName + " 서비스 시작 요청.");
 			} else {
 				result = new Result(txId, IResult.ERROR, "서비스 시작 실행 오류.");
@@ -1822,6 +1823,9 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 						result.putValue(Result.HISTORY, history.toString() +" 가 master 에서 slave 로 전환 되었습니다.\nmaster 서비스로 연결된 App.은 slave DB에 읽기/쓰기 됩니다.");
 					}
 					
+					List<Service> svcList = K8SUtil.getServices(namespace, serviceName);
+					metaDataCollector.save(svcList);
+					
 					// send websocket
 					try {
 						ServiceOverview serviceOverview = k8sService.getServiceWithName(namespace, serviceType, serviceName);
@@ -1903,6 +1907,9 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 					if (!history.toString().isEmpty()) {
 						result.putValue(Result.HISTORY, history.toString() +" 가 slave 에서 master 로 전환 되었습니다.");
 					}
+					
+					List<Service> svcList = K8SUtil.getServices(namespace, serviceName);
+					metaDataCollector.save(svcList);
 					
 					// websocket send.
 					try {
@@ -2034,7 +2041,6 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		}
 	}
 
-
 	/**
 	 * Auto Failover 
 	 *  - On : add label : zdb-failover-enable=true
@@ -2049,11 +2055,20 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	 * @return
 	 * @throws Exception
 	 */
-	@Override
 	public Result updateAutoFailoverEnable(String txId, String namespace, String serviceType, String serviceName, boolean enable) throws Exception {
+
+		Result result = new Result(txId);
+
+		String historyValue = "";
 		
-		Result result = null;
 		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
+			// 서비스 명 체크
+			ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(serviceName);
+			if( releaseMetaData == null) {
+				String msg = "서비스가 존재하지 않습니다.";
+				return new Result(txId, IResult.ERROR, msg);
+			}
+
 			MixedOperation<StatefulSet, StatefulSetList, DoneableStatefulSet, RollableScalableResource<StatefulSet, DoneableStatefulSet>> statefulSets = 
 					client.inNamespace(namespace).apps().statefulSets();
 
@@ -2071,77 +2086,119 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			
 			
 			if(items != null && !items.isEmpty()) {
-				
 				StatefulSet sts = items.get(0);
 				
-				String name = sts.getMetadata().getName();
+				List<Job> jobList = new ArrayList<>();
+				JobParameter param = new JobParameter();
+				param.setNamespace(namespace);
+				param.setServiceType(serviceType);
+				param.setServiceName(serviceName);
+				param.setStatefulsetName(sts.getMetadata().getName());
+				param.setToggle(enable ? 1 : 0);
 				
-				///////////////////////////////////////////////////////
-				if(enable) {
-					Result addAutoFailover = addAutoFailover(client, sts);
+				EnableAutofailover job1 = new EnableAutofailover(param);
+				
+				jobList.add(job1);
+				
+				if (jobList.size() > 0) {
+					CountDownLatch latch = new CountDownLatch(jobList.size());
 					
-					if(!addAutoFailover.isOK()) {
-						return addAutoFailover;
+					JobExecutor storageScaleExecutor = new JobExecutor(latch);
+					
+					final String _historyValue = String.format("Auto-Failover 설정 변경(%s)", serviceName);
+					
+					EventListener eventListener = new EventListener() {
+						
+						@Override
+						public void onEvent(Job job, String event) {
+							log.info(job.getJobName() + "  onEvent - " + event);
+						}
+						
+						@Override
+						public void status(Job job, String status) {
+							//log.info(job.getJobName() + " : " + status);
+						}
+						
+						@Override
+						public void done(Job job, JobResult code, String message, Throwable e) {
+							if (jobList.contains(job)) {
+								RequestEvent event = new RequestEvent();
+								
+								event.setTxId(txId);
+								event.setStartTime(new Date(System.currentTimeMillis()));
+								event.setServiceType(serviceType);
+								event.setNamespace(namespace);
+								event.setServiceName(serviceName);
+								event.setOperation(RequestEvent.SET_AUTO_FAILOVER_USABLE);
+								event.setUserId("SYSTEM");
+								try {
+									if (code == JobResult.ERROR) {
+										event.setStatus(IResult.ERROR);
+										event.setResultMessage(job.getJobName() + " 처리 중 오류가 발생했습니다. (" + e.getMessage() + ")");
+									} else {
+										
+										List<StatefulSet> statefulSets = K8SUtil.getStatefulSets(namespace, serviceName);
+										metaDataCollector.save(statefulSets);
+										
+										event.setStatus(IResult.OK);
+										if (message == null || message.isEmpty()) {
+											event.setResultMessage(job.getJobName() + " 정상 처리되었습니다.");
+										} else {
+											event.setResultMessage(message);
+										}
+									}
+									event.setHistory(_historyValue);
+									event.setEndTime(new Date(System.currentTimeMillis()));
+									ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+									JobHandler.removeListener(this);
+									
+									ServiceOverview serviceOverview = k8sService.getServiceWithName(namespace, serviceType, serviceName);
+									
+									Result r = Result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
+									messageSender.convertAndSend("/service/" + serviceOverview.getServiceName(), r);
+									
+								} catch (MessagingException e1) {
+									e1.printStackTrace();
+								} catch (Exception e1) {
+									e1.printStackTrace();
+								}	
+							}
+						}
+						
+					};
+					
+					JobHandler.addListener(eventListener);
+					
+					storageScaleExecutor.execTask(jobList.toArray(new Job[] {}));
+					
+					log.info(serviceName + " Auto Failover 설정.");
+					if(enable) {
+						result = new Result(txId, IResult.RUNNING, "서비스 : " + serviceName + "<br>Auto Failover 기능을 적용합니다.<br>처음 적용시 서비스가 재시작 됩니다.");
+					} else {
+						result = new Result(txId, IResult.RUNNING, "서비스 : " + serviceName + "<br>Auto Failover 기능을 해제 합니다.");
 					}
-				}
-				
-				long s = System.currentTimeMillis();
-				
-				while(true) {
-					Thread.sleep(1000);
-					
-					Pod pod = K8SUtil.kubernetesClient().inNamespace(namespace).pods().withName(name+"-0").get();
-					boolean ready = PodManager.isReady(pod);
-					
-					if(ready) {
-						break;
-					}
-					
-					if ((System.currentTimeMillis() - s) > 60 * 1000) {
-						log.error("failover enable timeout");
-						break;
-					}
-				}
-				
-				RestTemplate rest = K8SUtil.getRestTemplate();
-				String idToken = K8SUtil.getToken();
-				String masterUrl = K8SUtil.getMasterURL();
-
-				HttpHeaders headers = new HttpHeaders();
-				List<MediaType> mediaTypeList = new ArrayList<MediaType>();
-				mediaTypeList.add(MediaType.APPLICATION_JSON);
-				headers.setAccept(mediaTypeList);
-				headers.add("Authorization", "Bearer " + idToken);
-				headers.set("Content-Type", "application/json-patch+json");
-				
-				String data = "[{\"op\":\"add\",\"path\":\"/metadata/labels/zdb-failover-enable\",\"value\":\""+enable+"\"}]";
-			    
-				HttpEntity<String> requestEntity = new HttpEntity<>(data, headers);
-
-				String endpoint = masterUrl + "/apis/apps/v1/namespaces/{namespace}/statefulsets/{name}";
-				ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.PATCH, requestEntity, String.class, namespace, name);
-
-				String enableStr = enable ? "On" : "Off";
-				String message = "Auto Failover 설정 변경. ["+enableStr+"]";
-
-				if (response.getStatusCode() == HttpStatus.OK) {
-					result = new Result(txId, Result.OK , message);
 				} else {
-					result = new Result(txId, Result.ERROR , message +" 처리중 오류가 발생 했습니다.");
+					result = new Result(txId, IResult.ERROR, "Auto Failover 설정 오류.");
 				}
-				/////////////////////////
 				
-				result.putValue(Result.HISTORY, message);
-			} else {
-				result = new Result(txId, Result.ERROR , "실행중인 서비스가 없습니다. ["+namespace +" > "+ serviceName +"]");
 			}
+			
+		} catch (KubernetesClientException e) {
+			log.error(e.getMessage(), e);
 
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result(txId, Result.UNAUTHORIZED, "클러스터에 접근이 불가하거나 인증에 실패 했습니다.", null);
+			} else {
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
+			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, Result.ERROR , "Auto Failover 설정 변경중 오류가 발생 했습니다.");
+			return Result.RESULT_FAIL(txId, e);
+		} finally {
 		}
 		
 		return result;
+	
 	}
 	
 	@Override
@@ -2181,221 +2238,221 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	 * 	- label 추가 (zdb-failover-enable=true)
 	 * 
 	 */
-	public Result addAutoFailover(DefaultKubernetesClient client, StatefulSet sts) throws Exception {
-		
-		
-		Result result = null;
-		StringBuffer resultMsg = new StringBuffer();
-		boolean status = false;
-		
-		try{
-			// * - report_status.sh 을 실행 할 수 있도록 configmap 등록
-			String namespace = sts.getMetadata().getNamespace();
-			String stsName = sts.getMetadata().getName();
-			
-			MixedOperation<ConfigMap, ConfigMapList, DoneableConfigMap, Resource<ConfigMap, DoneableConfigMap>> configMaps = client.inNamespace(namespace).configMaps();
-
-			String cmName = "report-status";
-			ConfigMap configMap = configMaps.withName(cmName).get();
-
-			if (configMap == null) {
-				log.info("create configmap : " + namespace +" > "+ cmName);
-				
-				InputStream is = new ClassPathResource("mariadb/report_status.template").getInputStream();
-
-				String temp = IOUtils.toString(is, StandardCharsets.UTF_8.name());
-
-				Map<String, String> data = new HashMap<>();
-				data.put("report_status.sh", temp);
-
-				Resource<ConfigMap, DoneableConfigMap> configMapResource = client.configMaps().inNamespace(namespace).withName(cmName);
-
-				configMap = configMapResource.createOrReplace(new ConfigMapBuilder().withNewMetadata().withName(cmName).endMetadata().addToData(data).build());
-			
-				log.info("Created configmap : " + namespace +" > "+ cmName);
-				
-				status = true;
-			} else {
-				log.info("Exist configmap : " + namespace +" > "+ configMap.getMetadata().getName());
-			}
-
-//			 * 	- spec>template>spec>containers>lifecycle : shell command 등록
-//			 * 	- spec>template>spec>containers>volumeMounts  :  report-status 추가 
-//			 * 	- spec>template>spec>volumes :  report-status 추가
-//			 * 	- label 추가 (zdb-failover-enable=true)
-			MixedOperation<StatefulSet, StatefulSetList, DoneableStatefulSet, RollableScalableResource<StatefulSet, DoneableStatefulSet>> statefulSets = 
-					client.inNamespace(namespace).apps().statefulSets();
-			
-			{				
-//				Map<String, String> labels = sts.getMetadata().getLabels();
-				
-				log.info("Start update statefulset. " + namespace +" > "+ stsName);
-				
-				io.fabric8.kubernetes.api.model.PodSpec spec = sts.getSpec().getTemplate().getSpec();
-				List<Container> containers = spec.getContainers();
-				int mariadbIndex = -1;
-				boolean existVolumeMount = false;
-				boolean existVolume = false;
-				boolean existCommand = false;
-				
-				for (int i = 0; i < containers.size(); i++) {
-					Container container = containers.get(i);
-					
-					String name = container.getName();
-					if("mariadb".equals(name)) {
-						mariadbIndex = i;
-						
-						List<VolumeMount> volumeMounts = container.getVolumeMounts();
-						for (VolumeMount vm : volumeMounts) {
-							if("report-status".equals(vm.getName())) {
-								existVolumeMount = true;
-								break;
-							}
-						}
-						
-						try {
-							int size = container.getLifecycle().getPostStart().getExec().getCommand().size();
-							existCommand = size > 0 ? true : false;
-						} catch (Exception e) {
-							existCommand = false;
-						}
-						
-						break;
-					}
-				}
-				
-				if(mariadbIndex == -1) {
-					String msg = "mariadb container 가 존재하지 않습니다. ["+namespace+" > "+stsName+"]";
-					log.error(msg);
-					
-					result = new Result("", Result.ERROR, msg);
-					return result;
-				}
-
-				List<Volume> volumes = spec.getVolumes();
-				for (Volume v : volumes) {
-					if("report-status".equals(v.getName())) {
-						existVolume = true;
-						break;
-					}
-				}
-				
-				StatefulSetBuilder builder = new StatefulSetBuilder(sts);
-
-				boolean buildFlag = false;
-				
-//				String labelKey = "zdb-failover-enable";
-//				if(!labels.containsKey(labelKey) || !"true".equals(labels.get(labelKey))) {
-//					labels.put(labelKey, "true");
+//	public Result addAutoFailover(DefaultKubernetesClient client, StatefulSet sts) throws Exception {
+//		
+//		
+//		Result result = null;
+//		StringBuffer resultMsg = new StringBuffer();
+//		boolean status = false;
+//		
+//		try{
+//			// * - report_status.sh 을 실행 할 수 있도록 configmap 등록
+//			String namespace = sts.getMetadata().getNamespace();
+//			String stsName = sts.getMetadata().getName();
+//			
+//			MixedOperation<ConfigMap, ConfigMapList, DoneableConfigMap, Resource<ConfigMap, DoneableConfigMap>> configMaps = client.inNamespace(namespace).configMaps();
+//
+//			String cmName = "report-status";
+//			ConfigMap configMap = configMaps.withName(cmName).get();
+//
+//			if (configMap == null) {
+//				log.info("Create configmap : " + namespace +" > "+ cmName);
+//				
+//				InputStream is = new ClassPathResource("mariadb/report_status.template").getInputStream();
+//
+//				String temp = IOUtils.toString(is, StandardCharsets.UTF_8.name());
+//
+//				Map<String, String> data = new HashMap<>();
+//				data.put("report_status.sh", temp);
+//
+//				Resource<ConfigMap, DoneableConfigMap> configMapResource = client.configMaps().inNamespace(namespace).withName(cmName);
+//
+//				configMap = configMapResource.createOrReplace(new ConfigMapBuilder().withNewMetadata().withName(cmName).endMetadata().addToData(data).build());
+//			
+//				log.info("Created configmap : " + namespace +" > "+ cmName);
+//				
+//				status = true;
+//			} else {
+//				log.info("Exist configmap : " + namespace +" > "+ configMap.getMetadata().getName());
+//			}
+//
+////			 * 	- spec>template>spec>containers>lifecycle : shell command 등록
+////			 * 	- spec>template>spec>containers>volumeMounts  :  report-status 추가 
+////			 * 	- spec>template>spec>volumes :  report-status 추가
+////			 * 	- label 추가 (zdb-failover-enable=true)
+//			MixedOperation<StatefulSet, StatefulSetList, DoneableStatefulSet, RollableScalableResource<StatefulSet, DoneableStatefulSet>> statefulSets = 
+//					client.inNamespace(namespace).apps().statefulSets();
+//			
+//			{				
+////				Map<String, String> labels = sts.getMetadata().getLabels();
+//				
+//				log.info("Start update statefulset. " + namespace +" > "+ stsName);
+//				
+//				io.fabric8.kubernetes.api.model.PodSpec spec = sts.getSpec().getTemplate().getSpec();
+//				List<Container> containers = spec.getContainers();
+//				int mariadbIndex = -1;
+//				boolean existVolumeMount = false;
+//				boolean existVolume = false;
+//				boolean existCommand = false;
+//				
+//				for (int i = 0; i < containers.size(); i++) {
+//					Container container = containers.get(i);
 //					
-//					builder.editMetadata().withLabels(labels).endMetadata();
-//					buildFlag = true;
-//					
+//					String name = container.getName();
+//					if("mariadb".equals(name)) {
+//						mariadbIndex = i;
+//						
+//						List<VolumeMount> volumeMounts = container.getVolumeMounts();
+//						for (VolumeMount vm : volumeMounts) {
+//							if("report-status".equals(vm.getName())) {
+//								existVolumeMount = true;
+//								break;
+//							}
+//						}
+//						
+//						try {
+//							int size = container.getLifecycle().getPostStart().getExec().getCommand().size();
+//							existCommand = size > 0 ? true : false;
+//						} catch (Exception e) {
+//							existCommand = false;
+//						}
+//						
+//						break;
+//					}
 //				}
 //				
-//				log.info("withLabels : " + stsName);
-				
-				if(!existCommand) {
-					String[] command = new String[] {
-							"/bin/sh",
-							"-c",
-							"/usr/bin/nohup /report_status.sh 1>/tmp/report.log 2>/dev/null &"
-					};
-					
-					builder.editSpec()
-					.editTemplate().editSpec()
-					.editContainer(mariadbIndex)
-					.editOrNewLifecycle()
-					.editOrNewPostStart()
-					.editOrNewExec()
-					.addToCommand(command)
-					.endExec()
-					.endPostStart()
-					.endLifecycle()
-					.endContainer()
-					.endSpec()
-					.endTemplate()
-					.endSpec();
-
-					buildFlag = true;
-					log.info("addToCommand : " + stsName);
-				} else {
-					log.info("existCommand : " + namespace +" > "+ stsName);
-				}
-				
-				if(!existVolumeMount) {
-					VolumeMount vm = new VolumeMount();
-					vm.setMountPath("/report_status.sh");
-					vm.setName("report-status");
-					vm.setSubPath("report_status.sh");
-					
-					builder
-					.editSpec()
-					.editTemplate()
-					.editSpec()
-					.editContainer(mariadbIndex)
-					.addToVolumeMounts(vm)
-					.endContainer()
-					.endSpec()
-					.endTemplate()
-					.endSpec();
-					
-					buildFlag = true;
-					log.info("addToVolumeMounts : " + stsName);
-				} else {
-					log.info("existVolumeMount : " + namespace +" > "+ stsName);
-				}
-				
-				if(!existVolume) {
-					Volume volume = new Volume();
-					
-					ConfigMapVolumeSource cmvs = new ConfigMapVolumeSource();
-					cmvs.setDefaultMode(493); // 0755
-					cmvs.setName("report-status");
-					volume.setConfigMap(cmvs);
-					volume.setName("report-status");
-					
-					builder
-					.editSpec()
-					.editTemplate()
-					.editSpec()
-					.addToVolumes(volume)
-					.endSpec()
-					.endTemplate()
-					.endSpec();
-					
-					buildFlag = true;
-					log.info("addToVolumes : " + stsName);
-				} else {
-					log.info("existVolume : " + namespace +" > "+ stsName);
-				}
-
-				if (buildFlag) {
-					status = true;
-					StatefulSet newSvc = builder.build();
-
-					statefulSets.createOrReplace(newSvc);
-					log.info("End statefulset update. " + namespace +" > "+ stsName);
-					resultMsg.append("Update statefulset. " + namespace +" > "+ stsName).append("\n");
-				} else {
-					log.info("Skip update statefulset. " + namespace +" > "+ stsName);
-				}
-				
-			}
-			
-			if(!status) {
-				resultMsg.append("이미 설정된 서비스 입니다. " + namespace +" > "+ stsName);
-			}
-					
-			result = new Result("", Result.OK , "Auto Failover 설정 등록 완료.");
-			result.putValue(Result.HISTORY, resultMsg.toString());
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-			result = new Result("", Result.ERROR , resultMsg.toString(), e);
-		} 
-		return result;
-	
-	}
+//				if(mariadbIndex == -1) {
+//					String msg = "mariadb container 가 존재하지 않습니다. ["+namespace+" > "+stsName+"]";
+//					log.error(msg);
+//					
+//					result = new Result("", Result.ERROR, msg);
+//					return result;
+//				}
+//
+//				List<Volume> volumes = spec.getVolumes();
+//				for (Volume v : volumes) {
+//					if("report-status".equals(v.getName())) {
+//						existVolume = true;
+//						break;
+//					}
+//				}
+//				
+//				StatefulSetBuilder builder = new StatefulSetBuilder(sts);
+//
+//				boolean buildFlag = false;
+//				
+////				String labelKey = "zdb-failover-enable";
+////				if(!labels.containsKey(labelKey) || !"true".equals(labels.get(labelKey))) {
+////					labels.put(labelKey, "true");
+////					
+////					builder.editMetadata().withLabels(labels).endMetadata();
+////					buildFlag = true;
+////					
+////				}
+////				
+////				log.info("withLabels : " + stsName);
+//				
+//				if(!existCommand) {
+//					String[] command = new String[] {
+//							"/bin/sh",
+//							"-c",
+//							"/usr/bin/nohup /report_status.sh 1>/tmp/report.log 2>/dev/null &"
+//					};
+//					
+//					builder.editSpec()
+//					.editTemplate().editSpec()
+//					.editContainer(mariadbIndex)
+//					.editOrNewLifecycle()
+//					.editOrNewPostStart()
+//					.editOrNewExec()
+//					.addToCommand(command)
+//					.endExec()
+//					.endPostStart()
+//					.endLifecycle()
+//					.endContainer()
+//					.endSpec()
+//					.endTemplate()
+//					.endSpec();
+//
+//					buildFlag = true;
+//					log.info("addToCommand : " + stsName);
+//				} else {
+//					log.info("existCommand : " + namespace +" > "+ stsName);
+//				}
+//				
+//				if(!existVolumeMount) {
+//					VolumeMount vm = new VolumeMount();
+//					vm.setMountPath("/report_status.sh");
+//					vm.setName("report-status");
+//					vm.setSubPath("report_status.sh");
+//					
+//					builder
+//					.editSpec()
+//					.editTemplate()
+//					.editSpec()
+//					.editContainer(mariadbIndex)
+//					.addToVolumeMounts(vm)
+//					.endContainer()
+//					.endSpec()
+//					.endTemplate()
+//					.endSpec();
+//					
+//					buildFlag = true;
+//					log.info("addToVolumeMounts : " + stsName);
+//				} else {
+//					log.info("existVolumeMount : " + namespace +" > "+ stsName);
+//				}
+//				
+//				if(!existVolume) {
+//					Volume volume = new Volume();
+//					
+//					ConfigMapVolumeSource cmvs = new ConfigMapVolumeSource();
+//					cmvs.setDefaultMode(493); // 0755
+//					cmvs.setName("report-status");
+//					volume.setConfigMap(cmvs);
+//					volume.setName("report-status");
+//					
+//					builder
+//					.editSpec()
+//					.editTemplate()
+//					.editSpec()
+//					.addToVolumes(volume)
+//					.endSpec()
+//					.endTemplate()
+//					.endSpec();
+//					
+//					buildFlag = true;
+//					log.info("addToVolumes : " + stsName);
+//				} else {
+//					log.info("existVolume : " + namespace +" > "+ stsName);
+//				}
+//
+//				if (buildFlag) {
+//					status = true;
+//					StatefulSet newSvc = builder.build();
+//
+//					statefulSets.createOrReplace(newSvc);
+//					log.info("End statefulset update. " + namespace +" > "+ stsName);
+//					resultMsg.append("Update statefulset. " + namespace +" > "+ stsName).append("\n");
+//				} else {
+//					log.info("Skip update statefulset. " + namespace +" > "+ stsName);
+//				}
+//				
+//			}
+//			
+//			if(!status) {
+//				resultMsg.append("이미 설정된 서비스 입니다. " + namespace +" > "+ stsName);
+//			}
+//					
+//			result = new Result("", Result.OK , "Auto Failover 설정 등록 완료.");
+//			result.putValue(Result.HISTORY, resultMsg.toString());
+//		} catch (Exception e) {
+//			log.error(e.getMessage(), e);
+//			result = new Result("", Result.ERROR , resultMsg.toString(), e);
+//		} 
+//		return result;
+//	
+//	}
 	
 
 	public Result changePort(String txId, String namespace, String serviceName, String port) {

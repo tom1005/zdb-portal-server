@@ -52,7 +52,7 @@ public class MessageSender {
 	public synchronized void sendToClient(String eventType) {
 		try {
 			if (getSessionCount() > 0) {
-				Thread.sleep(500);
+//				Thread.sleep(500);
 				Result result = commonService.getServicesWithNamespaces(null, true);
 				if (result.isOK()) {
 					Object object = result.getResult().get(IResult.SERVICEOVERVIEWS);

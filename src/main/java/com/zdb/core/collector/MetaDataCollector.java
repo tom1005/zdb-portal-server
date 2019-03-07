@@ -61,8 +61,8 @@ public class MetaDataCollector {
 	@Scheduled(initialDelayString = "20000", fixedRateString = "90000")
 	public void collect() {
 		try {
-			if ("local".equals(profile)) {
-				return;
+			if (!"prod".equals(profile)) {
+//				return;
 			}
 			long s = System.currentTimeMillis();
 			List<Namespace> namespaces = K8SUtil.getNamespaces();
@@ -130,7 +130,7 @@ public class MetaDataCollector {
 				String kind = metaData.getKind();
 				String namespace = metaData.getNamespace();
 				String name = metaData.getName();
-				String uid = metaData.getUid();
+				String uid = String.format("%s-%s", kind, name);//metaData.getUid();
 				
 				boolean flag = false;
 				if("Deployment".equals(kind)) {
@@ -179,7 +179,12 @@ public class MetaDataCollector {
 	private boolean exist(List<? extends HasMetadata> allMetadata, String uid, String namespace, String name) {
 		boolean flag = false;
 		for (HasMetadata metaData : allMetadata) {
-			if(metaData.getMetadata().getUid().equals(uid) && metaData.getMetadata().getNamespace().equals(namespace) && metaData.getMetadata().getName().equals(name)) {
+			String _kind = metaData.getKind();
+			String _namespace = metaData.getMetadata().getNamespace();
+			String _name = metaData.getMetadata().getName();
+			
+			String _uid = String.format("%s-%s", _kind, _name);
+			if(_uid.equals(uid) && metaData.getMetadata().getNamespace().equals(namespace) && metaData.getMetadata().getName().equals(name)) {
 				flag = true;
 				break;
 			}
@@ -190,7 +195,12 @@ public class MetaDataCollector {
 	private boolean exist(List<? extends HasMetadata> allSecrets, String uid, String name) {
 		boolean flag = false;
 		for (HasMetadata metaData : allSecrets) {
-			if(metaData.getMetadata().getUid().equals(uid) && metaData.getMetadata().getName().equals(name)) {
+			String _kind = metaData.getKind();
+			String _namespace = metaData.getMetadata().getNamespace();
+			String _name = metaData.getMetadata().getName();
+			
+			String _uid = String.format("%s-%s", _kind, _name);
+			if(_uid.equals(uid) && metaData.getMetadata().getName().equals(name)) {
 				flag = true;
 				break;
 			}
@@ -200,8 +210,13 @@ public class MetaDataCollector {
 	
 	public void save(List<? extends HasMetadata> metadataList) {
 		for (HasMetadata metaObj : metadataList) {
+			String kind = metaObj.getKind();
+			String namespace = metaObj.getMetadata().getNamespace();
+			String name = metaObj.getMetadata().getName();
 			
-			putMetaData(metaObj.getMetadata().getUid(), metaObj);
+			String uid = String.format("%s-%s", kind, name);
+			putMetaData(uid, metaObj);
+//			putMetaData(metaObj.getMetadata().getUid(), metaObj);
 			
 			MetaData m = null;
 			if (metaObj instanceof Namespace) {
@@ -227,7 +242,8 @@ public class MetaDataCollector {
 			}
 			String metaToJon = new Gson().toJson(metaObj);
 			m.setApp(getApp(metaObj));
-			m.setUid(metaObj.getMetadata().getUid());
+//			m.setUid(metaObj.getMetadata().getUid());
+			m.setUid(uid);
 			m.setStatus(getStatus(metaObj));
 			m.setMetadata(metaToJon);
 			m.setUpdateTime(new Date(System.currentTimeMillis()));

@@ -20,6 +20,7 @@ import com.zdb.core.util.K8SUtil;
 import hapi.release.ReleaseOuterClass.Release;
 import hapi.release.StatusOuterClass.Status.Code;
 import io.fabric8.kubernetes.api.model.Container;
+import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
 import lombok.extern.slf4j.Slf4j;
@@ -88,6 +89,15 @@ public class ReleaseCollector {
 					if(releaseMeta.getClusterEnabled() == null) {
 						releaseMeta.setClusterEnabled(statefulSets.size() > 1 ? true : false);
 					}
+					
+					if("CREATING".equals(releaseMeta.getStatus())) {
+						List<Pod> pods = k8sService.getPods(release.getNamespace(), release.getName());
+						
+						if(statefulSets.size() == pods.size()) {
+							releaseMeta.setStatus(release.getInfo().getStatus().getCode().name());
+						}
+					}
+					
 				} catch (Exception e) {
 					log.error(e.getMessage(), e);
 				}
