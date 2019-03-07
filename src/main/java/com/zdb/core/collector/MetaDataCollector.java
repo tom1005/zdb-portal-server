@@ -62,7 +62,7 @@ public class MetaDataCollector {
 	public void collect() {
 		try {
 			if (!"prod".equals(profile)) {
-//				return;
+				return;
 			}
 			long s = System.currentTimeMillis();
 			List<Namespace> namespaces = K8SUtil.getNamespaces();
