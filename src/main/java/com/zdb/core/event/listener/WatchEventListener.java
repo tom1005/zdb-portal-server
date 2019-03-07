@@ -673,14 +673,12 @@ public class WatchEventListener {
 					try (final DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
 
 						try (Watch watch = client.inAnyNamespace().events().watch(new EventWatcher<Event>(eventRepo, metaRepo, messagingTemplate) {
-							@Override
-							public void eventReceived(Action action, Event resource) {
+							protected void uptime() {
 								watcherTTL.put("Event", System.currentTimeMillis());
-								super.eventReceived(action, resource);
 							}
+							
 							protected void sendWebSocket() {
 								messageSender.sendToClient("events");
-//								System.err.println("Event - sendWebSocket --------------------");
 							}
 
 							@Override

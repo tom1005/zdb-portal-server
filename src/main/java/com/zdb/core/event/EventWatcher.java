@@ -59,12 +59,18 @@ public class EventWatcher<T> implements Watcher<T> {
 		
 	}
 	
+	protected void uptime() {
+		
+	}
+	
 	public boolean isClosed() {
 		return isClosed;
 	}
 	
 	@Override
 	public void eventReceived(Action action, Object resource) {
+		uptime();
+		
 		isClosed = false;
 		
 		String metaToJon = new Gson().toJson(resource);
