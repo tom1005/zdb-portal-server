@@ -1519,7 +1519,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 				JobExecutor storageScaleExecutor = new JobExecutor(latch);
 
-				final String _historyValue = String.format("서비스 Off -> On (%s)", stsName);
+				final String _historyValue = String.format("서비스 시작(%s)", stsName);
 
 				EventListener eventListener = new EventListener() {
 
@@ -1716,7 +1716,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				storageScaleExecutor.execTask(jobList.toArray(new Job[] {}));
 
 				log.info(serviceName + " 서비스 셧다운 요청.");
-				result = new Result(txId, IResult.RUNNING, stsName + " 서비스를 셧다운 합니다.");
+				result = new Result(txId, IResult.RUNNING, stsName + "<br>서비스를 셧다운 합니다.");
 			} else {
 				result = new Result(txId, IResult.ERROR, "서비스 셧다운 실행 오류.");
 			}
