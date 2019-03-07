@@ -29,9 +29,9 @@ public class ServiceOnOffJob extends JobAdapter {
 	public String getJobName() {
 		int toggle = param.getToggle();
 		if (toggle == 1) {
-			return "Service On";
+			return "서비스 시작";
 		} else {
-			return "Service Off";
+			return "서비스 종료";
 		}
 	}
 

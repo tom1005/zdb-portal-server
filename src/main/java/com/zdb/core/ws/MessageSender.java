@@ -35,7 +35,7 @@ public class MessageSender {
 	@EventListener
 	public void handleEvent(Object event) {}
 	
-	@Scheduled(initialDelayString = "30000", fixedRateString = "10000")
+	@Scheduled(initialDelayString = "30000", fixedRateString = "30000")
 	public void pushData() {
 		if((System.currentTimeMillis() - lastUpdate) < (9 * 1000) ) {
 			return;

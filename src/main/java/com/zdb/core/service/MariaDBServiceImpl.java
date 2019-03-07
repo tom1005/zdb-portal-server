@@ -1519,7 +1519,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 				JobExecutor storageScaleExecutor = new JobExecutor(latch);
 
-				final String _historyValue = String.format("서비스 Off -> On (%s)", stsName);
+				final String _historyValue = String.format("서비스 시작(%s)", stsName);
 
 				EventListener eventListener = new EventListener() {
 
@@ -1678,7 +1678,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 							try {
 								if (code == JobResult.ERROR) {
 									event.setStatus(IResult.ERROR);
-									event.setResultMessage(job.getJobName() + " 처리 중 오류가 발생했습니다. (" + e.getMessage() + ")");
+									event.setResultMessage(job.getJobName() + " 처리 중 오류가 발생했습니다. " + e != null ? "["+e.getMessage()+"]" : "" + ")");
 								} else {
 									
 									List<StatefulSet> statefulSets = K8SUtil.getStatefulSets(namespace, serviceName);
