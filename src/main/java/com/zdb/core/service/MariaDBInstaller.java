@@ -314,7 +314,8 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 										lacth.countDown();
 										log.info("-------------------------- service create success! -- ["+service.getNamespace() +" > "+ service.getServiceName() +"]");
 										
-										messageSender.sendToClient("mariadb installer");
+//										messageSender.sendToClient("mariadb installer");
+										messageSender.sendToClientRefresh(service.getServiceName());
 										break;
 									} else {
 										if(releaseMeta != null) {
@@ -407,14 +408,15 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 					event.setResultMessage("서비스 생성 완료 ["+service.getNamespace() +" > "+ service.getServiceName() +"]");
 					event.setEndTime(new Date(System.currentTimeMillis()));
 					
-					messageSender.sendToClient("mariadb installer");
+//					messageSender.sendToClient("mariadb installer");
 				} else {
 					event.setStatus(IResult.ERROR);
 					event.setResultMessage("Installation failed." );
 					event.setEndTime(new Date(System.currentTimeMillis()));
 					
-					messageSender.sendToClient("mariadb installer");
+//					messageSender.sendToClient("mariadb installer");
 				}
+				messageSender.sendToClientRefresh(service.getServiceName());
 			}
 			
 		} catch (FileNotFoundException | KubernetesClientException e) {
@@ -618,7 +620,8 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 					log.error(e.getMessage(), e);
 				}
 			}
-			messageSender.sendToClient("mariadb installer");
+//			messageSender.sendToClient("mariadb installer");
+			messageSender.sendToClientRefresh(serviceName);
 		}
 	}
 	

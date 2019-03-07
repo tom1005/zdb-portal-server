@@ -94,8 +94,15 @@ public class EventWatcher<T> implements Watcher<T> {
 				m.setMessage(event.getMessage());
 				m.setMetadata(metaToJon);
 				m.setReason(event.getReason());
+				
+				String _kind = event.getInvolvedObject().getKind();
+//				String _namespace = event.getInvolvedObject().getNamespace();
+				String _name = event.getInvolvedObject().getName();
+				
+				String _uid = String.format("%s-%s", _kind, _name);
 	
-				m.setUid(event.getInvolvedObject().getUid());
+				m.setUid(_uid);
+//				m.setUid(event.getInvolvedObject().getUid());
 				m.setName(event.getInvolvedObject().getName());
 				String ns = event.getInvolvedObject().getNamespace();
 				
@@ -120,18 +127,31 @@ public class EventWatcher<T> implements Watcher<T> {
 				} else {
 					return;
 				}
-				
+//				System.err.println(event.getReason() +" " +  event.getInvolvedObject().getKind() +" " +  event.getInvolvedObject().getName());
 				if(EVENT_KEYWORD.contains(event.getReason())) {
 					sendWebSocket();
 					try {
 						if (event.getInvolvedObject().getKind().equals("Pod")) {
 							Pod pod = K8SUtil.getPodWithName(ns, event.getInvolvedObject().getName());
-							if (pod != null)
-								MetaDataCollector.putMetaData(pod.getMetadata().getUid(), pod);
+							if (pod != null) {
+								String _pkind = pod.getKind();
+								String _pname = pod.getMetadata().getName();
+								
+								String uid = String.format("%s-%s", _pkind, _pname);
+								
+//								MetaDataCollector.putMetaData(pod.getMetadata().getUid(), pod);
+								MetaDataCollector.putMetaData(uid, pod);
+							}
 						} else if (event.getInvolvedObject().getKind().equals("PersistentVolumeClaim")) {
 							PersistentVolumeClaim pvc = K8SUtil.getPersistentVolumeClaim(ns, event.getInvolvedObject().getName());
-							if (pvc != null)
-								MetaDataCollector.putMetaData(pvc.getMetadata().getUid(), pvc);
+							if (pvc != null) {
+								String _pkind = pvc.getKind();
+								String _pname = pvc.getMetadata().getName();
+								
+								String uid = String.format("%s-%s", _pkind, _pname);
+//								MetaDataCollector.putMetaData(pvc.getMetadata().getUid(), pvc);
+								MetaDataCollector.putMetaData(uid, pvc);
+							}
 						}
 					} finally {
 					}
@@ -164,6 +184,12 @@ public class EventWatcher<T> implements Watcher<T> {
 		EVENT_KEYWORD.add("FailedScheduling");
 		EVENT_KEYWORD.add("SuccessfulMountVolume");
 		EVENT_KEYWORD.add("Unhealthy");
+		EVENT_KEYWORD.add("SuccessfulCreate");
+		EVENT_KEYWORD.add("Started");
+		EVENT_KEYWORD.add("Created");
+		EVENT_KEYWORD.add("Killing");
+//		EVENT_KEYWORD.add("Pulled");
+//		EVENT_KEYWORD.add("Scheduled");
 	}
 	
 	private String getStatus(HasMetadata resource) {
@@ -258,7 +284,7 @@ public class EventWatcher<T> implements Watcher<T> {
 		if(cause != null) {
 			log.error(cause.getMessage(), cause);
 		} else {
-			log.error("EventWatcher closed...........");
+			log.info("EventWatcher closed...........");
 		}
 	}
 

@@ -47,7 +47,7 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 		this.metaRepo = metaRepo;
 	}
 	
-	protected void sendWebSocket() {
+	protected void sendWebSocket(String serviceName) {
 
 	}
 	
@@ -101,12 +101,17 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 		} else {
 			String meta = m.getMetadata();
 			synchronized (MetaDataCollector.METADATA_CACHE) {
-				HasMetadata hasMetadata = MetaDataCollector.METADATA_CACHE.get(metaObj.getMetadata().getUid());
+				String kind = metaObj.getKind();
+//				String namespace = metaObj.getMetadata().getNamespace();
+				String name = metaObj.getMetadata().getName();
+				
+				String uid = String.format("%s-%s", kind, name);
+				
+				HasMetadata hasMetadata = MetaDataCollector.METADATA_CACHE.get(uid);
 				if (resource instanceof Pod) {
 					if(hasMetadata == null) {
 						// send websocket
 						pushData = true;
-						//System.out.println("Cached Pod metadata is null. " + metaObj.getMetadata().getName());
 					} else {
 						try {
 							Pod newPod = (Pod) resource;
@@ -153,7 +158,7 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 				}
 	
 				m.setApp(app);
-				m.setUid(metaObj.getMetadata().getUid());
+				m.setUid(uid);
 				m.setStatus(getStatus(metaObj));
 				m.setMetadata(metaToJon);
 				m.setUpdateTime(new Date(System.currentTimeMillis()));
@@ -161,45 +166,22 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 		
 				if (isZDBResource(metaObj)) {
 					metaRepo.save(m);
-					MetaDataCollector.putMetaData(metaObj.getMetadata().getUid(), metaObj);
-					
-					// send websocket		
-					if(pushData) {
-						sendWebSocket();
-					}
+//					MetaDataCollector.putMetaData(metaObj.getMetadata().getUid(), metaObj);
+					MetaDataCollector.putMetaData(uid, metaObj);
 				}
+			}
+		}
+		
+		if (isZDBResource(metaObj)) {
+			// send websocket		
+			if(releaseName != null) {
+				sendWebSocket(releaseName);
 			}
 		}
 
 	}
 	
-	private boolean isZDBResource(HasMetadata resource) {
-		if (resource instanceof Namespace) {
-			Map<String, String> labels = resource.getMetadata().getLabels();
-			if(labels != null) {
-				// zdb namespace label
-				String key = labels.get(CommonConstants.ZDB_LABEL);
-				if("true".equals(key)) {
-					return true;
-				}
-			}
-		} else {
-			try {
-				String name = resource.getMetadata().getNamespace();
-				Namespace namespace = K8SUtil.getNamespace(name);
-				Map<String, String> labels = namespace.getMetadata().getLabels();
-				if(labels != null) {
-					// zdb namespace label
-					String key = labels.get(CommonConstants.ZDB_LABEL);
-					if("true".equals(key)) {
-						return true;
-					}
-				}
-			} catch (Exception e) {
-				log.error(e.getMessage(), e);
-			}
-		}
-		
+	protected boolean isZDBResource(HasMetadata resource) {
 		return false;
 	}
 	
@@ -295,7 +277,7 @@ public class MetaDataWatcher<T> implements Watcher<T> {
 		if(cause != null) {
 			log.error(cause.getMessage(), cause);
 		} else {
-			log.error(this.getClass().getName() + " closed...........");
+			log.info(this.getClass().getName() + " closed...........");
 		}
 	}
 

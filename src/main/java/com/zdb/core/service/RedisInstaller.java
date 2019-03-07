@@ -461,7 +461,8 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 										}
 										lacth.countDown();
 										System.out.println("------------------------------------------------- service create success! ------------------------------------------------- ");
-										messageSender.sendToClient("redis installer");
+//										messageSender.sendToClient("redis installer");
+										messageSender.sendToClientRefresh(service.getServiceName());
 										break;
 									} else {
 										if(releaseMeta != null) {
@@ -512,14 +513,15 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 					}
 					
 
-					messageSender.sendToClient("redis installer");
+//					messageSender.sendToClient("redis installer");
 				} else {
 					event.setStatus(IResult.ERROR);
 					event.setResultMessage("Installation failed.");
 					event.setEndTime(new Date(System.currentTimeMillis()));
 					
-					messageSender.sendToClient("redis installer");
+//					messageSender.sendToClient("redis installer");
 				}
+				messageSender.sendToClientRefresh(service.getServiceName());
 			}
 			
 		} catch (FileNotFoundException | KubernetesClientException e) {
@@ -711,7 +713,8 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 				}
 			}
 			
-			messageSender.sendToClient("redis installer");
+//			messageSender.sendToClient("redis installer");
+			messageSender.sendToClientRefresh(serviceName);
 		}
 	
 	}

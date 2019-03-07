@@ -31,7 +31,8 @@ security:
 spring:
   profiles: local
   datasource:
-    url: jdbc:mariadb://169.56.174.21:3306/zdb
+#cbt    url: jdbc:mariadb://169.56.174.21:3306/zdb
+    url: jdbc:mariadb://169.56.87.74:3306/zdb
     username: zdb
     password: 24cmdshvek!
     driverClassName: org.mariadb.jdbc.Driver
@@ -49,7 +50,7 @@ logging:
   config: classpath:logback-local.xml
 
 k8s:
-  masterUrl: "https://169.56.69.242:20292"    
+  masterUrl: "https://c4.seo01.containers.cloud.ibm.com:26245"    
   daemonUrl: "http://localhost:8090" 
   
 chart:
@@ -59,7 +60,7 @@ chart:
     url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/redis-3.6.5.tgz"
   
 iam:
-    baseUrl: https://cbt-internal-iam.cloudzcp.io:443
+    baseUrl: https://pog-dev-internal-iam.cloudzcp.io:443
       
 storage:
   storageType: AWS_S3

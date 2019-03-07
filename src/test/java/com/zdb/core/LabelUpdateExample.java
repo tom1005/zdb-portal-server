@@ -2,6 +2,7 @@ package com.zdb.core;
 
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import javax.net.ssl.SSLContext;
@@ -27,12 +28,20 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
+import com.google.gson.Gson;
+import com.zdb.core.util.K8SUtil;
+
+import io.fabric8.kubernetes.api.model.Container;
+import io.fabric8.kubernetes.api.model.ExecAction;
+import io.fabric8.kubernetes.api.model.Handler;
+import io.fabric8.kubernetes.api.model.Lifecycle;
+
 public class LabelUpdateExample {
 
 	private static final Logger logger = LoggerFactory.getLogger(LabelUpdateExample.class);
 
 	public static void main(String[] args) throws Exception {
-		curl_status();
+		addlifecycle();
 	}
 	public static void main3(String[] args) {
 		try {			
@@ -103,6 +112,80 @@ public class LabelUpdateExample {
 			
 		} catch (Exception e) {
 			e.printStackTrace();
+		}
+	}
+	
+	public static void addlifecycle() throws Exception {
+		RestTemplate rest = K8SUtil.getRestTemplate();
+		String idToken = "";
+		String masterUrl = "";//K8SUtil.getMasterURL();
+
+		HttpHeaders headers = new HttpHeaders();
+		List<MediaType> mediaTypeList = new ArrayList<MediaType>();
+		mediaTypeList.add(MediaType.APPLICATION_JSON);
+		headers.setAccept(mediaTypeList);
+		headers.add("Authorization", "Bearer " + idToken);
+		headers.set("Content-Type", "application/json-patch+json");
+		
+		
+		
+			
+//		String data = "	\"lifecycle\": { "+
+//              "\"postStart\": {"+
+//              "  \"exec\": {"+
+//              "    \"command\": ["+
+//              "      \"/bin/sh\","+
+//              "      \"-c\","+
+//              "      \"/usr/bin/nohup /report_status.sh 1\u003e/tmp/report.log 2\u003e/dev/null \u0026\""+
+//              "    ]"+
+//              "  }"+
+//              "}"+
+//              "}";
+		 
+		String[] command = new String[] {
+				"/bin/sh",
+				"-c",
+				"/usr/bin/nohup /report_status.sh 1>/tmp/report.log 2>/dev/null &"
+		};
+		
+		
+		Lifecycle lifecycle = new Lifecycle();
+		
+		Handler postStart = new Handler();
+		ExecAction exec = new ExecAction();
+		exec.setCommand(Arrays.asList(command));
+		postStart.setExec(exec);
+		lifecycle.setPostStart(postStart);
+		
+		Container con = new Container();
+		con.setLifecycle(lifecycle);
+		
+		Gson gson = new Gson();
+		String lc = gson.toJson(lifecycle, Lifecycle.class);
+		
+		String l = "\"lifecycle\": {\"postStart\":{\"exec\":{\"command\":[\"/bin/sh\",\"-c\",\"/usr/bin/nohup /report_status.sh 1\u003e/tmp/report.log 2\u003e/dev/null \u0026\"]}}}";
+		
+		String data = "[{\"op\":\"add\",\"path\":\"/spec/template/spec/containers[0]\",\"value\":\""+l+"\"}]";
+		 
+//		String data = "[{\"op\":\"add\",\"path\":\"/metadata/labels/zdb-failover-enable\",\"value\":\""+false+"\"}]";
+		
+		HttpEntity<String> requestEntity = new HttpEntity<>(data, headers);
+
+		//PUT                           /apis/apps/v1/namespaces/{namespace}/statefulsets/{name}
+		String endpoint = masterUrl + "/apis/apps/v1/namespaces/{namespace}/statefulsets/{name}";
+		ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.PATCH, requestEntity, String.class, "zdb-test", "zdb-test-pns-mariadb-master");
+
+		
+//		StatefulSet statefulSet = new StatefulSet();
+//		Container container = statefulSet.getSpec().getTemplate().getSpec().getContainers().get(0);
+		
+		
+//		String enableStr = enable ? "On" : "Off";
+//		String message = "Auto Failover 설정 변경. ["+enableStr+"]";
+
+		if (response.getStatusCode() == HttpStatus.OK) {
+			System.out.println(response.getBody());
+		} else {
 		}
 	}
 	

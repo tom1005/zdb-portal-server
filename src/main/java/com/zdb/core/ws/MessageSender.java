@@ -74,6 +74,16 @@ public class MessageSender {
 			log.error(e.getMessage(), e);
 		} 
 	}
+
+	public synchronized void sendToClientRefresh(String serviceName) {
+		try {
+			if (getSessionCount() > 0) {
+				messageSender.convertAndSend("/service/" + serviceName + "/refresh", "");
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		} 
+	}
 	
 	Set<String> mySet = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
 	
