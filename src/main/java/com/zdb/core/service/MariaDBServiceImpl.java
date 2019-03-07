@@ -1678,7 +1678,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 							try {
 								if (code == JobResult.ERROR) {
 									event.setStatus(IResult.ERROR);
-									event.setResultMessage(job.getJobName() + " 처리 중 오류가 발생했습니다. (" + e.getMessage() + ")");
+									event.setResultMessage(job.getJobName() + " 처리 중 오류가 발생했습니다. " + e != null ? "["+e.getMessage()+"]" : "" + ")");
 								} else {
 									
 									List<StatefulSet> statefulSets = K8SUtil.getStatefulSets(namespace, serviceName);
