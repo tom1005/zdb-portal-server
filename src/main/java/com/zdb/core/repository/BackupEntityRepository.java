@@ -12,7 +12,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.zdb.core.domain.BackupEntity;
-import com.zdb.core.domain.EventMetaData;
 
 /**
  * Repository for ZDBEntity
@@ -28,8 +27,8 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 
 	@Query("select t from BackupEntity t where serviceType=:serviceType"
 			+ " and serviceName=:serviceName"
-			+ " and start_datetime is not null"
-			+ " order by start_datetime desc" )
+			+ " and startDatetime is not null"
+			+ " order by startDatetime desc" )
 	List<BackupEntity> findBackupByService(@Param("serviceType") String serviceType
 			, @Param("serviceName") String serviceName);
 	

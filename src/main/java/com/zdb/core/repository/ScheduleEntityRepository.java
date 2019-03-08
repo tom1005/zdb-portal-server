@@ -10,7 +10,6 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import com.zdb.core.domain.EventMetaData;
 import com.zdb.core.domain.ScheduleEntity;
 
 /**
