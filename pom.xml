@@ -229,6 +229,7 @@
 								<include>com/zdb/core/domain/*.*</include>
 								<include>com/zdb/core/repository/BackupEntityRepository.*</include>
 								<include>com/zdb/core/repository/ScheduleEntityRepository.*</include>
+								<include>com/zdb/core/repository/RestoreEntityRepository.*</include>
 								<include>com/zdb/core/repository/ZDBRepository.*</include>
 								<include>com/zdb/core/repository/ZDBReleaseRepository.*</include>
 								<include>com/zdb/core/repository/ZDBRepositoryUtil.*</include>
