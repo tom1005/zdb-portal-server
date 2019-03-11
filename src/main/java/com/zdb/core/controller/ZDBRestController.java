@@ -1749,7 +1749,7 @@ public class ZDBRestController {
 		try {
 			Result result = mariadbService.getTagsWithNamespace(namespace);
 			
-			return new ResponseEntity<String>(result.toJson(), result.status());
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.OK);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
