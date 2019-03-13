@@ -8,6 +8,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
@@ -758,14 +759,14 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 				} else {
 					redisConfig.append(entry.getKey() + " " + entry.getValue()).append("\n");
 				}
-			}
+			}		
 			
-			Resource<ConfigMap, DoneableConfigMap> configMapResource = client.configMaps().inNamespace(namespace).withName(serviceName + "-redis-config");
-
-		    ConfigMap configMap = configMapResource.createOrReplace(new ConfigMapBuilder().
-		          withNewMetadata().withName(serviceName + "-redis-config").endMetadata().
-		          addToData("redis-config", redisConfig.toString()).
-		          build());			
+			List<ConfigMap> configMaps = client.configMaps().inNamespace(namespace).withLabel("release", serviceName).list().getItems();
+			
+			for (ConfigMap configMap : configMaps) {
+				String configMapName = configMap.getMetadata().getName();
+				client.configMaps().inNamespace(namespace).withName(configMapName).edit().addToData("redis-config", redisConfig.toString()).done();
+			}
 			
 			// Set Redis master config.
 			redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "master");
