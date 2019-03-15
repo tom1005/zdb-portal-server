@@ -1,19 +1,31 @@
 package com.zdb.core.job;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.PodManager;
 
+import io.fabric8.kubernetes.api.model.Affinity;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.DoneablePod;
+import io.fabric8.kubernetes.api.model.LocalObjectReference;
+import io.fabric8.kubernetes.api.model.NodeAffinity;
+import io.fabric8.kubernetes.api.model.NodeSelector;
+import io.fabric8.kubernetes.api.model.NodeSelectorRequirement;
+import io.fabric8.kubernetes.api.model.NodeSelectorTerm;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaimVolumeSource;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodList;
 import io.fabric8.kubernetes.api.model.PodSpec;
+import io.fabric8.kubernetes.api.model.Quantity;
+import io.fabric8.kubernetes.api.model.ResourceRequirements;
+import io.fabric8.kubernetes.api.model.Toleration;
 import io.fabric8.kubernetes.api.model.Volume;
 import io.fabric8.kubernetes.api.model.VolumeMount;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
@@ -65,10 +77,39 @@ public class DataCopyJob extends JobAdapter {
 			podSpec.setRestartPolicy("Never");
 			
 			Container container = new Container();
-			container.setImage("busybox");
+			container.setImage("registry.au-syd.bluemix.net/cloudzdb/busybox");
 			container.setCommand(Arrays.asList(new String[] { "sh", "-c", "rm -rf /data2/* && cp -R /data1/* /data2 && chown -R 1001:1001 /data2 && sleep 1" }));
 			container.setImagePullPolicy("IfNotPresent");
 			container.setName("busybox");
+			
+//			Resource resource = new Resource
+			
+			Map<String, Quantity> quantityMap = new HashMap<>();
+			Quantity cpu = new Quantity("100m");
+			Quantity mem = new Quantity("256Mi");
+			quantityMap.put("cpu", cpu);
+			quantityMap.put("memory", mem);
+			
+			ResourceRequirements resReq = new ResourceRequirements();
+			resReq.setLimits(quantityMap);
+			resReq.setRequests(quantityMap);
+			container.setResources(resReq);
+			
+//			affinity:
+//			    nodeAffinity:
+//			      requiredDuringSchedulingIgnoredDuringExecution:
+//			        nodeSelectorTerms:
+//			        - matchExpressions:
+//			          - key: role
+//			            operator: In
+//			            values:
+//			            - zdb      
+//			  restartPolicy: Always            
+//			  dnsPolicy: ClusterFirst
+//			  imagePullSecrets:
+//			  - name: zdb-system-secret
+           
+			
 			
 			//VolumeMount
 			VolumeMount data1Volume = new VolumeMount();
@@ -94,6 +135,76 @@ public class DataCopyJob extends JobAdapter {
 			data2.setPersistentVolumeClaim(new PersistentVolumeClaimVolumeSource(targetPvc, false));
 			
 			podSpec.setVolumes(Arrays.asList(new Volume[] { data1, data2 }));
+			
+			NodeSelectorRequirement matchExpression = new NodeSelectorRequirement();
+			matchExpression.setKey("role");
+			matchExpression.setOperator("In");
+			matchExpression.setValues(Arrays.asList(new String[] {"zdb"}));
+			
+			java.util.List<NodeSelectorRequirement> matchExpressions = new ArrayList<>();
+			matchExpressions.add(matchExpression);
+
+			NodeSelectorTerm nodeSelectorTerm = new NodeSelectorTerm();
+			nodeSelectorTerm.setMatchExpressions(matchExpressions);
+			java.util.List<NodeSelectorTerm> nodeSelectorTerms = new ArrayList<>();
+			nodeSelectorTerms.add(nodeSelectorTerm);
+
+			NodeSelector nodeSelector = new NodeSelector();
+			nodeSelector.setNodeSelectorTerms(nodeSelectorTerms);
+
+			NodeAffinity nodeAffinity = new NodeAffinity();
+			nodeAffinity.setRequiredDuringSchedulingIgnoredDuringExecution(nodeSelector);
+
+			Affinity affinity = new Affinity();
+			affinity.setNodeAffinity(nodeAffinity);
+			podSpec.setAffinity(affinity);
+			
+			LocalObjectReference objRef = new LocalObjectReference();
+			objRef.setName("zdb-system-secret");
+			
+			podSpec.setImagePullSecrets(Arrays.asList(objRef));
+			
+			//
+//			  tolerations:
+//			  - effect: NoSchedule
+//			    key: zdb
+//			    operator: Equal
+//			    value: "true"
+//			  - effect: NoExecute
+//			    key: node.kubernetes.io/not-ready
+//			    operator: Exists
+//			    tolerationSeconds: 300
+//			  - effect: NoExecute
+//			    key: node.kubernetes.io/unreachable
+//			    operator: Exists
+//			    tolerationSeconds: 300 
+			
+			List<Toleration> tolerations = new ArrayList<>();
+			{
+				Toleration toleration = new Toleration();
+				toleration.setEffect("NoSchedule");
+				toleration.setKey("zdb");
+				toleration.setValue("true");
+				toleration.setOperator("Equal");
+				tolerations.add(toleration);
+			}
+			{
+				Toleration toleration = new Toleration();
+				toleration.setEffect("NoExecute");
+				toleration.setKey("node.kubernetes.io/not-ready");
+				toleration.setOperator("Exists");
+				toleration.setTolerationSeconds(300L);
+				tolerations.add(toleration);
+			}
+			{
+				Toleration toleration = new Toleration();
+				toleration.setEffect("NoExecute");
+				toleration.setKey("node.kubernetes.io/unreachable");
+				toleration.setOperator("Exists");
+				toleration.setTolerationSeconds(300L);
+				tolerations.add(toleration);
+			}
+			podSpec.setTolerations(tolerations);
 			
 			pod.setSpec(podSpec);
 			

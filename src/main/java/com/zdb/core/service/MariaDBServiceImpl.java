@@ -1437,10 +1437,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 				storageScaleExecutor.execTask(jobList.toArray(new Job[] {}));
 
-				log.info(serviceName + " 스토리지 스케일업/다운 요청.");
+				log.info(serviceName + " 스토리지 스케일업 요청.");
 				result = new Result(txId, IResult.RUNNING, historyValue);
 			} else {
-				result = new Result(txId, IResult.ERROR, "스토리지 스케일업/다운 실행 오류.");
+				result = new Result(txId, IResult.ERROR, "스토리지 스케일업 오류.");
 			}
 		} catch (KubernetesClientException e) {
 			log.error(e.getMessage(), e);

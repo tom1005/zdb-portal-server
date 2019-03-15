@@ -287,7 +287,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			String masterCpu = masterSpec.getCpu();
 			String masterMemory = masterSpec.getMemory();
 			
-			Result availableResource = isAvailableResource(service.getNamespace(), userInfo.getUserId(), masterCpu, masterMemory, clusterEnabled);
+			Result availableResource = isAvailableResource(service.getNamespace(), service.getRequestUserId(), masterCpu, masterMemory, clusterEnabled);
 			if(!availableResource.isOK()) {
 				return new Result(txId, IResult.ERROR, availableResource.getMessage());
 			}

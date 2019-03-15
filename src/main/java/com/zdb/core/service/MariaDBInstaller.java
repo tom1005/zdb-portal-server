@@ -154,9 +154,6 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				String masterStorageClass = persistenceSpec[0].getStorageClass() == null ? storageClass : persistenceSpec[0].getStorageClass();
 				String masterSize = persistenceSpec[0].getSize() == null ? DEFAULT_STORAGE_SIZE : persistenceSpec[0].getSize();
 				
-				String s = persistenceSpec[1].getPodType();
-				String slaveStorageClass = persistenceSpec[1].getStorageClass() == null ? storageClass : persistenceSpec[1].getStorageClass();
-				String slaveSize = persistenceSpec[1].getSize() == null ? DEFAULT_STORAGE_SIZE : persistenceSpec[1].getSize();
 				
 				PodSpec[] podSpec = service.getPodSpec();
 				
@@ -165,14 +162,9 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				String masterCpu = masterSpec.getCpu();
 				String masterMemory = masterSpec.getMemory();
 				
-				String slave = podSpec[1].getPodType();
-				ResourceSpec slaveSpec = podSpec[1].getResourceSpec()[0];
-				String slaveCpu = slaveSpec.getCpu();
-				String slaveMemory = slaveSpec.getMemory();
 				int clusterSlaveCount = service.getClusterSlaveCount() == 0 ? 1 : service.getClusterSlaveCount();
 				
 				String masterNodeAffinityValues = masterSpec.getWorkerPool();
-				String slaveNodeAffinityValues = slaveSpec.getWorkerPool();
 				
 				inputJson = inputJson.replace("${image.tag}", mariadbVersion); // db version
 				inputJson = inputJson.replace("${rootUser.password}", rootPassword); // configmap
@@ -186,13 +178,27 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				inputJson = inputJson.replace("${master.resources.requests.memory}", masterMemory);// input *******   필수값 
 				inputJson = inputJson.replace("${master.resources.limits.cpu}", masterCpu);// input , *******   필수값  
 				inputJson = inputJson.replace("${master.resources.limits.memory}", masterMemory);// input *******   필수값 
-				inputJson = inputJson.replace("${slave.persistence.storageClass}", slaveStorageClass);// configmap
-				inputJson = inputJson.replace("${slave.persistence.size}", slaveSize); // input *******   필수값 
-				inputJson = inputJson.replace("${slave.resources.requests.cpu}", slaveCpu);// input*******   필수값 
-				inputJson = inputJson.replace("${slave.resources.requests.memory}", slaveMemory);// input *******   필수값 
-				inputJson = inputJson.replace("${slave.resources.limits.cpu}", slaveCpu);// input*******   필수값 
-				inputJson = inputJson.replace("${slave.resources.limits.memory}", slaveMemory);// input *******   필수값 
-				inputJson = inputJson.replace("${slave.replicas}", clusterSlaveCount+"");// input *******   필수값 
+
+				if(persistenceSpec != null && persistenceSpec.length > 1) {
+					String slaveStorageClass = persistenceSpec[1].getStorageClass() == null ? storageClass : persistenceSpec[1].getStorageClass();
+					String slaveSize = persistenceSpec[1].getSize() == null ? DEFAULT_STORAGE_SIZE : persistenceSpec[1].getSize();
+
+					String slave = podSpec[1].getPodType();
+					ResourceSpec slaveSpec = podSpec[1].getResourceSpec()[0];
+					String slaveCpu = slaveSpec.getCpu();
+					String slaveMemory = slaveSpec.getMemory();
+					String slaveNodeAffinityValues = slaveSpec.getWorkerPool();
+
+					inputJson = inputJson.replace("${slave.persistence.storageClass}", slaveStorageClass);// configmap
+					inputJson = inputJson.replace("${slave.persistence.size}", slaveSize); // input *******   필수값 
+					inputJson = inputJson.replace("${slave.resources.requests.cpu}", slaveCpu);// input*******   필수값 
+					inputJson = inputJson.replace("${slave.resources.requests.memory}", slaveMemory);// input *******   필수값 
+					inputJson = inputJson.replace("${slave.resources.limits.cpu}", slaveCpu);// input*******   필수값 
+					inputJson = inputJson.replace("${slave.resources.limits.memory}", slaveMemory);// input *******   필수값 
+					inputJson = inputJson.replace("${slave.replicas}", clusterSlaveCount+"");// input *******   필수값 
+					inputJson = inputJson.replace("${slave.affinity.nodeAffinity.values}", slaveNodeAffinityValues);
+				}
+				
 				inputJson = inputJson.replace("${service.master.publicip.enabled}", isPublicEnabled+"");// input *******   필수값 
 				if(isClusterEnabled) {
 					inputJson = inputJson.replace("${service.slave.publicip.enabled}", isPublicEnabled+"");// input *******   필수값 
@@ -203,7 +209,6 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				inputJson = inputJson.replace("${buffer.pool.size}", K8SUtil.getBufferSize(masterMemory));// 자동계산 *******   필수값 
 				inputJson = inputJson.replace("${master.antiAffinity}", "hard"); // 향후 input으로 받을 예정
 				inputJson = inputJson.replace("${master.affinity.nodeAffinity.values}", masterNodeAffinityValues);
-				inputJson = inputJson.replace("${slave.affinity.nodeAffinity.values}", slaveNodeAffinityValues);
 				
 				String characterSet = service.getCharacterSet();
 				inputJson = inputJson.replace("${character.set.server}", characterSet == null || characterSet.isEmpty() ? "utf8" : characterSet);
