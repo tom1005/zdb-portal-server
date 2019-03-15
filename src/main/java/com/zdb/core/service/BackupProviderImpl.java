@@ -336,38 +336,87 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 				schedulelist = scheduleRepository.findScheduleByNamespace(namespace);
 			}
 			List<ScheduleInfoEntity> scheduleInfolist = new ArrayList<ScheduleInfoEntity>();
-			
-			schedulelist.forEach(i -> {
+			schedulelist.forEach(schedule -> {
 				ScheduleInfoEntity scheduleInfo = new ScheduleInfoEntity();
-				scheduleInfo.setNamespace(i.getNamespace());
-				scheduleInfo.setServiceName(i.getServiceName());
-				scheduleInfo.setServiceType(i.getServiceType());
+				scheduleInfo.setNamespace(schedule.getNamespace());
+				scheduleInfo.setServiceName(schedule.getServiceName());
+				scheduleInfo.setServiceType(schedule.getServiceType());
+				scheduleInfo.setStartTime(schedule.getStartTime());
+				scheduleInfo.setStorePeriod(schedule.getStorePeriod());
 				
-				if(i.getRegisterDate() != null) {
-					scheduleInfo.setRegisterDate(getGmt9Date(i.getRegisterDate()));
-				}
-				scheduleInfo.setStartTime(i.getStartTime());
-				scheduleInfo.setStorePeriod(i.getStorePeriod());
+				long fullFileSize = 0l;
+				long fullArchiveFileSize= 0l;
+				long fullExecutionMilSec = 0l;
+				String fullExecutionTime = "";
 				
-				List<BackupEntity> backuplist = backupRepository.findBackupListByScheduleId(i.getScheduleId());
-				backuplist.forEach(backup -> {
-					if(getGmt9Date(scheduleInfo.getStartDatetime()) == null) {
-						scheduleInfo.setStartDatetime(getGmt9Date(backup.getStartDatetime()));
-						scheduleInfo.setCompleteDatetime(getGmt9Date(backup.getCompleteDatetime()));
-						scheduleInfo.setExecutionMilsec(backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime());
-						scheduleInfo.setFileSize(backup.getFileSize());
-					}else if(getGmt9Date(scheduleInfo.getStartDatetime()).before(getGmt9Date(backup.getStartDatetime()))) {
-						scheduleInfo.setStartDatetime(getGmt9Date(backup.getStartDatetime()));
-						scheduleInfo.setCompleteDatetime(getGmt9Date(backup.getCompleteDatetime()));
-						scheduleInfo.setExecutionMilsec(backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime());
-						scheduleInfo.setExecutionTime(getExecutionTimeConvertion(backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime()));
-						scheduleInfo.setFileSize(backup.getFileSize());
+				long incrFileSize = 0l;
+				long incrArchiveFileSize =0l;
+				long incrExecutionMilSec = 0l;
+				String incrExecutionTime = "";
+				
+				long dumpFileSize = 0l;
+				long dumpArchiveFileSize= 0l;
+				long dumpExecutionMilSec = 0l;
+				String dumpExecutionTime = "";
+				
+				List<BackupEntity> backuplist = backupRepository.findBackupListByScheduleId(schedule.getScheduleId());
+				int fullBackupCnt = 0;
+				int incrtBackupCnt = 0;
+				int dumpBackupCnt = 0;
+				for(int i=0; i<backuplist.size(); i++) {
+					BackupEntity backup = backuplist.get(i);
+					if(backup.getStatus() == "OK") {
+						if(backup.getType().equals("FULL")) {
+							fullFileSize += backup.getFileSize();
+							fullArchiveFileSize += backup.getArchiveFileSize();
+							fullExecutionMilSec += backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime();
+							fullBackupCnt++;
+						}else if(backup.getType().equals("INCR")) {
+							incrFileSize += backup.getFileSize();
+							incrArchiveFileSize += backup.getArchiveFileSize();
+							incrExecutionMilSec += backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime();
+									
+							incrtBackupCnt++;
+						}else if(backup.getType().equals("DUMP")) {
+							dumpFileSize += backup.getFileSize();
+							dumpArchiveFileSize += backup.getArchiveFileSize();
+							dumpExecutionMilSec += backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime();
+							
+							dumpBackupCnt++;
+						}
 					}
-					scheduleInfo.setFileSumSize(scheduleInfo.getFileSize() + backup.getArchiveFileSize());
-				});
-				scheduleInfo.setExecutionTime(getExecutionTimeConvertion(scheduleInfo.getExecutionMilsec()));
+				}
+				if(fullBackupCnt != 0) {
+					fullFileSize = fullFileSize/fullBackupCnt;
+					fullArchiveFileSize = fullArchiveFileSize/fullBackupCnt;
+					fullExecutionTime = getExecutionTimeConvertion(fullExecutionMilSec/fullBackupCnt);
+				}
+				scheduleInfo.setFullFileSize(fullFileSize);
+				scheduleInfo.setFullArchiveFileSize(fullArchiveFileSize);
+				scheduleInfo.setFullExecutionTime(fullExecutionTime);
+				
+				if(incrtBackupCnt != 0) {
+					incrFileSize = incrFileSize/fullBackupCnt;
+					incrArchiveFileSize = incrArchiveFileSize/fullBackupCnt;
+					incrExecutionTime = getExecutionTimeConvertion(incrExecutionMilSec/incrtBackupCnt);
+				}
+				scheduleInfo.setIncrFileSize(incrFileSize);
+				scheduleInfo.setIncrArchiveFileSize(incrArchiveFileSize);
+				scheduleInfo.setIncrExecutionTime(incrExecutionTime);
+				
+				if(dumpBackupCnt != 0) {
+					dumpFileSize = dumpFileSize/dumpBackupCnt;
+					dumpArchiveFileSize = dumpArchiveFileSize/dumpBackupCnt;
+					incrExecutionTime = getExecutionTimeConvertion(dumpExecutionMilSec/dumpBackupCnt);
+				}
+				scheduleInfo.setDumpFileSize(dumpFileSize);
+				scheduleInfo.setDumpArchiveFileSize(dumpArchiveFileSize);
+				scheduleInfo.setDumpExecutionTime(dumpExecutionTime);
+				
 				scheduleInfolist.add(scheduleInfo);
+				
 			});
+			
 			result = new Result(txId, IResult.OK).putValue(IResult.SCHEDULE_INFO_LIST, scheduleInfolist);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
