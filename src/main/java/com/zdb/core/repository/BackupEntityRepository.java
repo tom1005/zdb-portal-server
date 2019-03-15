@@ -166,7 +166,7 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 	List<BackupEntity> findBackupListByScheduleId(@Param("scheduleId") String scheduleId);
 
 	@Query(value = "select * from zdb.backup_entity where namespace = :namespace and service_type = :serviceType and service_name = :serviceName and type = 'FULL' and status = 'OK' order by complete_datetime desc limit 1", nativeQuery = true)
-	List<BackupEntity> findFromBackup(@Param("namespace") String namespace
+	BackupEntity findFromBackup(@Param("namespace") String namespace
 			, @Param("serviceType") String serviceType
 			, @Param("serviceName") String serviceName);
 }

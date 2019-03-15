@@ -33,5 +33,7 @@ public class ScheduleEntity {
 	private Date deleteDate;
 	private String incrementYn = "N";
 	private int incrementPeriod = 12;
+	private long currentLsn = 0l;
+	private String currentBackupId;
 	
 }
