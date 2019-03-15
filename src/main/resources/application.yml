@@ -26,7 +26,10 @@ management:
 security:
   basic:
     enabled: false
-          
+
+endpoints:
+  env:
+    enabled: false          
 ---
 spring:
   profiles: local
