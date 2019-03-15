@@ -832,10 +832,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			}
 
 			InputStream is = new ClassPathResource("mariadb/mycnf.template").getInputStream();
-			String inputJson = IOUtils.toString(is, StandardCharsets.UTF_8.name());
+			String inputValue = IOUtils.toString(is, StandardCharsets.UTF_8.name());
 
 			for (Mycnf mycnf : findAll) {
-				inputJson = inputJson.replace("${" + mycnf.getName() + "}", config.get(mycnf.getName()) == null ? mycnf.getValue() : config.get(mycnf.getName()));
+				inputValue = inputValue.replace("${" + mycnf.getName() + "}", config.get(mycnf.getName()) == null ? mycnf.getValue() : config.get(mycnf.getName()));
 			}
 
 			// 2018-10-04 추가
@@ -851,7 +851,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				String beforeValue = configMap.getData().get("my.cnf");
 
 				beforeDataMap.put(configMapName, beforeValue);
-				client.configMaps().inNamespace(namespace).withName(configMapName).edit().addToData("my.cnf", inputJson).done();
+				client.configMaps().inNamespace(namespace).withName(configMapName).edit().addToData("my.cnf", inputValue).done();
 			}
 
 			// 2018-12-04 환경설정 저장시 즉시 반영이 아닌 설정값 저장만 수행하고 재시작은 사용자가 수행.

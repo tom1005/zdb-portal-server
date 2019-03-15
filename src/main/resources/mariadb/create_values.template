@@ -118,6 +118,9 @@ master:
     innodb_buffer_pool_instances=4
     innodb_lru_scan_depth=512
     innodb_sort_buffer_size=4M
+    innodb_undo_directory=/bitnami/mariadb/data
+	innodb_undo_logs=128
+	innodb_undo_tablespaces=0
     
     # MyISAM Config
     bulk_insert_buffer_size=16M
@@ -259,6 +262,9 @@ slave:
     innodb_buffer_pool_instances=4
     innodb_lru_scan_depth=512
     innodb_sort_buffer_size=4M
+    innodb_undo_directory=/bitnami/mariadb/data
+	innodb_undo_logs=128
+	innodb_undo_tablespaces=0
     
     # MyISAM Config
     bulk_insert_buffer_size=16M
