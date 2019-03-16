@@ -2069,6 +2069,43 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				return new Result(txId, IResult.ERROR, msg);
 			}
 
+			if(enable) {
+				// etcd & zdb-ha-manager 가 ready 상태인지 체크
+				
+				{
+					boolean etcdStatus = false;
+					List<Pod> items = client.inNamespace("zdb-system").pods().withLabel("app","etcd").list().getItems();
+					
+					for (Pod pod : items) {
+						if(PodManager.isReady(pod)) {
+							etcdStatus = true;
+							break;
+						}
+					}
+					if(!etcdStatus) {
+						result = new Result(txId, Result.ERROR , "Auto-Failover 를 사용 할 수 없습니다.<br>원인: etcd 사용 불가");
+						return result;
+					}
+				}
+				
+				{
+					boolean haManagerStatus = false;
+					List<Pod> items = client.inNamespace("zdb-system").pods().withLabel("app","zdb-ha-manager").list().getItems();
+					
+					for (Pod pod : items) {
+						if(PodManager.isReady(pod)) {
+							haManagerStatus = true;
+							break;
+						}
+					}
+					if(!haManagerStatus) {
+						result = new Result(txId, Result.ERROR , "Auto-Failover 를 사용 할 수 없습니다.<br>원인: zdb-ha-manager 사용 불가");
+						return result;
+					}
+				}
+				
+			}
+			
 			MixedOperation<StatefulSet, StatefulSetList, DoneableStatefulSet, RollableScalableResource<StatefulSet, DoneableStatefulSet>> statefulSets = 
 					client.inNamespace(namespace).apps().statefulSets();
 
