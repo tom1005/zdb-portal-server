@@ -16,12 +16,15 @@ import com.zdb.core.domain.DBUser;
 import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBType;
 import com.zdb.core.repository.ZDBMariaDBAccountRepository;
+import com.zdb.core.util.ExecUtil;
 import com.zdb.core.util.K8SUtil;
 
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.EnvVar;
+import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
+import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import lombok.Getter;
 
 /**
@@ -236,23 +239,75 @@ public class MariaDBAccount {
 				break;
 			}
 			
+			String container = "mariadb";
+
 			while(true) {
-				try {
-					connection = MariaDBConnection.getRootMariaDBConnection(namespace, releaseName);
-					break;
+				try(DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
+//					connection = MariaDBConnection.getRootMariaDBConnection(namespace, releaseName);
+					
+					List<Pod> items = K8SUtil.kubernetesClient().inNamespace(namespace).pods()
+							.withLabel("release", releaseName)
+							.withLabel("component", "master")
+							.list().getItems();
+					
+					String podName = "";
+					for (Pod pod : items) {
+						podName = pod.getMetadata().getName();
+					}
+					
+					String cmd = "mysql -uroot -p$MARIADB_ROOT_PASSWORD -e \"show databases;\"";
+					
+					String result = new ExecUtil().exec(client, namespace, podName, container, cmd);
+					
+					if(result != null && result.indexOf("mysql") > -1) {
+						break;
+					}
 				}catch(Exception e) {
 					Thread.sleep(5000);
 				}
 			}
 			
-			Statement statement = connection.getStatement();
+//			Statement statement = connection.getStatement();
+//			
+//			statement.executeUpdate("REVOKE ALL PRIVILEGES ON *.* FROM '" + userId + "'@'%';");
+//			statement.executeUpdate("FLUSH PRIVILEGES");
+//			statement.executeUpdate("GRANT ALL PRIVILEGES ON *.* TO '" + userId + "'@'%' IDENTIFIED BY '"+password+"' WITH GRANT OPTION");
+//			statement.executeUpdate("GRANT CREATE USER ON *.* TO '" + userId + "'@'%'");
+//			statement.executeUpdate("UPDATE mysql.user SET super_priv='N' WHERE user <> 'root' and user <> 'replicator'");
+//			statement.executeUpdate("FLUSH PRIVILEGES");
 			
-			statement.executeUpdate("REVOKE ALL PRIVILEGES ON *.* FROM '" + userId + "'@'%';");
-			statement.executeUpdate("FLUSH PRIVILEGES");
-			statement.executeUpdate("GRANT ALL PRIVILEGES ON *.* TO '" + userId + "'@'%' IDENTIFIED BY '"+password+"' WITH GRANT OPTION");
-			statement.executeUpdate("GRANT CREATE USER ON *.* TO '" + userId + "'@'%'");
-			statement.executeUpdate("UPDATE mysql.user SET super_priv='N' WHERE user <> 'root' and user <> 'replicator'");
-			statement.executeUpdate("FLUSH PRIVILEGES");
+			List<Pod> items = K8SUtil.kubernetesClient().inNamespace(namespace).pods()
+					.withLabel("release", releaseName)
+					.withLabel("component", "master")
+					.list().getItems();
+			
+			String podName = "";
+			for (Pod pod : items) {
+				podName = pod.getMetadata().getName();
+			}
+			
+			
+			StringBuffer sb = new StringBuffer();
+			sb.append("mysql -uroot -p$MARIADB_ROOT_PASSWORD -e \"");
+			sb.append("REVOKE ALL PRIVILEGES ON *.* FROM '" + userId + "'@'%';");
+			sb.append("FLUSH PRIVILEGES;");
+			sb.append("GRANT ALL PRIVILEGES ON *.* TO '" + userId + "'@'%' IDENTIFIED BY '"+password+"' WITH GRANT OPTION;");
+			sb.append("GRANT CREATE USER ON *.* TO '" + userId + "'@'%';");
+			sb.append("UPDATE mysql.user SET super_priv='N' WHERE user <> 'root' and user <> 'replicator';");
+			sb.append("FLUSH PRIVILEGES;\"");
+			
+			System.out.println(sb.toString());
+			
+			try(DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
+				String result = new ExecUtil().exec(client, namespace, podName, container, sb.toString());
+				System.out.println("====================================================================================================");
+				System.out.println(">"+result+"<");
+				System.out.println("====================================================================================================");
+				
+			} catch(Exception e) {
+				logger.error(releaseName + ">" + releaseName +" " +userId +" 관리자 권한 설정 오류.", e);
+				throw e;
+			}
 		} catch (Exception e) {
 			logger.error("Exception.", e);
 			throw e;

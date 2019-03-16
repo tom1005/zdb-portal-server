@@ -43,6 +43,7 @@ import com.zdb.core.domain.ZDBType;
 import com.zdb.core.repository.ZDBConfigRepository;
 import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
+import com.zdb.core.util.ExecUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.mariadb.MariaDBAccount;
 import com.zdb.mariadb.MariaDBConfiguration;
@@ -306,12 +307,36 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 									if(isAllReady) {
 										if(releaseMeta != null) {
 											while(true) {
-												try {
-													connection = MariaDBConnection.getRootMariaDBConnection(service.getNamespace(), service.getServiceName());
-													break;
+												try(DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
+//													connection = MariaDBConnection.getRootMariaDBConnection(namespace, releaseName);
+													
+													List<Pod> items = K8SUtil.kubernetesClient().inNamespace(service.getNamespace()).pods()
+															.withLabel("release", service.getServiceName())
+															.withLabel("component", "master")
+															.list().getItems();
+													
+													String podName = "";
+													for (Pod pod : items) {
+														podName = pod.getMetadata().getName();
+													}
+													
+													String cmd = "mysql -uroot -p$MARIADB_ROOT_PASSWORD -e \"show databases;\"";
+													
+													String result = new ExecUtil().exec(client, service.getNamespace(), podName, "mariadb", cmd);
+													
+													if(result != null && result.indexOf("mysql") > -1) {
+														break;
+													}
 												}catch(Exception e) {
 													Thread.sleep(5000);
 												}
+												
+//												try {
+//													connection = MariaDBConnection.getRootMariaDBConnection(service.getNamespace(), service.getServiceName());
+//													break;
+//												}catch(Exception e) {
+//													Thread.sleep(5000);
+//												}
 											}
 											releaseMeta.setStatus("DEPLOYED");
 											releaseRepository.save(releaseMeta);
