@@ -1175,6 +1175,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 
 		if (m.startsWith("pod has unbound PersistentVolumeClaims")) {
 			return "서비스 준비중...";
+		} else if (m.startsWith("pod has unbound")) {
+			return "서비스 준비중...";
 		} else if (m.startsWith("Readiness probe failed:")) {
 			return "서비스 상태 점검중...";
 		} else if (m.startsWith("Liveness probe failed:")) {

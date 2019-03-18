@@ -91,12 +91,16 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 		
 		ZDBRepository metaRepository = exchange.getProperty(Exchange.META_REPOSITORY, ZDBRepository.class);
 
-		ReleaseManager releaseManager = null;
+//		ReleaseManager releaseManager = null;
 		
 		RequestEvent event = getRequestEvent(exchange);
 		event.setOperation(RequestEvent.CREATE);
 		
-		try{ 
+		try (
+				DefaultKubernetesClient client = K8SUtil.kubernetesClient();
+				Tiller tiller = new Tiller(client);
+				ReleaseManager releaseManager = new ReleaseManager(tiller);
+				){ 
 //			chartUrl = "file:///Users/a06919/git/charts/stable/mariadb/mariadb-4.2.0.tgz";
 //			chartUrl = "file:///Users/a06919/mariadb-4.2.2.tgz";
 			/////////////////////////
@@ -107,10 +111,6 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 			try (final URLChartLoader chartLoader = new URLChartLoader()) {
 				chart = chartLoader.load(url);
 			}
-			
-			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
-			final Tiller tiller = new Tiller(client);
-			releaseManager = new ReleaseManager(tiller);
 
 			final InstallReleaseRequest.Builder requestBuilder = InstallReleaseRequest.newBuilder();
 			if (requestBuilder != null) {
@@ -344,7 +344,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 										lacth.countDown();
 										log.info("-------------------------- service create success! -- ["+service.getNamespace() +" > "+ service.getServiceName() +"]");
 										
-//										messageSender.sendToClient("mariadb installer");
+										messageSender.sendToClient("mariadb installer");
 										messageSender.sendToClientRefresh(service.getServiceName());
 										break;
 									} else {
@@ -438,13 +438,13 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 					event.setResultMessage("서비스 생성 완료 ["+service.getNamespace() +" > "+ service.getServiceName() +"]");
 					event.setEndTime(new Date(System.currentTimeMillis()));
 					
-//					messageSender.sendToClient("mariadb installer");
+					messageSender.sendToClient("mariadb installer");
 				} else {
 					event.setStatus(IResult.ERROR);
 					event.setResultMessage("Installation failed." );
 					event.setEndTime(new Date(System.currentTimeMillis()));
 					
-//					messageSender.sendToClient("mariadb installer");
+					messageSender.sendToClient("mariadb installer");
 				}
 				messageSender.sendToClientRefresh(service.getServiceName());
 			}
@@ -512,12 +512,11 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 		event.setStartTime(new Date(System.currentTimeMillis()));
 		event.setOperation(RequestEvent.DELETE);
 
-		ReleaseManager releaseManager = null;
-		try {
-			DefaultKubernetesClient client = (DefaultKubernetesClient) K8SUtil.kubernetesClient().inNamespace(namespace);
-
-			final Tiller tiller = new Tiller(client);
-			releaseManager = new ReleaseManager(tiller);
+//		ReleaseManager releaseManager = null;
+		try (DefaultKubernetesClient client = K8SUtil.kubernetesClient();
+				Tiller tiller = new Tiller(client);
+				ReleaseManager releaseManager = new ReleaseManager(tiller);) {
+				client.inNamespace(namespace);
 			
 			ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(serviceName);
 			
@@ -550,7 +549,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 			final Future<UninstallReleaseResponse> releaseFuture = releaseManager.uninstall(uninstallRequestBuilder.build());
 			
 			if (releaseFuture != null) {
-				final Release release = releaseFuture.get().getRelease();
+				Release release = releaseFuture.get().getRelease();
 				result.putValue(IResult.DELETE, release);
 
 				ReleaseMetaData releaseMeta = new ReleaseMetaData();
@@ -600,8 +599,15 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				// tag 정보 삭제 
 				tagRepository.deleteByNamespaceAndReleaseName(namespace, serviceName);
 				
-				// Backup Resource 삭제 요청
-				backupProvider.removeServiceResource(txId, namespace, ZDBType.MariaDB.getName(), serviceName);
+				try {
+					// Backup Resource 삭제 요청
+					backupProvider.removeServiceResource(txId, namespace, ZDBType.MariaDB.getName(), serviceName);
+				} catch (Exception e) {
+					log.error(e.getMessage(), e);
+				}
+				
+				// TODO Event 정보 삭제
+//				metaRepository.deleteByNamespaceAndReleaseName
 				
 				event.setResultMessage("서비스 삭제 완료 ["+namespace +" > "+ serviceName +"]");
 				event.setStatus(IResult.OK);
@@ -643,14 +649,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 		} finally {
 			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 			
-			if(releaseManager != null){
-				try {
-					releaseManager.close();
-				} catch (IOException e) {
-					log.error(e.getMessage(), e);
-				}
-			}
-//			messageSender.sendToClient("mariadb installer");
+			messageSender.sendToClient("mariadb installer");
 			messageSender.sendToClientRefresh(serviceName);
 		}
 	}

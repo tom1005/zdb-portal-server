@@ -181,14 +181,15 @@ public class K8SUtil {
 	}
 	
 	public static Pod getPodWithName(String namespace, String podName) throws Exception {
-		DefaultKubernetesClient client = kubernetesClient();
-		
-		List<Pod> items = client.inNamespace(namespace).pods().list().getItems();
-		for (Pod pod : items) {
-			if (podName.equals(pod.getMetadata().getName())) {
-				return pod;
-			}
-		}		
+//		DefaultKubernetesClient client = kubernetesClient();
+		try(DefaultKubernetesClient client = kubernetesClient()) {
+			List<Pod> items = client.inNamespace(namespace).pods().list().getItems();
+			for (Pod pod : items) {
+				if (podName.equals(pod.getMetadata().getName())) {
+					return pod;
+				}
+			}		
+		}
 		
 		return null;
 	}
@@ -200,18 +201,18 @@ public class K8SUtil {
 	 * @throws KubernetesClientException
 	 */
 	public static Namespace doCreateNamespace(String namespaceName) throws Exception {
-		DefaultKubernetesClient client = kubernetesClient();
-
 		if (isNamespaceExist(namespaceName)) {
 			throw new DuplicateException("exist namespace");
 		} else {
-
-			Map<String, String> labels = new HashMap<>();
-
-			Namespace ns = new NamespaceBuilder().withNewMetadata().withName(namespaceName).withLabels(labels).endMetadata().build();
-			Namespace namespace = client.inAnyNamespace().namespaces().create(ns);
-
-			return namespace;
+			try(DefaultKubernetesClient client = kubernetesClient()) {
+				
+				Map<String, String> labels = new HashMap<>();
+				
+				Namespace ns = new NamespaceBuilder().withNewMetadata().withName(namespaceName).withLabels(labels).endMetadata().build();
+				Namespace namespace = client.inAnyNamespace().namespaces().create(ns);
+				
+				return namespace;
+			}
 		}
 	}
 
@@ -221,7 +222,9 @@ public class K8SUtil {
 	 * @throws Exception
 	 */
 	public static List<PersistentVolumeClaim> getPersistentVolumeClaims(final String namespace) throws Exception {
-		return kubernetesClient().inNamespace(namespace).persistentVolumeClaims().list().getItems();
+		try(DefaultKubernetesClient client = kubernetesClient()) {
+			return client.inNamespace(namespace).persistentVolumeClaims().list().getItems();
+		}
 	}
 
 	/**
@@ -231,7 +234,9 @@ public class K8SUtil {
 	 * @throws Exception
 	 */
 	public static PersistentVolumeClaim getPersistentVolumeClaim(final String namespace, final String pvcName) throws Exception {
-		return kubernetesClient().inNamespace(namespace).persistentVolumeClaims().withName(pvcName).get();
+		try(DefaultKubernetesClient client = kubernetesClient()) {
+			return client.inNamespace(namespace).persistentVolumeClaims().withName(pvcName).get();
+		}
 	}
 	
 	/**
@@ -241,6 +246,9 @@ public class K8SUtil {
 	 * @throws Exception
 	 */
 	public static List<PersistentVolumeClaim> getPersistentVolumeClaims(final String namespace, final String serviceName) throws Exception {
+		try(DefaultKubernetesClient client = kubernetesClient()) {
+			
+		}
 		return kubernetesClient().inNamespace(namespace).persistentVolumeClaims().withLabel("release", serviceName).list().getItems();
 	}
 
@@ -251,7 +259,9 @@ public class K8SUtil {
 	 * @throws Exception
 	 */
 	public static List<Secret> getSecrets(final String namespace, final String serviceName) throws Exception {
-		return kubernetesClient().inNamespace(namespace).secrets().withLabel("release", serviceName).list().getItems();
+		try(DefaultKubernetesClient client = kubernetesClient()) {
+			return client.inNamespace(namespace).secrets().withLabel("release", serviceName).list().getItems();
+		}
 	}
 
 	/**
@@ -261,7 +271,9 @@ public class K8SUtil {
 	 * @throws Exception
 	 */
 	public static List<Service> getServices(final String namespace, final String serviceName) throws Exception {
-		return kubernetesClient().inNamespace(namespace).services().withLabel("release", serviceName).list().getItems();
+		try(DefaultKubernetesClient client = kubernetesClient()) {
+			return client.inNamespace(namespace).services().withLabel("release", serviceName).list().getItems();
+		}
 	}
 	
 	/**
@@ -271,7 +283,9 @@ public class K8SUtil {
 	 * @throws Exception
 	 */
 	public static List<ConfigMap> getConfigMaps(final String namespace, final String serviceName) throws Exception {
-		return kubernetesClient().inNamespace(namespace).configMaps().withLabel("release", serviceName).list().getItems();
+		try(DefaultKubernetesClient client = kubernetesClient()) {
+			return client.inNamespace(namespace).configMaps().withLabel("release", serviceName).list().getItems();
+		}
 	}
 
 	/**
@@ -281,7 +295,9 @@ public class K8SUtil {
 	 * @throws Exception
 	 */
 	public static List<StatefulSet> getStatefulSets(final String namespace, final String serviceName) throws Exception {
-		return kubernetesClient().inNamespace(namespace).apps().statefulSets().withLabel("release", serviceName).list().getItems();
+		try(DefaultKubernetesClient client = kubernetesClient()) {
+			return client.inNamespace(namespace).apps().statefulSets().withLabel("release", serviceName).list().getItems();
+		}
 	}
 
 	/**
@@ -291,7 +307,9 @@ public class K8SUtil {
 	 * @throws Exception
 	 */
 	public static List<ReplicaSet> getReplicaSets(final String namespace, final String serviceName) throws Exception {
-		return kubernetesClient().inNamespace(namespace).extensions().replicaSets().withLabel("release", serviceName).list().getItems();
+		try(DefaultKubernetesClient client = kubernetesClient()) {
+			return client.inNamespace(namespace).extensions().replicaSets().withLabel("release", serviceName).list().getItems();
+		}
 	}
 	
 	/**
@@ -301,7 +319,9 @@ public class K8SUtil {
 	 * @throws Exception
 	 */
 	public static List<Pod> getPods(final String namespace, final String serviceName) throws Exception {
-		return kubernetesClient().inNamespace(namespace).pods().withLabel("release", serviceName).list().getItems();
+		try(DefaultKubernetesClient client = kubernetesClient()) {
+			return client.inNamespace(namespace).pods().withLabel("release", serviceName).list().getItems();
+		}
 	}
 	
 	/**
@@ -311,7 +331,9 @@ public class K8SUtil {
 	 * @throws Exception
 	 */
 	public static List<Deployment> getDeployments(final String namespace, final String serviceName) throws Exception {
-		return kubernetesClient().inNamespace(namespace).extensions().deployments().withLabel("release", serviceName).list().getItems();
+		try(DefaultKubernetesClient client = kubernetesClient()) {
+			return client.inNamespace(namespace).extensions().deployments().withLabel("release", serviceName).list().getItems();
+		}
 	}
 
 	/**
@@ -322,16 +344,18 @@ public class K8SUtil {
 	 * @throws FileNotFoundException
 	 */
 	public static List<Service> getServicesWithNamespace(String namespace) throws Exception {
-		DefaultKubernetesClient client = kubernetesClient();
-		if (client != null) {
-			ServiceList services = client.inNamespace(namespace).services().list();
-
-			if (log.isDebugEnabled()) {
-				for (Service service : services.getItems()) {
-					log.debug("service : " + service.getMetadata().getName());
+//		DefaultKubernetesClient client = kubernetesClient();
+		try(DefaultKubernetesClient client = kubernetesClient()) {
+			if (client != null) {
+				ServiceList services = client.inNamespace(namespace).services().list();
+				
+				if (log.isDebugEnabled()) {
+					for (Service service : services.getItems()) {
+						log.debug("service : " + service.getMetadata().getName());
+					}
 				}
+				return services.getItems();
 			}
-			return services.getItems();
 		}
 
 		return Collections.emptyList();
@@ -781,12 +805,14 @@ public class K8SUtil {
 	public static List<Release> getReleaseAllList() throws Exception {
 
 		Map<String, Release> releaseMap = new HashMap<>();
-		ReleaseManager releaseManager = null;
-		try {
-			DefaultKubernetesClient client = kubernetesClient();
-
-			final Tiller tiller = new Tiller(client);
-			releaseManager = new ReleaseManager(tiller);
+//		ReleaseManager releaseManager = null;
+//		Tiller tiller = null;
+		try(DefaultKubernetesClient client = kubernetesClient();
+				Tiller tiller = new Tiller(client);
+				ReleaseManager releaseManager = new ReleaseManager(tiller);
+				
+				) {
+			
 
 			final ListReleasesRequest.Builder requestBuilder = ListReleasesRequest.newBuilder();
 
@@ -825,12 +851,8 @@ public class K8SUtil {
 				}
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			if (releaseManager != null) {
-				releaseManager.close();
-			}
-		}
+			log.error(e.getMessage(), e);
+		} 
 
 		return new ArrayList<Release>(releaseMap.values());
 	}
@@ -873,6 +895,7 @@ public class K8SUtil {
 		System.setProperty(Config.KUBERNETES_AUTH_TRYSERVICEACCOUNT_SYSTEM_PROPERTY, "false");
 		
 		Config config = new ConfigBuilder().withMasterUrl(masterUrl).withOauthToken(idToken).withTrustCerts(true).withWatchReconnectLimit(-1).build();
+		config.setConnectionTimeout(1000 * 30);
 		DefaultKubernetesClient client = new DefaultKubernetesClient(config);
 
 		return client;
