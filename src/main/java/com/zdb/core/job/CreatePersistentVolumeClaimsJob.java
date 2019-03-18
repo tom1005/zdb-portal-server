@@ -171,6 +171,11 @@ public class CreatePersistentVolumeClaimsJob extends JobAdapter {
 			ResourceRequirements rr = new ResourceRequirements();
 
 			Map<String, Quantity> req = new HashMap<String, Quantity>();
+			
+			if(!storageSize.endsWith("Gi")) {
+				storageSize = storageSize+"Gi";
+			}
+			
 			req.put("storage", new Quantity(storageSize));
 			rr.setRequests(req);
 			pvcSpec.setResources(rr);

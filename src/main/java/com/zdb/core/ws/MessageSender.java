@@ -61,7 +61,7 @@ public class MessageSender {
 
 						List<ServiceOverview> overviews = (List<ServiceOverview>) object;
 						for (ServiceOverview serviceOverview : overviews) {
-							Result r = result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
+							Result r = Result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
 							messageSender.convertAndSend("/service/" + serviceOverview.getServiceName(), r);
 						}
 						

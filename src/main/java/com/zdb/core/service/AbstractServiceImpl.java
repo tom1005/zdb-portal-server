@@ -287,7 +287,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			String masterCpu = masterSpec.getCpu();
 			String masterMemory = masterSpec.getMemory();
 			
-			Result availableResource = isAvailableResource(service.getNamespace(), userInfo.getUserId(), masterCpu, masterMemory, clusterEnabled);
+			Result availableResource = isAvailableResource(service.getNamespace(), service.getRequestUserId(), masterCpu, masterMemory, clusterEnabled);
 			if(!availableResource.isOK()) {
 				return new Result(txId, IResult.ERROR, availableResource.getMessage());
 			}
@@ -1174,6 +1174,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	private String getEventMessage(String m) {
 
 		if (m.startsWith("pod has unbound PersistentVolumeClaims")) {
+			return "서비스 준비중...";
+		} else if (m.startsWith("pod has unbound")) {
 			return "서비스 준비중...";
 		} else if (m.startsWith("Readiness probe failed:")) {
 			return "서비스 상태 점검중...";

@@ -26,6 +26,12 @@ public class InitData {
 		defaultConfigMap.put("innodb_read_io_threads", "4|범위 : 1 to 64|false|numeric");
 		defaultConfigMap.put("innodb_sort_buffer_size", "4M|범위 : 65536 to 67108864|false|numeric");
 		defaultConfigMap.put("innodb_write_io_threads", "8|범위 : 1 to 64|false|numeric");
+
+//		innodb_undo_logs=${innodb_undo_logs}
+//		innodb_undo_tablespaces=${innodb_undo_tablespaces}
+		defaultConfigMap.put("innodb_undo_logs", "128|범위 : 0 to 128|true|numeric");
+		defaultConfigMap.put("innodb_undo_tablespaces", "0|범위 : 0 to 95|false|numeric");
+		
 		defaultConfigMap.put("interactive_timeout", "3600|범위 : 1 to 31536000|true|numeric");
 		defaultConfigMap.put("join_buffer_size", "64k|범위 : 128 to 18446744073709547520|true|numeric");
 		defaultConfigMap.put("key_buffer_size", "32M|범위 : 8 이상|true|numeric");

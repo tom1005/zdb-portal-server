@@ -43,6 +43,7 @@ import com.zdb.core.domain.ZDBType;
 import com.zdb.core.repository.ZDBConfigRepository;
 import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
+import com.zdb.core.util.ExecUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.mariadb.MariaDBAccount;
 import com.zdb.mariadb.MariaDBConfiguration;
@@ -90,12 +91,16 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 		
 		ZDBRepository metaRepository = exchange.getProperty(Exchange.META_REPOSITORY, ZDBRepository.class);
 
-		ReleaseManager releaseManager = null;
+//		ReleaseManager releaseManager = null;
 		
 		RequestEvent event = getRequestEvent(exchange);
 		event.setOperation(RequestEvent.CREATE);
 		
-		try{ 
+		try (
+				DefaultKubernetesClient client = K8SUtil.kubernetesClient();
+				Tiller tiller = new Tiller(client);
+				ReleaseManager releaseManager = new ReleaseManager(tiller);
+				){ 
 //			chartUrl = "file:///Users/a06919/git/charts/stable/mariadb/mariadb-4.2.0.tgz";
 //			chartUrl = "file:///Users/a06919/mariadb-4.2.2.tgz";
 			/////////////////////////
@@ -106,10 +111,6 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 			try (final URLChartLoader chartLoader = new URLChartLoader()) {
 				chart = chartLoader.load(url);
 			}
-			
-			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
-			final Tiller tiller = new Tiller(client);
-			releaseManager = new ReleaseManager(tiller);
 
 			final InstallReleaseRequest.Builder requestBuilder = InstallReleaseRequest.newBuilder();
 			if (requestBuilder != null) {
@@ -154,9 +155,6 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				String masterStorageClass = persistenceSpec[0].getStorageClass() == null ? storageClass : persistenceSpec[0].getStorageClass();
 				String masterSize = persistenceSpec[0].getSize() == null ? DEFAULT_STORAGE_SIZE : persistenceSpec[0].getSize();
 				
-				String s = persistenceSpec[1].getPodType();
-				String slaveStorageClass = persistenceSpec[1].getStorageClass() == null ? storageClass : persistenceSpec[1].getStorageClass();
-				String slaveSize = persistenceSpec[1].getSize() == null ? DEFAULT_STORAGE_SIZE : persistenceSpec[1].getSize();
 				
 				PodSpec[] podSpec = service.getPodSpec();
 				
@@ -165,14 +163,9 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				String masterCpu = masterSpec.getCpu();
 				String masterMemory = masterSpec.getMemory();
 				
-				String slave = podSpec[1].getPodType();
-				ResourceSpec slaveSpec = podSpec[1].getResourceSpec()[0];
-				String slaveCpu = slaveSpec.getCpu();
-				String slaveMemory = slaveSpec.getMemory();
 				int clusterSlaveCount = service.getClusterSlaveCount() == 0 ? 1 : service.getClusterSlaveCount();
 				
 				String masterNodeAffinityValues = masterSpec.getWorkerPool();
-				String slaveNodeAffinityValues = slaveSpec.getWorkerPool();
 				
 				inputJson = inputJson.replace("${image.tag}", mariadbVersion); // db version
 				inputJson = inputJson.replace("${rootUser.password}", rootPassword); // configmap
@@ -186,13 +179,27 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				inputJson = inputJson.replace("${master.resources.requests.memory}", masterMemory);// input *******   필수값 
 				inputJson = inputJson.replace("${master.resources.limits.cpu}", masterCpu);// input , *******   필수값  
 				inputJson = inputJson.replace("${master.resources.limits.memory}", masterMemory);// input *******   필수값 
-				inputJson = inputJson.replace("${slave.persistence.storageClass}", slaveStorageClass);// configmap
-				inputJson = inputJson.replace("${slave.persistence.size}", slaveSize); // input *******   필수값 
-				inputJson = inputJson.replace("${slave.resources.requests.cpu}", slaveCpu);// input*******   필수값 
-				inputJson = inputJson.replace("${slave.resources.requests.memory}", slaveMemory);// input *******   필수값 
-				inputJson = inputJson.replace("${slave.resources.limits.cpu}", slaveCpu);// input*******   필수값 
-				inputJson = inputJson.replace("${slave.resources.limits.memory}", slaveMemory);// input *******   필수값 
-				inputJson = inputJson.replace("${slave.replicas}", clusterSlaveCount+"");// input *******   필수값 
+
+				if(persistenceSpec != null && persistenceSpec.length > 1) {
+					String slaveStorageClass = persistenceSpec[1].getStorageClass() == null ? storageClass : persistenceSpec[1].getStorageClass();
+					String slaveSize = persistenceSpec[1].getSize() == null ? DEFAULT_STORAGE_SIZE : persistenceSpec[1].getSize();
+
+					String slave = podSpec[1].getPodType();
+					ResourceSpec slaveSpec = podSpec[1].getResourceSpec()[0];
+					String slaveCpu = slaveSpec.getCpu();
+					String slaveMemory = slaveSpec.getMemory();
+					String slaveNodeAffinityValues = slaveSpec.getWorkerPool();
+
+					inputJson = inputJson.replace("${slave.persistence.storageClass}", slaveStorageClass);// configmap
+					inputJson = inputJson.replace("${slave.persistence.size}", slaveSize); // input *******   필수값 
+					inputJson = inputJson.replace("${slave.resources.requests.cpu}", slaveCpu);// input*******   필수값 
+					inputJson = inputJson.replace("${slave.resources.requests.memory}", slaveMemory);// input *******   필수값 
+					inputJson = inputJson.replace("${slave.resources.limits.cpu}", slaveCpu);// input*******   필수값 
+					inputJson = inputJson.replace("${slave.resources.limits.memory}", slaveMemory);// input *******   필수값 
+					inputJson = inputJson.replace("${slave.replicas}", clusterSlaveCount+"");// input *******   필수값 
+					inputJson = inputJson.replace("${slave.affinity.nodeAffinity.values}", slaveNodeAffinityValues);
+				}
+				
 				inputJson = inputJson.replace("${service.master.publicip.enabled}", isPublicEnabled+"");// input *******   필수값 
 				if(isClusterEnabled) {
 					inputJson = inputJson.replace("${service.slave.publicip.enabled}", isPublicEnabled+"");// input *******   필수값 
@@ -203,7 +210,6 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				inputJson = inputJson.replace("${buffer.pool.size}", K8SUtil.getBufferSize(masterMemory));// 자동계산 *******   필수값 
 				inputJson = inputJson.replace("${master.antiAffinity}", "hard"); // 향후 input으로 받을 예정
 				inputJson = inputJson.replace("${master.affinity.nodeAffinity.values}", masterNodeAffinityValues);
-				inputJson = inputJson.replace("${slave.affinity.nodeAffinity.values}", slaveNodeAffinityValues);
 				
 				String characterSet = service.getCharacterSet();
 				inputJson = inputJson.replace("${character.set.server}", characterSet == null || characterSet.isEmpty() ? "utf8" : characterSet);
@@ -301,12 +307,36 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 									if(isAllReady) {
 										if(releaseMeta != null) {
 											while(true) {
-												try {
-													connection = MariaDBConnection.getRootMariaDBConnection(service.getNamespace(), service.getServiceName());
-													break;
+												try(DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
+//													connection = MariaDBConnection.getRootMariaDBConnection(namespace, releaseName);
+													
+													List<Pod> items = K8SUtil.kubernetesClient().inNamespace(service.getNamespace()).pods()
+															.withLabel("release", service.getServiceName())
+															.withLabel("component", "master")
+															.list().getItems();
+													
+													String podName = "";
+													for (Pod pod : items) {
+														podName = pod.getMetadata().getName();
+													}
+													
+													String cmd = "mysql -uroot -p$MARIADB_ROOT_PASSWORD -e \"show databases;\"";
+													
+													String result = new ExecUtil().exec(client, service.getNamespace(), podName, "mariadb", cmd);
+													
+													if(result != null && result.indexOf("mysql") > -1) {
+														break;
+													}
 												}catch(Exception e) {
 													Thread.sleep(5000);
 												}
+												
+//												try {
+//													connection = MariaDBConnection.getRootMariaDBConnection(service.getNamespace(), service.getServiceName());
+//													break;
+//												}catch(Exception e) {
+//													Thread.sleep(5000);
+//												}
 											}
 											releaseMeta.setStatus("DEPLOYED");
 											releaseRepository.save(releaseMeta);
@@ -314,7 +344,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 										lacth.countDown();
 										log.info("-------------------------- service create success! -- ["+service.getNamespace() +" > "+ service.getServiceName() +"]");
 										
-//										messageSender.sendToClient("mariadb installer");
+										messageSender.sendToClient("mariadb installer");
 										messageSender.sendToClientRefresh(service.getServiceName());
 										break;
 									} else {
@@ -408,13 +438,13 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 					event.setResultMessage("서비스 생성 완료 ["+service.getNamespace() +" > "+ service.getServiceName() +"]");
 					event.setEndTime(new Date(System.currentTimeMillis()));
 					
-//					messageSender.sendToClient("mariadb installer");
+					messageSender.sendToClient("mariadb installer");
 				} else {
 					event.setStatus(IResult.ERROR);
 					event.setResultMessage("Installation failed." );
 					event.setEndTime(new Date(System.currentTimeMillis()));
 					
-//					messageSender.sendToClient("mariadb installer");
+					messageSender.sendToClient("mariadb installer");
 				}
 				messageSender.sendToClientRefresh(service.getServiceName());
 			}
@@ -482,12 +512,11 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 		event.setStartTime(new Date(System.currentTimeMillis()));
 		event.setOperation(RequestEvent.DELETE);
 
-		ReleaseManager releaseManager = null;
-		try {
-			DefaultKubernetesClient client = (DefaultKubernetesClient) K8SUtil.kubernetesClient().inNamespace(namespace);
-
-			final Tiller tiller = new Tiller(client);
-			releaseManager = new ReleaseManager(tiller);
+//		ReleaseManager releaseManager = null;
+		try (DefaultKubernetesClient client = K8SUtil.kubernetesClient();
+				Tiller tiller = new Tiller(client);
+				ReleaseManager releaseManager = new ReleaseManager(tiller);) {
+				client.inNamespace(namespace);
 			
 			ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(serviceName);
 			
@@ -520,7 +549,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 			final Future<UninstallReleaseResponse> releaseFuture = releaseManager.uninstall(uninstallRequestBuilder.build());
 			
 			if (releaseFuture != null) {
-				final Release release = releaseFuture.get().getRelease();
+				Release release = releaseFuture.get().getRelease();
 				result.putValue(IResult.DELETE, release);
 
 				ReleaseMetaData releaseMeta = new ReleaseMetaData();
@@ -570,8 +599,15 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				// tag 정보 삭제 
 				tagRepository.deleteByNamespaceAndReleaseName(namespace, serviceName);
 				
-				// Backup Resource 삭제 요청
-				backupProvider.removeServiceResource(txId, namespace, ZDBType.MariaDB.getName(), serviceName);
+				try {
+					// Backup Resource 삭제 요청
+					backupProvider.removeServiceResource(txId, namespace, ZDBType.MariaDB.getName(), serviceName);
+				} catch (Exception e) {
+					log.error(e.getMessage(), e);
+				}
+				
+				// TODO Event 정보 삭제
+//				metaRepository.deleteByNamespaceAndReleaseName
 				
 				event.setResultMessage("서비스 삭제 완료 ["+namespace +" > "+ serviceName +"]");
 				event.setStatus(IResult.OK);
@@ -613,14 +649,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 		} finally {
 			ZDBRepositoryUtil.saveRequestEvent(metaRepository, event);
 			
-			if(releaseManager != null){
-				try {
-					releaseManager.close();
-				} catch (IOException e) {
-					log.error(e.getMessage(), e);
-				}
-			}
-//			messageSender.sendToClient("mariadb installer");
+			messageSender.sendToClient("mariadb installer");
 			messageSender.sendToClientRefresh(serviceName);
 		}
 	}

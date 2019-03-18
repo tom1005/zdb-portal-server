@@ -66,6 +66,9 @@ innodb_open_files=8192
 innodb_buffer_pool_instances=${innodb_buffer_pool_instances}
 innodb_lru_scan_depth=512
 innodb_sort_buffer_size=${innodb_sort_buffer_size}
+innodb_undo_directory=/bitnami/mariadb/data
+innodb_undo_logs=${innodb_undo_logs}
+innodb_undo_tablespaces=${innodb_undo_tablespaces}
 
 # MyISAM Config
 bulk_insert_buffer_size=${bulk_insert_buffer_size}

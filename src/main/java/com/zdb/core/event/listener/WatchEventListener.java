@@ -260,6 +260,7 @@ public class WatchEventListener {
 
 						try (Watch watch = client.inAnyNamespace().pods().watch(new MetaDataWatcher<Pod>(metaRepo) {
 							protected void sendWebSocket(String serviceName) {
+								messageSender.sendToClient("pod");
 								messageSender.sendToClientRefresh(serviceName);
 							}
 							

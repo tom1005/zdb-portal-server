@@ -245,7 +245,19 @@ public class ZDBRestController {
 			log.info("{}, {}, {}", userInfo.getUserId(), userInfo.getUserName(), userInfo.getAccessRole());
 
 			com.zdb.core.domain.Result result = null;
-			entity.setRequestUserId(userInfo.getUserId());
+			
+			if(userInfo.getUserId() != null && !userInfo.getUserId().isEmpty()) {
+				entity.setRequestUserId(userInfo.getUserId());
+			}
+			
+			if(entity.getRequestUserId() == null || entity.getRequestUserId().isEmpty()) {
+				result = new Result(txId, IResult.ERROR, "서비스 생성 오류!");
+				
+				event.setStatus(result.getCode());
+				event.setResultMessage("사용자 정보가 유효하지 않습니다.");
+				
+				return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+			}
 			
 			switch (dbType) {
 			case MariaDB:

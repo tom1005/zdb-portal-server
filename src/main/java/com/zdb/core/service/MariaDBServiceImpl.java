@@ -832,10 +832,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			}
 
 			InputStream is = new ClassPathResource("mariadb/mycnf.template").getInputStream();
-			String inputJson = IOUtils.toString(is, StandardCharsets.UTF_8.name());
+			String inputValue = IOUtils.toString(is, StandardCharsets.UTF_8.name());
 
 			for (Mycnf mycnf : findAll) {
-				inputJson = inputJson.replace("${" + mycnf.getName() + "}", config.get(mycnf.getName()) == null ? mycnf.getValue() : config.get(mycnf.getName()));
+				inputValue = inputValue.replace("${" + mycnf.getName() + "}", config.get(mycnf.getName()) == null ? mycnf.getValue() : config.get(mycnf.getName()));
 			}
 
 			// 2018-10-04 추가
@@ -851,7 +851,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				String beforeValue = configMap.getData().get("my.cnf");
 
 				beforeDataMap.put(configMapName, beforeValue);
-				client.configMaps().inNamespace(namespace).withName(configMapName).edit().addToData("my.cnf", inputJson).done();
+				client.configMaps().inNamespace(namespace).withName(configMapName).edit().addToData("my.cnf", inputValue).done();
 			}
 
 			// 2018-12-04 환경설정 저장시 즉시 반영이 아닌 설정값 저장만 수행하고 재시작은 사용자가 수행.
@@ -1437,10 +1437,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 				storageScaleExecutor.execTask(jobList.toArray(new Job[] {}));
 
-				log.info(serviceName + " 스토리지 스케일업/다운 요청.");
+				log.info(serviceName + " 스토리지 스케일업 요청.");
 				result = new Result(txId, IResult.RUNNING, historyValue);
 			} else {
-				result = new Result(txId, IResult.ERROR, "스토리지 스케일업/다운 실행 오류.");
+				result = new Result(txId, IResult.ERROR, "스토리지 스케일업 오류.");
 			}
 		} catch (KubernetesClientException e) {
 			log.error(e.getMessage(), e);
@@ -2069,6 +2069,43 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				return new Result(txId, IResult.ERROR, msg);
 			}
 
+			if(enable) {
+				// etcd & zdb-ha-manager 가 ready 상태인지 체크
+				
+				{
+					boolean etcdStatus = false;
+					List<Pod> items = client.inNamespace("zdb-system").pods().withLabel("app","etcd").list().getItems();
+					
+					for (Pod pod : items) {
+						if(PodManager.isReady(pod)) {
+							etcdStatus = true;
+							break;
+						}
+					}
+					if(!etcdStatus) {
+						result = new Result(txId, Result.ERROR , "Auto-Failover 를 사용 할 수 없습니다.<br>원인: etcd 사용 불가");
+						return result;
+					}
+				}
+				
+				{
+					boolean haManagerStatus = false;
+					List<Pod> items = client.inNamespace("zdb-system").pods().withLabel("app","zdb-ha-manager").list().getItems();
+					
+					for (Pod pod : items) {
+						if(PodManager.isReady(pod)) {
+							haManagerStatus = true;
+							break;
+						}
+					}
+					if(!haManagerStatus) {
+						result = new Result(txId, Result.ERROR , "Auto-Failover 를 사용 할 수 없습니다.<br>원인: zdb-ha-manager 사용 불가");
+						return result;
+					}
+				}
+				
+			}
+			
 			MixedOperation<StatefulSet, StatefulSetList, DoneableStatefulSet, RollableScalableResource<StatefulSet, DoneableStatefulSet>> statefulSets = 
 					client.inNamespace(namespace).apps().statefulSets();
 

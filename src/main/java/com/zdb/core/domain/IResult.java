@@ -34,7 +34,7 @@ public interface IResult {
 
 	public static final String NAMESPACE_RESOURCE = "namespaceResource";
 	
-	public static final String PODS = "PODS";
+	public static final String PODS = "pods";
 	
 	public static final String POD = "POD";
 	

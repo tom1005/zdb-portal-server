@@ -92,7 +92,14 @@ public class ReleaseCollector {
 						List<Pod> pods = k8sService.getPods(release.getNamespace(), release.getName());
 						
 						if(statefulSets.size() == pods.size()) {
-							releaseMeta.setStatus(release.getInfo().getStatus().getCode().name());
+							long createTime = release.getInfo().getFirstDeployed().getSeconds() * 1000L;
+							long currentTime = System.currentTimeMillis();
+							
+							// 최초 생성 요청시 생성중이므로 상태값 동기화 skip
+							// 화면에서 생성중 동기화 되면 에러로 표시되는 문제발생으로 아래 로직 추가.
+							if(currentTime - createTime > 1000 * 60 * 3) {
+								releaseMeta.setStatus(release.getInfo().getStatus().getCode().name());
+							}
 						}
 					}
 					
