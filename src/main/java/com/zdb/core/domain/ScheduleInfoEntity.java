@@ -27,19 +27,16 @@ public class ScheduleInfoEntity {
 	private String namespace;
 	private String serviceName;
 	private String serviceType;
+	private String useYn;
 	private String startTime;
 	private int storePeriod;
+	private String incrementYn = "N";
+	private int incrementPeriod = 12;
 
 	private long fullFileSize;
 	private String fullExecutionTime;
-	private long fullArchiveFileSize;
 
 	private long incrFileSize;
 	private String incrExecutionTime;
-	private long incrArchiveFileSize;
 
-	private long dumpFileSize;
-	private String dumpExecutionTime;
-	private long dumpArchiveFileSize;
-	
 }	
