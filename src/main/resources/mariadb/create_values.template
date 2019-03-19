@@ -74,6 +74,13 @@ master:
     
     event_scheduler=OFF
     
+    thread_cache_size=0
+    max_heap_table_size=16777216
+    max_binlog_size=1073741824
+    innodb_log_buffer_size=16777216
+    innodb_open_files=200
+    innodb_io_capacity=200
+    
     # Common Config
     back_log=200
     join_buffer_size=64k
@@ -219,6 +226,13 @@ slave:
     collation-server=${collation.server}
     
     event_scheduler=OFF
+    
+    thread_cache_size=0
+    max_heap_table_size=16777216
+    max_binlog_size=1073741824
+    innodb_log_buffer_size=16777216
+    innodb_open_files=200
+    innodb_io_capacity=200
     
     # Common Config
     back_log=200

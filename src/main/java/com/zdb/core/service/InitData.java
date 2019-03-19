@@ -56,6 +56,14 @@ public class InitData {
 		defaultConfigMap.put("transaction-isolation", "READ-COMMITTED||true|-");
 		defaultConfigMap.put("wait_timeout", "3600|범위 : 1 ~ 31536000|true|numeric");
 		defaultConfigMap.put("lower_case_table_names", "0|범위 : 1 , 0|true|boolean");
+		
+		defaultConfigMap.put("thread_cache_size", "0|범위 : 0 to 16384, Auto (from MariaDB 10.2.0)|true|numeric");
+		defaultConfigMap.put("max_heap_table_size", "16777216|범위 : 16384 to 4294966272|true|numeric");
+		defaultConfigMap.put("max_binlog_size", "200M|범위 : 4096 to 1073741824 (4KB to 1GB)|true|numeric");
+		defaultConfigMap.put("innodb_log_buffer_size", "16777216|범위 : 262144 to 4294967295 (256KB to 4096MB)|false|numeric");
+		defaultConfigMap.put("innodb_open_files", "200|범위 : 10 to 4294967295 (autosized (from MariaDB 10.0))|false|numeric");
+		defaultConfigMap.put("innodb_io_capacity", "200|범위 : 100 to 18446744073709551615|true|numeric");
+		
 	}
 
 	public static int defaultConfigMapSize() {
