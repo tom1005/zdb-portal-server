@@ -42,6 +42,7 @@ import com.zdb.core.collector.MetaDataCollector;
 import com.zdb.core.domain.Connection;
 import com.zdb.core.domain.ConnectionInfo;
 import com.zdb.core.domain.DBUser;
+import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.Mycnf;
 import com.zdb.core.domain.PodSpec;
@@ -291,7 +292,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				}
 
 			};
-			JobHandler.addListener(eventListener);
+			JobHandler.getInstance().addListener(eventListener);
 
 			storageScaleExecutor.execTask(jobs);
 			log.info(service.getServiceName() + " update success!");
@@ -1428,7 +1429,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 				};
 
-				JobHandler.addListener(eventListener);
+				JobHandler.getInstance().addListener(eventListener);
 
 				storageScaleExecutor.execTask(jobList.toArray(new Job[] {}));
 
@@ -1561,7 +1562,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 								event.setEndTime(new Date(System.currentTimeMillis()));
 								ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 	
-								JobHandler.removeListener(this);
+								JobHandler.getInstance().removeListener(this);
 							
 							// send websocket
 							
@@ -1581,7 +1582,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 				};
 
-				JobHandler.addListener(eventListener);
+				JobHandler.getInstance().addListener(eventListener);
 
 				storageScaleExecutor.execTask(jobList.toArray(new Job[] {}));
 
@@ -1691,7 +1692,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 								event.setHistory(_historyValue);
 								event.setEndTime(new Date(System.currentTimeMillis()));
 								ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-								JobHandler.removeListener(this);
+								JobHandler.getInstance().removeListener(this);
 							
 								ServiceOverview serviceOverview = k8sService.getServiceWithName(namespace, serviceType, serviceName);
 								
@@ -1708,7 +1709,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 				};
 
-				JobHandler.addListener(eventListener);
+				JobHandler.getInstance().addListener(eventListener);
 
 				storageScaleExecutor.execTask(jobList.toArray(new Job[] {}));
 
@@ -2156,6 +2157,11 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 						
 						@Override
 						public void done(Job job, JobResult code, String message, Throwable e) {
+							String eventKey = "service_"+namespace+"_"+serviceName;
+							
+							// 상태 변경..
+							JobHandler.getInstance().setEventStatus(EventType.Auto_Failover_Off, eventKey, JobResult.OK);
+							
 							if (jobList.contains(job)) {
 								RequestEvent event = new RequestEvent();
 								
@@ -2185,7 +2191,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 									event.setHistory(_historyValue);
 									event.setEndTime(new Date(System.currentTimeMillis()));
 									ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
-									JobHandler.removeListener(this);
+									JobHandler.getInstance().removeListener(this);
 									
 									ServiceOverview serviceOverview = k8sService.getServiceWithName(namespace, serviceType, serviceName);
 									
@@ -2193,23 +2199,31 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 									messageSender.convertAndSend("/service/" + serviceOverview.getServiceName(), r);
 									
 								} catch (MessagingException e1) {
-									e1.printStackTrace();
+									log.error(e1.getMessage(), e1);
 								} catch (Exception e1) {
-									e1.printStackTrace();
+									log.error(e1.getMessage(), e1);
 								}	
 							}
+							
+							// 로직 종료시 상태정보 remove
+							JobHandler.getInstance().removeEventCache(EventType.Auto_Failover_Off, eventKey);
 						}
 						
 					};
 					
-					JobHandler.addListener(eventListener);
+					JobHandler.getInstance().addListener(eventListener);
 					
 					storageScaleExecutor.execTask(jobList.toArray(new Job[] {}));
 					
 					log.info(serviceName + " Auto Failover 설정.");
+
+					String eventKey = "service_"+namespace+"_"+serviceName;
+					
 					if(enable) {
+						JobHandler.getInstance().setEventStatus(EventType.Auto_Failover_On, eventKey, JobResult.RUNNING);
 						result = new Result(txId, IResult.RUNNING, "서비스 : " + serviceName + "<br>Auto Failover 기능을 적용합니다.<br>처음 적용시 서비스가 재시작 됩니다.");
 					} else {
+						JobHandler.getInstance().setEventStatus(EventType.Auto_Failover_Off, eventKey, JobResult.RUNNING);
 						result = new Result(txId, IResult.RUNNING, "서비스 : " + serviceName + "<br>Auto Failover 기능을 해제 합니다.");
 					}
 				} else {
