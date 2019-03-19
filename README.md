@@ -12,10 +12,10 @@ sudo mvn -P prod clean install -Dmaven.test.skip=true -Dos.detected.classifier=o
 docker image tag zdb-portal-server:<VERSION> registry.au-syd.bluemix.net/cloudzdb/zdb-portal-server:<VERSION>
 docker image push registry.au-syd.bluemix.net/cloudzdb/zdb-portal-server:<VERSION>
 
-docker build -t registry.au-syd.bluemix.net/cloudzdb/zdb-portal-server:1.0.6 ./
+docker build -t registry.au-syd.bluemix.net/cloudzdb/zdb-portal-server:1.0.7 ./
 
-docker image tag zdb-portal-server:1.0.6 registry.au-syd.bluemix.net/cloudzdb/zdb-portal-server:1.0.6
-docker image push registry.au-syd.bluemix.net/cloudzdb/zdb-portal-server:1.0.6
+docker image tag zdb-portal-server:1.0.7 registry.au-syd.bluemix.net/cloudzdb/zdb-portal-server:1.0.7
+docker image push registry.au-syd.bluemix.net/cloudzdb/zdb-portal-server:1.0.7
 
 ## Deployment
 kubectl delete deployment zdb-portal-server-deployment -n zdb-system
