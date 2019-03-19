@@ -72,6 +72,8 @@ master:
     character_set_server=${character.set.server}
     collation-server=${collation.server}
     
+    event_scheduler=OFF
+    
     # Common Config
     back_log=200
     join_buffer_size=64k
@@ -213,8 +215,10 @@ slave:
     query_cache_limit=0
     
     character-set-client-handshake=FALSE
-    character_set_server=UTF8
-    collation-server=utf8_general_ci
+    character_set_server=${character.set.server}
+    collation-server=${collation.server}
+    
+    event_scheduler=OFF
     
     # Common Config
     back_log=200

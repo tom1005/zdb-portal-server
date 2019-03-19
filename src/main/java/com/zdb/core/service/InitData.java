@@ -31,6 +31,8 @@ public class InitData {
 //		innodb_undo_tablespaces=${innodb_undo_tablespaces}
 		defaultConfigMap.put("innodb_undo_logs", "128|범위 : 0 to 128|true|numeric");
 		defaultConfigMap.put("innodb_undo_tablespaces", "0|범위 : 0 to 95|false|numeric");
+
+		defaultConfigMap.put("event_scheduler", "OFF|범위 : ON/OFF|true|enumeration");
 		
 		defaultConfigMap.put("interactive_timeout", "3600|범위 : 1 to 31536000|true|numeric");
 		defaultConfigMap.put("join_buffer_size", "64k|범위 : 128 to 18446744073709547520|true|numeric");

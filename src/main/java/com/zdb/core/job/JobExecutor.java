@@ -42,7 +42,7 @@ public class JobExecutor {
 	}
 	
 	private void shutdown() {
-		JobHandler.removeListener(eventListener);
+		JobHandler.getInstance().removeListener(eventListener);
 		
 		if(executorService != null && !executorService.isTerminated()) {
 			executorService.shutdownNow();
@@ -69,7 +69,7 @@ public class JobExecutor {
 	}
 	
 	private synchronized void exec() {
-		JobHandler.addListener(eventListener);
+		JobHandler.getInstance().addListener(eventListener);
 		
 		executorService = Executors.newSingleThreadExecutor();
 		executorService.execute(new DeploymentConsumer("worker - " , taskQueue));

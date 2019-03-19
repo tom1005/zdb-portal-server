@@ -113,7 +113,7 @@ public class MultiJobExecTest {
 
 		};
 
-		JobHandler.addListener(eventListener);
+		JobHandler.getInstance().addListener(eventListener);
 
 		storageScaleExecutor.execTask(jobs.toArray(new Job[] {}));
 

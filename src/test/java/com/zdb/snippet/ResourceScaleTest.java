@@ -74,7 +74,7 @@ public class ResourceScaleTest {
 
 		};
 
-		JobHandler.addListener(eventListener);
+		JobHandler.getInstance().addListener(eventListener);
 
 		storageScaleExecutor.execTask(jobs);
 

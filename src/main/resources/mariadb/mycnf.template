@@ -21,6 +21,8 @@ collation-server=${collation-server}
 connect_timeout=${connect_timeout}
 max_connections=${max_connections}
 
+event_scheduler=${event_scheduler}
+
 # Common Config
 back_log=${back_log}
 join_buffer_size=${join_buffer_size}

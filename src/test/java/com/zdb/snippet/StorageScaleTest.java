@@ -72,13 +72,13 @@ public class StorageScaleTest {
 
 		};
 
-		JobHandler.addListener(eventListener);
+		JobHandler.getInstance().addListener(eventListener);
 
 		storageScaleExecutor.execTask(jobs);
 
 		try {
 			latch.await();
-			JobHandler.removeListener(eventListener);
+			JobHandler.getInstance().removeListener(eventListener);
 		} catch (InterruptedException e) {
 			log.error(e.getMessage(), e);
 		}
