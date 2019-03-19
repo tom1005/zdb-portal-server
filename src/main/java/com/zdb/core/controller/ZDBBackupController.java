@@ -490,10 +490,6 @@ public class ZDBBackupController {
 		try {
 			result = backupProvider.getScheduleInfoList(txId, namespace);
 			
-			//임시조치 - 20190318
-			//UI 변경 이후에 반
-			result = null;
-			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			if (e instanceof BackupException) {

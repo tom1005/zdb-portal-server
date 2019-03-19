@@ -56,6 +56,7 @@ public class RequestEvent {
 	public static final String ADD_AUTO_FAILOVER = "Auto Failover 환경 등록";
 	public static final String CHANGE_PORT = "포트 변경";
 	public static final String WORKER_POOLS_READ = "Worker Pools 조회";
+	public static final String FAILBACK = "서비스 전환(Fail-Back : Slave To Master)";
 	
 	private String operation;
 
