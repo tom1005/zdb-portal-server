@@ -45,4 +45,9 @@ public abstract class JobAdapter implements Job {
 	public void setStatus(JobResult status) {
 		this.status = status;
 	}
+	
+	@Override
+	public String getTxid() {
+		return param.getTxId();
+	}
 }

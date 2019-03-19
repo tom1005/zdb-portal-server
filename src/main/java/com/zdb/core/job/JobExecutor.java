@@ -19,12 +19,26 @@ public class JobExecutor {
 	
 	CountDownLatch countDownLatch = null;
 	
-	public JobExecutor(CountDownLatch latch) {
+	String txId = null;
+	
+	public JobExecutor(CountDownLatch latch, String txId) {
 		this.countDownLatch = latch;
+		this.txId = txId;
 
 		if (taskQueue == null) {
 			taskQueue = new ArrayBlockingQueue<Job>(20);
 		}
+		
+		eventListener = new EventAdapter(txId) {
+
+			@Override
+			public void done(Job job, JobResult code, String message, Throwable e) {
+				if(eventListener.getTxId().equals(job.getTxid())) {
+					setContinue(code == JobResult.OK ? true : false);
+				}
+			}
+
+		};
 	}
 	
 	private void shutdown() {
@@ -71,14 +85,7 @@ public class JobExecutor {
 		return isContinue;
 	}
 	
-	EventListener eventListener = new EventAdapter() {
-
-		@Override
-		public void done(Job job, JobResult code, String message, Throwable e) {
-			setContinue(code == JobResult.OK ? true : false);
-		}
-
-	};
+	EventListener eventListener = null;
 
 	private class DeploymentConsumer implements Runnable {
 		private BlockingQueue<Job> queue;

@@ -151,33 +151,5 @@ public class StartServiceJob extends JobAdapter {
 		
 	}
 
-	public static void main(String[] args) {
-		String accessMode = "ReadWriteOnce";
-		String billingType = "hourly";
-		String storageClass = "ibmc-block-silver";
-		
-		String namespace = "zdb-test2";
-		String podName = "zdb-test2-ns-mariadb-0";
-		String serviceType = "mariadb";
-		String serviceName = "zdb-test2-ns";
-		String size = "40Gi";
-		String statefulsetName = "zdb-test2-ns-mariadb";
-		
-		JobParameter param = new JobParameter();
-		param.setNamespace(namespace);
-		param.setPodName(podName);
-		param.setServiceType(serviceType);
-		param.setServiceName(serviceName);
-		param.setAccessMode(accessMode);
-		param.setBillingType(billingType);
-		param.setSize(size);
-		param.setStorageClass(storageClass);
-		param.setStatefulsetName(statefulsetName);
-		param.setTargetPvc("data-zdb-test2-ns-mariadb-1");
-		//"zdb-test2", "zdb-test2-ns-mariadb", "data-zdb-test2-ns-mariadb-1"
-		
-		StartServiceJob job = new StartServiceJob(param);
-		job.run();
-	}
 
 }

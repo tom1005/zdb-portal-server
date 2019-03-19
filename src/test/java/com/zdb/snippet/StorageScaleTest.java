@@ -4,6 +4,7 @@ import java.util.concurrent.CountDownLatch;
 
 import com.zdb.core.job.CreatePersistentVolumeClaimsJob;
 import com.zdb.core.job.DataCopyJob;
+import com.zdb.core.job.EventAdapter;
 import com.zdb.core.job.EventListener;
 import com.zdb.core.job.Job;
 import com.zdb.core.job.JobExecutor;
@@ -50,9 +51,9 @@ public class StorageScaleTest {
 
 		CountDownLatch latch = new CountDownLatch(jobs.length);
 
-		JobExecutor storageScaleExecutor = new JobExecutor(latch);
+		JobExecutor storageScaleExecutor = new JobExecutor(latch,"txid");
 
-		EventListener eventListener = new EventListener() {
+		EventListener eventListener = new EventAdapter("txid") {
 
 			@Override
 			public void onEvent(Job job, String event) {

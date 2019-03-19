@@ -41,21 +41,27 @@ public class JobHandler {
 	public synchronized void onEvent(Job job, String event) {
 		for (Iterator<EventListener> iterator = listeners.iterator(); iterator.hasNext();) {
 			EventListener eventListener = iterator.next();
-			eventListener.onEvent(job, event);
+			if(eventListener.getTxId().equals(job.getTxid())) {
+				eventListener.onEvent(job, event);
+			}
 		}
 	}
 
 	public synchronized void onDone(Job job, JobResult code, String message, Throwable e) {
 		for (Iterator<EventListener> iterator = listeners.iterator(); iterator.hasNext();) {
 			EventListener eventListener = iterator.next();
-			eventListener.done(job, code, message, e);
+			if(eventListener.getTxId().equals(job.getTxid())) {
+				eventListener.done(job, code, message, e);
+			}
 		}
 	}
 	
 	public synchronized void progress(Job job, String status) {
 		for (Iterator<EventListener> iterator = listeners.iterator(); iterator.hasNext();) {
 			EventListener eventListener = iterator.next();
-			eventListener.status(job, status);
+			if(eventListener.getTxId().equals(job.getTxid())) {
+				eventListener.status(job, status);
+			}
 		}
 	}
 

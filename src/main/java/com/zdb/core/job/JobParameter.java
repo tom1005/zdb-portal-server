@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Data
 public class JobParameter {
+	String txId;
 	String namespace;
 	String podName;
 	String serviceType;

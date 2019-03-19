@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
-import com.zdb.core.job.EventListener;
+import com.zdb.core.job.EventAdapter;
 import com.zdb.core.job.Job;
 import com.zdb.core.job.Job.JobResult;
 import com.zdb.core.job.JobExecutor;
@@ -18,6 +18,16 @@ import lombok.extern.slf4j.Slf4j;
 public class MultiJobExecTest {
 
 	public static void main(String[] args) {
+		
+		CountDownLatch latch = new CountDownLatch(1);
+		
+		String txId = "xxxxxxxxxxxx";
+		JobExecutor ex = new JobExecutor(latch, txId);
+		
+	}
+	
+	
+	public static void main2(String[] args) {
 
 		JobParameter param = new JobParameter();
 		param.setNamespace("zdb-test2");
@@ -72,9 +82,9 @@ public class MultiJobExecTest {
 
 		CountDownLatch latch = new CountDownLatch(jobs.size());
 
-		JobExecutor storageScaleExecutor = new JobExecutor(latch);
+		JobExecutor storageScaleExecutor = new JobExecutor(latch,"");
 
-		EventListener eventListener = new EventListener() {
+		EventAdapter eventListener = new EventAdapter("") {
 
 			@Override
 			public void onEvent(Job job, String event) {

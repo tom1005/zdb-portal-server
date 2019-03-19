@@ -4,6 +4,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.zdb.core.job.EventAdapter;
 import com.zdb.core.job.EventListener;
 import com.zdb.core.job.Job;
 import com.zdb.core.job.Job.JobResult;
@@ -52,9 +53,9 @@ public class ResourceScaleTest {
 
 		CountDownLatch latch = new CountDownLatch(jobs.length);
 
-		JobExecutor storageScaleExecutor = new JobExecutor(latch);
+		JobExecutor storageScaleExecutor = new JobExecutor(latch,"txid");
 
-		EventListener eventListener = new EventListener() {
+		EventListener eventListener = new EventAdapter("txid") {
 
 			@Override
 			public void onEvent(Job job, String event) {
