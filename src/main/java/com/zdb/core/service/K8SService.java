@@ -23,6 +23,7 @@ import org.springframework.core.io.ClassPathResource;
 import com.google.gson.Gson;
 import com.zdb.core.domain.CommonConstants;
 import com.zdb.core.domain.DiskUsage;
+import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.MetaData;
 import com.zdb.core.domain.PersistenceSpec;
 import com.zdb.core.domain.PodSpec;
@@ -34,6 +35,8 @@ import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.ZDBPersistenceEntity;
 import com.zdb.core.domain.ZDBStatus;
 import com.zdb.core.domain.ZDBType;
+import com.zdb.core.job.JobHandler;
+import com.zdb.core.job.Job.JobResult;
 import com.zdb.core.repository.DiskUsageRepository;
 import com.zdb.core.repository.MetadataRepository;
 import com.zdb.core.repository.ScheduleEntityRepository;
@@ -1138,7 +1141,15 @@ public class K8SService {
 		}
 	}
 	
-	private boolean isFailoverEnabled(ServiceOverview so) {
+	private String isFailoverEnabled(ServiceOverview so) {
+		String eventKey = "service_"+so.getNamespace()+"_"+so.getServiceName();
+		
+		// 상태 조회..
+		JobResult status = JobHandler.getInstance().getStatus(EventType.Auto_Failover_Enable, eventKey);
+		if(status != null && status == JobResult.RUNNING) {
+			return "running";
+		}
+		
 		if (ZDBType.MariaDB.name().toLowerCase().equals(so.getServiceType().toLowerCase())) {
 			if(so.getStatefulSets().size() > 1) {
 //				"zdb-failover-enable", "true"
@@ -1147,7 +1158,7 @@ public class K8SService {
 					Map<String, String> labels = statefulSet.getMetadata().getLabels();
 					String enable = labels.get("zdb-failover-enable");
 					if(enable != null && "true".equals(enable)) {
-						return true;
+						return "on";
 					}
 					
 				}
@@ -1155,7 +1166,7 @@ public class K8SService {
 			}
 		}
 		
-		return false;
+		return "off";
 	}
 	
 	private ZDBStatus getStatus(ServiceOverview so) {

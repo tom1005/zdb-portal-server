@@ -2174,7 +2174,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 							String eventKey = "service_"+namespace+"_"+serviceName;
 							
 							// 상태 변경..
-							JobHandler.getInstance().setEventStatus(EventType.Auto_Failover_Off, eventKey, JobResult.OK);
+							JobHandler.getInstance().setEventStatus(EventType.Auto_Failover_Enable, eventKey, JobResult.OK);
 							
 							if (jobList.contains(job)) {
 								RequestEvent event = new RequestEvent();
@@ -2220,7 +2220,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 							}
 							
 							// 로직 종료시 상태정보 remove
-							JobHandler.getInstance().removeEventCache(EventType.Auto_Failover_Off, eventKey);
+							JobHandler.getInstance().removeEventCache(EventType.Auto_Failover_Enable, eventKey);
 						}
 						
 					};
@@ -2233,11 +2233,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 					String eventKey = "service_"+namespace+"_"+serviceName;
 					
+					JobHandler.getInstance().setEventStatus(EventType.Auto_Failover_Enable, eventKey, JobResult.RUNNING);
 					if(enable) {
-						JobHandler.getInstance().setEventStatus(EventType.Auto_Failover_On, eventKey, JobResult.RUNNING);
 						result = new Result(txId, IResult.RUNNING, "서비스 : " + serviceName + "<br>Auto Failover 기능을 적용합니다.<br>처음 적용시 서비스가 재시작 됩니다.");
 					} else {
-						JobHandler.getInstance().setEventStatus(EventType.Auto_Failover_Off, eventKey, JobResult.RUNNING);
 						result = new Result(txId, IResult.RUNNING, "서비스 : " + serviceName + "<br>Auto Failover 기능을 해제 합니다.");
 					}
 				} else {

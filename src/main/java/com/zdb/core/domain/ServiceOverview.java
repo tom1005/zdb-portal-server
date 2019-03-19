@@ -56,7 +56,7 @@ public class ServiceOverview {
 	
 	private boolean backupEnabled;
 	
-	private boolean failoverEnabled;
+	private String failoverEnabled;
 	
 	private String serviceFailOverStatus;
 	
