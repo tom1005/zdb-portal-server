@@ -22,12 +22,14 @@ connect_timeout=${connect_timeout}
 max_connections=${max_connections}
 
 event_scheduler=${event_scheduler}
+thread_cache_size=${thread_cache_size}
+innodb_io_capacity=${innodb_io_capacity}
 
 # Common Config
 back_log=${back_log}
 join_buffer_size=${join_buffer_size}
 max_allowed_packet=${max_allowed_packet}
-max_heap_table_size=16M
+max_heap_table_size=${max_heap_table_size}
 performance_schema
 read_buffer_size=${read_buffer_size}
 read_rnd_buffer_size=${read_rnd_buffer_size}
@@ -55,7 +57,7 @@ innodb_buffer_pool_size=${innodb_buffer_pool_size}
 innodb_file_per_table=1
 innodb_flush_method=${innodb_flush_method}
 innodb_lock_wait_timeout=${innodb_lock_wait_timeout}
-innodb_log_buffer_size=10M
+innodb_log_buffer_size=${innodb_log_buffer_size}
 innodb_log_file_size=${innodb_log_file_size} 
 innodb_log_files_in_group=${innodb_log_files_in_group}
 innodb_thread_sleep_delay=0
@@ -64,7 +66,7 @@ innodb_thread_concurrency=0
 innodb_read_io_threads=${innodb_read_io_threads}
 innodb_write_io_threads=${innodb_write_io_threads}
 innodb_autoinc_lock_mode=1
-innodb_open_files=8192
+innodb_open_files=${innodb_open_files}
 innodb_buffer_pool_instances=${innodb_buffer_pool_instances}
 innodb_lru_scan_depth=512
 innodb_sort_buffer_size=${innodb_sort_buffer_size}
@@ -82,7 +84,7 @@ myisam_recover_options=BACKUP,QUICK
 
 # Replication related settings
 expire_logs_days=1
-max_binlog_size=200M
+max_binlog_size=${max_binlog_size}
 sync_binlog=1
 binlog_format=ROW
 log_bin_trust_function_creators=1
