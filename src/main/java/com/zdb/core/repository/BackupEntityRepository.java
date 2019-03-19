@@ -12,7 +12,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.zdb.core.domain.BackupEntity;
-import com.zdb.core.domain.EventMetaData;
 
 /**
  * Repository for ZDBEntity
@@ -28,8 +27,8 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 
 	@Query("select t from BackupEntity t where serviceType=:serviceType"
 			+ " and serviceName=:serviceName"
-			+ " and start_datetime is not null"
-			+ " order by start_datetime desc" )
+			+ " and startDatetime is not null"
+			+ " order by startDatetime desc" )
 	List<BackupEntity> findBackupByService(@Param("serviceType") String serviceType
 			, @Param("serviceName") String serviceName);
 	
@@ -166,8 +165,8 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 	@Query("select t from BackupEntity t where t.scheduleId=:scheduleId and t.status='OK'" )
 	List<BackupEntity> findBackupListByScheduleId(@Param("scheduleId") String scheduleId);
 
-	@Query(value = "select * from zdb.backup_entity where namespace = :namespace and service_type = :serviceType and service_name = :serviceName and schedule_yn = 'Y' and status = 'OK' order by complete_datetime desc limit 1", nativeQuery = true)
-	List<BackupEntity> findFromBackup(@Param("namespace") String namespace
+	@Query(value = "select * from zdb.backup_entity where namespace = :namespace and service_type = :serviceType and service_name = :serviceName and type = 'FULL' and status = 'OK' order by complete_datetime desc limit 1", nativeQuery = true)
+	BackupEntity findFromBackup(@Param("namespace") String namespace
 			, @Param("serviceType") String serviceType
 			, @Param("serviceName") String serviceName);
 }

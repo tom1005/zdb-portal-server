@@ -10,7 +10,6 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import com.zdb.core.domain.EventMetaData;
 import com.zdb.core.domain.ScheduleEntity;
 
 /**
@@ -88,4 +87,17 @@ public interface ScheduleEntityRepository extends CrudRepository<ScheduleEntity,
         int modify2Restore(@Param("useYn") String useYn
                         , @Param("incrementYn") String incrementYn
                         , @Param("scheduleId") String scheduleId);
+        
+        
+        @Modifying(clearAutomatically = true)
+        @Transactional
+        @Query("UPDATE ScheduleEntity t SET "
+                        + " t.currentLsn=:currentLsn "
+                        + ", t.currentBackupId=:currentBackupId "
+                        + "WHERE t.scheduleId=:scheduleId")
+        int modify2BackupInfo(@Param("currentLsn") long currentLsn
+                        , @Param("currentBackupId") String currentBackupId
+                        , @Param("scheduleId") String scheduleId);
+        
+        
 }

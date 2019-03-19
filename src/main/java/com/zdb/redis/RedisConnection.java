@@ -33,11 +33,9 @@ public class RedisConnection {
 	public static Jedis getRedisConnection(final String namespace, final String serviceName, final String redisRole) throws Exception, JedisException {
 		try {
 			String redisHost = K8SUtil.getRedisHostIP(namespace, serviceName, redisRole);
-			Integer redisPort = 6379; //K8SUtil.getServicePort(namespace, serviceName);
-			if (redisHost != null) {
-				
+			Integer redisPort = K8SUtil.getServicePort(namespace, serviceName);
+			if (redisHost != null && redisPort != null) {
 				String password = RedisSecret.getSecret(namespace, serviceName);
-	
 				if (password != null && !password.isEmpty()) {
 					password = new String(Base64.getDecoder().decode(password));
 				}

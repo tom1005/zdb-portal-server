@@ -225,7 +225,7 @@ public interface ZDBRestService {
 	 * @return
 	 * @throws Exception
 	 */
-	Result serviceChaneMasterToSlave(String txId, String namespace, String serviceType, String serviceName) throws Exception;
+	Result serviceChangeMasterToSlave(String txId, String namespace, String serviceType, String serviceName) throws Exception;
 
 	/**
 	 * 
@@ -238,7 +238,7 @@ public interface ZDBRestService {
 	 * @return
 	 * @throws Exception
 	 */
-	Result serviceChaneSlaveToMaster(String txId, String namespace, String serviceType, String serviceName) throws Exception;
+	Result serviceChangeSlaveToMaster(String txId, String namespace, String serviceType, String serviceName) throws Exception;
 
 	/**
 	 * Master 장애로 서비스LB 를 Master -> Slave 로 전환 여부를 반환한다.

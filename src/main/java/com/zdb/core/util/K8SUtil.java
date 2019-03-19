@@ -1489,34 +1489,34 @@ public class K8SUtil {
 	 * @throws FileNotFoundException
 	 */
 	public static String getRedisHostIP(String namespace, String serviceName, String redisRole) throws Exception {
-		List<io.fabric8.kubernetes.api.model.Service> services = kubernetesClient().inNamespace(namespace).services().withLabel("release", serviceName).list().getItems();
+		List<Service> services = kubernetesClient().inNamespace(namespace).services().withLabel("release", serviceName).list().getItems();
  
         String ip = new String();
 
-        for (io.fabric8.kubernetes.api.model.Service service : services) {
+        for (Service service : services) {
 	        try {
 	          String role = service.getSpec().getSelector().get("role");
 	          
 	          if (role.equals(redisRole)) {
 	        	  String loadbalancerType = service.getMetadata().getAnnotations().get("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type");
-	        	  
 	      		  if (!"prod".equals(profile)) {
 		        	  if ("public".equals(loadbalancerType)) {
 		        		  ip = service.getStatus().getLoadBalancer().getIngress().get(0).getIp();
-			        	  continue;  
+		        	  } else {
+		        		  log.error("Redis Service에 연결 할 수 없습니다.");
 		        	  }
 	    		  } else {	        	  
 		        	  if ("private".equals(loadbalancerType)) {
 		        		  ip = service.getSpec().getClusterIP();
-		        		  continue;
+		        	  } else {
+		        		  log.error("Redis Service에 연결 할 수 없습니다.");
 		        	  }
 	    		  }		        	  
 	          }
 	        } catch (Exception e) {
 	        	log.error(e.getMessage(), e);
 	        }
-	      }		
-		
+	      }
 		return ip;
 	}	
 	

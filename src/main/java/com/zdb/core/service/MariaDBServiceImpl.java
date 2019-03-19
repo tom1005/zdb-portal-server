@@ -595,14 +595,13 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		return result;
 	}
 
-	public Result createDBUser(final String txId, final String namespace, final String serviceName, final ZDBMariaDBAccount account) throws Exception {
+	public Result createDBUser(final String txId, final String namespace, final String serviceName, final DBUser account) throws Exception {
 		Result result = Result.RESULT_OK(txId);
 		
 		try {
-			// TODO:
-			if (null == MariaDBAccount.createAccount(zdbMariaDBAccountRepository, namespace, serviceName, account)) {
-				log.error("FAIL: creating new account. namespace: {}, serviceName: {}, accountId: {}", namespace, serviceName, account.getUserId());
-				Exception e = new Exception("creating new account failed. accountId: " + account.getUserId());
+			if (null == MariaDBAccount.createAccount(namespace, serviceName, account)) {
+				log.error("FAIL: creating new account. namespace: {}, serviceName: {}, accountId: {}", namespace, serviceName, account.getUser());
+				Exception e = new Exception("creating new account failed. accountId: " + account.getUser());
 				result = Result.RESULT_FAIL(txId, e);
 				throw e;
 			}
@@ -616,19 +615,14 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		return result;
 	}
 	
-	public Result updateDBUser(String txId, String namespace, String serviceName, ZDBMariaDBAccount account)
+	public Result updateDBUser(String txId, String namespace, String serviceName, DBUser account)
 			throws Exception {
 		Result result = Result.RESULT_OK(txId);
 
 		try {
-			ZDBMariaDBAccount accountBefore = MariaDBAccount.getAccount(zdbMariaDBAccountRepository, namespace, serviceName, account.getUserId());
-			if (accountBefore == null) {
-				return Result.RESULT_FAIL(txId, new Exception("no user. userId: " + account.getUserId()));
-			}
-
-			if (null == MariaDBAccount.updateAccount(zdbMariaDBAccountRepository, namespace, serviceName, accountBefore, account)) {
-				log.error("FAIL: cannot update an account. namespace: {}, serviceName: {}, accountId: {}", namespace, serviceName, account.getUserId());
-				return Result.RESULT_FAIL(txId, new Exception("cannot update an account. userId: " + account.getUserId()));
+			if (null == MariaDBAccount.updateAccount(namespace, serviceName, account)) {
+				log.error("FAIL: cannot update an account. namespace: {}, serviceName: {}, accountId: {}", namespace, serviceName, account.getUser());
+				return Result.RESULT_FAIL(txId, new Exception("cannot update an account. userId: " + account.getUser()));
 			}
 			
 			result.putValue(IResult.ACCOUNT, account);
@@ -638,6 +632,26 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			return Result.RESULT_FAIL(txId, e);
 		}
 
+		return result;
+	}
+	
+	public Result deleteDBUser(String txId, String namespace, String serviceName, DBUser account)
+			throws Exception {
+		Result result = Result.RESULT_OK(txId);
+		
+		try {
+			if (null == MariaDBAccount.deleteAccount(namespace, serviceName, account)) {
+				log.error("FAIL: cannot update an account. namespace: {}, serviceName: {}, accountId: {}", namespace, serviceName, account.getUser());
+				return Result.RESULT_FAIL(txId, new Exception("cannot update an account. userId: " + account.getUser()));
+			}
+			
+			result.putValue(IResult.ACCOUNT, account);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			
+			return Result.RESULT_FAIL(txId, e);
+		}
+		
 		return result;
 	}
 	
@@ -912,10 +926,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		try {
 			// shutdown and pod delete (restart)
 			MariaDBShutDownUtil.getInstance().doShutdownAndDeleteAllPods(namespace, serviceName);
-			result = new Result(txId, IResult.OK, "서비스 재시작 요청됨");
+			result = new Result(txId, IResult.OK, serviceName + "<br>서비스 재시작(Master/Slave)");
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, "서비스 재시작 오류. - " + e.getMessage());
+			result = new Result(txId, IResult.ERROR, serviceName + "<br>서비스 재시작 오류");
 		}
 
 		return result;
@@ -930,10 +944,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		try {
 			// shutdown and pod delete (restart)
 			MariaDBShutDownUtil.getInstance().doShutdownAndDeletePod(namespace, serviceName, podName);
-			result = new Result(txId, IResult.OK, "Pod 재시작 요청됨");
+			result = new Result(txId, IResult.OK, podName + "<br>재시작");
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, "Pod 재시작 오류. - " + e.getMessage());
+			result = new Result(txId, IResult.ERROR, podName + "<br>재시작 오류");
 		}
 
 		return result;
@@ -1737,7 +1751,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	}
 	
 	@Override
-	public Result serviceChaneMasterToSlave(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+	public Result serviceChangeMasterToSlave(String txId, String namespace, String serviceType, String serviceName) throws Exception {
 		Result result = null;
 		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
 			
@@ -1858,7 +1872,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	}
 	
 	@Override
-	public Result serviceChaneSlaveToMaster(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+	public Result serviceChangeSlaveToMaster(String txId, String namespace, String serviceType, String serviceName) throws Exception {
 		Result result = null;
 		
 		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {

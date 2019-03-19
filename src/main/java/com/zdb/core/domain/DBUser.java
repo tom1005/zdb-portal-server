@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 @Data
 public class DBUser {
 	String user;
+	String password;
 	String host;
 	String select;
 	String insert;

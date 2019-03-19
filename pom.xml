@@ -21,6 +21,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<java.version>1.8</java.version>
 		<slf4j.version>1.7.25</slf4j.version>
+		<os.detected.classifier>${os.detected.classifier}</os.detected.classifier>
 	</properties>
 
 	<dependencies>
@@ -229,6 +230,7 @@
 								<include>com/zdb/core/domain/*.*</include>
 								<include>com/zdb/core/repository/BackupEntityRepository.*</include>
 								<include>com/zdb/core/repository/ScheduleEntityRepository.*</include>
+								<include>com/zdb/core/repository/RestoreEntityRepository.*</include>
 								<include>com/zdb/core/repository/ZDBRepository.*</include>
 								<include>com/zdb/core/repository/ZDBReleaseRepository.*</include>
 								<include>com/zdb/core/repository/ZDBRepositoryUtil.*</include>

@@ -1,8 +1,10 @@
 package com.zdb.mariadb;
 
+import java.lang.reflect.Method;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -11,6 +13,7 @@ import javax.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.StringUtils;
 
 import com.zdb.core.domain.DBUser;
 import com.zdb.core.domain.ZDBMariaDBAccount;
@@ -518,43 +521,41 @@ public class MariaDBAccount {
 	}
 
 	/**
-	 * @param repo
 	 * @param namespace
 	 * @param releaseName
 	 * @param account
 	 * @return
 	 */
-	public static ZDBMariaDBAccount createAccount(final ZDBMariaDBAccountRepository repo, final String namespace, final String releaseName, final ZDBMariaDBAccount account) throws Exception {
+	public static DBUser createAccount(final String namespace, final String releaseName, final DBUser account) throws Exception {
 		MariaDBConnection connection = null;
-		String database = getMariaDBDatabase(namespace, releaseName);
-		ZDBMariaDBAccount existAccount = repo.findByReleaseNameAndUserId(releaseName, account.getUserId());
-		
-		if(existAccount != null) {
-			account.setId(existAccount.getId());
-		}
-		repo.save(account);
-
+		Statement statement = null;
+		String query = null;
 		try {
-			connection = MariaDBConnection.getRootMariaDBConnection(namespace, releaseName, database);
+			connection = MariaDBConnection.getRootMariaDBConnection(namespace, releaseName);
 			if( connection != null) {
-				Statement statement = connection.getStatement();
-	
-				String privilegeTypes = buildPrivilegeType(account);
-				if (privilegeTypes.isEmpty()) {
-					throw new Exception("invalid mariadb privileges.");
-				}
-	
-				logger.debug("privilegeTypes: {}", privilegeTypes);
-				String query = "GRANT " + privilegeTypes + " ON `" + database + "`.* TO '" + account.getUserId() + "'@'" + account.getAccessIp() + "' IDENTIFIED BY '" + account.getUserPassword() + "'";
-				logger.debug("query: {}", query);
-	
+				statement = connection.getStatement();
+				
+				query = String.format("CREATE USER '%s'@'%s' identified by '%s'",account.getUser(),account.getHost(),account.getPassword());
+				logger.info("query: {}", query);
 				statement.executeUpdate(query);
+				
+				List<String> privilegeTypes = getPrivilegeList(account);
+				if (!privilegeTypes.isEmpty()) {
+					query = String.format("GRANT %s ON *.* TO '%s'@'%s' IDENTIFIED BY '%s'",
+										String.join(",",privilegeTypes),account.getUser(),account.getHost(),account.getPassword());
+					logger.debug("query: {}", query);
+					statement.executeUpdate(query);
+				}
+				
 			} else {
 				throw new Exception("cannot create connection.");
 			}
 		} catch (Exception e) {
 			logger.error("Exception.", e);
 		} finally {
+			if(statement != null) {
+				statement.close();
+			}
 			if (connection != null) {
 				connection.close();
 			}
@@ -562,7 +563,99 @@ public class MariaDBAccount {
 
 		return account;
 	}
+	/**
+	 * Update a MariaDB account
+	 * 
+	 * @param id
+	 * @param password
+	 * @param accessIp
+	 * @param create
+	 * @param read
+	 * @param update
+	 * @param delete
+	 * @param grant
+	 * 
+	 * @return DBUser
+	 */
+	public static DBUser updateAccount(final String namespace, final String releaseName,DBUser account) throws Exception  {
+		MariaDBConnection connection = null;
+		Statement statement = null;
+		String query = null;
+		try {
+			connection = MariaDBConnection.getRootMariaDBConnection(namespace, releaseName);
+			statement = connection.getStatement();
+			
+			query = String.format("REVOKE ALL PRIVILEGES ON *.* FROM '%s'@'%s';", account.getUser(),account.getHost());
+			statement.executeUpdate(query);
+			List<String> privilegeTypes = getPrivilegeList(account);
+			if (!privilegeTypes.isEmpty()) {
+				query = String.format("GRANT %s ON *.* TO '%s'@'%s' IDENTIFIED BY '%s';", String.join(",",privilegeTypes),account.getUser(),account.getHost(),account.getPassword());
+				logger.debug("query: {}", query);
+				statement.executeUpdate(query);
+			}
+			
+			if (!StringUtils.isEmpty(account.getPassword())) {
+				query = String.format(" SET PASSWORD FOR '%s'@'%s' = PASSWORD('%s');",account.getUser(),account.getHost(),account.getPassword());
+				logger.debug("query: {}", query);
+				statement.executeUpdate(query);
+			}
+			
+		} catch (Exception e) {
+			logger.error("Exception.", e);
+		} finally {
+			if (statement != null) {
+				statement.close();
+			}
+			if (connection != null) {
+				connection.close();
+			}
+		}
 
+		return account;
+	}
+	public static DBUser deleteAccount(final String namespace,final String releaseName,DBUser account)throws Exception {
+		MariaDBConnection connection = null;
+		Statement statement = null;
+		String query = null;
+		try {
+			connection = MariaDBConnection.getRootMariaDBConnection(namespace, releaseName);
+			statement = connection.getStatement();
+			
+			List<String> blackList = Arrays.asList("admin","root");
+			if(blackList.indexOf(account.getUser()) == -1) {
+				query = String.format("DROP USER '%s'@'%s';", account.getUser(),account.getHost());
+				statement.executeQuery(query);
+			}
+		} catch (Exception e) {
+			logger.error("Exception.", e);
+		} finally {
+			if (statement != null) {
+				statement.close();
+			}
+			if (connection != null) {
+				connection.close();
+			}
+		}
+
+		return account;		
+	}
+	private static List<String> getPrivilegeList(DBUser account) {
+		List<String> privilegeList = new ArrayList<>();
+		String [] grantCols = {"select","insert","update","delete","execute","create","alter","drop","createView","trigger","grant","createUser"};
+		
+		Class cls = account.getClass();
+		for(String col : grantCols) {
+			try {
+				Method m = cls.getMethod("get"+col.substring(0,1).toUpperCase()+col.substring(1));
+				String yn = (String)m.invoke(account);
+				if(yn.equals("Y")) {
+					privilegeList.add(col);
+				}
+			} catch (Exception e) {
+			}
+		}
+		return privilegeList;
+	}
 	public static ZDBMariaDBAccount createAdminAccount(final ZDBMariaDBAccountRepository repo, final String namespace, final String releaseName, final String id, final String password) {
 		ZDBMariaDBAccount account = new ZDBMariaDBAccount(null, releaseName, id, password, "%", true, true, true, true, true);
 		repo.save(account);

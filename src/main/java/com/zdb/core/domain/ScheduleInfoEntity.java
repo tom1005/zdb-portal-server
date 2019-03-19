@@ -1,7 +1,5 @@
 package com.zdb.core.domain;
 
-import java.util.Date;
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -10,7 +8,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Data
 public class ScheduleInfoEntity {
-	
+/*	
 	private String serviceName;
 	private String serviceType;
 	private String namespace;
@@ -25,5 +23,20 @@ public class ScheduleInfoEntity {
 	private String status;
 	private long fileSize;
 	private long fileSumSize = 0l;
-	
+*/	
+	private String namespace;
+	private String serviceName;
+	private String serviceType;
+	private String useYn;
+	private String startTime;
+	private int storePeriod;
+	private String incrementYn = "N";
+	private int incrementPeriod = 12;
+
+	private long fullFileSize;
+	private String fullExecutionTime;
+
+	private long incrFileSize;
+	private String incrExecutionTime;
+
 }	

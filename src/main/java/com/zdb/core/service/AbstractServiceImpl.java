@@ -1905,11 +1905,11 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		return null;
 	}
 
-	public Result serviceChaneMasterToSlave(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+	public Result serviceChangeMasterToSlave(String txId, String namespace, String serviceType, String serviceName) throws Exception {
 		return null;
 	}
 
-	public Result serviceChaneSlaveToMaster(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+	public Result serviceChangeSlaveToMaster(String txId, String namespace, String serviceType, String serviceName) throws Exception {
 		return null;
 	}
 

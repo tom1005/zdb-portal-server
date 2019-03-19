@@ -26,4 +26,7 @@ public interface ZDBReleaseRepository extends CrudRepository<ReleaseMetaData, St
 	
 	@Query(value = "select t.* from (select releasename, max(update_time) as maxtime from zdb.release_meta_data where status != 'DELETED' group by releasename) r inner join zdb.release_meta_data t on t.releasename = r.releasename and t.update_time = r.maxtime and status != 'DELETED' order by t.releasename", nativeQuery = true)
 	List<ReleaseMetaData> findAll();
+	
+	@Query(value = "select t.* from release_meta_data t where status = 'DEPLOYED'", nativeQuery = true)
+	List<ReleaseMetaData> findForBackupList();
 }
