@@ -339,7 +339,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 			List<ScheduleInfoEntity> scheduleInfolist = new ArrayList<ScheduleInfoEntity>();
 			List<ReleaseMetaData> releaseMetaList = releaseRepository.findForBackupList();
 			releaseMetaList.forEach(releaseMeta -> {
-				if (releaseMeta.getNamespace().equals(namespace)) {
+				if ( namespace.equals("_DEFAULT_ALL") || releaseMeta.getNamespace().equals(namespace)) {
 					
 					long fullFileSize = 0l;
 					long fullExecutionMilSec = 0l;
@@ -353,6 +353,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 					ScheduleInfoEntity scheduleInfo = new ScheduleInfoEntity();
 					scheduleInfo.setNamespace(releaseMeta.getNamespace());
 					scheduleInfo.setServiceType(releaseMeta.getApp());
+					scheduleInfo.setServiceName(releaseMeta.getReleaseName());
 					
 					scheduleInfo.setUseYn("N");
 					scheduleInfo.setStartTime(ZDBConfigService.backupTimeValue);
