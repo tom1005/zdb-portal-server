@@ -6,6 +6,8 @@ public interface Job extends Runnable{
 		OK, RUNNING, ERROR
 	}
 
+	public String getTxid();
+	
 	public String getJobName();
 
 	public JobParameter getJobParameter();

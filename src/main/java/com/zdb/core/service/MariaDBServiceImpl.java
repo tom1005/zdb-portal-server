@@ -57,7 +57,7 @@ import com.zdb.core.domain.ZDBType;
 import com.zdb.core.job.CreatePersistentVolumeClaimsJob;
 import com.zdb.core.job.DataCopyJob;
 import com.zdb.core.job.EnableAutofailover;
-import com.zdb.core.job.EventListener;
+import com.zdb.core.job.EventAdapter;
 import com.zdb.core.job.Job;
 import com.zdb.core.job.Job.JobResult;
 import com.zdb.core.job.JobExecutor;
@@ -87,11 +87,6 @@ import hapi.release.ReleaseOuterClass.Release;
 import hapi.services.tiller.Tiller.UpdateReleaseRequest;
 import hapi.services.tiller.Tiller.UpdateReleaseResponse;
 import io.fabric8.kubernetes.api.model.ConfigMap;
-import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
-import io.fabric8.kubernetes.api.model.ConfigMapList;
-import io.fabric8.kubernetes.api.model.ConfigMapVolumeSource;
-import io.fabric8.kubernetes.api.model.Container;
-import io.fabric8.kubernetes.api.model.DoneableConfigMap;
 import io.fabric8.kubernetes.api.model.DoneablePod;
 import io.fabric8.kubernetes.api.model.DoneableService;
 import io.fabric8.kubernetes.api.model.LoadBalancerIngress;
@@ -103,11 +98,9 @@ import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.ServiceList;
 import io.fabric8.kubernetes.api.model.ServicePort;
 import io.fabric8.kubernetes.api.model.Volume;
-import io.fabric8.kubernetes.api.model.VolumeMount;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.DoneableStatefulSet;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
-import io.fabric8.kubernetes.api.model.extensions.StatefulSetBuilder;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSetList;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
@@ -246,6 +239,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			param.setServiceName(service.getServiceName());
 			param.setCpu(masterCpu+"m");
 			param.setMemory(masterMemory+"Mi");
+			param.setTxId(txId);
 
 			ResourceScaleJob job1 = new ResourceScaleJob(param);
 
@@ -253,11 +247,11 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 			CountDownLatch latch = new CountDownLatch(jobs.length);
 
-			JobExecutor storageScaleExecutor = new JobExecutor(latch);
+			JobExecutor storageScaleExecutor = new JobExecutor(latch, txId);
 			
 			final String _historyValue = historyValue;
 			
-			EventListener eventListener = new EventListener() {
+			EventAdapter eventListener = new EventAdapter(txId) {
 
 				@Override
 				public void onEvent(Job job, String event) {
@@ -1189,6 +1183,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				param.setSize(pvcSize);
 				param.setStorageClass(storageClass == null ? "ibmc-block-silver" : storageClass);
 				param.setStatefulsetName(statefulsetName);
+				param.setTxId(txId);
 
 				CreatePersistentVolumeClaimsJob job1 = new CreatePersistentVolumeClaimsJob(param);
 				ShutdownServiceJob              job2 = new ShutdownServiceJob(param);
@@ -1205,11 +1200,11 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			if (jobList.size() > 0) {
 				CountDownLatch latch = new CountDownLatch(jobList.size());
 
-				JobExecutor storageScaleExecutor = new JobExecutor(latch);
+				JobExecutor storageScaleExecutor = new JobExecutor(latch, txId);
 
 				final String _historyValue = historyValue;
 
-				EventListener eventListener = new EventListener() {
+				EventAdapter eventListener = new EventAdapter(txId) {
 
 					@Override
 					public void onEvent(Job job, String event) {
@@ -1509,6 +1504,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			param.setServiceName(serviceName);
 			param.setStatefulsetName(stsName);
 			param.setToggle(1);
+			param.setTxId(txId);
 
 			ServiceOnOffJob job1 = new ServiceOnOffJob(param);
 			
@@ -1517,11 +1513,11 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			if (jobList.size() > 0) {
 				CountDownLatch latch = new CountDownLatch(jobList.size());
 
-				JobExecutor storageScaleExecutor = new JobExecutor(latch);
+				JobExecutor storageScaleExecutor = new JobExecutor(latch, txId);
 
 				final String _historyValue = String.format("서비스 시작(%s)", stsName);
 
-				EventListener eventListener = new EventListener() {
+				EventAdapter eventListener = new EventAdapter(txId) {
 
 					@Override
 					public void onEvent(Job job, String event) {
@@ -1639,6 +1635,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			param.setServiceName(serviceName);
 			param.setStatefulsetName(stsName);
 			param.setToggle(0);
+			param.setTxId(txId);
 
 			ServiceOnOffJob job1 = new ServiceOnOffJob(param);
 			
@@ -1647,11 +1644,11 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			if (jobList.size() > 0) {
 				CountDownLatch latch = new CountDownLatch(jobList.size());
 
-				JobExecutor storageScaleExecutor = new JobExecutor(latch);
+				JobExecutor storageScaleExecutor = new JobExecutor(latch, txId);
 
 				final String _historyValue = String.format("서비스 종료(%s)", stsName);
 
-				EventListener eventListener = new EventListener() {
+				EventAdapter eventListener = new EventAdapter(txId) {
 
 					@Override
 					public void onEvent(Job job, String event) {
@@ -2132,6 +2129,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				param.setServiceName(serviceName);
 				param.setStatefulsetName(sts.getMetadata().getName());
 				param.setToggle(enable ? 1 : 0);
+				param.setTxId(txId);
 				
 				EnableAutofailover job1 = new EnableAutofailover(param);
 				
@@ -2140,11 +2138,11 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				if (jobList.size() > 0) {
 					CountDownLatch latch = new CountDownLatch(jobList.size());
 					
-					JobExecutor storageScaleExecutor = new JobExecutor(latch);
+					JobExecutor storageScaleExecutor = new JobExecutor(latch, txId);
 					
 					final String _historyValue = String.format("Auto-Failover 설정 변경(%s)", serviceName);
 					
-					EventListener eventListener = new EventListener() {
+					EventAdapter eventListener = new EventAdapter(txId) {
 						
 						@Override
 						public void onEvent(Job job, String event) {

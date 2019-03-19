@@ -3,6 +3,12 @@ package com.zdb.core.job;
 import com.zdb.core.job.Job.JobResult;
 
 public class EventAdapter implements EventListener {
+	
+	String txId;
+	
+	public EventAdapter(String txId) {
+		this.txId = txId;
+	}
 
 	@Override
 	public void onEvent(Job job, String event) {
@@ -17,6 +23,11 @@ public class EventAdapter implements EventListener {
 	@Override
 	public void status(Job job, String status) {
 		
+	}
+
+	@Override
+	public String getTxId() {
+		return txId;
 	}
 
 }
