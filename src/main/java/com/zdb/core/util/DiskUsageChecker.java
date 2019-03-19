@@ -1,14 +1,11 @@
 package com.zdb.core.util;
 
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import com.zdb.core.domain.CommonConstants;
 import com.zdb.core.domain.DiskUsage;
@@ -18,11 +15,7 @@ import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.client.Callback;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
-import io.fabric8.kubernetes.client.dsl.ExecListener;
-import io.fabric8.kubernetes.client.dsl.ExecWatch;
-import io.fabric8.kubernetes.client.utils.BlockingInputStreamPumper;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.Response;
 
 @Slf4j
 public class DiskUsageChecker {
@@ -46,18 +39,19 @@ public class DiskUsageChecker {
 
 
 	public List<DiskUsage> getAllDiskUsage() throws Exception {
-		String[] commands = new String[] { "/bin/sh", "-c", "df -P | grep bitnami | awk '{size = $2} {used = $3} {avail=$4} {use=$5} END { print size \" \"used \" \" avail \" \" use }'" };
+//		String[] commands = new String[] { "/bin/sh", "-c", "df -P | grep bitnami | awk '{size = $2} {used = $3} {avail=$4} {use=$5} END { print size \" \"used \" \" avail \" \" use }'" };
+		String cmd = "/bin/df -P | grep bitnami | awk '{size = $2} {used = $3} {avail=$4} {use=$5} END { print size \" \"used \" \" avail \" \" use }'";
 		long s = System.currentTimeMillis();
 
 		List<DiskUsage> list = new ArrayList<>();
-
-		ScheduledExecutorService executorService = Executors.newScheduledThreadPool(100);
+		ExecutorService executorService = Executors.newCachedThreadPool();
+//		ScheduledExecutorService executorService = Executors.newScheduledThreadPool(100);
 
 		try (final DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
 
-			for (int i = 0; i < commands.length; i++) {
-				commands[i] = URLEncoder.encode(commands[i], "UTF-8");
-			}
+//			for (int i = 0; i < commands.length; i++) {
+//				commands[i] = URLEncoder.encode(commands[i], "UTF-8");
+//			}
 
 			List<Pod> items = new ArrayList<>();
 			// zdb namespace label
@@ -99,6 +93,9 @@ public class DiskUsageChecker {
 				String podName = pod.getMetadata().getName();
 				String releaseName = pod.getMetadata().getLabels().get("release");
 				String namespace = pod.getMetadata().getNamespace();
+				
+				DefaultKubernetesClient k8sClient = K8SUtil.kubernetesClient();
+				 
 
 				try {
 					if (!K8SUtil.IsReady(pod)) {
@@ -110,41 +107,45 @@ public class DiskUsageChecker {
 					if (containers.size() > 0) {
 						containerName = containers.get(0).getName();
 					}
-					final CountDownLatch latch = new CountDownLatch(1);
+					
+					String temp = new ExecUtil().exec(k8sClient, namespace, podName, containerName, cmd);
 
-					ExecWatch watch = client.inNamespace(namespace).pods().withName(pod.getMetadata().getName()).inContainer(containerName).redirectingOutput().usingListener(new ExecListener() {
-						@Override
-						public void onOpen(Response response) {
-						}
+					
+//					final CountDownLatch latch = new CountDownLatch(1);
+//
+//					ExecWatch watch = client.inNamespace(namespace).pods().withName(pod.getMetadata().getName()).inContainer(containerName).redirectingOutput().usingListener(new ExecListener() {
+//						@Override
+//						public void onOpen(Response response) {
+//						}
+//
+//						@Override
+//						public void onFailure(Throwable t, Response response) {
+//							latch.countDown();
+//							log.error(t.getMessage(), t);
+//						}
+//
+//						@Override
+//						public void onClose(int code, String reason) {
+//							latch.countDown();
+//						}
+//					}).exec(commands);
+//
+//					CustomCallback callback = new CustomCallback();
+//
+//					BlockingInputStreamPumper pump = new BlockingInputStreamPumper(watch.getOutput(), callback);
+//					executorService.submit(pump);
+//					Future<String> outPumpFuture = executorService.submit(pump, "Done");
+//					executorService.scheduleAtFixedRate(new FutureChecker("Pump", outPumpFuture), 0, 5, TimeUnit.SECONDS);
 
-						@Override
-						public void onFailure(Throwable t, Response response) {
-							latch.countDown();
-							log.error(t.getMessage(), t);
-						}
-
-						@Override
-						public void onClose(int code, String reason) {
-							latch.countDown();
-						}
-					}).exec(commands);
-
-					CustomCallback callback = new CustomCallback();
-
-					BlockingInputStreamPumper pump = new BlockingInputStreamPumper(watch.getOutput(), callback);
-					executorService.submit(pump);
-					Future<String> outPumpFuture = executorService.submit(pump, "Done");
-					executorService.scheduleAtFixedRate(new FutureChecker("Pump", outPumpFuture), 0, 5, TimeUnit.SECONDS);
-
-					latch.await(10, TimeUnit.SECONDS);
-					watch.close();
+//					latch.await(10, TimeUnit.SECONDS);
+//					watch.close();
 
 					DiskUsage diskUsage = new DiskUsage();
 					diskUsage.setNamespace(namespace);
 					diskUsage.setReleaseName(releaseName);
 					diskUsage.setPodName(podName);
 
-					String temp = callback.getResult();
+//					String temp = callback.getResult();
 					if (temp != null && !temp.trim().isEmpty()) {
 						String[] split = temp.split(" ");
 
