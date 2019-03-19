@@ -120,7 +120,6 @@ public class EventWatcher<T> implements Watcher<T> {
 				
 				Namespace namespace = K8SUtil.getNamespace(ns);
 				if(namespace == null) {
-					System.out.println(ns + "is null.");
 					return;
 				}
 				Map<String, String> labels = namespace.getMetadata().getLabels();

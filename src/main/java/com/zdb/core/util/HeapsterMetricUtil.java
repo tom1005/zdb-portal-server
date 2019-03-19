@@ -1,7 +1,9 @@
 package com.zdb.core.util;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
@@ -13,6 +15,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import org.crsh.console.jline.internal.Log;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -79,9 +83,30 @@ public class HeapsterMetricUtil implements Callback<byte[]> {
 	}
 	
 	public synchronized String getMetric(String namespace, String podName, String metric) throws InterruptedException, IOException, Exception {
-		String[] commands = new String[] { "/bin/bash", "-c", "curl GET http://heapster.kube-system/api/v1/model/namespaces/"+namespace+"/pod-list/"+podName+"/metrics/" + metric };
-		String result = exec(namespace, podName, commands);
-		return result;
+		String[] commands = new String[] { "sh", "-c", "curl GET http://heapster.kube-system/api/v1/model/namespaces/"+namespace+"/pod-list/"+podName+"/metrics/" + metric };
+//		String[] commands = new String[] { "sh", "-c", "curl GET http://127.0.0.1:8899/api/v1/model/namespaces/"+namespace+"/pod-list/"+podName+"/metrics/" + metric };
+		BufferedReader input = null;
+		StringBuffer result = new StringBuffer();
+		try{
+			ProcessBuilder builder = new ProcessBuilder(commands);
+			Process p = builder.start();
+
+			
+			input = new BufferedReader(new InputStreamReader(p.getInputStream()));
+			String l = "";
+			while ((l = input.readLine()) != null) {
+				result.append(l).append("\n");
+			}
+		} catch (Exception e) {
+			Log.error(e.getMessage(), e);
+		} finally {
+			if(input != null) {
+				input.close();
+			}
+		}
+		
+		//{"items":[{"metrics":[{"timestamp":"2019-03-19T11:26:00Z","value":2},{"timestamp":"2019-03-19T11:27:00Z","value":2},{"timestamp":"2019-03-19T11:28:00Z","value":2},{"timestamp":"2019-03-19T11:29:00Z","value":2},{"timestamp":"2019-03-19T11:30:00Z","value":2},{"timestamp":"2019-03-19T11:31:00Z","value":2},{"timestamp":"2019-03-19T11:32:00Z","value":2},{"timestamp":"2019-03-19T11:33:00Z","value":2},{"timestamp":"2019-03-19T11:34:00Z","value":2},{"timestamp":"2019-03-19T11:35:00Z","value":2},{"timestamp":"2019-03-19T11:36:00Z","value":2},{"timestamp":"2019-03-19T11:37:00Z","value":2},{"timestamp":"2019-03-19T11:38:00Z","value":2},{"timestamp":"2019-03-19T11:39:00Z","value":3},{"timestamp":"2019-03-19T11:40:00Z","value":2}],"latestTimestamp":"2019-03-19T11:40:00Z"}]}
+		return result.toString().trim();
 	}
 	
 	public synchronized String exec(String namespace, String podName, String[] commands) throws InterruptedException, IOException, Exception {
