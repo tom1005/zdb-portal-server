@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import com.zdb.core.domain.DBUser;
 import com.zdb.core.domain.EventMetaData;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.ReleaseMetaData;
@@ -896,19 +897,18 @@ public class ZDBRestController {
 		}
 	}
 	
-	
 	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/accounts/{accountId}", method = RequestMethod.POST)
 	public ResponseEntity<String> createDBUser(
 			@PathVariable("serviceType") final String serviceType, 
 			@PathVariable("namespace") final String namespace, 
 			@PathVariable("serviceName") final String serviceName,
 			@PathVariable("accountId") final String accountId,
-			@RequestBody final ZDBMariaDBAccount account
+			@RequestBody final DBUser account
 			) {
 		String txId = txId();
 		
 		Result result = null;
-		log.debug("accountId: {}, accountPassword: {}", accountId, account.getUserPassword());
+		log.debug("accountId: {}", accountId);
 		RequestEvent event = new RequestEvent();
 		try {
 			UserInfo userInfo = getUserInfo();
@@ -947,12 +947,12 @@ public class ZDBRestController {
 			@PathVariable("namespace") final String namespace, 
 			@PathVariable("serviceName") final String serviceName,
 			@PathVariable("accountId") final String accountId,
-			@RequestBody final ZDBMariaDBAccount account
+			@RequestBody final DBUser account
 			) {
 		String txId = txId();
 		
 		Result result = null;
-		log.debug("accountId: {}, accountPassword: {}", accountId, account.getUserPassword());
+		log.debug("accountId: {}, accountPassword: {}", accountId, account.getPassword());
 		RequestEvent event = new RequestEvent();
 		try {
 			UserInfo userInfo = getUserInfo();
@@ -990,7 +990,8 @@ public class ZDBRestController {
 			@PathVariable("serviceType") final String serviceType, 
 			@PathVariable("namespace") final String namespace, 
 			@PathVariable("serviceName") final String serviceName,
-			@PathVariable("accountId") final String accountId
+			@PathVariable("accountId") final String accountId,
+			@RequestBody final DBUser account
 	) {
 		String txId = txId();
 
@@ -1012,7 +1013,7 @@ public class ZDBRestController {
 
 			switch (dbType) {
 			case MariaDB:
-				result = ((MariaDBServiceImpl) mariadbService).deleteDBInstanceAccount(txId, namespace, serviceName, accountId);
+				result = ((MariaDBServiceImpl) mariadbService).deleteDBUser(txId, namespace, serviceName, account);
 				break;
 			case Redis:
 //				result = redisService.deleteDBInstanceAccount(txId, namespace, serviceName, accountId);
