@@ -649,7 +649,7 @@ public class MariaDBAccount {
 				Method m = cls.getMethod("get"+col.substring(0,1).toUpperCase()+col.substring(1));
 				String yn = (String)m.invoke(account);
 				if(yn.equals("Y")) {
-					privilegeList.add(col);
+					privilegeList.add(col.replaceAll("([A-Z]+)", " $1").toUpperCase());
 				}
 			} catch (Exception e) {
 			}
