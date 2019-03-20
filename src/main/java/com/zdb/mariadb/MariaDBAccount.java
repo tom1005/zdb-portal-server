@@ -526,32 +526,46 @@ public class MariaDBAccount {
 	 * @param account
 	 * @return
 	 */
-	public static DBUser createAccount(final String namespace, final String releaseName, final DBUser account) throws Exception {
+	public static String createAccount(final String namespace, final String releaseName, final DBUser account) throws Exception {
 		MariaDBConnection connection = null;
 		Statement statement = null;
 		String query = null;
+		StringBuffer resultMessage = new StringBuffer();
+		int re = 1;//createUser,1:성공 0:실패
+		String user = String.format("'%s'@'%s'",account.getUser(),account.getHost());
 		try {
 			connection = MariaDBConnection.getRootMariaDBConnection(namespace, releaseName);
 			if( connection != null) {
 				statement = connection.getStatement();
 				
-				query = String.format("CREATE USER '%s'@'%s' identified by '%s'",account.getUser(),account.getHost(),account.getPassword());
-				logger.info("query: {}", query);
-				statement.executeUpdate(query);
-				
-				List<String> privilegeTypes = getPrivilegeList(account);
-				if (!privilegeTypes.isEmpty()) {
-					query = String.format("GRANT %s ON *.* TO '%s'@'%s' IDENTIFIED BY '%s'",
-										String.join(",",privilegeTypes),account.getUser(),account.getHost(),account.getPassword());
-					logger.debug("query: {}", query);
+				try {
+					query = String.format("CREATE USER %s identified by '%s'",user,account.getPassword());
+					logger.info("query: {}", query);
 					statement.executeUpdate(query);
+					resultMessage.append(String.format("[%s] 유저 생성 ", user));
+				}catch (Exception e) {
+					resultMessage.append(String.format("[%s] 유저 생성 실패 : %s",user,e.getMessage()));
+					re = 0;
 				}
-				
+				if(re == 1) {
+					try {
+						List<String> privilegeTypes = getPrivilegeList(account);
+						if (!privilegeTypes.isEmpty()) {
+							query = String.format("GRANT %s ON *.* TO %s IDENTIFIED BY '%s'", String.join(",",privilegeTypes),user,account.getPassword());
+							logger.info("query: {}", query);
+							statement.executeUpdate(query);
+							resultMessage.append(String.format(" , [%s] 유저 권한 생성 : [%s]", user,String.join(",",privilegeTypes)));
+						}
+					} catch (Exception e) {
+						resultMessage.append(String.format(" , [%s] 권한 생성실패 : %s",user,e.getMessage()));
+					}					
+				}
 			} else {
 				throw new Exception("cannot create connection.");
 			}
 		} catch (Exception e) {
 			logger.error("Exception.", e);
+			resultMessage.append(String.format(" [%s] 유저 생성 오류 :%s ",user,e.getMessage()));
 		} finally {
 			if(statement != null) {
 				statement.close();
@@ -561,7 +575,7 @@ public class MariaDBAccount {
 			}
 		}
 
-		return account;
+		return resultMessage.toString();
 	}
 	/**
 	 * Update a MariaDB account
@@ -577,31 +591,51 @@ public class MariaDBAccount {
 	 * 
 	 * @return DBUser
 	 */
-	public static DBUser updateAccount(final String namespace, final String releaseName,DBUser account) throws Exception  {
+	public static String updateAccount(final String namespace, final String releaseName,DBUser account) throws Exception  {
 		MariaDBConnection connection = null;
 		Statement statement = null;
 		String query = null;
+		StringBuffer resultMessage = new StringBuffer();
+		int re = 1;//createUser,1:성공 0:실패
+		String user = String.format("'%s'@'%s'",account.getUser(),account.getHost());
+		
 		try {
 			connection = MariaDBConnection.getRootMariaDBConnection(namespace, releaseName);
 			statement = connection.getStatement();
 			
-			query = String.format("REVOKE ALL PRIVILEGES ON *.* FROM '%s'@'%s';", account.getUser(),account.getHost());
-			statement.executeUpdate(query);
-			List<String> privilegeTypes = getPrivilegeList(account);
-			if (!privilegeTypes.isEmpty()) {
-				query = String.format("GRANT %s ON *.* TO '%s'@'%s' IDENTIFIED BY '%s';", String.join(",",privilegeTypes),account.getUser(),account.getHost(),account.getPassword());
-				logger.debug("query: {}", query);
+			try {
+				query = String.format("REVOKE ALL PRIVILEGES ON *.* FROM %s", user);
 				statement.executeUpdate(query);
+				query = String.format("REVOKE GRANT OPTION ON *.* FROM %s", user);
+				statement.executeUpdate(query);
+				resultMessage.append(String.format("[%s] 유저 권한 삭제 ",user));
+				List<String> privilegeTypes = getPrivilegeList(account);
+				
+				if (!privilegeTypes.isEmpty()) {
+					query = String.format("GRANT %s ON *.* TO %s ", String.join(",",privilegeTypes),user);
+					logger.info("query: {}", query);
+					statement.executeUpdate(query);
+					resultMessage.append(String.format(" ,[%s] 유저 권한 생성: [%s]",user,String.join(",",privilegeTypes)));
+				}
+			} catch (Exception e) {
+				resultMessage.append(String.format(" [%s] 유저 권한 변경 실패: %s",user,e.getMessage()));
+				re = 0;
 			}
 			
-			if (!StringUtils.isEmpty(account.getPassword())) {
-				query = String.format(" SET PASSWORD FOR '%s'@'%s' = PASSWORD('%s');",account.getUser(),account.getHost(),account.getPassword());
-				logger.debug("query: {}", query);
-				statement.executeUpdate(query);
+			if (!StringUtils.isEmpty(account.getPassword()) && re ==1) {
+				try {
+					query = String.format(" SET PASSWORD FOR %s = PASSWORD('%s');",user,account.getPassword());
+					logger.debug("query: {}", query);
+					statement.executeUpdate(query);
+					resultMessage.append(String.format(" [%s] 유저 비밀번호 변경",user));
+				} catch (Exception e) {
+					resultMessage.append(String.format(" [%s] 유저 비밀번호 변경 실패 :%s ",user,e.getMessage()));
+				}
 			}
 			
 		} catch (Exception e) {
 			logger.error("Exception.", e);
+			resultMessage.append(String.format(" [%s] 유저 수정 오류 :%s ",user,e.getMessage()));
 		} finally {
 			if (statement != null) {
 				statement.close();
@@ -611,23 +645,27 @@ public class MariaDBAccount {
 			}
 		}
 
-		return account;
+		return resultMessage.toString();
 	}
-	public static DBUser deleteAccount(final String namespace,final String releaseName,DBUser account)throws Exception {
+	public static String deleteAccount(final String namespace,final String releaseName,DBUser account)throws Exception {
 		MariaDBConnection connection = null;
 		Statement statement = null;
 		String query = null;
+		StringBuffer resultMessage = new StringBuffer();
+		String user = String.format("'%s'@'%s'",account.getUser(),account.getHost());
 		try {
 			connection = MariaDBConnection.getRootMariaDBConnection(namespace, releaseName);
 			statement = connection.getStatement();
 			
 			List<String> blackList = Arrays.asList("admin","root");
 			if(blackList.indexOf(account.getUser()) == -1) {
-				query = String.format("DROP USER '%s'@'%s';", account.getUser(),account.getHost());
+				query = String.format("DROP USER %s;", user);
 				statement.executeQuery(query);
+				resultMessage.append(String.format("[%s] 유저 삭제", user));
 			}
 		} catch (Exception e) {
 			logger.error("Exception.", e);
+			resultMessage.append(String.format("[%s] 유저 삭제 실패", user,e.getMessage()));
 		} finally {
 			if (statement != null) {
 				statement.close();
@@ -637,7 +675,7 @@ public class MariaDBAccount {
 			}
 		}
 
-		return account;		
+		return resultMessage.toString();		
 	}
 	private static List<String> getPrivilegeList(DBUser account) {
 		List<String> privilegeList = new ArrayList<>();
@@ -649,7 +687,11 @@ public class MariaDBAccount {
 				Method m = cls.getMethod("get"+col.substring(0,1).toUpperCase()+col.substring(1));
 				String yn = (String)m.invoke(account);
 				if(yn.equals("Y")) {
-					privilegeList.add(col.replaceAll("([A-Z]+)", " $1").toUpperCase());
+					if(col.equals("grant")) {
+						privilegeList.add("GRANT OPTION");	
+					}else {
+						privilegeList.add(col.replaceAll("([A-Z]+)", " $1").toUpperCase());
+					}
 				}
 			} catch (Exception e) {
 			}
