@@ -608,14 +608,13 @@ public class MariaDBAccount {
 				statement.executeUpdate(query);
 				query = String.format("REVOKE GRANT OPTION ON *.* FROM %s", user);
 				statement.executeUpdate(query);
-				resultMessage.append(String.format("[%s] 유저 권한 삭제 ",user));
 				List<String> privilegeTypes = getPrivilegeList(account);
 				
 				if (!privilegeTypes.isEmpty()) {
 					query = String.format("GRANT %s ON *.* TO %s ", String.join(",",privilegeTypes),user);
 					logger.info("query: {}", query);
 					statement.executeUpdate(query);
-					resultMessage.append(String.format(" ,[%s] 유저 권한 생성: [%s]",user,String.join(",",privilegeTypes)));
+					resultMessage.append(String.format("[%s] 유저 권한 변경: [%s]",user,String.join(",",privilegeTypes)));
 				}
 			} catch (Exception e) {
 				resultMessage.append(String.format(" [%s] 유저 권한 변경 실패: %s",user,e.getMessage()));
