@@ -72,7 +72,7 @@ public class ReleaseCollector {
 					for (StatefulSet statefulSet : statefulSets) {
 						List<Container> containers = statefulSet.getSpec().getTemplate().getSpec().getContainers();
 						for (Container container : containers) {
-							if (container.getName().endsWith("redis") || container.getName().endsWith("mariadb")) {
+							if (container.getName().indexOf("redis") > -1 || container.getName().endsWith("mariadb")) {
 								String image = container.getImage();
 
 								String[] split = image.split(":");
