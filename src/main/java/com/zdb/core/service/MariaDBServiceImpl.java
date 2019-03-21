@@ -77,6 +77,7 @@ import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
 import com.zdb.core.util.DateUtil;
 import com.zdb.core.util.ExecCommandUtil;
+import com.zdb.core.util.ExecUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.PodManager;
 import com.zdb.core.util.ZDBLogViewer;
@@ -96,6 +97,7 @@ import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Quantity;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
+import io.fabric8.kubernetes.api.model.ServiceBuilder;
 import io.fabric8.kubernetes.api.model.ServiceList;
 import io.fabric8.kubernetes.api.model.ServicePort;
 import io.fabric8.kubernetes.api.model.Volume;
@@ -2517,11 +2519,151 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 //	}
 	
 
+	/**
+	 * https://myshare.skcc.com/pages/viewpage.action?pageId=65417724
+	 * 
+	 * @param txId
+	 * @param namespace
+	 * @param serviceName
+	 * @param port
+	 * @return
+	 */
 	public Result changePort(String txId, String namespace, String serviceName, String port) {
+		if(port != null && !port.isEmpty()) {
+			int parsePort = Integer.parseInt(port.trim());
+			
+		    // 가용 포트 범위 체크 (10000 ~ 39999)
+			if(parsePort < 10000 || parsePort > 39999) {
+				return new Result(txId, Result.ERROR, "포트 가용 범위 : 10000 ~ 39999");
+			}
+		} else {
+			return new Result(txId, Result.ERROR, "포트 가용 범위 : 10000 ~ 39999");
+		}
+		
 		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
 			StringBuffer history = new StringBuffer();
 			
-			history.append("포트 변경 : xxxx > " + port);
+			List<StatefulSet> items = client.inNamespace(namespace).apps().statefulSets().list().getItems();
+			boolean isMasterSlave = false;
+			
+			for (StatefulSet sts : items) {
+				String name = sts.getMetadata().getName();
+				if(name.indexOf("slave") > -1) {
+					isMasterSlave = true;
+					break;
+				}
+			}
+			
+			if(isMasterSlave) {
+				// Master,Slave DB
+//				1. 변경 요청 포트와 비교
+//				 	- 사용중인 포트와 변경되는 포트 비교
+//				3. slave 의 replication delay 가 없는지 상태 점검.
+//				4. Master DB : File/Position 확인
+//				5. stop slave;
+//				6. 서비스 포트 변경 (master/slave - private/public 모두) 
+//				7. Slave DB- CHANGE MASTER 
+//				8. start slave
+				
+				List<Service> serviceList = client.inNamespace(namespace).services().withLabel("release", serviceName).list().getItems();
+				if (serviceList == null || serviceList.isEmpty()) {
+					log.warn("Service is null. Service Name: {}", serviceName);
+					return new Result(txId, Result.ERROR, "서비스 정보 조회중 오류가 발생했습니다. ["+namespace+" > "+serviceName +"]");
+				}
+				
+				List<Service> targetServiceList = new ArrayList<>();
+				
+				String servicePort = null;
+				String masterServiceName = null;
+				for (Service svc : serviceList) {
+					String svcName = svc.getMetadata().getName();
+					servicePort = getServicePort(svc);
+					
+					String component = svc.getMetadata().getLabels().get("component");
+					if("master".equals(component)) {
+						Map<String, String> annotations = svc.getMetadata().getAnnotations();
+						String value = annotations.get("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type");
+						if (value != null && "private".equals(value)) {
+							masterServiceName = svcName;
+						}
+					}
+					if(servicePort != null && !servicePort.isEmpty()) {
+						if(port.equals(servicePort)) {
+							log.error("이미 적용된 포트 입니다. [{}]", svcName);
+							continue;
+						} else {
+							//
+							targetServiceList.add(svc);
+						}
+					} else {
+						log.error("서비스 포트 정보를 알 수 없습니다. [{}]", svcName);
+						continue;
+					}
+				}
+				
+				List<Pod> pods = client.inNamespace(namespace).pods().withLabel("release", serviceName).list().getItems();
+				
+				boolean slaveStatus = false;
+				for (Pod pod : pods) {
+					String podName = pod.getMetadata().getName();
+					String component = pod.getMetadata().getLabels().get("component");
+					if("slave".equals(component)) {
+						try {
+							slaveStatus = slaveStatus(client, namespace, podName);
+						} catch (Exception e) {
+							String message = e.getMessage();
+							return new Result(txId, Result.ERROR, message + " ["+namespace+" > "+serviceName +"]");
+						}
+						
+						break;
+					} 
+				}
+				
+				String masterPodName = null;
+				String slavePodName = null;
+				for (Pod pod : pods) {
+					String podName = pod.getMetadata().getName();
+					String component = pod.getMetadata().getLabels().get("component");
+					if("slave".equals(component)) {
+						slavePodName =  pod.getMetadata().getName();
+					} else if("master".equals(component)) {
+						masterPodName = pod.getMetadata().getName();
+					}
+				}
+				
+				if(slaveStatus) {
+					if(masterPodName != null) {
+						//4. Master DB : File/Position 확인
+						Map<String, String> masterDBPosition = getMasterDBPosition(client, namespace, masterPodName);
+						
+						//5. stop slave;
+						stopSlave(client, namespace, slavePodName);
+						
+						//6. 서비스 포트 변경 (master/slave - private/public 모두) 
+						for (Service svc : targetServiceList) {
+							chageServicePort(client, namespace, svc, Integer.parseInt(port));
+						}
+						
+						String binFile = masterDBPosition.get("File");
+						String position = masterDBPosition.get("Position");
+						
+						//7. Slave DB- CHANGE MASTER  & start slave
+						if (binFile != null && !binFile.isEmpty() && position != null && !position.isEmpty()) {
+							changeMaster(client, namespace, slavePodName, masterServiceName, port, binFile, position);
+						}
+					}
+				}
+				
+			} else {
+				// Single DB
+//				1. 변경 요청 포트와 비교
+//				 	- 사용중인 포트와 변경되는 포트 비교
+//				3. 서비스 포트 변경 (master/slave - private/public 모두) 
+				
+			}
+			
+			
+//			history.append("포트 변경 : xxxx > " + port);
 			
 			Result result = new Result(txId, Result.OK, "포트 변경 완료");
 			if (!history.toString().isEmpty()) {
@@ -2542,6 +2684,243 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		}
 	}
 	
+	/**
+	 * @param client
+	 * @param namespace
+	 * @param service
+	 * @param port
+	 * @throws Exception
+	 */
+	public void chageServicePort(DefaultKubernetesClient client, String namespace, Service service, int port) throws Exception {
+		try {
+			MixedOperation<Service, ServiceList, DoneableService, Resource<Service, DoneableService>> services = client.inNamespace(namespace).services();
+			service.getMetadata().setUid(null);
+			service.getMetadata().setCreationTimestamp(null);
+			service.getMetadata().setSelfLink(null);
+			service.getMetadata().setResourceVersion(null);
+			service.setStatus(null);
+			
+			service.getSpec().getPorts().get(0).setPort(port);
+			
+			ServiceBuilder svcBuilder = new ServiceBuilder(service);
+			Service newSvc = svcBuilder.build();
+			
+			services.createOrReplace(newSvc);
+			
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			throw e;
+		}
+	}
 	
+	private String getServicePort(Service service) throws Exception {
+
+		Map<String, String> annotations = service.getMetadata().getAnnotations();
+		String value = annotations.get("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type");
+		if (value != null && ("public".equals(value) || "private".equals(value))) {
+
+			String portStr = null;
+			if ("loadbalancer".equals(service.getSpec().getType().toLowerCase())) {
+				List<ServicePort> ports = service.getSpec().getPorts();
+				for (ServicePort _port : ports) {
+					if ("mysql".equals(_port.getName())) {
+						return Integer.toString(_port.getPort());
+					}
+				}
+
+				if (portStr == null) {
+					throw new Exception("Unknown Service Port");
+				}
+			} else if ("clusterip".equals(service.getSpec().getType().toLowerCase())) {
+				List<ServicePort> ports = service.getSpec().getPorts();
+				for (ServicePort _port : ports) {
+					if ("mysql".equals(_port.getName())) {
+						return Integer.toString(_port.getPort());
+					}
+				}
+				if (portStr == null) {
+					throw new Exception("unknown ServicePort");
+				}
+
+			} else {
+				log.warn("no cluster ip.");
+			}
+		}
+
+		return null;
+	}
 	
+	public boolean slaveStatus(DefaultKubernetesClient client, String namespace, String podName) throws Exception {
+//		MariaDB [(none)]> show slave status\G
+//		*************************** 1. row ***************************
+//		...
+//		          Read_Master_Log_Pos: 5914
+//		          Exec_Master_Log_Pos: 5914          
+//		             Slave_IO_Running: Yes
+//		            Slave_SQL_Running: Yes
+//		                   Last_Errno: 0
+//		                   Last_Error:
+//		        Seconds_Behind_Master: 0
+		
+		StringBuffer sb = new StringBuffer();
+		sb.append("exec mysql -uroot -p$MARIADB_ROOT_PASSWORD -e").append(" ");
+		sb.append("\"show slave status\\G\"").append(" ");;
+		sb.append("| grep -E \"");
+		sb.append("Read_Master_Log_Pos").append("|");
+		sb.append("Exec_Master_Log_Pos").append("|");
+		sb.append("Slave_IO_Running").append("|");
+		sb.append("Slave_SQL_Running").append("|");
+		sb.append("Last_Errno").append("|");
+		sb.append("Last_Error").append("|");
+		sb.append("Last_IO_Error").append("|");
+		sb.append("Last_IO_Errno").append("|");
+		sb.append("Seconds_Behind_Master");
+		sb.append("\"");
+		
+		//System.out.println("exec command : "+sb.toString());
+		
+		String result = new ExecUtil().exec(client, namespace, podName, "mariadb", sb.toString());
+//		System.out.println(result);
+		Map<String, String> statusValueMap = parseValue(null, result, ":");
+		
+		String read_Master_Log_Pos = statusValueMap.get("Read_Master_Log_Pos");
+		String exec_Master_Log_Pos = statusValueMap.get("Exec_Master_Log_Pos");
+		String slave_IO_Running = statusValueMap.get("Slave_IO_Running");
+		String slave_SQL_Running = statusValueMap.get("Slave_SQL_Running");
+		String last_Errno = statusValueMap.get("Last_Errno");
+		String last_Error = statusValueMap.get("Last_Error");
+		String last_IO_Errno = statusValueMap.get("Last_IO_Errno");//Last_IO_Errno
+		String last_IO_Error = statusValueMap.get("Last_IO_Error");//Last_IO_Error
+		String seconds_Behind_Master = statusValueMap.get("Seconds_Behind_Master");	
+		
+		boolean replicationStatus = true;
+		
+		if(!"0".equals(last_Errno) || null != last_Error) {
+			replicationStatus = false;
+		}
+		
+		if(!"0".equals(last_IO_Errno) || (null != last_IO_Error && !last_IO_Error.isEmpty())) {
+			replicationStatus = false;
+		}
+		
+		if(!"Yes".equals(slave_IO_Running)) {
+			replicationStatus = false;
+		}
+		if(!"Yes".equals(slave_SQL_Running) ) {
+			replicationStatus = false;
+		}
+		
+		if(!"Yes".equals(slave_IO_Running) || !"Yes".equals(slave_SQL_Running) ) {
+			replicationStatus = false;
+		}
+		
+		if(!replicationStatus) {
+			throw new Exception("Slave 복제 오류로 포트 변경이 불가 합니다.");
+		}
+		
+		if(!"0".equals(seconds_Behind_Master)) {
+			replicationStatus = false;
+		}
+		
+		if(!replicationStatus) {
+			throw new Exception("Slave 복제 지연으로 포트 변경이 불가 합니다. 잠시 후 다시 시도하세요.");
+		}
+		
+		return replicationStatus;
+	}
+	
+	public String changeMaster(DefaultKubernetesClient client, String namespace, String slavePodName, String masterServiceName, String port, String binFile, String position) throws Exception {
+//		CHANGE MASTER TO
+//		          MASTER_HOST='zdb-test-change-port-mariadb',
+//		          MASTER_USER='replicator',
+//		          MASTER_PASSWORD='zdbadmin12#$',
+//		          MASTER_PORT=39999,
+//		          MASTER_LOG_FILE='mysql-bin.000002',
+//		          MASTER_LOG_POS=7976,
+//		          MASTER_CONNECT_RETRY=10;
+//		start slave;
+		
+		StringBuffer sb = new StringBuffer();
+		sb.append("mysql -uroot -p$MARIADB_ROOT_PASSWORD -e").append(" ");
+		
+		sb.append("\"CHANGE MASTER TO").append(" ");
+		sb.append("MASTER_HOST='"+masterServiceName+"',").append(" ");
+		sb.append("MASTER_USER='replicator',").append(" ");
+		sb.append("MASTER_PASSWORD='zdbadmin12#$',").append(" ");
+		sb.append("MASTER_PORT="+port+",").append(" ");
+		sb.append("MASTER_LOG_FILE='"+binFile+"',").append(" ");
+		sb.append("MASTER_LOG_POS="+position+",").append(" ");
+		sb.append("MASTER_CONNECT_RETRY=10;\n").append(" ");
+
+		sb.append("start slave;\n\"").append(" ");
+		
+		String result = new ExecUtil().exec(client, namespace, slavePodName, "mariadb",sb.toString());
+//		System.out.println(result);
+		return result;
+	}
+	
+	public String showSlaveStatus(DefaultKubernetesClient client, String namespace, String podName) throws Exception {
+		StringBuffer sb = new StringBuffer();
+		sb.append("mysql -uroot -p$MARIADB_ROOT_PASSWORD -e").append(" ");
+		sb.append("\"show slave status\\G\"").append(" ");;
+		String result = new ExecUtil().exec(client, namespace, podName, "mariadb",sb.toString());
+//		System.out.println(result);
+		return result;
+	}
+	
+	public String stopSlave(DefaultKubernetesClient client, String namespace, String podName) throws Exception {
+		StringBuffer sb = new StringBuffer();
+		sb.append("mysql -uroot -p$MARIADB_ROOT_PASSWORD -e").append(" ");
+		sb.append("\"commit;stop slave;\"").append(" ");;
+		String result = new ExecUtil().exec(client, namespace, podName, "mariadb",sb.toString());
+//		System.out.println(result);
+		return result;
+	}
+	
+	public String startSlave(DefaultKubernetesClient client, String namespace, String podName) throws Exception {
+		StringBuffer sb = new StringBuffer();
+		sb.append("mysql -uroot -p$MARIADB_ROOT_PASSWORD -e").append(" ");
+		sb.append("\"start slave;\"").append(" ");;
+		String result = new ExecUtil().exec(client, namespace, podName, "mariadb",sb.toString());
+//		System.out.println(result);
+		return result;
+	}
+
+	public Map<String, String> getMasterDBPosition(DefaultKubernetesClient client, String namespace, String podName) throws Exception {
+		StringBuffer sb = new StringBuffer();
+		sb.append("mysql -uroot -p$MARIADB_ROOT_PASSWORD -e").append(" ");
+		sb.append("\"show master status\\G\"").append(" ");;
+		String result = new ExecUtil().exec(client, namespace, podName, "mariadb", sb.toString());
+		System.out.println(result);
+		
+		Map<String, String> masterStatus = parseValue(null, result, ":");
+		
+		String binFile = masterStatus.get("File");
+		String position = masterStatus.get("Position");
+		
+		return masterStatus;
+	}
+	
+	Map<String, String> parseValue(Map<String, String> map, String resultStr, String regex) {
+		if(map == null) {
+			map = new HashMap<String, String>();
+		}
+		
+		if(resultStr != null && !resultStr.trim().isEmpty()) {
+
+			String[] lineSplit = resultStr.trim().split("\n");
+			for (String line : lineSplit) {
+				String[] split = line.trim().split(regex);
+				
+				if(split.length >= 2) {
+					String key = split[0].trim();
+					String value = line.trim().substring(key.length()+regex.length()).trim();
+					
+					map.put(key, value);
+				}
+			}
+		}
+		
+		return map;
+	}
 }
