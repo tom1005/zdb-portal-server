@@ -601,16 +601,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		Result result = Result.RESULT_OK(txId);
 		
 		try {
-			if (null == MariaDBAccount.createAccount(namespace, serviceName, account)) {
-				log.error("FAIL: creating new account. namespace: {}, serviceName: {}, accountId: {}", namespace, serviceName, account.getUser());
-				Exception e = new Exception("creating new account failed. accountId: " + account.getUser());
-				result = Result.RESULT_FAIL(txId, e);
-				throw e;
-			}
-			result.putValue(IResult.ACCOUNT, account);
+			String resultMessage = MariaDBAccount.createAccount(namespace, serviceName, account);
+			result.setMessage(resultMessage);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-
 			return Result.RESULT_FAIL(txId, e);
 		}
 
@@ -622,15 +616,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		Result result = Result.RESULT_OK(txId);
 
 		try {
-			if (null == MariaDBAccount.updateAccount(namespace, serviceName, account)) {
-				log.error("FAIL: cannot update an account. namespace: {}, serviceName: {}, accountId: {}", namespace, serviceName, account.getUser());
-				return Result.RESULT_FAIL(txId, new Exception("cannot update an account. userId: " + account.getUser()));
-			}
-			
-			result.putValue(IResult.ACCOUNT, account);
+			String resultMessage = MariaDBAccount.updateAccount(namespace, serviceName, account);
+			result.setMessage(resultMessage);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-
 			return Result.RESULT_FAIL(txId, e);
 		}
 
@@ -642,12 +631,8 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		Result result = Result.RESULT_OK(txId);
 		
 		try {
-			if (null == MariaDBAccount.deleteAccount(namespace, serviceName, account)) {
-				log.error("FAIL: cannot update an account. namespace: {}, serviceName: {}, accountId: {}", namespace, serviceName, account.getUser());
-				return Result.RESULT_FAIL(txId, new Exception("cannot update an account. userId: " + account.getUser()));
-			}
-			
-			result.putValue(IResult.ACCOUNT, account);
+			String resultMessage = MariaDBAccount.deleteAccount(namespace, serviceName, account);
+			result.setMessage(resultMessage);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			
