@@ -49,6 +49,8 @@ import com.zdb.core.util.PodManager;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.HasMetadata;
+import io.fabric8.kubernetes.api.model.LoadBalancerIngress;
+import io.fabric8.kubernetes.api.model.LoadBalancerStatus;
 import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.Node;
 import io.fabric8.kubernetes.api.model.NodeList;
@@ -60,6 +62,7 @@ import io.fabric8.kubernetes.api.model.PodStatus;
 import io.fabric8.kubernetes.api.model.ResourceRequirements;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
+import io.fabric8.kubernetes.api.model.ServicePort;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.ReplicaSet;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
@@ -1889,5 +1892,72 @@ public class K8SService {
 			workerPools = new ArrayList<String>(distinctData);
 		}
 		return workerPools;
+	}
+	
+	public String getServicePort(String namespace, String name) throws Exception {
+		List<Service> serviceList = K8SUtil.getServices(namespace, name);
+		if (serviceList == null || serviceList.isEmpty()) {
+			log.warn("service is null. serviceName: {}", name);
+			return null;
+		}
+		Service service = serviceList.get(0);
+		
+		for (Service svc : serviceList) {
+			Map<String, String> annotations = svc.getMetadata().getAnnotations();
+			String value = annotations.get("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type");
+			if(value != null && "public".equals(value)) {
+				LoadBalancerStatus loadBalancer = svc.getStatus().getLoadBalancer();
+				if(loadBalancer == null ) {
+					continue;
+				} else {
+					List<LoadBalancerIngress> ingress = loadBalancer.getIngress();
+					if(ingress == null || ingress.isEmpty()) {
+						continue;
+					}
+				}
+				service = svc;
+				break;
+			}
+		}
+
+		String portStr = null;
+
+		if("loadbalancer".equals(service.getSpec().getType().toLowerCase())) {
+			List<ServicePort> ports = service.getSpec().getPorts();
+			for(ServicePort port : ports) {
+				if("mysql".equals(port.getName())){
+					portStr = Integer.toString(port.getPort());
+					break;
+				}
+			}
+			
+			if (portStr == null) {
+				throw new Exception("unknown ServicePort");
+			}
+			
+			List<LoadBalancerIngress> ingress = service.getStatus().getLoadBalancer().getIngress();
+			if( ingress != null && ingress.size() > 0) {
+				return ingress.get(0).getIp() + ":" + portStr;
+			} else {
+//				throw new Exception("unknown ServicePort");
+				return service.getMetadata().getName()+"."+service.getMetadata().getNamespace() + ":" + portStr;
+			}
+		} else if ("clusterip".equals(service.getSpec().getType().toLowerCase())) {
+			List<ServicePort> ports = service.getSpec().getPorts();
+			for(ServicePort port : ports) {
+				if("mysql".equals(port.getName())){
+					portStr = Integer.toString(port.getPort());
+					break;
+				}
+			}
+			if (portStr == null) {
+				throw new Exception("unknown ServicePort");
+			}
+			
+			return service.getSpec().getClusterIP() + ":" + portStr;
+		} else {
+			log.warn("no cluster ip.");
+			return null;
+		}
 	}
 }
