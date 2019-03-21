@@ -90,6 +90,8 @@ public interface IResult {
 	public static final String MY_CNF = "mycnf";
 	
 	public static final String USER_GRANTS = "userGrants";
+	
+	public static final String DATABASES = "databases";
 
 	public static final String CONNECTION_INFO = "connectionInfo";
 

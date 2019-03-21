@@ -1945,4 +1945,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			return new Result("", Result.ERROR, e.getMessage(), e);
 		}
 	}
+
+	public Result getDatabases(String namespace, String serviceType, String serviceName) {
+		return null;
+	}
 }

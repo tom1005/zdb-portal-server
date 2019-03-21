@@ -16,6 +16,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 
 import com.zdb.core.domain.DBUser;
+import com.zdb.core.domain.Database;
+import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBType;
 import com.zdb.core.repository.ZDBMariaDBAccountRepository;
@@ -716,7 +718,6 @@ public class MariaDBAccount {
 	
 	public static List<DBUser> getUserGrants(String namespace, String releaseName) throws Exception {
 		MariaDBConnection connection = null;
-
 		List<DBUser> userList = new ArrayList<DBUser>();
 
 		try {
@@ -796,6 +797,38 @@ public class MariaDBAccount {
 		return userList;
 	}
 
+	public static List<Database> getDatabases(String namespace, String serviceName) throws Exception {
+		MariaDBConnection connection = null;
+		Statement statement = null;
+		List<Database> databaseList = new ArrayList<>();
+
+		try {
+			connection = MariaDBConnection.getRootMariaDBConnection(namespace, serviceName);
+			statement = connection.getStatement();
+			StringBuffer q = new StringBuffer();
+			q.append("show databases ");
+			
+			ResultSet rs = statement.executeQuery(q.toString());
+			while (rs.next()) {
+				String name = rs.getString("database");
+				Database database = new Database();
+				database.setName(name);
+				databaseList.add(database);
+			}
+		} catch (Exception e) {
+			logger.error("Exception.", e);
+			throw e;
+		} finally {
+			if(statement!=null) {
+				statement.close();
+			}
+			if (connection != null) {
+				connection.close();
+			}
+		}
+		return databaseList;
+	}
+	
 	public static void deleteAccount(final ZDBMariaDBAccountRepository repo, final String namespace, final String releaseName, final String id) throws Exception {
 		MariaDBConnection connection = null;
 		ZDBMariaDBAccount account = repo.findByReleaseNameAndUserId(releaseName, id);
@@ -822,4 +855,67 @@ public class MariaDBAccount {
 			throw new Exception("등록되지 않은 사용자 입니다. [" +id+"]");
 		}
 	}
+
+	public static String createDatabase(String namespace, String serviceName, Database database)throws Exception {
+		MariaDBConnection connection = null;
+		Statement statement = null;
+		String query = null;
+		StringBuffer resultMessage = new StringBuffer();
+		try {
+			connection = MariaDBConnection.getRootMariaDBConnection(namespace, serviceName);
+			if( connection != null) {
+				statement = connection.getStatement();
+				
+				try {
+					query = String.format("CREATE DATABASE %s ",database.getName());
+					logger.info("query: {}", query);
+					statement.executeUpdate(query);
+					resultMessage.append(String.format("[%s] %s ", database.getName(),RequestEvent.CREATE_DATABASE));
+				}catch (Exception e) {
+					resultMessage.append(String.format("[%s] %s 실패 : %s",database.getName(),RequestEvent.CREATE_DATABASE,e.getMessage()));
+				}
+			} else {
+				throw new Exception("cannot create connection.");
+			}
+		} catch (Exception e) {
+			logger.error("Exception.", e);
+			resultMessage.append(String.format(" [%s] %s 오류 :%s ",database.getName(),RequestEvent.CREATE_DATABASE,e.getMessage()));
+		} finally {
+			if(statement != null) {
+				statement.close();
+			}
+			if (connection != null) {
+				connection.close();
+			}
+		}
+
+		return resultMessage.toString();
+	}
+
+	public static String deleteDatabase(String namespace, String serviceName, Database database)throws Exception {
+		MariaDBConnection connection = null;
+		Statement statement = null;
+		String query = null;
+		StringBuffer resultMessage = new StringBuffer();
+		try {
+			connection = MariaDBConnection.getRootMariaDBConnection(namespace, serviceName);
+			statement = connection.getStatement();
+			query = String.format("DROP DATABASE IF EXISTS %s;", database.getName());
+			statement.executeQuery(query);
+			resultMessage.append(String.format("[%s] %s", database.getName(),RequestEvent.DELETE_DATABASE));
+		} catch (Exception e) {
+			logger.error("Exception.", e);
+			resultMessage.append(String.format("[%s] %s 실패 : %s", database.getName(),RequestEvent.DELETE_DATABASE,e.getMessage()));
+		} finally {
+			if (statement != null) {
+				statement.close();
+			}
+			if (connection != null) {
+				connection.close();
+			}
+		}
+
+		return resultMessage.toString();	
+	}
+
 }
