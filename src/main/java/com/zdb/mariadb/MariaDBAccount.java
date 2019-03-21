@@ -614,8 +614,8 @@ public class MariaDBAccount {
 					query = String.format("GRANT %s ON *.* TO %s ", String.join(",",privilegeTypes),user);
 					logger.info("query: {}", query);
 					statement.executeUpdate(query);
-					resultMessage.append(String.format("[%s] 유저 권한 변경: [%s]",user,String.join(",",privilegeTypes)));
 				}
+				resultMessage.append(String.format("[%s] 유저 권한 변경: [%s]",user,String.join(",",privilegeTypes)));
 			} catch (Exception e) {
 				resultMessage.append(String.format(" [%s] 유저 권한 변경 실패: %s",user,e.getMessage()));
 				re = 0;
