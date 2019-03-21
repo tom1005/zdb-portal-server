@@ -2648,7 +2648,9 @@ public class ZDBRestController {
 //			}
 			
 //			return new ResponseEntity<String>(result.toJson(), result.status());
-			return new ResponseEntity<String>("서비스 준비중입니다.", HttpStatus.EXPECTATION_FAILED);
+			Result result = new Result(null, IResult.ERROR, "서비스 준비중입니다.");
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
