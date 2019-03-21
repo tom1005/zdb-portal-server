@@ -3,8 +3,9 @@ port=3306
 socket=/opt/bitnami/mariadb/tmp/mysql.sock
 basedir=/opt/bitnami/mariadb
 datadir=/opt/bitnami/mariadb/data
-tmpdir=/opt/bitnami/mariadb/tmp
 pid-file=/opt/bitnami/mariadb/tmp/mysqld.pid
+plugin_dir=${plugin_dir}
+tmpdir=${tmpdir}
 
 local_infile=${local_infile}
 wait_timeout=${wait_timeout}

@@ -63,7 +63,9 @@ public class InitData {
 		defaultConfigMap.put("innodb_log_buffer_size", "16777216|범위 : 262144 to 4294967295 (256KB to 4096MB)|false|numeric");
 		defaultConfigMap.put("innodb_open_files", "200|범위 : 10 to 4294967295 (autosized (from MariaDB 10.0))|false|numeric");
 		defaultConfigMap.put("innodb_io_capacity", "200|범위 : 100 to 18446744073709551615|true|numeric");
-		
+
+		defaultConfigMap.put("tmpdir", "/opt/bitnami/mariadb/tmp||false|string");
+		defaultConfigMap.put("plugin_dir", "/opt/bitnami/mariadb/plugin||false|string");
 	}
 
 	public static int defaultConfigMapSize() {

@@ -57,7 +57,8 @@ master:
     socket=/opt/bitnami/mariadb/tmp/mysql.sock
     basedir=/opt/bitnami/mariadb
     datadir=/opt/bitnami/mariadb/data
-    tmpdir=/opt/bitnami/mariadb/tmp    
+    tmpdir=/opt/bitnami/mariadb/tmp
+    plugin_dir=/opt/bitnami/mariadb/plugin
     pid-file=/opt/bitnami/mariadb/tmp/mysqld.pid
 
     local_infile=0
@@ -210,7 +211,8 @@ slave:
     socket=/opt/bitnami/mariadb/tmp/mysql.sock
     basedir=/opt/bitnami/mariadb
     datadir=/opt/bitnami/mariadb/data
-    tmpdir=/opt/bitnami/mariadb/tmp    
+    tmpdir=/opt/bitnami/mariadb/tmp
+    plugin_dir=/opt/bitnami/mariadb/plugin
     pid-file=/opt/bitnami/mariadb/tmp/mysqld.pid
     
     local_infile=0

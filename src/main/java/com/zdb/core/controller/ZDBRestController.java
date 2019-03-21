@@ -2622,32 +2622,33 @@ public class ZDBRestController {
 			event.setOperation(RequestEvent.CHANGE_PORT);
 			event.setUserId(userInfo.getUserName());
 			
-			ZDBType dbType = ZDBType.getType(serviceType);
-
-			com.zdb.core.domain.Result result = null;
-
-			switch (dbType) {
-			case MariaDB:
-				result = ((MariaDBServiceImpl)mariadbService).changePort(txId, namespace, serviceName, port);
-				break;
-			case Redis:
-				result.setMessage("Not support service type.");
-				break;
-			default:
-				log.error("Not support.");
-				result.setMessage("Not support service type.");
-				break;
-			}
-
-			event.setStatus(result.getCode());
-			event.setResultMessage(result.getMessage());
+//			ZDBType dbType = ZDBType.getType(serviceType);
+//
+//			com.zdb.core.domain.Result result = null;
+//
+//			switch (dbType) {
+//			case MariaDB:
+//				result = ((MariaDBServiceImpl)mariadbService).changePort(txId, namespace, serviceName, port);
+//				break;
+//			case Redis:
+//				result.setMessage("Not support service type.");
+//				break;
+//			default:
+//				log.error("Not support.");
+//				result.setMessage("Not support service type.");
+//				break;
+//			}
+//
+//			event.setStatus(result.getCode());
+//			event.setResultMessage(result.getMessage());
+//			
+//			Object history = result.getResult().get(Result.HISTORY);
+//			if (history != null) {
+//				event.setHistory("" + history);
+//			}
 			
-			Object history = result.getResult().get(Result.HISTORY);
-			if (history != null) {
-				event.setHistory("" + history);
-			}
-			
-			return new ResponseEntity<String>(result.toJson(), result.status());
+//			return new ResponseEntity<String>(result.toJson(), result.status());
+			return new ResponseEntity<String>("서비스 준비중입니다.", HttpStatus.EXPECTATION_FAILED);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
