@@ -34,7 +34,6 @@ import com.zdb.core.domain.UserInfo;
 import com.zdb.core.domain.UserNamespaces;
 import com.zdb.core.domain.ZDBConfig;
 import com.zdb.core.domain.ZDBEntity;
-import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBPersistenceEntity;
 import com.zdb.core.domain.ZDBType;
 import com.zdb.core.repository.EventRepository;
@@ -2662,7 +2661,6 @@ public class ZDBRestController {
 			}
 			
 			return new ResponseEntity<String>(result.toJson(), result.status());
-//			return new ResponseEntity<String>("서비스 준비중입니다.", HttpStatus.EXPECTATION_FAILED);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
