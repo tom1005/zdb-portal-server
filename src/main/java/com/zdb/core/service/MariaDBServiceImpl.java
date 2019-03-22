@@ -2538,10 +2538,12 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			
 		    // 가용 포트 범위 체크 (10000 ~ 39999)
 			if(parsePort < 10000 || parsePort > 39999) {
-				return new Result(txId, Result.ERROR, "포트 가용 범위 : 10000 ~ 39999");
+				if(parsePort != 3306) {
+					return new Result(txId, Result.ERROR, "포트 가용 범위 : 3306, 10000 ~ 39999");
+				}
 			}
 		} else {
-			return new Result(txId, Result.ERROR, "포트 가용 범위 : 10000 ~ 39999");
+			return new Result(txId, Result.ERROR, "포트 가용 범위 : 3306, 10000 ~ 39999");
 		}
 		
 		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
@@ -2559,6 +2561,46 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			}
 			
 			String servicePort = null;
+			
+			List<Service> serviceList = client.inNamespace(namespace).services().withLabel("release", serviceName).list().getItems();
+			if (serviceList == null || serviceList.isEmpty()) {
+				log.warn("Service is null. Service Name: {}", serviceName);
+				return new Result(txId, Result.ERROR, "서비스 정보 조회중 오류가 발생했습니다. ["+namespace+" > "+serviceName +"]");
+			}
+			
+			List<Service> targetServiceList = new ArrayList<>();
+			
+			String masterServiceName = null;
+			for (Service svc : serviceList) {
+				String svcName = svc.getMetadata().getName();
+				servicePort = getServicePort(svc);
+				
+				String component = svc.getMetadata().getLabels().get("component");
+				if("master".equals(component)) {
+					Map<String, String> annotations = svc.getMetadata().getAnnotations();
+					String value = annotations.get("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type");
+					if (value != null && "private".equals(value)) {
+						masterServiceName = svcName;
+					}
+				}
+				if(servicePort != null && !servicePort.isEmpty()) {
+					if(port.equals(servicePort)) {
+						log.error("이미 적용된 포트 입니다. [{}]", svcName);
+						continue;
+					} else {
+						//
+						targetServiceList.add(svc);
+					}
+				} else {
+					log.error("서비스 포트 정보를 알 수 없습니다. [{}]", svcName);
+					continue;
+				}
+			}
+			
+			if (targetServiceList.isEmpty() || port.equals(servicePort)) {
+				return new Result(txId, Result.OK, "이미 사용 중인 포트 입니다.");
+			}
+			
 			if(isMasterSlave) {
 				// Master,Slave DB
 //				1. 변경 요청 포트와 비교
@@ -2570,41 +2612,6 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 //				7. Slave DB- CHANGE MASTER 
 //				8. start slave
 				
-				List<Service> serviceList = client.inNamespace(namespace).services().withLabel("release", serviceName).list().getItems();
-				if (serviceList == null || serviceList.isEmpty()) {
-					log.warn("Service is null. Service Name: {}", serviceName);
-					return new Result(txId, Result.ERROR, "서비스 정보 조회중 오류가 발생했습니다. ["+namespace+" > "+serviceName +"]");
-				}
-				
-				List<Service> targetServiceList = new ArrayList<>();
-				
-				String masterServiceName = null;
-				for (Service svc : serviceList) {
-					String svcName = svc.getMetadata().getName();
-					servicePort = getServicePort(svc);
-					
-					String component = svc.getMetadata().getLabels().get("component");
-					if("master".equals(component)) {
-						Map<String, String> annotations = svc.getMetadata().getAnnotations();
-						String value = annotations.get("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type");
-						if (value != null && "private".equals(value)) {
-							masterServiceName = svcName;
-						}
-					}
-					if(servicePort != null && !servicePort.isEmpty()) {
-						if(port.equals(servicePort)) {
-							log.error("이미 적용된 포트 입니다. [{}]", svcName);
-							continue;
-						} else {
-							//
-							targetServiceList.add(svc);
-						}
-					} else {
-						log.error("서비스 포트 정보를 알 수 없습니다. [{}]", svcName);
-						continue;
-					}
-				}
-				
 				List<Pod> pods = client.inNamespace(namespace).pods().withLabel("release", serviceName).list().getItems();
 				
 				boolean slaveStatus = false;
@@ -2612,14 +2619,19 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 					String podName = pod.getMetadata().getName();
 					String component = pod.getMetadata().getLabels().get("component");
 					if("slave".equals(component)) {
-						try {
-							slaveStatus = slaveStatus(client, namespace, podName);
-						} catch (Exception e) {
-							String message = e.getMessage();
-							return new Result(txId, Result.ERROR, message + " ["+namespace+" > "+serviceName +"]");
-						}
 						
-						break;
+						if(PodManager.isReady(pod)) {
+							try {
+								slaveStatus = slaveStatus(client, namespace, podName);
+							} catch (Exception e) {
+								String message = e.getMessage();
+								return new Result(txId, Result.ERROR, message + " ["+namespace+" > "+serviceName +"]");
+							}
+							
+							break;
+						} else {
+							return new Result(txId, Result.ERROR, "Slave DB 상태 확인 후 다시 실행하세요.");
+						}
 					} 
 				}
 				
@@ -2636,7 +2648,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				}
 				
 				if(slaveStatus) {
-					if(masterPodName != null) {
+					if(masterPodName != null && !targetServiceList.isEmpty()) {
 						//4. Master DB : File/Position 확인
 						Map<String, String> masterDBPosition = getMasterDBPosition(K8SUtil.kubernetesClient(), namespace, masterPodName);
 						String binFile = masterDBPosition.get("File");
@@ -2663,16 +2675,19 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 						}
 					}
 				}
-				
 			} else {
 				// Single DB
 //				1. 변경 요청 포트와 비교
 //				 	- 사용중인 포트와 변경되는 포트 비교
 //				3. 서비스 포트 변경 (master/slave - private/public 모두) 
 				
+				for (Service svc : targetServiceList) {
+					chageServicePort(K8SUtil.kubernetesClient(), namespace, svc, Integer.parseInt(port));
+				}
+				history.append("포트 변경 : "+servicePort+" > " + port);
 			}
 			
-			Result result = new Result(txId, Result.OK, "포트 변경이 완료되었습니다.<br("+servicePort+" > " + port+")");
+			Result result = new Result(txId, Result.OK, "포트 변경이 완료 되었습니다.");
 			if (!history.toString().isEmpty()) {
 				result.putValue(Result.HISTORY, history.toString());
 			}
@@ -2898,7 +2913,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		sb.append("mysql -uroot -p$MARIADB_ROOT_PASSWORD -e").append(" ");
 		sb.append("\"show master status\\G\"").append(" ");;
 		String result = new ExecUtil().exec(client, namespace, podName, "mariadb", sb.toString());
-		System.out.println(result);
+//		System.out.println(result);
 		
 		Map<String, String> masterStatus = parseValue(null, result, ":");
 		
