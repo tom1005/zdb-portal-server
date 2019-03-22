@@ -28,6 +28,8 @@ public class RequestEvent {
 	public static final String CREATE_DB_USER = "사용자 생성";
 	public static final String UPDATE_DB_USER = "사용자 업데이트";
 	public static final String DELETE_DB_USER = "사용자 삭제";
+	public static final String CREATE_DATABASE = "데이터베이스 생성";
+	public static final String DELETE_DATABASE = "데이터베이스 삭제";
 	public static final String CREATE_TAG = "태그 추가";
 	public static final String DELETE_TAG = "태그 삭제";
 	public static final String SCALE_UP = "스케일 업";

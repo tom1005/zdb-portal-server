@@ -23,6 +23,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import com.google.gson.Gson;
 import com.zdb.core.domain.DBUser;
+import com.zdb.core.domain.Database;
 import com.zdb.core.domain.EventMetaData;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.ReleaseMetaData;
@@ -2686,6 +2687,126 @@ public class ZDBRestController {
 			log.error(e.getMessage(), e);
 			Result result = new Result(null, IResult.ERROR, RequestEvent.WORKER_POOLS_READ + " 오류").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
+	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/databases", method = RequestMethod.GET)
+	public ResponseEntity<String> getDatabases(
+			@PathVariable("namespace") final String namespace, 
+			@PathVariable("serviceType") final String serviceType,
+			@PathVariable("serviceName") final String serviceName ) {
+		try {
+			Result result = mariadbService.getDatabases(namespace, serviceType, serviceName);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			
+			Result result = new Result(null, IResult.ERROR, "사용자 권한 목록 조회 오류!").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/database/{databaseName}", method = RequestMethod.POST)
+	public ResponseEntity<String> createDatabase(
+			@PathVariable("serviceType") final String serviceType, 
+			@PathVariable("namespace") final String namespace, 
+			@PathVariable("serviceName") final String serviceName,
+			@PathVariable("databaseName") final String databaseName,
+			@RequestBody final Database database
+			) {
+		String txId = txId();
+		
+		Result result = null;
+		RequestEvent event = new RequestEvent();
+		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.CREATE_DATABASE);
+			event.setUserId(userInfo.getUserName());
+			
+			result = ((MariaDBServiceImpl) mariadbService).createDatabase(txId, namespace, serviceName, database);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), result.status());
+
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(txId, IResult.ERROR, RequestEvent.CREATE_DATABASE + " 오류!").putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}
+	}
+	
+	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/database/{databaseName}", method = RequestMethod.DELETE)
+	public ResponseEntity<String> deleteDatabase(
+			@PathVariable("serviceType") final String serviceType, 
+			@PathVariable("namespace") final String namespace, 
+			@PathVariable("serviceName") final String serviceName,
+			@PathVariable("databaseName") final String databaseName,
+			@RequestBody final Database database
+	) {
+		String txId = txId();
+
+		Result result = null;
+		RequestEvent event = new RequestEvent();
+		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.DELETE_DATABASE);
+			event.setUserId(userInfo.getUserName());
+			
+			// mariadb , redis, postgresql, rabbitmq, mongodb
+			ZDBType dbType = ZDBType.getType(serviceType);
+
+			switch (dbType) {
+			case MariaDB:
+				result = ((MariaDBServiceImpl) mariadbService).deleteDatabase(txId, namespace, serviceName, database);
+				break;
+			case Redis:
+				break;
+			case PostgreSQL:
+				break;
+			case RabbitMQ:
+				break;
+			case MongoDB:
+				break;
+			default:
+				log.error("Not support.");
+				result.setMessage("Not support service type.");
+				break;
+			}
+
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), result.status());
+
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(txId, IResult.ERROR, RequestEvent.DELETE_DATABASE + " 오류!").putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}
 	}	
 }

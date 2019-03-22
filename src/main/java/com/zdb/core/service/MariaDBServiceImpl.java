@@ -42,6 +42,7 @@ import com.zdb.core.collector.MetaDataCollector;
 import com.zdb.core.domain.Connection;
 import com.zdb.core.domain.ConnectionInfo;
 import com.zdb.core.domain.DBUser;
+import com.zdb.core.domain.Database;
 import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.Mycnf;
@@ -975,6 +976,24 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			List<DBUser> userGrants = MariaDBAccount.getUserGrants(namespace, releaseName);
 			
 			return new Result("", Result.OK).putValue(IResult.USER_GRANTS, userGrants);
+		} catch (KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result("", Result.UNAUTHORIZED, "클러스터에 접근이 불가하거나 인증에 실패 했습니다.", null);
+			} else {
+				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
+	@Override
+	public Result getDatabases(String namespace, String serviceType, String serviceName) {
+		try {
+			List<Database> databases = MariaDBAccount.getDatabases(namespace, serviceName);
+			
+			return new Result("", Result.OK).putValue(IResult.DATABASES, databases);
 		} catch (KubernetesClientException e) {
 			log.error(e.getMessage(), e);
 			if (e.getMessage().indexOf("Unauthorized") > -1) {
@@ -2910,5 +2929,34 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		}
 		
 		return map;
+	}
+
+	public Result createDatabase(String txId, String namespace, String serviceName, Database database) {
+		Result result = Result.RESULT_OK(txId);
+		
+		try {
+			String resultMessage = MariaDBAccount.createDatabase(namespace, serviceName, database);
+			result.setMessage(resultMessage);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return Result.RESULT_FAIL(txId, e);
+		}
+
+		return result;
+	}
+
+	public Result deleteDatabase(String txId, String namespace, String serviceName, Database database)throws Exception {
+		Result result = Result.RESULT_OK(txId);
+		
+		try {
+			String resultMessage = MariaDBAccount.deleteDatabase(namespace, serviceName, database);
+			result.setMessage(resultMessage);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			
+			return Result.RESULT_FAIL(txId, e);
+		}
+		
+		return result;
 	}
 }
