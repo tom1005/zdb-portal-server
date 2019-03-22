@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import com.google.gson.Gson;
 import com.zdb.core.domain.DBUser;
 import com.zdb.core.domain.EventMetaData;
 import com.zdb.core.domain.IResult;
@@ -2608,7 +2609,7 @@ public class ZDBRestController {
 	public ResponseEntity<String> changePort(@PathVariable("namespace") final String namespace, 
 										 @PathVariable("serviceType") final String serviceType, 
 			        				     @PathVariable("serviceName") final String serviceName, 
-			        				     @RequestBody final String port) {
+			        				     @RequestBody final String reqBody) {
 		String txId = txId();
 		
 		RequestEvent event = new RequestEvent();
@@ -2622,33 +2623,45 @@ public class ZDBRestController {
 			event.setOperation(RequestEvent.CHANGE_PORT);
 			event.setUserId(userInfo.getUserName());
 			
-//			ZDBType dbType = ZDBType.getType(serviceType);
-//
-//			com.zdb.core.domain.Result result = null;
-//
-//			switch (dbType) {
-//			case MariaDB:
-//				result = ((MariaDBServiceImpl)mariadbService).changePort(txId, namespace, serviceName, port);
-//				break;
-//			case Redis:
-//				result.setMessage("Not support service type.");
-//				break;
-//			default:
-//				log.error("Not support.");
-//				result.setMessage("Not support service type.");
-//				break;
-//			}
-//
-//			event.setStatus(result.getCode());
-//			event.setResultMessage(result.getMessage());
-//			
-//			Object history = result.getResult().get(Result.HISTORY);
-//			if (history != null) {
-//				event.setHistory("" + history);
-//			}
+			ZDBType dbType = ZDBType.getType(serviceType);
+
+			com.zdb.core.domain.Result result = null;
+
+			switch (dbType) {
+			case MariaDB:
+				if(reqBody!= null) {
+					Gson gson = new Gson();
+					Map serviceInfoMap = gson.fromJson(reqBody, Map.class);
+					if(serviceInfoMap.containsKey("port")) {
+						String port = (String) serviceInfoMap.get("port");
+						result = ((MariaDBServiceImpl) mariadbService).changePort(txId, namespace, serviceName, port);
+					} else {
+						result = new Result(txId, Result.ERROR, "변경할 포트를 입력하세요.", null);
+					}
+				} else {
+					result = new Result(txId, Result.ERROR, "변경할 포트를 입력하세요. 입력 포맷 오류.", null);
+				}
+				
+				break;
+			case Redis:
+				result.setMessage("Not support service type.");
+				break;
+			default:
+				log.error("Not support.");
+				result.setMessage("Not support service type.");
+				break;
+			}
+
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
 			
-//			return new ResponseEntity<String>(result.toJson(), result.status());
-			return new ResponseEntity<String>("서비스 준비중입니다.", HttpStatus.EXPECTATION_FAILED);
+			Object history = result.getResult().get(Result.HISTORY);
+			if (history != null) {
+				event.setHistory("" + history);
+			}
+			
+			return new ResponseEntity<String>(result.toJson(), result.status());
+//			return new ResponseEntity<String>("서비스 준비중입니다.", HttpStatus.EXPECTATION_FAILED);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 

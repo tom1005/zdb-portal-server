@@ -2539,6 +2539,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				}
 			}
 			
+			String servicePort = null;
 			if(isMasterSlave) {
 				// Master,Slave DB
 //				1. 변경 요청 포트와 비교
@@ -2558,7 +2559,6 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				
 				List<Service> targetServiceList = new ArrayList<>();
 				
-				String servicePort = null;
 				String masterServiceName = null;
 				for (Service svc : serviceList) {
 					String svcName = svc.getMetadata().getName();
@@ -2619,22 +2619,28 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				if(slaveStatus) {
 					if(masterPodName != null) {
 						//4. Master DB : File/Position 확인
-						Map<String, String> masterDBPosition = getMasterDBPosition(client, namespace, masterPodName);
-						
-						//5. stop slave;
-						stopSlave(client, namespace, slavePodName);
-						
-						//6. 서비스 포트 변경 (master/slave - private/public 모두) 
-						for (Service svc : targetServiceList) {
-							chageServicePort(client, namespace, svc, Integer.parseInt(port));
-						}
-						
+						Map<String, String> masterDBPosition = getMasterDBPosition(K8SUtil.kubernetesClient(), namespace, masterPodName);
 						String binFile = masterDBPosition.get("File");
 						String position = masterDBPosition.get("Position");
 						
+						//5. stop slave;
+						stopSlave(K8SUtil.kubernetesClient(), namespace, slavePodName);
+						
+						//6. 서비스 포트 변경 (master/slave - private/public 모두) 
+						for (Service svc : targetServiceList) {
+							chageServicePort(K8SUtil.kubernetesClient(), namespace, svc, Integer.parseInt(port));
+						}
+						
 						//7. Slave DB- CHANGE MASTER  & start slave
 						if (binFile != null && !binFile.isEmpty() && position != null && !position.isEmpty()) {
-							changeMaster(client, namespace, slavePodName, masterServiceName, port, binFile, position);
+							if(masterServiceName == null || masterServiceName.isEmpty()) {
+								return new Result(txId, Result.ERROR, "Master 서비스명을 조회 오류." + " ["+namespace+" > "+serviceName +"]");
+							}
+							changeMaster(K8SUtil.kubernetesClient(), namespace, slavePodName, masterServiceName, port, binFile, position);
+
+							history.append("포트 변경 : "+servicePort+" > " + port);
+						} else {
+							return new Result(txId, Result.ERROR, "Master DB의 bin file or position 조회 오류" + " ["+namespace+" > "+serviceName +"]");
 						}
 					}
 				}
@@ -2647,10 +2653,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				
 			}
 			
-			
-//			history.append("포트 변경 : xxxx > " + port);
-			
-			Result result = new Result(txId, Result.OK, "포트 변경 완료");
+			Result result = new Result(txId, Result.OK, "포트 변경이 완료되었습니다.<br("+servicePort+" > " + port+")");
 			if (!history.toString().isEmpty()) {
 				result.putValue(Result.HISTORY, history.toString());
 			}
