@@ -2549,7 +2549,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
 			StringBuffer history = new StringBuffer();
 			
-			List<StatefulSet> items = client.inNamespace(namespace).apps().statefulSets().list().getItems();
+			List<StatefulSet> items = client.inNamespace(namespace).apps().statefulSets().withLabel("release", serviceName).list().getItems();
 			boolean isMasterSlave = false;
 			
 			for (StatefulSet sts : items) {
@@ -2691,6 +2691,11 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			if (!history.toString().isEmpty()) {
 				result.putValue(Result.HISTORY, history.toString());
 			}
+			
+			ServiceOverview serviceOverview = k8sService.getServiceWithName(namespace, "mariadb", serviceName);
+			
+			Result r = Result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
+			messageSender.convertAndSend("/service/" + serviceOverview.getServiceName(), r);
 			
 			return result;		
 		} catch (FileNotFoundException | KubernetesClientException e) {

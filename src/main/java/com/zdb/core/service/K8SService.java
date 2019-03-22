@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -35,8 +36,8 @@ import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.ZDBPersistenceEntity;
 import com.zdb.core.domain.ZDBStatus;
 import com.zdb.core.domain.ZDBType;
-import com.zdb.core.job.JobHandler;
 import com.zdb.core.job.Job.JobResult;
+import com.zdb.core.job.JobHandler;
 import com.zdb.core.repository.DiskUsageRepository;
 import com.zdb.core.repository.MetadataRepository;
 import com.zdb.core.repository.ScheduleEntityRepository;
@@ -63,6 +64,7 @@ import io.fabric8.kubernetes.api.model.ResourceRequirements;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.ServicePort;
+import io.fabric8.kubernetes.api.model.Volume;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.ReplicaSet;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
@@ -637,6 +639,14 @@ public class K8SService {
 				} else if (obj instanceof PersistentVolumeClaim) {
 					persistentVolumeClaims.add((PersistentVolumeClaim) obj);
 				} else if (obj instanceof Secret) {
+					Secret sec = (Secret) obj;
+					Map<String, String> data = sec.getData();
+					for (Iterator<String> iterator = data.keySet().iterator(); iterator.hasNext();) {
+						String key = iterator.next();
+						if(key.indexOf("root-password") > -1 || key.indexOf("replication-password") > -1) {
+							iterator.remove();
+						}
+					}
 					secrets.add((Secret) obj);
 				} else if (obj instanceof io.fabric8.kubernetes.api.model.Service) {
 					services.add((io.fabric8.kubernetes.api.model.Service) obj);
@@ -792,7 +802,14 @@ public class K8SService {
 			return null;
 		}
 		
-		String claimName = pod.getSpec().getVolumes().get(0).getPersistentVolumeClaim().getClaimName();
+		String claimName = null;
+		List<Volume> volumes = pod.getSpec().getVolumes();
+		for (Volume volume : volumes) {
+			if("data".equals(volume.getName())) {
+				claimName = volume.getPersistentVolumeClaim().getClaimName();
+				break;
+			}
+		}
 		
 		List<PersistentVolumeClaim> pvcs = so.getPersistentVolumeClaims();
 		for (PersistentVolumeClaim pvc : pvcs) {
