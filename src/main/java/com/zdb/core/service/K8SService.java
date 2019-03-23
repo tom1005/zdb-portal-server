@@ -805,7 +805,7 @@ public class K8SService {
 		String claimName = null;
 		List<Volume> volumes = pod.getSpec().getVolumes();
 		for (Volume volume : volumes) {
-			if("data".equals(volume.getName())) {
+			if("data".equals(volume.getName()) || "redis-data".equals(volume.getName())) {
 				claimName = volume.getPersistentVolumeClaim().getClaimName();
 				break;
 			}
