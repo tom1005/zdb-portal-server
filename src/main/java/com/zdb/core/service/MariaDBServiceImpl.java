@@ -583,6 +583,19 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		Result result = Result.RESULT_OK(txId);
 		
 		try {
+			List<Pod> pods = k8sService.getPods(namespace, serviceName);
+			boolean isReady = false;
+			for (Pod pod : pods) {
+				if(PodManager.isReady(pod)) {
+					isReady = true;
+				}
+			}
+			if(!isReady) {
+				result = Result.RESULT_FAIL("", new Exception("가용 인스턴스가 없습니다."));
+				result.putValue(IResult.ACCOUNTS, Collections.emptyList());
+				return result;
+			}
+			
 			List<ZDBMariaDBAccount> accounts = MariaDBAccount.getAccounts(zdbMariaDBAccountRepository, namespace, serviceName);
 			if (accounts == null || accounts.isEmpty()) {
 				log.warn("no account. namespace: {}, serviceName: {}", namespace, serviceName);
@@ -926,7 +939,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	/* (non-Javadoc)
 	 * @see com.zdb.core.service.AbstractServiceImpl#reStartPod(java.lang.String, java.lang.String, java.lang.String, java.lang.String)
 	 */
-	public Result rstartPod(String txId, String namespace, String serviceName, String podName) throws Exception {
+	public Result restartPod(String txId, String namespace, String serviceName, String podName) throws Exception {
 		Result result = null;
 
 		try {
@@ -973,6 +986,19 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	@Override
 	public Result getUserGrants(String namespace, String serviceType, String releaseName) {
 		try {
+			List<Pod> pods = k8sService.getPods(namespace, releaseName);
+			boolean isReady = false;
+			for (Pod pod : pods) {
+				if(PodManager.isReady(pod)) {
+					isReady = true;
+				}
+			}
+			if(!isReady) {
+				Result result = Result.RESULT_FAIL("", new Exception("가용 인스턴스가 없습니다."));
+				result.putValue(IResult.USER_GRANTS, Collections.emptyList());
+				return result;
+			}
+			
 			List<DBUser> userGrants = MariaDBAccount.getUserGrants(namespace, releaseName);
 			
 			return new Result("", Result.OK).putValue(IResult.USER_GRANTS, userGrants);
@@ -991,6 +1017,18 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	@Override
 	public Result getDatabases(String namespace, String serviceType, String serviceName) {
 		try {
+			List<Pod> pods = k8sService.getPods(namespace, serviceName);
+			boolean isReady = false;
+			for (Pod pod : pods) {
+				if(PodManager.isReady(pod)) {
+					isReady = true;
+				}
+			}
+			if(!isReady) {
+				Result result = Result.RESULT_FAIL("", new Exception("가용 인스턴스가 없습니다."));
+				result.putValue(IResult.DATABASES, Collections.emptyList());
+				return result;
+			}
 			List<Database> databases = MariaDBAccount.getDatabases(namespace, serviceName);
 			
 			return new Result("", Result.OK).putValue(IResult.DATABASES, databases);
