@@ -90,11 +90,16 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 		ZDBEntity service = exchange.getProperty(Exchange.ZDBENTITY, ZDBEntity.class);
 		
 		ZDBRepository metaRepository = exchange.getProperty(Exchange.META_REPOSITORY, ZDBRepository.class);
-
-//		ReleaseManager releaseManager = null;
 		
 		RequestEvent event = getRequestEvent(exchange);
 		event.setOperation(RequestEvent.CREATE);
+		
+		try {
+			// 동일이름으로 생성된 이벤트 정보 삭제 
+			ZDBRepositoryUtil.deleteRequestEvent(metaRepository, event.getNamespace(), event.getServiceName());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
 		
 		try (
 				DefaultKubernetesClient client = K8SUtil.kubernetesClient();
