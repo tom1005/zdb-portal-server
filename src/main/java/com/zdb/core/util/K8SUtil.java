@@ -1498,20 +1498,16 @@ public class K8SUtil {
 	          String role = service.getSpec().getSelector().get("role");
 	          
 	          if (role.equals(redisRole)) {
-	        	  String loadbalancerType = service.getMetadata().getAnnotations().get("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type");
-	      		  if (!"prod".equals(profile)) {
-		        	  if ("public".equals(loadbalancerType)) {
-		        		  ip = service.getStatus().getLoadBalancer().getIngress().get(0).getIp();
-		        	  } else {
-		        		  log.error("Redis Service에 연결 할 수 없습니다.");
-		        	  }
-	    		  } else {	        	  
-		        	  if ("private".equals(loadbalancerType)) {
-		        		  ip = service.getSpec().getClusterIP();
-		        	  } else {
-		        		  log.error("Redis Service에 연결 할 수 없습니다.");
-		        	  }
-	    		  }		        	  
+	        	  if ("LoadBalancer".equals(service.getSpec().getType())) {
+	        		  List<LoadBalancerIngress> ingress = service.getStatus().getLoadBalancer().getIngress();
+	        		  if(ingress != null && ingress.size() > 0) {
+	        			  ip = ingress.get(0).getIp();
+	        		  } else {
+	        			  ip = service.getMetadata().getName()+"."+service.getMetadata().getNamespace();
+	        		  }
+	        	  } else if ("ClusterIP".equals(service.getSpec().getType())) {
+						ip = service.getSpec().getClusterIP();
+	        	  }
 	          }
 	        } catch (Exception e) {
 	        	log.error(e.getMessage(), e);

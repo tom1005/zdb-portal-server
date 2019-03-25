@@ -48,7 +48,6 @@ public class RedisConnection {
 				
 				return jedis;
 			}
-
 		} catch (JedisException jedisException) {
 			throw jedisException;
 		}
