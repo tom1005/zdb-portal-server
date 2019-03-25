@@ -1297,13 +1297,39 @@ public class ZDBRestController {
 	public ResponseEntity<String> getUserGrants(@PathVariable("namespace") final String namespace, 
 			@PathVariable("serviceType") final String serviceType,
 			@PathVariable("serviceName") final String serviceName ) {
+		
+		Result result = null;
+		
 		try {
-			Result result = mariadbService.getUserGrants(namespace, serviceType, serviceName);
+			// mariadb , redis, postgresql, rabbitmq, mongodb
+			ZDBType dbType = ZDBType.getType(serviceType);
+
+			switch (dbType) {
+			case MariaDB:
+				result = mariadbService.getUserGrants(namespace, serviceType, serviceName);
+				break;
+			case Redis:
+				break;
+			case PostgreSQL:
+				// TODO
+				break;
+			case RabbitMQ:
+				// TODO
+				break;
+			case MongoDB:
+				// TODO
+				break;
+			default:
+				log.error("Not support.");
+				result.setMessage("Not support service type.");
+				break;
+			}
+
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			
-			Result result = new Result(null, IResult.ERROR, "사용자 권한 목록 조회 오류!").putValue(IResult.EXCEPTION, e);
+			result = new Result(null, IResult.ERROR, "사용자 권한 목록 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -2693,13 +2719,39 @@ public class ZDBRestController {
 			@PathVariable("namespace") final String namespace, 
 			@PathVariable("serviceType") final String serviceType,
 			@PathVariable("serviceName") final String serviceName ) {
+		
+		Result result = null;
+		
 		try {
-			Result result = mariadbService.getDatabases(namespace, serviceType, serviceName);
+			// mariadb , redis, postgresql, rabbitmq, mongodb
+			ZDBType dbType = ZDBType.getType(serviceType);
+
+			switch (dbType) {
+			case MariaDB:
+				result = mariadbService.getDatabases(namespace, serviceType, serviceName);
+				break;
+			case Redis:
+				break;
+			case PostgreSQL:
+				// TODO
+				break;
+			case RabbitMQ:
+				// TODO
+				break;
+			case MongoDB:
+				// TODO
+				break;
+			default:
+				log.error("Not support.");
+				result.setMessage("Not support service type.");
+				break;
+			}
+
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			
-			Result result = new Result(null, IResult.ERROR, "사용자 권한 목록 조회 오류!").putValue(IResult.EXCEPTION, e);
+			result = new Result(null, IResult.ERROR, "Database 목록 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
