@@ -17,4 +17,10 @@ public class ZDBRepositoryUtil {
 			log.error("Save fail. (ZDBRepository is null.)");
 		}
 	}
+	
+	public static void deleteRequestEvent(ZDBRepository metaRepository, String namespace, String serviceName) {
+		if(metaRepository != null) {
+			metaRepository.deleteByServiceName(namespace, serviceName);
+		} 
+	}
 }
