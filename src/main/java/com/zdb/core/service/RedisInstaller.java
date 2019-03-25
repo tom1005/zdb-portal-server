@@ -76,6 +76,13 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 		ReleaseManager releaseManager = null; 
 		RequestEvent event = getRequestEvent(exchange);
 		
+		try {
+			// 동일이름으로 생성된 이벤트 정보 삭제 
+			ZDBRepositoryUtil.deleteRequestEvent(metaRepository, event.getNamespace(), event.getServiceName());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
+		
 		try{ 
 			
 //			chartUrl = "file:///Users/a06919/redis-3.6.5.tgz";
