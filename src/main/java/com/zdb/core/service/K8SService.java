@@ -66,6 +66,7 @@ import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.ServicePort;
 import io.fabric8.kubernetes.api.model.Volume;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
+import io.fabric8.kubernetes.api.model.extensions.DeploymentSpec;
 import io.fabric8.kubernetes.api.model.extensions.ReplicaSet;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSetSpec;
@@ -672,6 +673,12 @@ public class K8SService {
 				so.getPersistenceSpecOfPodMap().put(stsName, getPersistenceSpec(so, stsName));
 			}
 			
+			for (Deployment sts : so.getDeployments()) {
+				String deployName = sts.getMetadata().getName();
+				so.getResourceSpecOfPodMap().put(deployName, getResourceSpec(so, deployName));
+				so.getPersistenceSpecOfPodMap().put(deployName, getPersistenceSpec(so, deployName));
+			}
+			
 			for (Pod pod : so.getPods()) {
 				if(!PodManager.isReady(pod)) {
 					continue;
@@ -1020,6 +1027,67 @@ public class K8SService {
 			}
 		}
 		
+		switch (dbType) {
+		case Redis:
+			List<Deployment> deployments = so.getDeployments();
+
+			for (Deployment dep : deployments) {
+				if (dep.getMetadata().getLabels() == null) {
+					continue;
+				}
+				if (dep.getMetadata().getLabels().get("release") == null) {
+					continue;
+				}
+
+				if (podName.startsWith(dep.getMetadata().getName()) && so.getServiceName().equals(dep.getMetadata().getLabels().get("release"))) {
+					io.fabric8.kubernetes.api.model.PodSpec spec = dep.getSpec().getTemplate().getSpec();
+					List<Container> containers = spec.getContainers();
+
+					selector = so.getServiceName();
+
+					for (Container container : containers) {
+						if (container.getName().toLowerCase().startsWith(selector.toLowerCase())) {
+							ResourceRequirements resources = container.getResources();
+							if (resources != null) {
+								try {
+									if (resources.getRequests() == null) {
+										continue;
+									}
+									String cpu = resources.getRequests().get("cpu").getAmount();
+
+									if (cpu.endsWith("m")) {
+										cpuSum += Integer.parseInt(cpu.substring(0, cpu.indexOf("m")));
+										cpuUnit = "m";
+									} else {
+										cpuSum += Integer.parseInt(cpu);
+									}
+
+									// E, P, T, G, M, K
+									String[] unit = new String[] { "E", "P", "T", "G", "M", "K" };
+									String memory = resources.getRequests().get("memory").getAmount();
+
+									for (String u : unit) {
+										if (memory.indexOf(u) > 0) {
+
+											memSum += Integer.parseInt(memory.substring(0, memory.indexOf(u)));
+
+											memUnit = memory.substring(memory.indexOf(u));
+
+											break;
+										}
+									}
+								} finally {
+								}
+							}
+						}
+					}
+				}
+			}
+			break;
+		default:
+			break;
+		}
+		
 		resourceSpec.setCpu(cpuSum+""+cpuUnit);
 		resourceSpec.setMemory(memSum+""+memUnit);
 		
@@ -1067,7 +1135,6 @@ public class K8SService {
 						ResourceRequirements resources = container.getResources();
 						if (resources != null) {
 							try {
-								PodSpec podSpec = new PodSpec();
 								if (resources.getRequests() == null) {
 									continue;
 								}
@@ -1101,6 +1168,65 @@ public class K8SService {
 				}
 			}
 		}
+		
+		
+		switch (dbType) {
+	    case Redis:
+	    	List<Deployment> deployments = so.getDeployments();
+	    	
+	    	for (Deployment dep : deployments) {
+				if(dep.getMetadata().getLabels() == null) {
+					continue;
+				}
+				if(dep.getMetadata().getLabels().get("release") == null) {
+					continue;
+				}
+				if (so.getServiceName().equals(dep.getMetadata().getLabels().get("release"))) {
+					DeploymentSpec spec = dep.getSpec();
+					List<Container> containers = spec.getTemplate().getSpec().getContainers();
+
+					for (Container container : containers) {
+						if (container.getName().toLowerCase().startsWith(selector.toLowerCase())) {
+							ResourceRequirements resources = container.getResources();
+							if (resources != null) {
+								try {
+									if (resources.getRequests() == null) {
+										continue;
+									}
+									String cpu = resources.getRequests().get("cpu").getAmount();
+
+									if (cpu.endsWith("m")) {
+										cpuSum += Integer.parseInt(cpu.substring(0, cpu.indexOf("m")));
+										cpuUnit = "m";
+									} else {
+										cpuSum += Integer.parseInt(cpu);
+									}
+
+									// E, P, T, G, M, K
+									String[] unit = new String[] { "E", "P", "T", "G", "M", "K" };
+									String memory = resources.getRequests().get("memory").getAmount();
+
+									for (String u : unit) {
+										if (memory.indexOf(u) > 0) {
+
+											memSum += Integer.parseInt(memory.substring(0, memory.indexOf(u)));
+
+											memUnit = memory.substring(memory.indexOf(u));
+
+											break;
+										}
+									}
+								} finally {
+								}
+							}
+						}
+					}
+				}
+			}
+	    	break;
+	    default:
+	    	break;
+	    }
 		
 		resourceSpec.setCpu(cpuSum+""+cpuUnit);
 		resourceSpec.setMemory(memSum+""+memUnit);
