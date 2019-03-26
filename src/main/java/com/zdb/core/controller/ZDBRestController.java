@@ -1228,7 +1228,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "전체 서비스 LB 조회 오류!").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "전체 서비스 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1241,7 +1241,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "서비스 LB 조회 오류!").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "서비스 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1255,7 +1255,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "서비스 LB 조회 오류!").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "서비스 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}

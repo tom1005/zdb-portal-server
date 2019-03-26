@@ -68,6 +68,7 @@ import io.fabric8.kubernetes.api.model.Volume;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.ReplicaSet;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
+import io.fabric8.kubernetes.api.model.extensions.StatefulSetSpec;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.NamespacedKubernetesClient;
@@ -665,7 +666,16 @@ public class K8SService {
 			so.setResourceSpec(getResourceSpec(so));
 			so.setPersistenceSpec(getPersistenceSpec(so));
 			
+			for (StatefulSet sts : so.getStatefulSets()) {
+				String stsName = sts.getMetadata().getName();
+				so.getResourceSpecOfPodMap().put(stsName, getResourceSpec(so, stsName));
+				so.getPersistenceSpecOfPodMap().put(stsName, getPersistenceSpec(so, stsName));
+			}
+			
 			for (Pod pod : so.getPods()) {
+				if(!PodManager.isReady(pod)) {
+					continue;
+				}
 				String podName = pod.getMetadata().getName();
 				so.getResourceSpecOfPodMap().put(podName, getResourceSpec(so, podName));
 				so.getPersistenceSpecOfPodMap().put(podName, getPersistenceSpec(so, podName));
@@ -781,29 +791,33 @@ public class K8SService {
 	private PersistenceSpec getPersistenceSpec(ServiceOverview so, String podName) {
 		PersistenceSpec pSpec = new PersistenceSpec();
 		
+		if("redis".equals(so.getServiceType()) && podName.indexOf("slave") > -1) {
+			// skip
+			return pSpec;
+		}
 		int storageSum = 0;
 		String storageUnit = "";
 		
-		Pod pod = null;
+		StatefulSet sts = null;
 		
-		List<Pod> podsList = so.getPods();
-		for (Pod p : podsList) {
-			if(podName.equals(p.getMetadata().getName())) {
-				pod = p;
+		List<StatefulSet> stssList = so.getStatefulSets();
+		for (StatefulSet s : stssList) {
+			if(podName.startsWith(s.getMetadata().getName())) {
+				sts = s;
 				break;
 			}
 		}
 		
-		if(pod.getSpec().getVolumes() == null || pod.getSpec().getVolumes().size() == 0) {
+		if(sts.getSpec().getTemplate().getSpec().getVolumes() == null || sts.getSpec().getTemplate().getSpec().getVolumes().size() == 0) {
 			return null;
 		}
 		
-		if(pod.getSpec().getVolumes().get(0).getPersistentVolumeClaim() == null) {
+		if(sts.getSpec().getTemplate().getSpec().getVolumes().get(0).getPersistentVolumeClaim() == null) {
 			return null;
 		}
 		
 		String claimName = null;
-		List<Volume> volumes = pod.getSpec().getVolumes();
+		List<Volume> volumes = sts.getSpec().getTemplate().getSpec().getVolumes();
 		for (Volume volume : volumes) {
 			if("data".equals(volume.getName()) || "redis-data".equals(volume.getName())) {
 				claimName = volume.getPersistentVolumeClaim().getClaimName();
@@ -934,7 +948,7 @@ public class K8SService {
 		String selector = new String();
 		ZDBType dbType = ZDBType.getType(so.getServiceType());
 		
-		List<Pod> items = so.getPods();
+		List<StatefulSet> items = so.getStatefulSets();
 
 		ResourceSpec resourceSpec = new ResourceSpec();
 		
@@ -944,16 +958,16 @@ public class K8SService {
 		String cpuUnit = "";
 		String memUnit = "";
 		
-		for (Pod pod : items) {
-			if(pod.getMetadata().getLabels() == null) {
+		for (StatefulSet sts : items) {
+			if(sts.getMetadata().getLabels() == null) {
 				continue;
 			}
-			if(pod.getMetadata().getLabels().get("release") == null) {
+			if(sts.getMetadata().getLabels().get("release") == null) {
 				continue;
 			}
 			
-			if (podName.equals(pod.getMetadata().getName()) && so.getServiceName().equals(pod.getMetadata().getLabels().get("release"))) {
-				io.fabric8.kubernetes.api.model.PodSpec spec = pod.getSpec();
+			if (podName.startsWith(sts.getMetadata().getName()) && so.getServiceName().equals(sts.getMetadata().getLabels().get("release"))) {
+				io.fabric8.kubernetes.api.model.PodSpec spec = sts.getSpec().getTemplate().getSpec();
 				List<Container> containers = spec.getContainers();
 
 			    switch (dbType) {
@@ -1016,7 +1030,7 @@ public class K8SService {
 		String selector = new String();
 		ZDBType dbType = ZDBType.getType(so.getServiceType());
 		
-		List<Pod> items = so.getPods();
+		List<StatefulSet> items = so.getStatefulSets();
 
 		ResourceSpec resourceSpec = new ResourceSpec();
 		
@@ -1037,16 +1051,16 @@ public class K8SService {
 	    	break;
 	    }
 	    
-		for (Pod pod : items) {
-			if(pod.getMetadata().getLabels() == null) {
+		for (StatefulSet sts : items) {
+			if(sts.getMetadata().getLabels() == null) {
 				continue;
 			}
-			if(pod.getMetadata().getLabels().get("release") == null) {
+			if(sts.getMetadata().getLabels().get("release") == null) {
 				continue;
 			}
-			if (so.getServiceName().equals(pod.getMetadata().getLabels().get("release"))) {
-				io.fabric8.kubernetes.api.model.PodSpec spec = pod.getSpec();
-				List<Container> containers = spec.getContainers();
+			if (so.getServiceName().equals(sts.getMetadata().getLabels().get("release"))) {
+				StatefulSetSpec spec = sts.getSpec();
+				List<Container> containers = spec.getTemplate().getSpec().getContainers();
 
 				for (Container container : containers) {
 					if (container.getName().toLowerCase().startsWith(selector.toLowerCase())) {
@@ -1448,7 +1462,7 @@ public class K8SService {
 					}
 
 					if (svcCount == createdServiceCnt) {
-						System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+//						System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
 						break;
 					}
 
