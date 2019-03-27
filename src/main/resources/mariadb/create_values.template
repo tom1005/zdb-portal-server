@@ -105,7 +105,7 @@ master:
     lower_case_table_names=0
     
     # Log Config
-    log_error=/bitnami/mariadb/logs/mysqld.log
+    log_error=/bitnami/mariadb/logs/mysql_error.log
     slow_query_log_file=/bitnami/mariadb/logs/maria_slow.log
     slow_query_log=1
     long_query_time=3
@@ -160,7 +160,7 @@ master:
     default-character-set=${character.set.server}
     
     [mysqld_safe]
-    log_error=/bitnami/mariadb/logs/mysqld_safe.log
+    log_error=/bitnami/mariadb/logs/mysql_error.log
     
     [mysqldump]
     quick
@@ -259,7 +259,7 @@ slave:
     lower_case_table_names=0
     
     # Log Config
-    log_error=/bitnami/mariadb/logs/mysqld.log
+    log_error=/bitnami/mariadb/logs/mysql_error.log
     slow_query_log_file=/bitnami/mariadb/logs/maria_slow.log
     slow_query_log=1
     long_query_time=3
@@ -314,7 +314,7 @@ slave:
     default-character-set=${character.set.server}
     
     [mysqld_safe]
-    log_error=/bitnami/mariadb/logs/mysqld_safe.log
+    log_error=/bitnami/mariadb/logs/mysql_error.log
     
     [mysqldump]
     quick
