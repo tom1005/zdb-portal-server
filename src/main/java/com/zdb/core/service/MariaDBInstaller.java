@@ -272,6 +272,15 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 					
 					tagRepository.save(typeTag);
 					
+					if(isClusterEnabled) {
+						typeTag = new Tag();
+						typeTag.setNamespace(service.getNamespace());
+						typeTag.setReleaseName(service.getServiceName());
+						typeTag.setTagName("HA");		
+						
+						tagRepository.save(typeTag);
+					}
+					
 					// TODO 생성 UI에서 선택 할 수 있는 옵션 추가 후 적용.
 					// LB목록 조회 및 추가 주문 로직 구현 필요.
 					exchange.setProperty(KubernetesConstants.KUBERNETES_SERVICE_NAME, service.getServiceName());

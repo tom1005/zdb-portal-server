@@ -390,6 +390,15 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 						tagRepository.save(purposeTag);
 					}					
 					
+					if(service.isClusterEnabled()) {
+						typeTag = new Tag();
+						typeTag.setNamespace(service.getNamespace());
+						typeTag.setReleaseName(service.getServiceName());
+						typeTag.setTagName("HA");		
+						
+						tagRepository.save(typeTag);
+					}
+					
 					exchange.setProperty(KubernetesConstants.KUBERNETES_SERVICE_NAME, service.getServiceName());
 					exchange.setProperty(KubernetesConstants.KUBERNETES_NAMESPACE_NAME, service.getNamespace());
 					
