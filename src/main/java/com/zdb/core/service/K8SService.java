@@ -1131,7 +1131,7 @@ public class K8SService {
 				List<Container> containers = spec.getTemplate().getSpec().getContainers();
 
 				for (Container container : containers) {
-					if (container.getName().toLowerCase().startsWith(selector.toLowerCase())) {
+//					if (container.getName().toLowerCase().startsWith(selector.toLowerCase())) {
 						ResourceRequirements resources = container.getResources();
 						if (resources != null) {
 							try {
@@ -1164,7 +1164,7 @@ public class K8SService {
 							} finally {
 							}
 						}
-					}
+//					}
 				}
 			}
 		}
