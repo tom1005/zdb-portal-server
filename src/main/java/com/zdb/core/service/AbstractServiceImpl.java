@@ -476,12 +476,16 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 					return new Result("", Result.OK).putValue(IResult.POD_LOG, podLog);
 				}
 			} else if ("mariadb".equals(app)) {
-				String slowlogPath = getLogPath(namespace, podName, "log_error");
-				if(slowlogPath == null || slowlogPath.isEmpty()) {
-					slowlogPath = "/bitnami/mariadb/logs/mysqld_safe.log";
+				String errorlogPath = getLogPath(namespace, podName, "log_error");
+				if(errorlogPath == null || errorlogPath.isEmpty()) {
+					errorlogPath = "/bitnami/mariadb/logs/mysqld_safe.log";
 				}
 				
-				log = new ZDBLogViewer().getTailLog(namespace, podName, "mariadb", 1000, slowlogPath);
+				log = new ZDBLogViewer().getTailLog(namespace, podName, "mariadb", 1000, errorlogPath);
+				if(log.trim().isEmpty()) {
+					errorlogPath = "/bitnami/mariadb/logs/mysqld.log";
+					log = new ZDBLogViewer().getTailLog(namespace, podName, "mariadb", 1000, errorlogPath);
+				}
 				if (!log.isEmpty()) {
 					String[] errorLog = log.split("\n");
 
