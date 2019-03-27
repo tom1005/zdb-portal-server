@@ -48,7 +48,7 @@ autocommit=${autocommit}
 lower_case_table_names=${lower_case_table_names}
 
 # Log Config
-log_error=/bitnami/mariadb/logs/mysqld.log
+log_error=/bitnami/mariadb/logs/mysql_error.log
 slow_query_log_file=/bitnami/mariadb/logs/maria_slow.log
 slow_query_log=1
 long_query_time=${long_query_time}
@@ -103,7 +103,7 @@ max_allowed_packet=${max_allowed_packet}
 default-character-set=${character_set_server}
 
 [mysqld_safe]
-log_error=/bitnami/mariadb/logs/mysqld_safe.log
+log_error=/bitnami/mariadb/logs/mysql_error.log
 
 [mysqldump]
 quick
