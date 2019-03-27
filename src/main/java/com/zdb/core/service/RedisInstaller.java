@@ -76,6 +76,13 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 		ReleaseManager releaseManager = null; 
 		RequestEvent event = getRequestEvent(exchange);
 		
+		try {
+			// 동일이름으로 생성된 이벤트 정보 삭제 
+			ZDBRepositoryUtil.deleteRequestEvent(metaRepository, event.getNamespace(), event.getServiceName());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
+		
 		try{ 
 			
 //			chartUrl = "file:///Users/a06919/redis-3.6.5.tgz";
@@ -103,23 +110,6 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 				hapi.chart.ConfigOuterClass.Config.Builder valuesBuilder = requestBuilder.getValuesBuilder();
 
 				Map<String, Object> values = new HashMap<String, Object>();
-
-//				image:
-//					  registry: docker.io
-//					  repository: bitnami/redis
-//					  tag: 4.0.9
-//					  ## Specify a imagePullPolicy
-//					  ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
-//					  ## ref: http://kubernetes.io/docs/user-guide/images/#pre-pulling-images
-//					  ##
-//					  pullPolicy: Always
-//					  ## Optionally specify an array of imagePullSecrets.
-//					  ## Secrets must be manually created in the namespace.
-//					  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
-//					  ##
-//					  pullSecrets:
-//					    - myRegistrKeySecretName
-//				registry.au-syd.bluemix.net/cloudzdb/mysqld-exporter:v0.10.0
 				
 				//TODO 환경변수 처리.
 				// Set Redis Version
@@ -252,46 +242,6 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 				} else if ("SESSION".equals(service.getPurpose())) {
 					cacheModeEnabled = true;
 				}
-
-//				RedisConfig[] redisConfig = service.getRedisConfig();
-//				
-//		        for (RedisConfig redis: redisConfig) {
-//		        	if (redis.getPodType().equals("master")) {
-//						StringBuffer customRedisConfig = new StringBuffer();
-//						
-//						customRedisConfig.append("bind 0.0.0.0").append("\n");
-//						customRedisConfig.append("logfile /opt/bitnami/redis/logs/redis-server.log").append("\n");
-//						customRedisConfig.append("pidfile /opt/bitnami/redis/tmp/redis.pid").append("\n");
-//						customRedisConfig.append("dir /opt/bitnami/redis/data").append("\n");
-//						customRedisConfig.append("rename-command FLUSHDB FDB").append("\n");
-//						customRedisConfig.append("rename-command FLUSHALL FALL").append("\n");
-//
-//						if (cacheModeEnabled) {
-//							customRedisConfig.append("appendonly no").append("\n");		
-//							customRedisConfig.append("save ").append("\"\"").append("\n");
-//						} else {
-//							customRedisConfig.append("appendonly yes").append("\n");
-//							customRedisConfig.append("save ").append(redis.getConfig().get("save") == null ? "900 1 300 10 60 10000" : redis.getConfig().get("save")).append("\n");
-//						}
-//						
-//						customRedisConfig.append("timeout ").append(redis.getConfig().get("timeout") == null                               	   ? "0" 		  : redis.getConfig().get("timeout")).append("\n");
-//						customRedisConfig.append("tcp-keepalive ").append(redis.getConfig().get("tcp-keepalive") == null 			 		   ? "300" 		  : redis.getConfig().get("tcp-keepalive")).append("\n");
-//						customRedisConfig.append("slowlog-log-slower-than ").append(redis.getConfig().get("slowlog-log-slower-than") == null   ? "10000" 	  : redis.getConfig().get("slowlog-log-slower-than")).append("\n");
-//						customRedisConfig.append("slowlog-max-len ").append(redis.getConfig().get("slowlog-max-len") == null 				   ? "128" 		  : redis.getConfig().get("slowlog-max-len")).append("\n");
-//						customRedisConfig.append("hash-max-ziplist-entries ").append(redis.getConfig().get("hash-max-ziplist-entries") == null ? "512" 		  : redis.getConfig().get("hash-max-ziplist-entries")).append("\n");
-//						customRedisConfig.append("hash-max-ziplist-value ").append(redis.getConfig().get("hash-max-ziplist-value") == null 	   ? "64" 		  : redis.getConfig().get("hash-max-ziplist-value")).append("\n");
-//						customRedisConfig.append("list-max-ziplist-size ").append(redis.getConfig().get("list-max-ziplist-size") == null 	   ? "-2" 		  : redis.getConfig().get("list-max-ziplist-size")).append("\n");
-//						customRedisConfig.append("zset-max-ziplist-entries ").append(redis.getConfig().get("zset-max-ziplist-entries") == null ? "128" 		  : redis.getConfig().get("zset-max-ziplist-entries")).append("\n");
-//						customRedisConfig.append("zset-max-ziplist-value ").append(redis.getConfig().get("zset-max-ziplist-value") == null 	   ? "64" 		  : redis.getConfig().get("zset-max-ziplist-value")).append("\n");
-//						customRedisConfig.append("maxmemory-policy ").append(redis.getConfig().get("maxmemory-policy") == null 		  		   ? "noeviction" : redis.getConfig().get("maxmemory-policy")).append("\n");
-//						customRedisConfig.append("maxmemory-samples ").append(redis.getConfig().get("maxmemory-samples") == null 			   ? "5" 		  : redis.getConfig().get("maxmemory-samples")).append("\n");
-//						customRedisConfig.append("notify-keyspace-events ").append(redis.getConfig().get("notify-keyspace-events") == null 	   ? "\"\""			  : redis.getConfig().get("notify-keyspace-events")).append("\n");
-//						
-//						customRedisConfig.append("maxmemory ").append(assignedMemory * 75 / 100).append("mb").append("\n");		// 할당메모리의 75%
-//
-//						master.put("config"		, customRedisConfig.toString());
-//		        	}
-//		        } 				
 	
 				StringBuffer customRedisConfig = new StringBuffer();
 				
@@ -301,7 +251,19 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 				customRedisConfig.append("dir /opt/bitnami/redis/data").append("\n");
 				customRedisConfig.append("rename-command FLUSHDB FDB").append("\n");
 				customRedisConfig.append("rename-command FLUSHALL FALL").append("\n");
-
+				customRedisConfig.append("maxmemory ").append(assignedMemory * 75 / 100).append("mb").append("\n");		// 할당메모리의 75%
+				customRedisConfig.append("timeout 0").append("\n");
+				customRedisConfig.append("tcp-keepalive 300").append("\n");
+				customRedisConfig.append("maxmemory-policy noeviction").append("\n");
+				customRedisConfig.append("maxmemory-samples 5").append("\n");
+				customRedisConfig.append("slowlog-log-slower-than 10000").append("\n");
+				customRedisConfig.append("slowlog-max-len 128").append("\n");
+				customRedisConfig.append("notify-keyspace-events \"\"").append("\n");
+				customRedisConfig.append("hash-max-ziplist-entries 512").append("\n");
+				customRedisConfig.append("hash-max-ziplist-value 64").append("\n");
+				customRedisConfig.append("list-max-ziplist-size -2").append("\n");
+				customRedisConfig.append("zset-max-ziplist-entries 128").append("\n");
+				customRedisConfig.append("zset-max-ziplist-value 64").append("\n");
 				if (cacheModeEnabled) {
 					customRedisConfig.append("appendonly no").append("\n");		
 					customRedisConfig.append("save ").append("\"\"").append("\n");
@@ -309,9 +271,7 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 					customRedisConfig.append("appendonly yes").append("\n");
 					customRedisConfig.append("save 900 1 300 10 60 10000").append("\n");
 				}
-
-				customRedisConfig.append("maxmemory ").append(assignedMemory * 75 / 100).append("mb").append("\n");		// 할당메모리의 75%
-
+				
 				master.put("config"		, customRedisConfig.toString());
 		        master.put("extraFlags"	, extraFlags);        
 

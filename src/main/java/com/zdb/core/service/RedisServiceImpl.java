@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
@@ -27,6 +28,7 @@ import com.google.gson.Gson;
 import com.zdb.core.domain.Connection;
 import com.zdb.core.domain.ConnectionInfo;
 import com.zdb.core.domain.IResult;
+import com.zdb.core.domain.Mycnf;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.ResourceSpec;
@@ -567,46 +569,57 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 	 * @param txId
 	 * @param namespace
 	 * @param serviceName
-	 * @return
-	 * 
-	 * @author chanhokim
+	 * @return result
+	 *
+	 * Redis의 ConfigMap에서 Redis Configuration 값을 읽어옵니다.
 	 */
 	@Override
 	public Result getDBVariables(String txId, String namespace, String serviceName) {
 		Result result = Result.RESULT_OK(txId);
-		Jedis redisConnection = null;
+		Map<String, String> redisConfigMap = new HashMap<>();
 
 		try {
-			redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "master"); 
+			List<ConfigMap> configMaps = K8SUtil.getConfigMaps(namespace, serviceName);
+			
+			if(configMaps != null && !configMaps.isEmpty()) {
+				ConfigMap configMap = configMaps.get(0);
+				Map<String, String> data = configMap.getData();
+				String redisConf = data.get("redis-config");
+				String[] split = redisConf.split("\n");
+				
+				for (String line : split) {
+					String[] params = line.split(" ");
+					if(params.length == 2) {
+						String key = params[0].trim();
+						String value = params[1].trim();
+						redisConfigMap.put(key, value);
+					}
+				}
 
-			if (redisConnection == null) {
-				throw new Exception("Cannot connect redis. Namespace: " + namespace + ", ServiceName: " + serviceName);
+				ZDBRedisConfig zdbRedisConfig = new ZDBRedisConfig();
+				zdbRedisConfig.setTimeout(redisConfigMap.get("timeout"));
+				zdbRedisConfig.setTcpKeepalive(redisConfigMap.get("tcp-keepalive"));
+				zdbRedisConfig.setMaxmemoryPolicy(redisConfigMap.get("maxmemory-policy"));
+				zdbRedisConfig.setMaxmemorySamples(redisConfigMap.get("maxmemory-samples"));
+				zdbRedisConfig.setSlowlogLogSlowerThan(redisConfigMap.get("slowlog-log-slower-than"));
+				zdbRedisConfig.setSlowlogMaxLen(redisConfigMap.get("slowlog-max-len"));
+				zdbRedisConfig.setHashMaxZiplistEntries(redisConfigMap.get("hash-max-ziplist-entries"));
+				zdbRedisConfig.setHashMaxZiplistValue(redisConfigMap.get("hash-max-ziplist-value"));
+				zdbRedisConfig.setListMaxZiplistSize(redisConfigMap.get("list-max-ziplist-size"));
+				zdbRedisConfig.setZsetMaxZiplistEntries(redisConfigMap.get("zset-max-ziplist-entries"));
+				zdbRedisConfig.setZsetMaxZiplistValue(redisConfigMap.get("zset-max-ziplist-value"));
+				if (redisConfigMap.get("notify-keyspace-events").equals("\"\"")) {
+					zdbRedisConfig.setNotifyKeyspaceEvents("");
+				} else {
+					zdbRedisConfig.setNotifyKeyspaceEvents(redisConfigMap.get("notify-keyspace-events"));
+				}
+
+				result = new Result(txId, IResult.OK, "");
+				result.putValue(IResult.REDIS_CONFIG, zdbRedisConfig);
 			}
-
-			ZDBRedisConfig config = new ZDBRedisConfig();
-			config.setTimeout(RedisConfiguration.getConfig(redisConnection, "timeout"));
-			config.setTcpKeepalive(RedisConfiguration.getConfig(redisConnection, "tcp-keepalive"));
-			config.setMaxmemoryPolicy(RedisConfiguration.getConfig(redisConnection, "maxmemory-policy"));
-			config.setMaxmemorySamples(RedisConfiguration.getConfig(redisConnection, "maxmemory-samples"));
-			config.setSlowlogLogSlowerThan(RedisConfiguration.getConfig(redisConnection, "slowlog-log-slower-than"));
-			config.setSlowlogMaxLen(RedisConfiguration.getConfig(redisConnection, "slowlog-max-len"));
-			config.setNotifyKeyspaceEvents(RedisConfiguration.getConfig(redisConnection, "notify-keyspace-events"));
-			config.setHashMaxZiplistEntries(RedisConfiguration.getConfig(redisConnection, "hash-max-ziplist-entries"));
-			config.setHashMaxZiplistValue(RedisConfiguration.getConfig(redisConnection, "hash-max-ziplist-value"));
-			config.setListMaxZiplistSize(RedisConfiguration.getConfig(redisConnection, "list-max-ziplist-size"));
-			config.setZsetMaxZiplistEntries(RedisConfiguration.getConfig(redisConnection, "zset-max-ziplist-entries"));
-			config.setZsetMaxZiplistValue(RedisConfiguration.getConfig(redisConnection, "zset-max-ziplist-value"));
-
-			result = new Result(txId, IResult.OK, "");
-			result.putValue(IResult.REDIS_CONFIG, config);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-
 			return Result.RESULT_FAIL(txId, e);
-		} finally {
-			if (redisConnection != null) {
-				redisConnection.close();
-			}
 		}
 		return result;
 	}
@@ -719,77 +732,80 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 		Result result = new Result(txId);
 		
 		try {
-			// 서비스 명 체크
+			// 서비스 유무 체크
 			ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(serviceName);
 			if( releaseMetaData == null) {
 				String msg = "서비스가 존재하지 않습니다.";
 				return new Result(txId, IResult.ERROR, msg);
 			}
-			
-			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
 
-			StringBuffer redisConfig = new StringBuffer();
-			redisConfig.append("bind 0.0.0.0").append("\n");
-			redisConfig.append("logfile /opt/bitnami/redis/logs/redis-server.log").append("\n");
-			redisConfig.append("pidfile /opt/bitnami/redis/tmp/redis.pid").append("\n");
-			redisConfig.append("dir /opt/bitnami/redis/data").append("\n");
-			redisConfig.append("rename-command FLUSHDB FDB").append("\n");
-			redisConfig.append("rename-command FLUSHALL FALL").append("\n");			
-
+			// Redis에 접속하여 설정 변경
 			Jedis redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "master"); 
 			
 			if (redisConnection == null) {
-				throw new Exception("Cannot connect redis. Namespace: " + namespace + ", ServiceName: " + serviceName);
-			}			
-			
-			redisConfig.append("appendonly ").append(RedisConfiguration.getConfig(redisConnection, "appendonly")).append("\n");
-
-			for (Map.Entry<String, String> entry : config.entrySet()) {
-				if ("save".equals(entry.getKey())){
-					if ("true".equals(entry.getValue())) {
-						redisConfig.append("save 900 1 300 10 60 10000").append("\n");
-					} else {
-						redisConfig.append("save \"\"").append("\n");
-					}
-				} else if ("notify-keyspace-events".equals(entry.getKey())) {
-					if (entry.getValue() == null || entry.getValue() == "") {
-						redisConfig.append("redisConfig \"\"").append("\n");
-					}
-				
-				} else {
-					redisConfig.append(entry.getKey() + " " + entry.getValue()).append("\n");
-				}
-			}		
-			
-			List<ConfigMap> configMaps = client.configMaps().inNamespace(namespace).withLabel("release", serviceName).list().getItems();
-			
-			for (ConfigMap configMap : configMaps) {
-				String configMapName = configMap.getMetadata().getName();
-				client.configMaps().inNamespace(namespace).withName(configMapName).edit().addToData("redis-config", redisConfig.toString()).done();
+				throw new Exception("Cannot connect Redis(Master). Namespace: " + namespace + ", ServiceName: " + serviceName);
 			}
 			
-			// Set Redis master config.
-			redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "master");
-
-			if (redisConnection == null) {
-				throw new Exception("Cannot connect Redis(Master). Namespace: " + namespace + ", Service Name: " + serviceName);
-			}
 			RedisConfiguration.setConfig(zdbRedisConfigRepository, redisConnection, namespace, serviceName, config); 
 			
-			
-			// Set Redis slave config.
 			if (releaseMetaData != null && releaseMetaData.getClusterEnabled()) {
 				redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "slave");
-
 				if (redisConnection == null) {
 					throw new Exception("Cannot connect Redis(Slave). Namespace: " + namespace + ", Service Name: " + serviceName);
 				}
-				RedisConfiguration.setConfig(zdbRedisConfigRepository, redisConnection, namespace, serviceName, config); 
+				RedisConfiguration.setConfig(zdbRedisConfigRepository, redisConnection, namespace, serviceName, config);
 			}
-			result = new Result(txId, IResult.OK, "환경설정 변경 요청됨");			
+			
+			// 변경된 값 확인
+			String historyValue = compareVariables(namespace, serviceName, config);
+			
+			// ConfigMap 변경
+			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
+			List<ConfigMap> configMaps = K8SUtil.getConfigMaps(namespace, serviceName);
+			Map<String, String> redisConfigMap = new HashMap<>();
+			if(configMaps != null && !configMaps.isEmpty()) {
+				ConfigMap configMap = configMaps.get(0);
+				Map<String, String> data = configMap.getData();
+				String redisConf = data.get("redis-config");
+				String[] split = redisConf.split("\n");
+				for (String line : split) {
+					String[] params = line.split(" ");
+					if(params.length == 2) {
+						String key = params[0].trim();
+						String value = params[1].trim();
+						redisConfigMap.put(key, value);
+					}
+				}
+				redisConfigMap.put("timeout", config.get("timeout"));
+				redisConfigMap.put("tcp-keepalive", config.get("tcp-keepalive"));
+				redisConfigMap.put("maxmemory-policy", config.get("maxmemory-policy"));
+				redisConfigMap.put("maxmemory-samples", config.get("maxmemory-samples"));
+				redisConfigMap.put("slowlog-log-slower-than", config.get("slowlog-log-slower-than"));
+				redisConfigMap.put("slowlog-max-len", config.get("slowlog-max-len"));
+				redisConfigMap.put("hash-max-ziplist-entries", config.get("hash-max-ziplist-entries"));
+				redisConfigMap.put("hash-max-ziplist-value", config.get("hash-max-ziplist-value"));
+				redisConfigMap.put("list-max-ziplist-size", config.get("list-max-ziplist-size"));
+				redisConfigMap.put("zset-max-ziplist-entries", config.get("zset-max-ziplist-entries"));
+				redisConfigMap.put("zset-max-ziplist-value", config.get("zset-max-ziplist-value"));
+				if (config.get("notify-keyspace-events").equals("")) {
+					redisConfigMap.put("notify-keyspace-events", config.get("\"\""));
+				} else {
+					redisConfigMap.put("notify-keyspace-events", config.get("notify-keyspace-events"));
+				}
+				
+				StringBuilder mapAsString = new StringBuilder("");
+			    for (String key : redisConfigMap.keySet()) {
+			        mapAsString.append(key + " " + redisConfigMap.get(key) + "\n");
+			    }
+			    mapAsString.delete(mapAsString.length()-2, mapAsString.length()).append("");
+				String redisConfigMapAsString = mapAsString.toString();
+				
+				String configMapName = configMap.getMetadata().getName();
+				client.configMaps().inNamespace(namespace).withName(configMapName).edit().addToData("redis-config", redisConfigMapAsString).done();
+			}
+			result = new Result(txId, IResult.OK, "환경설정 변경 완료: " + historyValue);		
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-
 			result = new Result(txId, IResult.ERROR, "환경설정 변경 요청 오류 - " + e.getLocalizedMessage());
 		}
 		
@@ -806,5 +822,40 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 	public Result getUserGrants(String namespace, String serviceType, String releaseName) {
 		return null;
 	}	
+	
+	private String compareVariables(String namespace, String serviceName, Map<String, String> newConfig) {
+		Map<String, String> currentConfigMap = new HashMap<>();
+		
+		StringBuffer sb = new StringBuffer();
+		
+		try {
+			List<ConfigMap> configMaps = K8SUtil.getConfigMaps(namespace, serviceName);
+			if(configMaps != null && !configMaps.isEmpty()) {
+				ConfigMap map = configMaps.get(0);
+				Map<String, String> data = map.getData();
+				String cnf = data.get("redis-config");
+				String[] split = cnf.split("\n");
+				
+				for (String line : split) {
+					String[] params = line.split(" ");
+					if(params.length == 2) {
+						String key = params[0].trim();
+						String value = params[1].trim();
+						currentConfigMap.put(key, value);
+						
+						String newValue = newConfig.get(key);
+						
+						if(value != null && newValue != null && !value.equals(newValue)) {
+							sb.append(key).append(" : ").append(value).append(" → ").append(newValue).append("\n");
+						}
+					}
+				}
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
+		
+		return sb.toString();
+	}
 }
   

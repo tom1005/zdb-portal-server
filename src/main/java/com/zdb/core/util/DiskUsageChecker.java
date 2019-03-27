@@ -40,7 +40,7 @@ public class DiskUsageChecker {
 
 	public List<DiskUsage> getAllDiskUsage() throws Exception {
 //		String[] commands = new String[] { "/bin/sh", "-c", "df -P | grep bitnami | awk '{size = $2} {used = $3} {avail=$4} {use=$5} END { print size \" \"used \" \" avail \" \" use }'" };
-		String cmd = "/bin/df -P | grep bitnami | awk '{size = $2} {used = $3} {avail=$4} {use=$5} END { print size \" \"used \" \" avail \" \" use }'";
+		//String cmd = "/bin/df -P | grep bitnami | awk '{size = $2} {used = $3} {avail=$4} {use=$5} END { print size \" \"used \" \" avail \" \" use }'";
 		long s = System.currentTimeMillis();
 
 		List<DiskUsage> list = new ArrayList<>();
@@ -59,6 +59,7 @@ public class DiskUsageChecker {
 			for (Namespace namespace : nsList) {
 				items.addAll(client.inNamespace(namespace.getMetadata().getName()).pods().list().getItems());
 			}
+			String cmd = "/bin/df -P | grep bitnami | awk '{size = $2} {used = $3} {avail=$4} {use=$5} END { print size \" \"used \" \" avail \" \" use }'";
 			
 			for (Pod pod : items) {
 
@@ -72,6 +73,7 @@ public class DiskUsageChecker {
 						// mariadb 는 label 의 app 명을 container 명으로 사용한다.
 						containerName = pod.getMetadata().getLabels().get("release");
 
+						cmd = "/bin/df -P /bitnami/redis/data | awk '{size = $2} {used = $3} {avail=$4} {use=$5} END { print size \" \"used \" \" avail \" \" use }'";
 						String role = pod.getMetadata().getLabels().get("role");
 						if (!"master".equals(role)) {
 							continue;
@@ -109,36 +111,6 @@ public class DiskUsageChecker {
 					}
 					
 					String temp = new ExecUtil().exec(k8sClient, namespace, podName, containerName, cmd);
-
-					
-//					final CountDownLatch latch = new CountDownLatch(1);
-//
-//					ExecWatch watch = client.inNamespace(namespace).pods().withName(pod.getMetadata().getName()).inContainer(containerName).redirectingOutput().usingListener(new ExecListener() {
-//						@Override
-//						public void onOpen(Response response) {
-//						}
-//
-//						@Override
-//						public void onFailure(Throwable t, Response response) {
-//							latch.countDown();
-//							log.error(t.getMessage(), t);
-//						}
-//
-//						@Override
-//						public void onClose(int code, String reason) {
-//							latch.countDown();
-//						}
-//					}).exec(commands);
-//
-//					CustomCallback callback = new CustomCallback();
-//
-//					BlockingInputStreamPumper pump = new BlockingInputStreamPumper(watch.getOutput(), callback);
-//					executorService.submit(pump);
-//					Future<String> outPumpFuture = executorService.submit(pump, "Done");
-//					executorService.scheduleAtFixedRate(new FutureChecker("Pump", outPumpFuture), 0, 5, TimeUnit.SECONDS);
-
-//					latch.await(10, TimeUnit.SECONDS);
-//					watch.close();
 
 					DiskUsage diskUsage = new DiskUsage();
 					diskUsage.setNamespace(namespace);

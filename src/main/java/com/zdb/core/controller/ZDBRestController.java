@@ -21,7 +21,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import com.google.gson.Gson;
 import com.zdb.core.domain.DBUser;
+import com.zdb.core.domain.Database;
 import com.zdb.core.domain.EventMetaData;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.ReleaseMetaData;
@@ -32,7 +34,6 @@ import com.zdb.core.domain.UserInfo;
 import com.zdb.core.domain.UserNamespaces;
 import com.zdb.core.domain.ZDBConfig;
 import com.zdb.core.domain.ZDBEntity;
-import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBPersistenceEntity;
 import com.zdb.core.domain.ZDBType;
 import com.zdb.core.repository.EventRepository;
@@ -180,17 +181,11 @@ public class ZDBRestController {
 				result = redisService.getDeployment(namespace, serviceName);
 				break;
 			case PostgreSQL:
-				// TODO
-				break;
 			case RabbitMQ:
-				// TODO
-				break;
 			case MongoDB:
-				// TODO
-				break;
 			default:
-				log.error("Not support.");
-				result.setMessage("Not support service type.");
+				log.error("서비스 조회 - Not support.");
+				result = new Result(null, IResult.ERROR, "서비스 조회 - Not support.");
 				break;
 			}
 
@@ -275,17 +270,11 @@ public class ZDBRestController {
 				result = redisService.createDeployment(txId, entity, userInfo);
 				break;
 			case PostgreSQL:
-				// TODO
-				break;
 			case RabbitMQ:
-				// TODO
-				break;
 			case MongoDB:
-				// TODO
-				break;
 			default:
-				log.error("Not support.");
-				result.setMessage("Not support service type.");
+				log.error("서비스 생성 - Not support.");
+				result = new Result(null, IResult.ERROR, "서비스 생성 - Not support.");
 				break;
 			}
 			
@@ -431,17 +420,11 @@ public class ZDBRestController {
 				result = redisService.updateScale(txId, service);
 				break;
 			case PostgreSQL:
-				// TODO
-				break;
 			case RabbitMQ:
-				// TODO
-				break;
 			case MongoDB:
-				// TODO
-				break;
 			default:
-				log.error("Not support.");
-				result.setMessage("Not support service type.");
+				log.error(RequestEvent.SCALE_UP + " - Not support.");
+				result = new Result(txId, IResult.ERROR, RequestEvent.SCALE_UP + " - Not support.");
 				break;
 			}
 
@@ -498,19 +481,12 @@ public class ZDBRestController {
 				result = mariadbService.updateStorageScale(txId, namespace, serviceType, serviceName, size);
 				break;
 			case Redis:
-				break;
 			case PostgreSQL:
-				// TODO
-				break;
 			case RabbitMQ:
-				// TODO
-				break;
 			case MongoDB:
-				// TODO
-				break;
 			default:
-				log.error("Not support.");
-				result.setMessage("Not support service type.");
+				log.error(RequestEvent.STORAGE_SCALE_UP + " - Not support.");
+				result = new Result(txId, IResult.ERROR, RequestEvent.STORAGE_SCALE_UP + " - Not support.");
 				break;
 			}
 
@@ -576,8 +552,8 @@ public class ZDBRestController {
 				result = redisService.updateScaleOut(txId, service);
 				break;
 			default:
-				log.error("Not support.");
-				result.setMessage("Not support service type.");
+				log.error(RequestEvent.SCALE_OUT + " - Not support.");
+				result = new Result(txId, IResult.ERROR, RequestEvent.SCALE_OUT + " - Not support.");
 				break;
 			}
 
@@ -633,17 +609,11 @@ public class ZDBRestController {
 				result = redisService.deleteServiceInstance(txId, namespace, serviceType, serviceName);
 				break;
 			case PostgreSQL:
-				// TODO
-				break;
 			case RabbitMQ:
-				// TODO
-				break;
 			case MongoDB:
-				// TODO
-				break;
 			default:
-				log.error("Not support.");
-				result.setMessage("Not support service type.");
+				log.error(RequestEvent.DELETE + " - Not support.");
+				result = new Result(txId, IResult.ERROR, RequestEvent.DELETE + " - Not support.");
 				break;
 			}
 			event.setStatus(result.getCode());
@@ -691,17 +661,11 @@ public class ZDBRestController {
 				result = redisService.restartService(txId, dbType, namespace, serviceName);
 				break;
 			case PostgreSQL:
-				// TODO
-				break;
 			case RabbitMQ:
-				// TODO
-				break;
 			case MongoDB:
-				// TODO
-				break;
 			default:
-				log.error("Not support.");
-				result.setMessage("Not support service type.");
+				log.error(RequestEvent.RESTART + " - Not support.");
+				result = new Result(txId, IResult.ERROR, RequestEvent.RESTART + " - Not support.");
 				break;
 			}
 			event.setStatus(result.getCode());
@@ -744,17 +708,11 @@ public class ZDBRestController {
 				result = ((RedisServiceImpl) redisService).getDBVariables(txId, namespace, serviceName);
 				break;
 			case PostgreSQL:
-				// TODO
-				break;
 			case RabbitMQ:
-				// TODO
-				break;
 			case MongoDB:
-				// TODO
-				break;
 			default:
-				log.error("Not support.");
-				result.setMessage("Not support service type.");
+				log.error("환경변수 조회 - Not support.");
+				result = new Result(txId, IResult.ERROR, "환경변수 조회 - Not support.");
 				break;
 			}
 			return new ResponseEntity<String>(result.toJson(), result.status());
@@ -783,17 +741,11 @@ public class ZDBRestController {
 				result = ((RedisServiceImpl) redisService).getAllDBVariables(txId, namespace, serviceName);
 				break;
 			case PostgreSQL:
-				// TODO
-				break;
 			case RabbitMQ:
-				// TODO
-				break;
 			case MongoDB:
-				// TODO
-				break;
 			default:
-				log.error("Not support.");
-				result.setMessage("Not support service type.");
+				log.error("환경변수 조회 - Not support.");
+				result = new Result(txId, IResult.ERROR, "환경변수 조회 - Not support.");
 				break;
 			}
 			return new ResponseEntity<String>(result.toJson(), result.status());
@@ -835,17 +787,11 @@ public class ZDBRestController {
 				result = ((RedisServiceImpl) redisService).updateDBVariables(txId, namespace, serviceName, config);
 				break;
 			case PostgreSQL:
-				// TODO
-				break;
 			case RabbitMQ:
-				// TODO
-				break;
 			case MongoDB:
-				// TODO
-				break;
 			default:
-				log.error("Not support.");
-				result.setMessage("Not support service type.");
+				log.error(RequestEvent.UPDATE_CONFIG +"Not support.");
+				result = new Result(txId, IResult.ERROR, RequestEvent.UPDATE_CONFIG +" - Not support.");
 				break;
 			}
 
@@ -1019,17 +965,11 @@ public class ZDBRestController {
 //				result = redisService.deleteDBInstanceAccount(txId, namespace, serviceName, accountId);
 				break;
 			case PostgreSQL:
-				// TODO
-				break;
 			case RabbitMQ:
-				// TODO
-				break;
 			case MongoDB:
-				// TODO
-				break;
 			default:
-				log.error("Not support.");
-				result.setMessage("Not support service type.");
+				log.error("사용자 권한 정보 삭제 - Not support.");
+				result = new Result(txId, IResult.ERROR, "사용자 권한 정보 삭제 - Not support.");
 				break;
 			}
 
@@ -1072,26 +1012,61 @@ public class ZDBRestController {
 
 	@RequestMapping(value = "/{namespace}/slowlog/{podname}", method = RequestMethod.GET)
 	public ResponseEntity<String> getSlowLog(@PathVariable("namespace") final String namespace, @PathVariable("podname") final String podName) {
+		Result result = null;
 		try {
-			Result result = mariadbService.getSlowLog(namespace, podName);
+			ZDBType dbType = ZDBType.getType("maraidb");
+
+			switch (dbType) {
+			case MariaDB:
+				result = mariadbService.getSlowLog(namespace, podName);
+				break;
+			case Redis:
+				break;
+			case PostgreSQL:
+			case RabbitMQ:
+			case MongoDB:
+			default:
+				log.error("로그 조회 - Not support.");
+				result = new Result(null, IResult.ERROR, "로그 조회 - Not support.");
+				break;
+			}
+			
+			
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			
-			Result result = new Result(null, IResult.ERROR, "로그 조회 오류!").putValue(IResult.EXCEPTION, e);
+			result = new Result(null, IResult.ERROR, "로그 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
 
 	@RequestMapping(value = "/{namespace}/slowlog/{podname}/download", method = RequestMethod.GET)
 	public ResponseEntity<String> getSlowLogDownload(@PathVariable("namespace") final String namespace, @PathVariable("podname") final String podName) {
+		Result result = null;
 		try {
-			Result result = mariadbService.getSlowLogDownload(namespace, podName);
+			ZDBType dbType = ZDBType.getType("maraidb");
+
+			switch (dbType) {
+			case MariaDB:
+				result = mariadbService.getSlowLogDownload(namespace, podName);
+				break;
+			case Redis:
+				break;
+			case PostgreSQL:
+			case RabbitMQ:
+			case MongoDB:
+			default:
+				log.error("로그 다운로드 - Not support.");
+				result = new Result(null, IResult.ERROR, "로그 다운로드 - Not support.");
+				break;
+			}
+			
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			
-			Result result = new Result(null, IResult.ERROR, "로그 조회 오류!").putValue(IResult.EXCEPTION, e);
+			result = new Result(null, IResult.ERROR, "로그 다운로드 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1227,7 +1202,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "전체 서비스 LB 조회 오류!").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "전체 서비스 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1240,7 +1215,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "서비스 LB 조회 오류!").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "서비스 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1254,7 +1229,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "서비스 LB 조회 오류!").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "서비스 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1296,13 +1271,32 @@ public class ZDBRestController {
 	public ResponseEntity<String> getUserGrants(@PathVariable("namespace") final String namespace, 
 			@PathVariable("serviceType") final String serviceType,
 			@PathVariable("serviceName") final String serviceName ) {
+		
+		Result result = null;
+		
 		try {
-			Result result = mariadbService.getUserGrants(namespace, serviceType, serviceName);
+			// mariadb , redis, postgresql, rabbitmq, mongodb
+			ZDBType dbType = ZDBType.getType(serviceType);
+
+			switch (dbType) {
+			case MariaDB:
+				result = mariadbService.getUserGrants(namespace, serviceType, serviceName);
+				break;
+			case Redis:
+			case PostgreSQL:
+			case RabbitMQ:
+			case MongoDB:
+			default:
+				log.error("Not support.");
+				result = new Result(null, IResult.ERROR, "사용자 권한 목록 조회 오류!");
+				break;
+			}
+
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			
-			Result result = new Result(null, IResult.ERROR, "사용자 권한 목록 조회 오류!").putValue(IResult.EXCEPTION, e);
+			result = new Result(null, IResult.ERROR, "사용자 권한 목록 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1371,8 +1365,8 @@ public class ZDBRestController {
 		    	result = redisService.getConnectionInfo(namespace, serviceType, serviceName);
 		    	break;
 		    default:
-		    	log.error("Not support.");
-		    	result.setMessage("Not support service type.");
+		    	log.error("DB 연결 정보 조회 - Not support.");
+		    	result = new Result(null, IResult.ERROR, "DB 연결 정보 조회 - Not support.");
 		    	break;
 		    }
 			
@@ -1495,8 +1489,8 @@ public class ZDBRestController {
 		    	result = redisService.setNewPassword(txId, namespace, serviceType, serviceName, newPassword, clusterEnabled);
 		    	break;
 		    default:
-		    	log.error("Not support.");
-		    	result.setMessage("Not support service type.");
+		    	log.error("비밀번호 변경 - Not support.");
+		    	result = new Result(txId, IResult.ERROR, "비밀번호 변경 - Not support.");
 		    	break;
 		    }
 		    
@@ -1591,8 +1585,8 @@ public class ZDBRestController {
 		    	result = redisService.restartPod(txId, namespace, serviceName, podName);
 		    	break;
 		    default:
-		    	log.error("Not support.");
-		    	result.setMessage("Not support service type.");
+		    	log.error("재시작 - Not support.");
+		    	result = new Result(txId, IResult.ERROR, "재시작 - Not support.");
 		    	break;
 		    }
 
@@ -2097,7 +2091,7 @@ public class ZDBRestController {
 				break;
 			default:
 				log.error("Not support.");
-				result.setMessage("Not support service type.");
+				result = new Result(txId, IResult.ERROR, "환경변수 조회 - Not support.");
 				break;
 			}
 
@@ -2155,19 +2149,12 @@ public class ZDBRestController {
 				result = mariadbService.serviceOn(txId, namespace, serviceType, serviceName, stsName);
 				break;
 			case Redis:
-				break;
 			case PostgreSQL:
-				// TODO
-				break;
 			case RabbitMQ:
-				// TODO
-				break;
 			case MongoDB:
-				// TODO
-				break;
 			default:
-				log.error("Not support.");
-				result.setMessage("Not support service type.");
+				log.error(RequestEvent.SERVICE_ON + " - Not support.");
+				result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_ON + " - Not support.");
 				break;
 			}
 
@@ -2223,10 +2210,9 @@ public class ZDBRestController {
 				result = mariadbService.serviceChangeMasterToSlave(txId, namespace, serviceType, serviceName);
 				break;
 			case Redis:
-				break;
 			default:
-				log.error("Not support.");
-				result.setMessage("Not support service type.");
+				log.error(RequestEvent.SERVICE_MASTER_TO_SLAVE+" - Not support.");
+				result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_MASTER_TO_SLAVE+" - Not support.");
 				break;
 			}
 
@@ -2282,10 +2268,9 @@ public class ZDBRestController {
 				result = mariadbService.serviceChangeSlaveToMaster(txId, namespace, serviceType, serviceName);
 				break;
 			case Redis:
-				break;
 			default:
-				log.error("Not support.");
-				result.setMessage("Not support service type.");
+				log.error(RequestEvent.SERVICE_SLAVE_TO_MASTER+" - Not support.");
+				result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_SLAVE_TO_MASTER+" - Not support.");
 				break;
 			}
 			
@@ -2347,8 +2332,8 @@ public class ZDBRestController {
 				result = mariadbService.serviceFailOverStatus(txId, namespace, serviceType, serviceName);
 				break;
 			default:
-				log.error("Not support.");
-				result.setMessage("Not support service type.");
+				log.error(RequestEvent.SERVICE_FAIL_OVER_STATUS+" - Not support.");
+				result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_FAIL_OVER_STATUS+" - Not support.");
 				break;
 			}
 
@@ -2392,8 +2377,8 @@ public class ZDBRestController {
 			case Redis:
 				break;
 			default:
-				log.error("Not support.");
-				result.setMessage("Not support service type.");
+				log.error(RequestEvent.SERVICE_MASTER_TO_SLAVE + " - Not support.");
+				result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_MASTER_TO_SLAVE + " - Not support.");
 				break;
 			}
 
@@ -2608,7 +2593,7 @@ public class ZDBRestController {
 	public ResponseEntity<String> changePort(@PathVariable("namespace") final String namespace, 
 										 @PathVariable("serviceType") final String serviceType, 
 			        				     @PathVariable("serviceName") final String serviceName, 
-			        				     @RequestBody final String port) {
+			        				     @RequestBody final String reqBody) {
 		String txId = txId();
 		
 		RequestEvent event = new RequestEvent();
@@ -2622,35 +2607,42 @@ public class ZDBRestController {
 			event.setOperation(RequestEvent.CHANGE_PORT);
 			event.setUserId(userInfo.getUserName());
 			
-//			ZDBType dbType = ZDBType.getType(serviceType);
-//
-//			com.zdb.core.domain.Result result = null;
-//
-//			switch (dbType) {
-//			case MariaDB:
-//				result = ((MariaDBServiceImpl)mariadbService).changePort(txId, namespace, serviceName, port);
-//				break;
-//			case Redis:
-//				result.setMessage("Not support service type.");
-//				break;
-//			default:
-//				log.error("Not support.");
-//				result.setMessage("Not support service type.");
-//				break;
-//			}
-//
-//			event.setStatus(result.getCode());
-//			event.setResultMessage(result.getMessage());
-//			
-//			Object history = result.getResult().get(Result.HISTORY);
-//			if (history != null) {
-//				event.setHistory("" + history);
-//			}
+			ZDBType dbType = ZDBType.getType(serviceType);
+
+			com.zdb.core.domain.Result result = null;
+
+			switch (dbType) {
+			case MariaDB:
+				if(reqBody!= null) {
+					Gson gson = new Gson();
+					Map serviceInfoMap = gson.fromJson(reqBody, Map.class);
+					if(serviceInfoMap.containsKey("port")) {
+						String port = (String) serviceInfoMap.get("port");
+						result = ((MariaDBServiceImpl) mariadbService).changePort(txId, namespace, serviceName, port);
+					} else {
+						result = new Result(txId, Result.ERROR, "변경할 포트를 입력하세요.", null);
+					}
+				} else {
+					result = new Result(txId, Result.ERROR, "변경할 포트를 입력하세요. 입력 포맷 오류.", null);
+				}
+				
+				break;
+			case Redis:
+			default:
+				log.error("포트 변경 - Not support.");
+				result = new Result(txId, IResult.ERROR, "포트 변경 - Not support.");
+				break;
+			}
+
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
 			
-//			return new ResponseEntity<String>(result.toJson(), result.status());
-			Result result = new Result(null, IResult.ERROR, "서비스 준비중입니다.");
+			Object history = result.getResult().get(Result.HISTORY);
+			if (history != null) {
+				event.setHistory("" + history);
+			}
 			
-			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
@@ -2675,6 +2667,141 @@ public class ZDBRestController {
 			log.error(e.getMessage(), e);
 			Result result = new Result(null, IResult.ERROR, RequestEvent.WORKER_POOLS_READ + " 오류").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
+	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/databases", method = RequestMethod.GET)
+	public ResponseEntity<String> getDatabases(
+			@PathVariable("namespace") final String namespace, 
+			@PathVariable("serviceType") final String serviceType,
+			@PathVariable("serviceName") final String serviceName ) {
+		
+		Result result = null;
+		
+		try {
+			// mariadb , redis, postgresql, rabbitmq, mongodb
+			ZDBType dbType = ZDBType.getType(serviceType);
+
+			switch (dbType) {
+			case MariaDB:
+				result = mariadbService.getDatabases(namespace, serviceType, serviceName);
+				break;
+			case Redis:
+			case PostgreSQL:
+			case RabbitMQ:
+			case MongoDB:
+			default:
+				log.error("Database 목록 조회 - Not support.");
+				result = new Result(null, IResult.ERROR, "Database 목록 조회 오류!");
+				break;
+			}
+
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			
+			result = new Result(null, IResult.ERROR, "Database 목록 조회 오류!").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/database/{databaseName}", method = RequestMethod.POST)
+	public ResponseEntity<String> createDatabase(
+			@PathVariable("serviceType") final String serviceType, 
+			@PathVariable("namespace") final String namespace, 
+			@PathVariable("serviceName") final String serviceName,
+			@PathVariable("databaseName") final String databaseName,
+			@RequestBody final Database database
+			) {
+		String txId = txId();
+		
+		Result result = null;
+		RequestEvent event = new RequestEvent();
+		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.CREATE_DATABASE);
+			event.setUserId(userInfo.getUserName());
+			
+			result = ((MariaDBServiceImpl) mariadbService).createDatabase(txId, namespace, serviceName, database);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), result.status());
+
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(txId, IResult.ERROR, RequestEvent.CREATE_DATABASE + " 오류!").putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}
+	}
+	
+	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/database/{databaseName}", method = RequestMethod.DELETE)
+	public ResponseEntity<String> deleteDatabase(
+			@PathVariable("serviceType") final String serviceType, 
+			@PathVariable("namespace") final String namespace, 
+			@PathVariable("serviceName") final String serviceName,
+			@PathVariable("databaseName") final String databaseName,
+			@RequestBody final Database database
+	) {
+		String txId = txId();
+
+		Result result = null;
+		RequestEvent event = new RequestEvent();
+		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.DELETE_DATABASE);
+			event.setUserId(userInfo.getUserName());
+			
+			// mariadb , redis, postgresql, rabbitmq, mongodb
+			ZDBType dbType = ZDBType.getType(serviceType);
+
+			switch (dbType) {
+			case MariaDB:
+				result = ((MariaDBServiceImpl) mariadbService).deleteDatabase(txId, namespace, serviceName, database);
+				break;
+			case Redis:
+			case PostgreSQL:
+			case RabbitMQ:
+			case MongoDB:
+			default:
+				log.error(RequestEvent.DELETE_DATABASE +" - Not support.");
+				result = new Result(txId, IResult.ERROR, RequestEvent.DELETE_DATABASE);
+				break;
+			}
+
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), result.status());
+
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(txId, IResult.ERROR, RequestEvent.DELETE_DATABASE + " 오류!").putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}
 	}	
 }

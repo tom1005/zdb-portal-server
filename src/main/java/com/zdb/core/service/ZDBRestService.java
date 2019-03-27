@@ -308,4 +308,6 @@ public interface ZDBRestService {
 	
 	Result getWorkerPools() throws Exception;
 
+	Result getDatabases(String namespace, String serviceType, String serviceName);
+
 }

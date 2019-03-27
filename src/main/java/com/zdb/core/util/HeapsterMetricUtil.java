@@ -84,7 +84,7 @@ public class HeapsterMetricUtil implements Callback<byte[]> {
 	
 	public synchronized String getMetric(String namespace, String podName, String metric) throws InterruptedException, IOException, Exception {
 		String[] commands = new String[] { "sh", "-c", "curl GET http://heapster.kube-system/api/v1/model/namespaces/"+namespace+"/pod-list/"+podName+"/metrics/" + metric };
-//		String[] commands = new String[] { "sh", "-c", "curl GET http://127.0.0.1:8899/api/v1/model/namespaces/"+namespace+"/pod-list/"+podName+"/metrics/" + metric };
+
 		BufferedReader input = null;
 		StringBuffer result = new StringBuffer();
 		try{
@@ -104,6 +104,8 @@ public class HeapsterMetricUtil implements Callback<byte[]> {
 				input.close();
 			}
 		}
+		
+//		result.append(exec(namespace, podName, commands));
 		
 		//{"items":[{"metrics":[{"timestamp":"2019-03-19T11:26:00Z","value":2},{"timestamp":"2019-03-19T11:27:00Z","value":2},{"timestamp":"2019-03-19T11:28:00Z","value":2},{"timestamp":"2019-03-19T11:29:00Z","value":2},{"timestamp":"2019-03-19T11:30:00Z","value":2},{"timestamp":"2019-03-19T11:31:00Z","value":2},{"timestamp":"2019-03-19T11:32:00Z","value":2},{"timestamp":"2019-03-19T11:33:00Z","value":2},{"timestamp":"2019-03-19T11:34:00Z","value":2},{"timestamp":"2019-03-19T11:35:00Z","value":2},{"timestamp":"2019-03-19T11:36:00Z","value":2},{"timestamp":"2019-03-19T11:37:00Z","value":2},{"timestamp":"2019-03-19T11:38:00Z","value":2},{"timestamp":"2019-03-19T11:39:00Z","value":3},{"timestamp":"2019-03-19T11:40:00Z","value":2}],"latestTimestamp":"2019-03-19T11:40:00Z"}]}
 		return result.toString().trim();
