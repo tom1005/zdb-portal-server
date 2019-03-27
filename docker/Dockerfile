@@ -1,7 +1,7 @@
 FROM java:8
 ENV SPRING_ACTIVE_PROFILE prod
 ENV APP_VERSION 1.1.0
-ENV JAVA_OPTS "-Xms1536m -Xmx2048m"
+ENV JAVA_OPTS "-Xms2048m -Xmx2048m"
 ADD dist/zdb-portal-server-1.1.0.jar zdb-portal-server-1.1.0.jar
 VOLUME /tmp
 VOLUME /target
