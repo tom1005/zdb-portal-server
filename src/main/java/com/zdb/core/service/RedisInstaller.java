@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 import org.microbean.helm.ReleaseManager;
 import org.microbean.helm.Tiller;
 import org.microbean.helm.chart.URLChartLoader;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.yaml.snakeyaml.DumperOptions;
@@ -26,6 +27,7 @@ import com.google.gson.GsonBuilder;
 import com.zdb.core.domain.Exchange;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.KubernetesConstants;
+import com.zdb.core.domain.PersistentVolumeClaimEntity;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
@@ -36,6 +38,7 @@ import com.zdb.core.domain.ServiceSpec;
 import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBType;
+import com.zdb.core.repository.PersistentVolumeClaimRepository;
 import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
 import com.zdb.core.util.K8SUtil;
@@ -62,6 +65,9 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 	public void setStorageClass(String storageType) {
 		storageClass = storageType;
 	}
+	
+	@Autowired
+	PersistentVolumeClaimRepository pvcRepo;
 	
 	/**
 	 * @param exchange
@@ -626,6 +632,12 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 
 					for (PersistentVolumeClaim pvc : persistentVolumeClaims) {
 						client.inNamespace(namespace).persistentVolumeClaims().withName(pvc.getMetadata().getName()).delete();
+						
+						PersistentVolumeClaimEntity entity = pvcRepo.findOne(pvc.getSpec().getVolumeName());
+						if(entity != null) {
+							entity.setPhase("DELETED");
+							pvcRepo.save(entity);
+						}
 					}
 
 					// disk usage 정보 삭제처리 

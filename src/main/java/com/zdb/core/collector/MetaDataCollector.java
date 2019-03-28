@@ -13,7 +13,9 @@ import org.springframework.stereotype.Component;
 
 import com.google.gson.Gson;
 import com.zdb.core.domain.MetaData;
+import com.zdb.core.domain.PersistentVolumeClaimEntity;
 import com.zdb.core.repository.MetadataRepository;
+import com.zdb.core.repository.PersistentVolumeClaimRepository;
 import com.zdb.core.util.DateUtil;
 import com.zdb.core.util.K8SUtil;
 
@@ -37,6 +39,9 @@ public class MetaDataCollector {
 	
 	@Autowired
 	MetadataRepository metaRepo;
+	
+	@Autowired
+	PersistentVolumeClaimRepository pvcRepo;
 	
 	/**
 	 * 마지막으로 전송한 메세지를 담는 공간...
@@ -121,6 +126,69 @@ public class MetaDataCollector {
 				List<PersistentVolumeClaim> pvcs = client.inNamespace(name).persistentVolumeClaims().list().getItems();
 				save(pvcs);
 				allPvcs.addAll(pvcs);
+				
+			}
+			
+			List<PersistentVolumeClaim> allPersistentVolumeClaimList = client.inAnyNamespace().persistentVolumeClaims().list().getItems();
+			
+			for (PersistentVolumeClaim pvc : allPersistentVolumeClaimList) {
+				try {
+					PersistentVolumeClaimEntity entity = pvcRepo.findOne(pvc.getSpec().getVolumeName());
+					if(entity != null) {
+						if("DELETED".equals(entity.getPhase())) {
+							continue;
+						}
+					} else {
+						entity = new PersistentVolumeClaimEntity();
+						entity.setVolumeName(pvc.getSpec().getVolumeName());
+						
+					}
+					entity.setCreationTimestamp(pvc.getMetadata().getCreationTimestamp());
+					try {
+						entity.setApp(pvc.getMetadata().getLabels().get("app"));
+					} catch (Exception e) {
+					}
+					try {
+						entity.setBillingType(pvc.getMetadata().getLabels().get("billingType"));
+					} catch (Exception e) {
+					}
+					try {
+						entity.setComponent(pvc.getMetadata().getLabels().get("component"));
+					} catch (Exception e) {
+					}
+					try {
+						entity.setRelease(pvc.getMetadata().getLabels().get("release"));
+					} catch (Exception e) {
+					}
+					try {
+						entity.setZone(pvc.getMetadata().getLabels().get("zone"));
+					} catch (Exception e) {
+					}
+					try {
+						entity.setRegion(pvc.getMetadata().getLabels().get("region"));
+					} catch (Exception e) {
+					}
+					entity.setNamespace(pvc.getMetadata().getNamespace());
+					entity.setName(pvc.getMetadata().getName());
+					entity.setPhase(pvc.getStatus().getPhase());
+					entity.setUid(pvc.getMetadata().getUid());
+					entity.setStorageClassName(pvc.getSpec().getStorageClassName());
+					try {
+						entity.setAccessModes(pvc.getSpec().getAccessModes().get(0));
+					} catch (Exception e) {
+					}
+					try {
+						String amount = pvc.getSpec().getResources().getRequests().get("storage").getAmount();
+						entity.setStoragSize(amount);
+					} catch (Exception e) {
+					}
+					entity.setResourceVersion(pvc.getMetadata().getResourceVersion());
+					entity.setUpdateTimestamp(DateUtil.formatDate(DateUtil.currentDate()));
+					
+					pvcRepo.save(entity);
+				} catch (Exception e) {
+					log.error("PersistentVolumeClaim "+pvc.getMetadata().getName() +" 정보 저장 에러.");
+				}
 			}
 			
 			// DB기준 체크(Kube에 삭제되고 DB에 남아있는 데이터 삭제)

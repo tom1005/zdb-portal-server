@@ -28,6 +28,7 @@ import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.KubernetesConstants;
 import com.zdb.core.domain.MariaDBConfig;
 import com.zdb.core.domain.PersistenceSpec;
+import com.zdb.core.domain.PersistentVolumeClaimEntity;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
@@ -40,6 +41,7 @@ import com.zdb.core.domain.ZDBConfig;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBType;
+import com.zdb.core.repository.PersistentVolumeClaimRepository;
 import com.zdb.core.repository.ZDBConfigRepository;
 import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
@@ -59,6 +61,7 @@ import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.Watcher;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -73,6 +76,9 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 	
 	@Autowired
 	private MetaDataCollector metaDataCollector;
+	
+	@Autowired
+	PersistentVolumeClaimRepository pvcRepo;
 	
 	@Autowired
 	protected ZDBConfigRepository zdbConfigRepository;
@@ -597,6 +603,12 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 
 					for (PersistentVolumeClaim pvc : persistentVolumeClaims) {
 						client.inNamespace(namespace).persistentVolumeClaims().withName(pvc.getMetadata().getName()).delete();
+						
+						PersistentVolumeClaimEntity entity = pvcRepo.findOne(pvc.getSpec().getVolumeName());
+						if(entity != null) {
+							entity.setPhase("DELETED");
+							pvcRepo.save(entity);
+						}
 					}
 				}
 				{ // account 삭제
