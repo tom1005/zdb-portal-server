@@ -34,4 +34,4 @@ kubectl apply -f ./deploy/zdb-system-deployment.yml
           valueFrom:
             configMapKeyRef:
               key: chart.antiAffinity
-              name: hard
+              name: zdb-portal-server-config
