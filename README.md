@@ -20,3 +20,18 @@ docker image push registry.au-syd.bluemix.net/cloudzdb/zdb-portal-server:1.1.0
 ## Deployment
 kubectl delete deployment zdb-portal-server-deployment -n zdb-system
 kubectl apply -f ./deploy/zdb-system-deployment.yml
+
+===============================
+# v1.1.0
+## 환경변수 추가 :
+ 
+### zdb-portal-server-config configmap 에 추가.
+ - chart.antiAffinity: hard 
+ 
+### zdb-portal-server-deployment env 추가 
+      - env:
+        - name: chart.antiAffinity
+          valueFrom:
+            configMapKeyRef:
+              key: chart.antiAffinity
+              name: hard
