@@ -87,6 +87,16 @@ backup:
   redisDumpPath: "bitnami/redis/data"
   redisDumpFile: "dump.rdb"
 
+alert:
+  zdbAlertAgent:
+    namespace: "zdb-system"
+    configMap: "zdb-alertagent-config"
+  alertManager:
+    namespace: "zdb-system"
+    configMap: "zdb-alertagent-config"
+  prometheus:
+    namespace: "zdb-system"
+    configMap: "zdb-alertagent-config"
 ---
 spring:
   profiles: prod

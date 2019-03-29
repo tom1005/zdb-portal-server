@@ -111,8 +111,6 @@ public interface IResult {
 	public static final String SCHEDULE = "schedule";
 	public static final String BACKUP_LIST = "BackupList";
 	public static final String SCHEDULE_INFO_LIST = "scheduleInfoList";
-
-
 	
 	public static final String OPERATION_EVENTS = "operationEvents";
 	
@@ -121,6 +119,9 @@ public interface IResult {
 	public static final String ZDBConfig = "zdbConfig";
 	
 	public static final String WORKER_POOLS = "workerPools";
+	
+	public static final String ALERTING_RULE_TEMPLATES = "alertingRuleTemplates";
+	public static final String ALERTING_RULE_TEMPLATE = "alertingRuleTemplate";
 
 
 	public int getCode();

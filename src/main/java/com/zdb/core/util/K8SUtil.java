@@ -1658,5 +1658,17 @@ public class K8SUtil {
 		return 0;
 	}	
 	
+	public static Pod getPodWithName(String namespace, String serviceName, String podName) throws Exception {
+		DefaultKubernetesClient client = kubernetesClient();
+		List<Pod> items = client.inNamespace(namespace).pods().list().getItems();
+		for (Pod pod : items) {
+			if (pod.getMetadata().getLabels() != null) {
+				if (serviceName.equals(pod.getMetadata().getLabels().get("release")) & podName.equals(pod.getMetadata().getName())) {
+					return pod;
+				}
+			}
+		}
+		return null;
+	}
 	
 }

@@ -179,6 +179,12 @@
 			<version>4.2.6.RELEASE</version>
 		</dependency>
 -->
+
+		<dependency>
+		    <groupId>com.esotericsoftware.yamlbeans</groupId>
+		    <artifactId>yamlbeans</artifactId>
+		    <version>1.06</version>
+		</dependency>
 	</dependencies>
 	<profiles>
 		<profile>
