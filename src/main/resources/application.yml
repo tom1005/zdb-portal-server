@@ -57,8 +57,9 @@ k8s:
   daemonUrl: "http://localhost:8090" 
   
 chart:
+  antiAffinity: hard
   mariadb:
-    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/mariadb-4.2.4.tgz"
+    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/mariadb-4.2.5.tgz"
   redis:
     url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/redis-3.6.6.tgz"
   
@@ -113,6 +114,7 @@ k8s:
   daemonUrl: http://zdb-backup-agent-loadbalancer.zdb-system:8080
   
 chart:
+  antiAffinity: ${chart.antiAffinity}
   mariadb:
     url: ${chart.mariadb.url}
     storageClass: ${storage.class:ibmc-block-silver}
