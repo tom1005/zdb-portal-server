@@ -122,7 +122,8 @@ public interface IResult {
 	
 	public static final String WORKER_POOLS = "workerPools";
 
-
+	public static final String FILE_LOG = "fileLog";
+	
 	public int getCode();
 	
 	public Throwable getException();

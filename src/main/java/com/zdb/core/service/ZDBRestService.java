@@ -310,4 +310,6 @@ public interface ZDBRestService {
 
 	Result getDatabases(String namespace, String serviceType, String serviceName);
 
+	Result getFileLog(String namespace, String serviceName, String logType, String dates) throws Exception;
+
 }

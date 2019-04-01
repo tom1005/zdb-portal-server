@@ -135,4 +135,9 @@ public class CommonServiceImpl extends AbstractServiceImpl {
 		return new Result(txId, IResult.OK, "스토리지 생성 완료.[" + spec.getPvcName() +" | "+ spec.getSize() +"]");
 	}
 
+	@Override
+	public Result getFileLog(String namespace, String serviceName,String logType, String dates) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

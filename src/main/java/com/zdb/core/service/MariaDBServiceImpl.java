@@ -1,13 +1,20 @@
 package com.zdb.core.service;
 
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -18,6 +25,9 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
+import java.util.function.BiPredicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.commons.io.IOUtils;
 import org.microbean.helm.ReleaseManager;
@@ -3016,5 +3026,66 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		}
 		
 		return result;
+	}
+
+	@Override
+	public Result getFileLog(String namespace, String serviceName,String logType, String dates)throws Exception  {
+		try {
+			StringBuffer filelog = new StringBuffer();
+			List<Pod> pods = K8SUtil.getPods(namespace, serviceName);
+			List<String> dateList = Arrays.asList(dates.split(","));
+			String[] paths = new String[]{"app","dblogs"};
+			Path logFolder = Paths.get(Paths.get("/").toAbsolutePath().toString(),String.join(File.separator,paths));
+			
+			for(int pi = 0;pi < pods.size();pi++) {
+				String podName = pods.get(pi).getMetadata().getName();
+				Path podFolder = Paths.get(logFolder.toString(), podName);
+				for(int i = 0;i < dateList.size();i++) {
+					String date = dateList.get(i);
+					Path path = Paths.get(podFolder.toString(),date);
+					if(!Files.exists(path)) {
+						continue;
+					}
+					
+					List<Path> fl = getLogFilePath(path, logType);
+					if(fl.size() > 0) {
+						for(Path p : fl) {
+							filelog.append("=====================================================");
+							filelog.append(new SimpleDateFormat("yyyy-MM-dd").format(new SimpleDateFormat("yyyyMMdd").parse(date)) + " : " + p.getFileName()+"\n");
+							filelog.append(String.join("\n",new String(Files.readAllBytes(p))));
+						}
+					}
+				}
+			}
+			return new Result("", Result.OK).putValue(IResult.FILE_LOG, filelog.toString());
+		}  catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
+	private List<Path> getLogFilePath(Path path,String logType) {
+		
+		List<Path> list = new ArrayList<>();
+	
+		try {
+			if("error".equals(logType)) {
+				list = Files.find(path, 1, (p,attr)->{ 
+					return !attr.isDirectory() && String.valueOf(p.getFileName()).matches("mysql.*");
+				}).collect(Collectors.toList());
+			}else if("query".equals(logType)) {
+				list = Files.find(path, 1, (p,attr)->{ 
+					return !attr.isDirectory() && String.valueOf(p.getFileName()).matches("maria_slow_pt_result-.*");
+				}).collect(Collectors.toList());
+				if(list.size() == 0) {
+					list = Files.find(path, 1, (p,attr)->{ 
+						return !attr.isDirectory() && String.valueOf(p.getFileName()).matches("maria_slow-.*");
+					}).collect(Collectors.toList());
+				}
+			}
+		} catch (IOException e) {
+			log.error(e.getMessage(), e);
+		}
+		
+		return list;
 	}
 }

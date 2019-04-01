@@ -2803,5 +2803,26 @@ public class ZDBRestController {
 			event.setEndTime(new Date(System.currentTimeMillis()));
 			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}
+	}
+	
+	/**
+	 * getting a File log
+	 * 
+	 * @return ResponseEntity<List<Service>>
+	 */
+	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/fileLogs/{logType}/{dates}", method = RequestMethod.GET)
+	public ResponseEntity<String> getFileLogs(@PathVariable("namespace") final String namespace, @PathVariable("serviceType") final String serviceType,
+											   @PathVariable("serviceName") final String serviceName,@PathVariable("logType") final String logType,
+											   @PathVariable("dates") final String dates) {
+		try {
+			Result result = mariadbService.getFileLog(namespace, serviceName,logType,dates);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+
+			Result result = new Result(null, IResult.ERROR, "PersistentVolumeClaim 조회 오류!").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
 	}	
+	
 }

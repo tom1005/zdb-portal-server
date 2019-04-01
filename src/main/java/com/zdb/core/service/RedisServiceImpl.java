@@ -857,5 +857,12 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 		
 		return sb.toString();
 	}
+
+	@Override
+	public Result getFileLog(String namespace, String serviceName,String logType, String dates) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	
 }
   
