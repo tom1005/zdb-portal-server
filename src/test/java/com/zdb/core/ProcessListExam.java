@@ -20,6 +20,7 @@ public class ProcessListExam {
 		String podName = "zdb-portal-db-mariadb-0";
 		String container = "mariadb";
 		String cmd = "mysql -uroot -p$MARIADB_ROOT_PASSWORD -e \"show processlist\\G\"";
+//		String cmd = "mysql -uroot -p$MARIADB_ROOT_PASSWORD -e \"kill <PID>;\"";  // kill 
 		
 		try {
 			ExecUtil execUtil = new ExecUtil();
