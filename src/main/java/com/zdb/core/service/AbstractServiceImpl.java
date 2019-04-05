@@ -1956,4 +1956,26 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	public Result getDatabases(String namespace, String serviceType, String serviceName) {
 		return null;
 	}
+
+	@Override
+	public Result getAllServices2() {
+		Result result = Result.RESULT_OK(null);
+		try {
+			List<ReleaseMetaData> releaseMetaDatalist = releaseRepository.findAll();
+			List<ServiceOverview> list = new ArrayList<>();
+			for(int i = 0; i < releaseMetaDatalist.size();i++) {
+				ReleaseMetaData rm = releaseMetaDatalist.get(i);
+				ServiceOverview so = new ServiceOverview();
+				so.setNamespace(rm.getNamespace());
+				so.setServiceName(rm.getReleaseName());
+				so.setServiceType(rm.getApp());
+				list.add(so);
+			}
+			result.putValue(IResult.SERVICEOVERVIEWS, list);
+			return result;
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result(null, Result.ERROR, "서비스조회 실패 - "+ e.getMessage(), e);
+		}
+	}	
 }

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.zdb.core.domain.Result;
+import com.zdb.core.domain.ServiceOverview;
 import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.UserInfo;
 import com.zdb.core.domain.ZDBConfig;
@@ -311,5 +312,7 @@ public interface ZDBRestService {
 	Result getDatabases(String namespace, String serviceType, String serviceName);
 
 	Result getFileLog(String namespace, String serviceName, String logType, String dates) throws Exception;
+
+	Result getAllServices2();
 
 }

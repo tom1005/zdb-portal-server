@@ -2824,5 +2824,26 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}	
-	
+	@RequestMapping(value="/allServices",method = RequestMethod.GET)
+	public ResponseEntity<String> getAllServices() throws Exception {
+		try {
+			Result result = commonService.getAllServices2();
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(null, IResult.ERROR, RequestEvent.WORKER_POOLS_READ + " 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}	
+	@RequestMapping(value="/alert/rule/rules",method = RequestMethod.GET)
+	public ResponseEntity<String> getRules() throws Exception {
+		try {
+			Result result = new Result(null,IResult.OK);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(null, IResult.ERROR, "rules 조회 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	} 
 }
