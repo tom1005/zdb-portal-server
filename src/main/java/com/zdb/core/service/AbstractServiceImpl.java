@@ -37,6 +37,7 @@ import org.springframework.web.client.RestTemplate;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.zdb.core.domain.AlertingRuleEntity;
 import com.zdb.core.domain.DefaultExchange;
 import com.zdb.core.domain.EventMetaData;
 import com.zdb.core.domain.EventType;
@@ -127,6 +128,9 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	
 	@Autowired
 	protected K8SService k8sService;
+	
+	@Autowired
+	protected AlertService alertService;
 	
 	protected String chartUrl;
 	
@@ -1977,5 +1981,71 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			log.error(e.getMessage(), e);
 			return new Result(null, Result.ERROR, "서비스조회 실패 - "+ e.getMessage(), e);
 		}
-	}	
+	}
+	
+	@Override
+	public Result getAlertRules(String txId,String namespaces){
+		Result result = Result.RESULT_OK(txId);
+		
+		try {
+			List<AlertingRuleEntity> list = alertService.getAlertRules(namespaces);
+			result.putValue(IResult.ALERT_RULES, list);
+			return result;
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result(null, Result.ERROR, "alert rule 조회 실패 - "+ e.getMessage(), e);
+		}		
+	}
+
+	@Override
+	public Result getAlertRule(String txId,String namespace,String alert) {
+		Result result = Result.RESULT_OK(txId);
+		try {
+			AlertingRuleEntity ar = alertService.getAlertRule(namespace,alert);
+			result.putValue(IResult.ALERT_RULE, ar);
+			return result;
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result(null, Result.ERROR, "alert rule 조회 실패 - "+ e.getMessage(), e);
+		}		
+	}
+
+	@Override
+	public Result createAlertRule(String txId, AlertingRuleEntity alertingRuleEntity) {
+		try {
+			if(alertService.getAlertRule(alertingRuleEntity.getNamespace(), alertingRuleEntity.getAlert())!=null) {
+				return new Result("", Result.ERROR, "이미 설정된 Rule입니다.");
+			}
+			alertService.createAlertRule(alertingRuleEntity);
+			return new Result("", Result.OK, "설정값이 저장되었습니다.");
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
+
+	@Override
+	public Result updateAlertRule(String txId, AlertingRuleEntity alertingRuleEntity) {
+		try {
+			alertService.deleteAlertRule(alertingRuleEntity);
+			alertService.createAlertRule(alertingRuleEntity);
+			return new Result("", Result.OK, "설정값이 저장되었습니다.");
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
+
+	@Override
+	public Result deleteAlertRule(String txId, AlertingRuleEntity alertingRuleEntity) {
+		try {
+			alertService.deleteAlertRule(alertingRuleEntity);
+			return new Result("", Result.OK, "설정값이 저장되었습니다.");
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
+	
+	
 }
