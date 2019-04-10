@@ -63,10 +63,10 @@ public class PrometheusConfigMapTest {
 			alertingRuleEntity.setSeverity(severity);
 			
 			
-			init();
-			createAlertRule(alertingRuleEntity);
-			deleteAlertRule(alertingRuleEntity); 
-			getAlertRules("zdb-test");
+			//init();
+			//createAlertRule(alertingRuleEntity);
+			//deleteAlertRule(alertingRuleEntity); 
+			//getAlertRules("zdb-test");
 			testClient(alertingRuleEntity);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -105,7 +105,7 @@ public class PrometheusConfigMapTest {
 			Resource<ConfigMap, DoneableConfigMap> dt = client.inNamespace(targetNamespace).configMaps().withName(configMapName);
 			if(dt.get() !=null && dt.get().getData() != null) {
 				String d = dt.get().getData().get(dataTitle);
-				PrometheusEntity pn = yaml.loadAs(yaml.loadAs(d,String.class),PrometheusEntity.class);
+				PrometheusEntity pn = yaml.loadAs(d,PrometheusEntity.class);
 				if(pn.getGroups() !=null) {
 					PrometheusGroups pg = pn.getGroups().get(0);
 					for(int i = 0 ;i < pg.getRules().size(); i++) {
@@ -129,7 +129,7 @@ public class PrometheusConfigMapTest {
 		Resource<ConfigMap, DoneableConfigMap> dt = client.inNamespace(targetNamespace).configMaps().withName(configMapName);
 		if (dt.get() != null && dt.get().getData() != null) {
 			String d = dt.get().getData().get(dataTitle);
-			PrometheusEntity pn = yaml.loadAs(yaml.loadAs(d,String.class),PrometheusEntity.class);
+			PrometheusEntity pn = yaml.loadAs(d,PrometheusEntity.class);
 			if (pn.getGroups() != null) {
 				PrometheusGroups pg = pn.getGroups().get(0);
 				for (int i = 0; i < pg.getRules().size(); i++) {
@@ -192,7 +192,7 @@ public class PrometheusConfigMapTest {
 				pgl.add(pg);
 			}else {
 				String d = dt.get().getData().get(dataTitle);
-				pn = yaml.loadAs(yaml.loadAs(d,String.class),PrometheusEntity.class);
+				pn = yaml.loadAs(d,PrometheusEntity.class);
 				pgl = pn.getGroups();
 				if(pgl == null) {
 					pgl = new ArrayList<PrometheusGroups>();
@@ -220,7 +220,7 @@ public class PrometheusConfigMapTest {
 			Resource<ConfigMap, DoneableConfigMap> dt = client.inNamespace(targetNamespace).configMaps().withName(configMapName);
 			if(dt.get()!=null && dt.get().getData()!=null) {
 				String d = dt.get().getData().get(dataTitle);
-				PrometheusEntity pn = yaml.loadAs(yaml.loadAs(d,String.class),PrometheusEntity.class);
+				PrometheusEntity pn = yaml.loadAs(d,PrometheusEntity.class);
 				List<AlertRule> rules = pn.getGroups().get(0).getRules();
 				for(int i = rules.size()-1 ; i > -1 ;i--) {
 					AlertRule rule = rules.get(i);
@@ -257,7 +257,7 @@ public class PrometheusConfigMapTest {
 		Yaml yaml = new Yaml();
 		String re = yaml.dumpAsMap(pn);
 		re = re.replaceAll("forVariable:.*[\\s]+", "");
-		re = yaml.dump(re);
+		//re = yaml.dump(re);
 		
 		return re;
 	}
