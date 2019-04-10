@@ -7,6 +7,8 @@ ZDB-MariaDB-PodHealthCheck:
       severity: ${severity}
       product: zdb
       priority: ${priority}
+      namespace: ${namespace}
+      serviceName: ${serviceName}
     annotations:
       description: 'MariaDB의 Pod 동작하지 않습니다. (서비스: {{ $labels.service }})'
       summary: 'Pod 동작 중단'
@@ -19,6 +21,8 @@ ZDB-MariaDB-ContainerHealthCheck:
       severity: ${severity}
       product: zdb
       priority: ${priority}
+      namespace: ${namespace}
+      serviceName: ${serviceName}
     annotations:
       description: 'MariaDB 컨테이너의 동작이 중단되었습니다. (서비스: {{ $labels.pod }})'
       summary: 'MariaDB 컨테이너 동작 중단'
@@ -31,6 +35,8 @@ ZDB-MariaDB-DBHealthCheck:
       severity: ${severity}
       product: zdb
       priority: ${priority}
+      namespace: ${namespace}
+      serviceName: ${serviceName}
     annotations:
       description: 'MariaDB의 동작이 중단되었습니다. (서비스: {{ $labels.service }})'
       summary: 'MariaDB 동작 중단'
@@ -43,6 +49,8 @@ ZDB-MariaDB-CPUUsage:
       severity: ${severity}
       product: zdb
       priority: ${priority}
+      namespace: ${namespace}
+      serviceName: ${serviceName}
     annotations:
       description: 'CPU 사용량이 임계치를 초과하였습니다. (서비스: {{ $labels.pod_name }}, 임계값: 80%, 현재값: {{ $value }}%)'
       summary: 'CPU 사용량 임계치 초과'
@@ -55,6 +63,8 @@ ZDB-MariaDB-MemoryUsage:
       severity: ${severity}
       product: zdb
       priority: ${priority}
+      namespace: ${namespace}
+      serviceName: ${serviceName}
     annotations:
       description: '메모리 사용량이 임계치를 초과하였습니다. (서비스: {{ $labels.pod_name }}, 임계값: 95%, 현재값: {{ $value }}%)'
       summary: '메모리 사용량 임계치 초과'
@@ -67,6 +77,8 @@ ZDB-MariaDB-Connections:
       severity: ${severity}
       product: zdb
       priority: ${priority}
+      namespace: ${namespace}
+      serviceName: ${serviceName}
     annotations:
       description: 'MariaDB의 Connnections값이 임계치를 초과하였습니다. (서비스: {{ $labels.service }}, 임계값: 80%, 현재값: {{ $value }}%)'
       summary: 'Connections 임계치 초과'
@@ -79,6 +91,8 @@ ZDB-MariaDB-SlowQueries:
       severity: ${severity}
       product: zdb
       priority: ${priority}
+      namespace: ${namespace}
+      serviceName: ${serviceName}
     annotations:
       description: 'MariaDB의 Slow Query가 발생했습니다. (서비스: {{ $labels.service }})'
       summary: 'MariaDB Slow Queries'
@@ -91,6 +105,8 @@ ZDB-MariaDB-ReplicationStatus:
       severity: ${severity}
       product: zdb
       priority: ${priority}
+      namespace: ${namespace}
+      serviceName: ${serviceName}
     annotations:
       description: 'MariaDB의 Replication이 정상적으로 수행되지 않고 있습니다. (서비스: {{ $labels.service }})'
       summary: 'Replication 중단'
@@ -103,6 +119,8 @@ ZDB-MariaDB-ReplicationDelay:
       severity: ${severity}
       product: zdb
       priority: ${priority}
+      namespace: ${namespace}
+      serviceName: ${serviceName}
     annotations:
       description: 'MariaDB의 Replication 수행 중 지연이 발생하였습니다. (서비스: {{ $labels.service }}, 지연: {{ $value }}초)'
       summary: 'Replication Delay' 

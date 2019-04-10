@@ -1,18 +1,14 @@
 package com.zdb.core.domain;
 
-import java.util.List;
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 @Data
-public class PrometheusGroups {
+public class AlertRuleAnnotations {
 
-	private String name;
-	private List<AlertRule> rules;
-
+	private String description;
+	private String summary;
 }
-
