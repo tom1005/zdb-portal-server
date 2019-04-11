@@ -2825,6 +2825,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}	
+	
 	@RequestMapping(value="/allServices",method = RequestMethod.GET)
 	public ResponseEntity<String> getAllServices() throws Exception {
 		try {
@@ -2894,6 +2895,60 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			Result result = new Result(null, IResult.ERROR, RequestEvent.DELETE_ALERT_RULE + " 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	@RequestMapping(value="/{namespace}/{serviceType}/process/{podName}/{pid}",method = RequestMethod.DELETE)
+	public ResponseEntity<String> killProcess(@PathVariable String namespace, @PathVariable String serviceType 
+											 , @PathVariable String podName, @PathVariable String pid) throws Exception {
+		String txId = txId();
+		Result result = new Result(txId,IResult.OK);
+		
+		try {
+			ZDBType dbType = ZDBType.getType(serviceType);
+			switch (dbType) {
+			case MariaDB:
+				result = ((MariaDBServiceImpl) mariadbService).killProcess(txId, namespace, podName,pid);
+				break;
+			case Redis:
+			case PostgreSQL:
+			case RabbitMQ:
+			case MongoDB:
+			default:
+				result = new Result(txId, IResult.ERROR, RequestEvent.KILL_PROCESS);
+				break;
+			}
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(null, IResult.ERROR, RequestEvent.KILL_PROCESS + " 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
+	@RequestMapping(value="/{namespace}/{serviceType}/process/{podName}",method = RequestMethod.GET)
+	public ResponseEntity<String> getProcesses(@PathVariable String namespace, @PathVariable String serviceType , @PathVariable String podName) throws Exception {
+		String txId = txId();
+		Result result = new Result(txId,IResult.OK);
+		
+		try {
+			ZDBType dbType = ZDBType.getType(serviceType);
+			switch (dbType) {
+			case MariaDB:
+				result.putValue(IResult.PROCESSES,((MariaDBServiceImpl) mariadbService).getProcesses(txId, namespace, podName));
+				break;
+			case Redis:
+			case PostgreSQL:
+			case RabbitMQ:
+			case MongoDB:
+			default:
+				result = new Result(txId, IResult.ERROR, RequestEvent.SELECT_PROCESS);
+				break;
+			}
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(null, IResult.ERROR, RequestEvent.SELECT_PROCESS + " 오류").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	} 

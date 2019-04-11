@@ -62,6 +62,8 @@ public class RequestEvent {
 	public static final String CREATE_ALERT_RULE = "Alert Rule 생성";
 	public static final String DELETE_ALERT_RULE = "Alert Rule 삭제";
 	public static final String UPDATE_ALERT_RULE = "Alert Rule 수정";	
+	public static final String SELECT_PROCESS = "Pocess 조회";
+	public static final String KILL_PROCESS = "Process 종료";
 	
 	private String operation;
 

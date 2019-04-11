@@ -127,6 +127,8 @@ public interface IResult {
 	public static final String ALERT_RULES = "alertRules";
 
 	public static final String ALERT_RULE = "alertRule";
+
+	public static final String PROCESSES = "processes";
 	
 	public int getCode();
 	
