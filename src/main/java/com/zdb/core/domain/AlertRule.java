@@ -1,7 +1,5 @@
 package com.zdb.core.domain;
 
-import javax.persistence.Column;
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -12,7 +10,6 @@ import lombok.NoArgsConstructor;
 public class AlertRule {
 	private String alert;
 	private String	expr;
-	@Column(name="for")
 	private String forVariable;
 	private AlertRuleLabels labels; 
 	private AlertRuleAnnotations annotations;

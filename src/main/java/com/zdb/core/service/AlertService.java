@@ -35,7 +35,7 @@ public class AlertService {
 
 	final private String configMapName = "prometheus-zdb-rules";
 	final private String dataTitle = "prometheus-zdb.rules";
-	final private String targetNamespace = "zdb-test";
+	final private String targetNamespace = "zcp-system";
 
 	public List<AlertingRuleEntity> getAlertRules(String namespaces) throws Exception {
 		List<AlertingRuleEntity> list = new ArrayList<>();
