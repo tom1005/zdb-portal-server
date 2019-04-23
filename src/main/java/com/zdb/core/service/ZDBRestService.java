@@ -3,7 +3,9 @@ package com.zdb.core.service;
 import java.util.List;
 import java.util.Map;
 
+import com.zdb.core.domain.AlertingRuleEntity;
 import com.zdb.core.domain.Result;
+import com.zdb.core.domain.ServiceOverview;
 import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.UserInfo;
 import com.zdb.core.domain.ZDBConfig;
@@ -312,4 +314,15 @@ public interface ZDBRestService {
 
 	Result getFileLog(String namespace, String serviceName, String logType, String dates) throws Exception;
 
+	Result getAllServices2();
+
+	Result getAlertRules(String txId, String namespaces);
+
+	Result getAlertRule(String txId, String namespace,String alert);
+	
+	Result createAlertRule(String txId, AlertingRuleEntity alertingRuleEntity);
+
+	Result updateAlertRule(String txId, AlertingRuleEntity alertingRuleEntity);
+
+	Result deleteAlertRule(String txId, AlertingRuleEntity alertingRuleEntity);
 }

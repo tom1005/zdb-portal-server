@@ -11,7 +11,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,9 +24,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
-import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.apache.commons.io.IOUtils;
 import org.microbean.helm.ReleaseManager;
@@ -3097,5 +3094,60 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		}
 		
 		return list;
+	}
+
+	public List<Map<String,String>> getProcesses(String txId, String namespace, String podName)throws Exception {
+		List<Map<String,String>> list = new ArrayList<>();
+		String container = "mariadb";
+		String cmd = "mysql -uroot -p$MARIADB_ROOT_PASSWORD -e \"show processlist\\G\"";
+		
+		try {
+			ExecUtil execUtil = new ExecUtil();
+			String result = execUtil.exec(K8SUtil.kubernetesClient(), namespace, podName, container, cmd);
+			String regex = ":";
+			if(result != null && !result.trim().isEmpty()) {
+				Map<String, String> map = null;
+				
+				String[] lineSplit = result.trim().split("\n");
+				for (String line : lineSplit) {
+					if(line.startsWith("***")) {
+						if(map != null) {
+							list.add(map);
+						}
+						map = new HashMap<String, String>();
+						
+					} else {
+						String[] split = line.trim().split(regex);
+						
+						if(split.length >= 1) {
+							String key = split[0].trim();
+							String value = line.trim().substring(key.length()+regex.length()).trim();
+							
+							map.put(key, value);
+						}
+					}
+				}
+			}
+			
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}		
+		return list;
+	}
+	public Result killProcess(String txId, String namespace, String podName,String pid)throws Exception {
+		String container = "mariadb";
+		String cmd = String.format("mysql -uroot -p$MARIADB_ROOT_PASSWORD -e \"kill %s\\G\"",pid);
+		Result result = Result.RESULT_OK(txId);
+		
+		try {
+			ExecUtil execUtil = new ExecUtil();
+			String re = execUtil.exec(K8SUtil.kubernetesClient(), namespace, podName, container, cmd);
+			result.setMessage(re);
+			
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return Result.RESULT_FAIL(txId, e);
+		}		
+		return result;
 	}
 }

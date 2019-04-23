@@ -1,5 +1,6 @@
 package com.zdb.core.util;
 
+import java.io.PipedInputStream;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -41,7 +42,12 @@ public class ExecUtil {
 		
 		ExecutorService executorService = Executors.newWorkStealingPool();
 		try (KubernetesClient client = k8sClient;
-				ExecWatch watch = client.pods().inNamespace(namespace).withName(podName).inContainer(container).redirectingInput().redirectingOutput().redirectingError().exec();
+				ExecWatch watch = client.pods().inNamespace(namespace).withName(podName)
+						.inContainer(container)
+						.redirectingInput()
+						.readingOutput(new PipedInputStream(1024*1024))
+						.redirectingError()
+						.exec();
 
 				BlockingInputStreamPumper pump = new BlockingInputStreamPumper(watch.getOutput(), new Callback<byte[]>() {
 

@@ -59,6 +59,11 @@ public class RequestEvent {
 	public static final String CHANGE_PORT = "포트 변경";
 	public static final String WORKER_POOLS_READ = "Worker Pools 조회";
 	public static final String FAILBACK = "서비스 전환(Fail-Back : Slave To Master)";
+	public static final String CREATE_ALERT_RULE = "Alert Rule 생성";
+	public static final String DELETE_ALERT_RULE = "Alert Rule 삭제";
+	public static final String UPDATE_ALERT_RULE = "Alert Rule 수정";	
+	public static final String SELECT_PROCESS = "Pocess 조회";
+	public static final String KILL_PROCESS = "Process 종료";
 	
 	private String operation;
 

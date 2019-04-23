@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import com.google.gson.Gson;
+import com.zdb.core.domain.AlertingRuleEntity;
 import com.zdb.core.domain.DBUser;
 import com.zdb.core.domain.Database;
 import com.zdb.core.domain.EventMetaData;
@@ -2825,4 +2826,130 @@ public class ZDBRestController {
 		}
 	}	
 	
+	@RequestMapping(value="/allServices",method = RequestMethod.GET)
+	public ResponseEntity<String> getAllServices() throws Exception {
+		try {
+			Result result = commonService.getAllServices2();
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(null, IResult.ERROR, RequestEvent.WORKER_POOLS_READ + " 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}	
+	
+	@RequestMapping(value="/{namespace}/alert/rules",method = RequestMethod.GET)
+	public ResponseEntity<String> getAlertRules(@PathVariable("namespace") String namespaces) throws Exception {
+		try {
+			String txId = txId();
+			Result result = commonService.getAlertRules(txId,namespaces);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(null, IResult.ERROR, "alert rules 조회 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	} 
+	@RequestMapping(value="/{namespace}/alert/rule/{alert}",method = RequestMethod.GET)
+	public ResponseEntity<String> getAlertRule(@PathVariable("namespace") String namespace,@PathVariable String alert) throws Exception {
+		try {
+			String txId = txId();
+			Result result = commonService.getAlertRule(txId,namespace,alert);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(null, IResult.ERROR, "alert rule 조회 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	} 
+	@RequestMapping(value="/{namespace}/alert/rule/{alert}",method = RequestMethod.POST)
+	public ResponseEntity<String> createAlertRule(@PathVariable("namespace") String namespaces,@PathVariable String alert,@RequestBody final AlertingRuleEntity alertingRuleEntity) throws Exception {
+		try {
+			String txId = txId();
+			Result result = commonService.createAlertRule(txId,alertingRuleEntity);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(null, IResult.ERROR, RequestEvent.CREATE_ALERT_RULE + " 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	} 
+	@RequestMapping(value="/{namespace}/alert/rule/{alert}",method = RequestMethod.PUT)
+	public ResponseEntity<String> updateAlertRule(@PathVariable("namespace") String namespaces,@PathVariable String alert,@RequestBody final AlertingRuleEntity alertingRuleEntity) throws Exception {
+		try {
+			String txId = txId();
+			Result result = commonService.updateAlertRule(txId,alertingRuleEntity);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(null, IResult.ERROR, RequestEvent.UPDATE_ALERT_RULE + " 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	} 
+	@RequestMapping(value="/{namespace}/alert/rule/{alert}",method = RequestMethod.DELETE)
+	public ResponseEntity<String> deleteAlertRule(@PathVariable("namespace") String namespace,@PathVariable String alert,@RequestBody final AlertingRuleEntity alertingRuleEntity) throws Exception {
+		try {
+			String txId = txId();
+			Result result = commonService.deleteAlertRule(txId,alertingRuleEntity);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(null, IResult.ERROR, RequestEvent.DELETE_ALERT_RULE + " 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	@RequestMapping(value="/{namespace}/{serviceType}/process/{podName}/{pid}",method = RequestMethod.DELETE)
+	public ResponseEntity<String> killProcess(@PathVariable String namespace, @PathVariable String serviceType 
+											 , @PathVariable String podName, @PathVariable String pid) throws Exception {
+		String txId = txId();
+		Result result = new Result(txId,IResult.OK);
+		
+		try {
+			ZDBType dbType = ZDBType.getType(serviceType);
+			switch (dbType) {
+			case MariaDB:
+				result = ((MariaDBServiceImpl) mariadbService).killProcess(txId, namespace, podName,pid);
+				break;
+			case Redis:
+			case PostgreSQL:
+			case RabbitMQ:
+			case MongoDB:
+			default:
+				result = new Result(txId, IResult.ERROR, RequestEvent.KILL_PROCESS);
+				break;
+			}
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(null, IResult.ERROR, RequestEvent.KILL_PROCESS + " 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
+	@RequestMapping(value="/{namespace}/{serviceType}/process/{podName}",method = RequestMethod.GET)
+	public ResponseEntity<String> getProcesses(@PathVariable String namespace, @PathVariable String serviceType , @PathVariable String podName) throws Exception {
+		String txId = txId();
+		Result result = new Result(txId,IResult.OK);
+		
+		try {
+			ZDBType dbType = ZDBType.getType(serviceType);
+			switch (dbType) {
+			case MariaDB:
+				result.putValue(IResult.PROCESSES,((MariaDBServiceImpl) mariadbService).getProcesses(txId, namespace, podName));
+				break;
+			case Redis:
+			case PostgreSQL:
+			case RabbitMQ:
+			case MongoDB:
+			default:
+				result = new Result(txId, IResult.ERROR, RequestEvent.SELECT_PROCESS);
+				break;
+			}
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(null, IResult.ERROR, RequestEvent.SELECT_PROCESS + " 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	} 
 }
