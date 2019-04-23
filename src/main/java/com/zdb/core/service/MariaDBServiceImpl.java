@@ -637,6 +637,16 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		Result result = Result.RESULT_OK(txId);
 
 		try {
+			// admin 은 비번만 바꿀 수 있음.
+			if("admin".equals(account.getUser()) && account.getPassword() != null && !account.getPassword().isEmpty()) {
+				
+				result = setNewPassword(txId, namespace, "mariadb", serviceName, account.getPassword().trim(), "false");
+				if(result.isOK()) {
+					updateAdminPassword(txId, namespace, serviceName, account.getPassword().trim());
+				} 
+				return result;
+			} 
+	    	
 			String resultMessage = MariaDBAccount.updateAccount(namespace, serviceName, account);
 			result.setMessage(resultMessage);
 		} catch (Exception e) {
