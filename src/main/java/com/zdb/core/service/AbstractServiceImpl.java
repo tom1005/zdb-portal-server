@@ -1941,6 +1941,11 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	public Result getAutoFailoverServices(String txId, String namespace) throws Exception {
 		return null;
 	}
+	
+	@Override
+	public Result getAutoFailoverEnabledServices(String txId, String namespace) throws Exception {
+		return null;
+	}
 
 	@Override
 	public Result getAutoFailoverService(String txId, String namespace, String releaseName) throws Exception {

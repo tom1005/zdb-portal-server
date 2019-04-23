@@ -2529,6 +2529,7 @@ public class ZDBRestController {
 	
 	/**
 	 * Statefulset 의 label : zdb-failover-enable=true 가 등록된 서비스 목록.(master)
+	 * failover 된 서비스틑 제외.
 	 * 
 	 * @param txId
 	 * @param namespace
@@ -2560,6 +2561,7 @@ public class ZDBRestController {
 	
 	/**
 	 * Statefulset 의 label : zdb-failover-enable=true 가 등록된 서비스 목록.(master)
+	 * failover 된 서비스틑 제외.
 	 * 
 	 * @param txId
 	 * @param namespace
@@ -2589,6 +2591,37 @@ public class ZDBRestController {
 		} finally {
 		}	
 	}	
+	
+	/**
+	 * Statefulset 의 label : zdb-failover-enable=true 가 등록된 서비스 목록.(master)
+	 * 
+	 * @param txId
+	 * @param namespace
+	 * @return
+	 * @throws Exception
+	 */
+	@RequestMapping(value = "/failover/{namespace}/enabled-services", method = RequestMethod.GET)
+	public ResponseEntity<String> getAutoFailoverEnabledServices(
+			@PathVariable("namespace") final String namespace,
+			final UriComponentsBuilder ucBuilder) {
+		RequestEvent event = new RequestEvent();
+		String txId = txId();
+		
+		try {
+			Result result = mariadbService.getAutoFailoverEnabledServices(txId, namespace);
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.OK);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result("", IResult.ERROR, "조회 오류!").putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+		}	
+	}
 	
 	@RequestMapping(value = "/{namespace}/{serviceType}/{serviceName}/changePort", method = RequestMethod.PUT)
 	public ResponseEntity<String> changePort(@PathVariable("namespace") final String namespace, 

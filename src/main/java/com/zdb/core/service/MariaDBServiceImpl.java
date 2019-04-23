@@ -2351,6 +2351,28 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		return result;
 	}
 	
+	@Override
+	public Result getAutoFailoverEnabledServices(String txId, String namespace) throws Exception {
+		Result result = new Result(txId);
+		List<String> services = k8sService.getAutoFailoverEnabledServices(namespace);
+
+		if(services != null && !services.isEmpty()) {
+			String[] array = new String[services.size()];
+			
+			for (int i = 0; i < services.size(); i++) {
+				array[i] = services.get(i);
+			}
+			
+			result.putValue("services", array);
+			result.setCode(Result.OK);
+		} else {
+			result.setCode(Result.OK);
+			result.setMessage("[]");
+		}
+
+		return result;
+	}
+	
 	/**
 	 * Master/Slave 로 구성된 인스턴스
 	 * StatefulSet master 에 edit

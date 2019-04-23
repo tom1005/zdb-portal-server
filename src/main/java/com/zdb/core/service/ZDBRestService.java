@@ -296,6 +296,8 @@ public interface ZDBRestService {
 	 * @throws Exception
 	 */
 	Result getAutoFailoverServices(String txId, String namespace) throws Exception;
+	
+	Result getAutoFailoverEnabledServices(String txId, String namespace) throws Exception;
 
 	/**
 	 * Statefulset 의 label : zdb-failover-enable=true 가 등록된 서비스.(master)

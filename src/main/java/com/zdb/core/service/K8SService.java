@@ -2041,6 +2041,54 @@ public class K8SService {
 		return haZDBInstanceList;
 	}
 	
+	/**
+	 * zdb-ha-manager를 이용한 auto-failover 를 사용하는 인스턴스 목록 반환.
+	 * 
+	 * 조건 : 
+	 *  # StatefulSet label 에 아래와 같이 설정된 경우 
+	 *  - withLabel("app", "mariadb")
+	 *  - withLabel("zdb-failover-enable", "true")
+	 *  - withLabel("component", "master")
+	 *  
+	 *  위 조건에 맞는 StatefulSet 중에서 이미 failover 된 서비스 제외하고
+	 *  pod slave 상태가 ready = true 의 경우 모니터링 대상에 포함됨. 
+	 *  
+	 * @return
+	 * @throws Exception
+	 */
+	public List<String> getAutoFailoverEnabledServices(String ns) throws Exception {
+
+		List<String> enabledList = new ArrayList<>();
+
+		try (DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
+			// app=mariadb,chart=mariadb-4.2.3,component=master,heritage=Tiller,release=zdb-test2-mha
+			NamespacedKubernetesClient namespaceClient = null;
+			if (ns == null || ns.isEmpty() || "-".equals(ns)) {
+				namespaceClient = client.inAnyNamespace();
+			} else {
+				namespaceClient = client.inNamespace(ns);
+			}
+
+			List<StatefulSet> stsItems = null;
+
+			stsItems = namespaceClient.apps().statefulSets().withLabel("app", "mariadb")
+					.withLabel("zdb-failover-enable", "true")
+					.withLabel("component", "master")
+					.list()
+					.getItems();
+
+			for (StatefulSet sts : stsItems) {
+				String serviceName = sts.getMetadata().getLabels().get("release");
+
+				enabledList.add(serviceName);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
+
+		return enabledList;
+	}
+	
 	public List<String> getWorkerPools() throws Exception {
 		List<String> workerPools = new ArrayList<>();
 		NodeList nodeList = K8SUtil.kubernetesClient().nodes().list();
