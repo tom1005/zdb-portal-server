@@ -1144,7 +1144,13 @@ public class K8SService {
 									cpuSum += Integer.parseInt(cpu.substring(0, cpu.indexOf("m")));
 									cpuUnit = "m";
 								} else {
-									cpuSum += Integer.parseInt(cpu);
+									int _cpu = Integer.parseInt(cpu);
+									//core 의 경우 (64 코어 미만) 미리코어로 환산
+									if(_cpu < 64) {
+										cpuSum += _cpu * 1000;
+									} else {
+										cpuSum += Integer.parseInt(cpu);
+									}
 								}
 
 								// E, P, T, G, M, K
