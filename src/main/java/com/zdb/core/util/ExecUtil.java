@@ -8,11 +8,13 @@ import java.util.concurrent.TimeUnit;
 
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.client.Callback;
+import io.fabric8.kubernetes.client.Config;
+import io.fabric8.kubernetes.client.ConfigBuilder;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.dsl.ExecWatch;
-import io.fabric8.kubernetes.client.utils.BlockingInputStreamPumper;
+import io.fabric8.kubernetes.client.utils.NonBlockingInputStreamPumper;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -46,24 +48,20 @@ public class ExecUtil {
 						.inContainer(container)
 						.redirectingInput()
 						.readingOutput(new PipedInputStream(1024*1024))
-						.redirectingError()
 						.exec();
 
-				BlockingInputStreamPumper pump = new BlockingInputStreamPumper(watch.getOutput(), new Callback<byte[]>() {
-
+				NonBlockingInputStreamPumper pump = new NonBlockingInputStreamPumper(watch.getOutput(), new Callback<byte[]>() {
 					@Override
 					public void call(byte[] data) {
 						try {
 							
 							String temp = new String(data, "UTF-8");
 //							System.out.println(">> "+temp);
-//							temp = temp.replaceAll("  ", "|");
-							
 							sb.append(temp);
 						} catch (Exception e) {
 							log.error(e.getMessage(), e);
 						} finally {
-							countDown.countDown();
+//							countDown.countDown();
 						}
 					}
 				})) {
@@ -73,7 +71,8 @@ public class ExecUtil {
 				cmd = cmd + "\n";
 			}
 			watch.getInput().write(cmd.getBytes());
-			countDown.await(10, TimeUnit.SECONDS);
+			
+			countDown.await(3, TimeUnit.SECONDS);
 			
 			
 		} catch (Exception e) {
@@ -83,8 +82,6 @@ public class ExecUtil {
 			executorService.shutdownNow();
 		}
 		
-		
 		return sb.toString();
 	}
-
 }

@@ -15,7 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
-@Profile({"prod"})
+//@Profile({"prod"})
 public class DiskUsageCollector {
 	
 	@Autowired
@@ -25,7 +25,7 @@ public class DiskUsageCollector {
 	@Scheduled(initialDelayString = "30000", fixedRateString = "90000")
 	public void collect() {
 		try {
-			List<DiskUsage> diskUsage = DiskUsageChecker.getInstance().getAllDiskUsage();
+			List<DiskUsage> diskUsage = new DiskUsageChecker().getAllDiskUsage();
 			for (DiskUsage usage : diskUsage) {
 				try {
 					log.info("{} {} {} {}", usage.getPodName(), usage.getSize(), usage.getUsed(), usage.getUpdateTime());
@@ -35,6 +35,7 @@ public class DiskUsageCollector {
 				}
 			}
 			
+			diskUsage.clear();
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 		}
