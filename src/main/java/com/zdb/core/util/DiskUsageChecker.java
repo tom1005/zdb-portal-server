@@ -5,7 +5,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 import com.zdb.core.domain.CommonConstants;
 import com.zdb.core.domain.DiskUsage;
@@ -13,31 +12,12 @@ import com.zdb.core.domain.DiskUsage;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.Pod;
-import io.fabric8.kubernetes.client.Callback;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class DiskUsageChecker {
 	
-	public static DiskUsageChecker instance;
-	
-	private DiskUsageChecker() {
-//		if(instance == null) {
-//			instance = new DiskUsageChecker();
-//		}
-	}
-	
-	public static DiskUsageChecker getInstance() {
-		if(instance == null) {
-			instance = new DiskUsageChecker();
-		}
-		
-		return instance;
-	}
-	
-
-
 	public List<DiskUsage> getAllDiskUsage() throws Exception {
 //		String[] commands = new String[] { "/bin/sh", "-c", "df -P | grep bitnami | awk '{size = $2} {used = $3} {avail=$4} {use=$5} END { print size \" \"used \" \" avail \" \" use }'" };
 		//String cmd = "/bin/df -P | grep bitnami | awk '{size = $2} {used = $3} {avail=$4} {use=$5} END { print size \" \"used \" \" avail \" \" use }'";
@@ -148,55 +128,5 @@ public class DiskUsageChecker {
 			log.info("---------------> Disk usage update : " + (System.currentTimeMillis() - s));
 		}
 
-	}
-	
-	class CustomCallback implements Callback<byte[]> {
-		String result = null;
-
-		public void call(byte[] input) {
-			try {
-				result = new String(input, "UTF-8");
-				log.debug(">>> "+result);
-			} catch (Exception e) {
-				log.error(e.getMessage(), e);
-			}
-		}
-
-		public String getResult() {
-			return result;
-		}
-	}
-
-	private static class FutureChecker implements Runnable {
-		private final String name;
-		private final Future<String> future;
-
-		private FutureChecker(String name, Future<String> future) {
-			this.name = name;
-			this.future = future;
-		}
-
-		@Override
-		public void run() {
-			if (!future.isDone()) {
-//				System.out.println("Future:[" + name + "] is not done yet");
-			} else {
-//				System.out.println("Future:[" + name + "] is done.");
-			}
-		}
-	}
-	
-	public static void main(String[] args) {
-		try {
-			List<DiskUsage> diskUsage = DiskUsageChecker.getInstance().getAllDiskUsage();
-//			List<DiskUsage> diskUsage = DiskUsageChecker.getInstance().getDiskUsage("zdb-dev-test", "mydb");
-			
-			for (DiskUsage d : diskUsage) {
-				System.out.println(d.getPodName() +" > "+ d.getSize()+" > "+ d.getUsed()+" > "+ d.getAvail()+" > "+ d.getUseRate());
-			}
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 	}
 }

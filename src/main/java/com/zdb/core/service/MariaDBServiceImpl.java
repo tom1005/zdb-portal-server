@@ -3145,6 +3145,13 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 							String key = split[0].trim();
 							String value = line.trim().substring(key.length()+regex.length()).trim();
 							
+//							if("system user".equals(value)) {
+//								continue;
+//							}
+							if("NULL".equals(value)) {
+								value = "-";
+							}
+							
 							map.put(key, value);
 						}
 					}
