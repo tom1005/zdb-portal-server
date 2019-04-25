@@ -2080,16 +2080,14 @@ public class ZDBRestController {
 				result = mariadbService.serviceOff(txId, namespace, serviceType, serviceName, stsName);
 				break;
 			case Redis:
+				result = redisService.serviceOff(txId, namespace, serviceType, serviceName, stsName);
 				break;
 			case PostgreSQL:
 				// TODO
-				break;
 			case RabbitMQ:
 				// TODO
-				break;
 			case MongoDB:
 				// TODO
-				break;
 			default:
 				log.error("Not support.");
 				result = new Result(txId, IResult.ERROR, "환경변수 조회 - Not support.");
@@ -2150,6 +2148,8 @@ public class ZDBRestController {
 				result = mariadbService.serviceOn(txId, namespace, serviceType, serviceName, stsName);
 				break;
 			case Redis:
+				result = redisService.serviceOn(txId, namespace, serviceType, serviceName, stsName);
+				break;
 			case PostgreSQL:
 			case RabbitMQ:
 			case MongoDB:
