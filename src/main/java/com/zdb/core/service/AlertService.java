@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -20,6 +21,8 @@ import com.zdb.core.domain.AlertRuleLabels;
 import com.zdb.core.domain.AlertingRuleEntity;
 import com.zdb.core.domain.PrometheusEntity;
 import com.zdb.core.domain.PrometheusGroups;
+import com.zdb.core.domain.ReleaseMetaData;
+import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.util.K8SUtil;
 
 import io.fabric8.kubernetes.api.model.ConfigMap;
@@ -54,6 +57,9 @@ public class AlertService {
 						AlertRule ar = pg.getRules().get(i);
 						AlertingRuleEntity are = parseAlertRuleEntity(ar);
 						if(namespaceList.indexOf(are.getNamespace()) > -1) {
+							if(are.getType().indexOf("Replication") == -1 && are.getAlert().endsWith("-slave")) {
+								continue;
+							}
 							list.add(are);
 						}
 					}
@@ -87,6 +93,7 @@ public class AlertService {
 		return alertingRuleEntity;	
 	}
 
+	@Autowired ZDBReleaseRepository releaseRepository;
 	public boolean createAlertRule(AlertingRuleEntity alertingRuleEntity){
 		boolean isSuccess = true;
 		try {
@@ -104,19 +111,10 @@ public class AlertService {
 			alertingRuleEntity.setSeverity(severity);
 			alertingRuleEntity.setChannel("default");
 			
-			template = template.replaceAll("\\$\\{serviceName\\}", alertingRuleEntity.getServiceName())
-							.replaceAll("\\$\\{namespace\\}", alertingRuleEntity.getNamespace())
-							.replaceAll("\\$\\{severity\\}", alertingRuleEntity.getSeverity())
-							.replaceAll("\\$\\{channel\\}", alertingRuleEntity.getChannel())
-							.replaceAll("\\$\\{priority\\}", alertingRuleEntity.getPriority())
-							.replaceAll("\\$\\{duration\\}", alertingRuleEntity.getDuration())
-							.replaceAll("\\$\\{condition\\}", alertingRuleEntity.getCondition())
-							.replaceAll("\\$\\{value2\\}", alertingRuleEntity.getValue2())
-							.replaceAll("\\$\\{namespace\\}", alertingRuleEntity.getNamespace());
-			
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
 			Resource<ConfigMap, DoneableConfigMap> dt = client.inNamespace(targetNamespace).configMaps().withName(configMapName);
 			
+			//configMap이 존재하지 않을 경우 생성
 			if(dt.get() == null) {
 				ConfigMap c = new ConfigMapBuilder().withNewMetadata().withName(configMapName).endMetadata().build();
 				dt.createOrReplace(c);
@@ -143,11 +141,33 @@ public class AlertService {
 				}
 				pg = pn.getGroups().get(0); 
 			}
-			rules = pg.getRules();				
-			rules.add(yaml.loadAs(template,AlertRule.class));
+			rules = pg.getRules();
+			
+			template = template.replaceAll("\\$\\{serviceName\\}", alertingRuleEntity.getServiceName())
+							.replaceAll("\\$\\{namespace\\}", alertingRuleEntity.getNamespace())
+							.replaceAll("\\$\\{severity\\}", alertingRuleEntity.getSeverity())
+							.replaceAll("\\$\\{channel\\}", alertingRuleEntity.getChannel())
+							.replaceAll("\\$\\{priority\\}", alertingRuleEntity.getPriority())
+							.replaceAll("\\$\\{duration\\}", alertingRuleEntity.getDuration())
+							.replaceAll("\\$\\{condition\\}", alertingRuleEntity.getCondition())
+							.replaceAll("\\$\\{value2\\}", alertingRuleEntity.getValue2())
+							.replaceAll("\\$\\{namespace\\}", alertingRuleEntity.getNamespace());
+			String re = template.replaceAll("\\$\\{role\\}", "master");
+			rules.add(yaml.loadAs(re,AlertRule.class));
+			
+			//Replication 관련설정이 아니면 slave가 존재하는지 검사 후 추가
+			if(alertingRuleEntity.getType().indexOf("Replication")==-1) {
+				ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(alertingRuleEntity.getServiceName());
+				boolean hasSlave = releaseMeta!=null && releaseMeta.getClusterEnabled();
+				if(hasSlave) {
+					re = template.replaceAll("\\$\\{role\\}", "slave");
+					rules.add(yaml.loadAs(re, AlertRule.class));
+				}
+			}
 			String data = parseWriteAlertRule(pn);
 			dt.edit().addToData(dataTitle, data).done();
 		}catch(Exception e) {
+			e.printStackTrace();
 			log.error(e.getMessage(), e);
 			isSuccess = false;
 		}
@@ -166,9 +186,9 @@ public class AlertService {
 				List<AlertRule> rules = pn.getGroups().get(0).getRules();
 				for(int i = rules.size()-1 ; i > -1 ;i--) {
 					AlertRule rule = rules.get(i);
-					if(alertingRuleEntity.getAlert().equals(rule.getAlert())) {
+					String as = String.format("%s-%s",alertingRuleEntity.getType(),alertingRuleEntity.getServiceName());
+					if(rule.getAlert().startsWith(as)) {
 						rules.remove(i);
-						break;
 					}
 				}
 				String data = parseWriteAlertRule(pn);
