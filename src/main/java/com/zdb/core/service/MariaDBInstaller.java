@@ -572,38 +572,54 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 			final Future<UninstallReleaseResponse> releaseFuture = releaseManager.uninstall(uninstallRequestBuilder.build());
 			
 			if (releaseFuture != null) {
-				Release release = releaseFuture.get().getRelease();
-				result.putValue(IResult.DELETE, release);
-
+				Release release = null;
+				try {
+					release = releaseFuture.get().getRelease();
+				} catch (Exception e1) {
+					try {
+						Thread.sleep(3000);
+						release = releaseFuture.get().getRelease();
+					} catch (Exception e2) {
+						log.error(e2.getMessage(), e2);
+					}
+				}
 				ReleaseMetaData releaseMeta = new ReleaseMetaData();
 				releaseMeta.setAction("DELETE");
-				releaseMeta.setApp(release.getChart().getMetadata().getName());
-				releaseMeta.setAppVersion(release.getChart().getMetadata().getAppVersion());
-				releaseMeta.setChartVersion(release.getChart().getMetadata().getVersion());
-				releaseMeta.setChartName(release.getChart().getMetadata().getName());
-				releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds()));
-				releaseMeta.setNamespace(namespace);
-				releaseMeta.setReleaseName(serviceName);
-				releaseMeta.setStatus(release.getInfo().getStatus().getCode().name());
-				releaseMeta.setDescription(release.getInfo().getDescription());
-				releaseMeta.setManifest(release.getManifest());
 				releaseMeta.setStatus("DELETED");
 				releaseMeta.setUpdateTime(new Date(System.currentTimeMillis()));
+				releaseMeta.setNamespace(namespace);
+				releaseMeta.setReleaseName(serviceName);
 
-				log.info(new Gson().toJson(releaseMeta));
-
-				releaseMetaData = releaseRepository.findByReleaseName(serviceName);
-				if (releaseMetaData != null) {
-					releaseMetaData.setStatus(release.getInfo().getStatus().getCode().name());
-					releaseMetaData.setUpdateTime(new Date(System.currentTimeMillis()));
-					releaseRepository.save(releaseMetaData);
+				if(release != null) {
+					result.putValue(IResult.DELETE, release);
+					
+					releaseMeta.setApp(release.getChart().getMetadata().getName());
+					releaseMeta.setAppVersion(release.getChart().getMetadata().getAppVersion());
+					releaseMeta.setChartVersion(release.getChart().getMetadata().getVersion());
+					releaseMeta.setChartName(release.getChart().getMetadata().getName());
+					releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds()));
+					releaseMeta.setStatus(release.getInfo().getStatus().getCode().name());
+					releaseMeta.setDescription(release.getInfo().getDescription());
+					releaseMeta.setManifest(release.getManifest());
+					
+					
+				} else {
+					releaseMeta = releaseRepository.findByReleaseName(serviceName);
+				}
+				
+				if (releaseMeta != null) {
+					releaseMeta.setStatus(release.getInfo().getStatus().getCode().name());
+					releaseMeta.setUpdateTime(new Date(System.currentTimeMillis()));
+					releaseRepository.save(releaseMeta);
 				} else {
 					releaseRepository.save(releaseMeta);
 				}
 
-				{ // pvc 삭제
-					List<PersistentVolumeClaim> persistentVolumeClaims = K8SUtil.getPersistentVolumeClaims(namespace, serviceName);
+				log.info(new Gson().toJson(releaseMeta));
 
+				try { // pvc 삭제
+					List<PersistentVolumeClaim> persistentVolumeClaims = K8SUtil.getPersistentVolumeClaims(namespace, serviceName);
+					
 					for (PersistentVolumeClaim pvc : persistentVolumeClaims) {
 						client.inNamespace(namespace).persistentVolumeClaims().withName(pvc.getMetadata().getName()).delete();
 						
@@ -613,7 +629,10 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 							pvcRepo.save(entity);
 						}
 					}
+				} catch (Exception e) {
+					log.error(e.getMessage(), e);
 				}
+
 				{ // account 삭제
 					MariaDBAccount.deleteAccounts(accountRepository, namespace, serviceName);
 				}
