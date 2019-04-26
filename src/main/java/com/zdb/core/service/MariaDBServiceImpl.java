@@ -888,7 +888,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			// 2018-12-04 my.cnf 변경된 값 저장(master, slave)
 			saveHistory(namespace, serviceName, beforeDataMap);
 			
-			result = new Result(txId, IResult.OK, historyValue);
+			result = new Result(txId, IResult.OK, "환경설정 변경");
+			if (!historyValue.isEmpty()) {
+				result.putValue(Result.HISTORY, historyValue);
+			}
 
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
