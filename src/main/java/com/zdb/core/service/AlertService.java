@@ -40,7 +40,10 @@ public class AlertService {
 	final private String dataTitle = "prometheus-zdb.rules";
 	final private String targetNamespace = "zcp-system";
 
+	@Autowired ZDBReleaseRepository releaseRepository;
+
 	public List<AlertingRuleEntity> getAlertRules(String namespaces) throws Exception {
+		System.out.println("getAlertRules");
 		List<AlertingRuleEntity> list = new ArrayList<>();
 		Yaml yaml = new Yaml();
 		
@@ -48,6 +51,7 @@ public class AlertService {
 			List<String> namespaceList = Arrays.asList(namespaces.split(","));
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
 			Resource<ConfigMap, DoneableConfigMap> dt = client.inNamespace(targetNamespace).configMaps().withName(configMapName);
+			
 			if(dt.get() !=null && dt.get().getData() != null) {
 				String d = dt.get().getData().get(dataTitle);
 				PrometheusEntity pn = yaml.loadAs(d,PrometheusEntity.class);
@@ -93,7 +97,6 @@ public class AlertService {
 		return alertingRuleEntity;	
 	}
 
-	@Autowired ZDBReleaseRepository releaseRepository;
 	public boolean createAlertRule(AlertingRuleEntity alertingRuleEntity){
 		boolean isSuccess = true;
 		try {
@@ -152,7 +155,8 @@ public class AlertService {
 							.replaceAll("\\$\\{condition\\}", alertingRuleEntity.getCondition())
 							.replaceAll("\\$\\{value2\\}", alertingRuleEntity.getValue2())
 							.replaceAll("\\$\\{namespace\\}", alertingRuleEntity.getNamespace());
-			String re = template.replaceAll("\\$\\{role\\}", "master");
+			String re = template.replaceAll("\\$\\{role\\}", "master")
+								.replaceAll("\\$\\{exprRole\\}", "");
 			rules.add(yaml.loadAs(re,AlertRule.class));
 			
 			//Replication 관련설정이 아니면 slave가 존재하는지 검사 후 추가
@@ -160,7 +164,8 @@ public class AlertService {
 				ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(alertingRuleEntity.getServiceName());
 				boolean hasSlave = releaseMeta!=null && releaseMeta.getClusterEnabled();
 				if(hasSlave) {
-					re = template.replaceAll("\\$\\{role\\}", "slave");
+					re = template.replaceAll("\\$\\{role\\}", "slave")
+								 .replaceAll("\\$\\{exprRole\\}", "-slave");
 					rules.add(yaml.loadAs(re, AlertRule.class));
 				}
 			}
