@@ -3,6 +3,7 @@ package com.zdb.core.service;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,7 +15,6 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.constructor.Constructor;
 
 import com.zdb.core.domain.AlertRule;
 import com.zdb.core.domain.AlertRuleLabels;
@@ -41,16 +41,14 @@ public class AlertService {
 	final private String targetNamespace = "zcp-system";
 
 	@Autowired ZDBReleaseRepository releaseRepository;
+	@Autowired Yaml yaml;
 
 	public List<AlertingRuleEntity> getAlertRules(String namespaces) throws Exception {
-		System.out.println("getAlertRules");
 		List<AlertingRuleEntity> list = new ArrayList<>();
-		Yaml yaml = new Yaml();
 		
 		if(!StringUtils.isEmpty(namespaces)) {
 			List<String> namespaceList = Arrays.asList(namespaces.split(","));
-			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
-			Resource<ConfigMap, DoneableConfigMap> dt = client.inNamespace(targetNamespace).configMaps().withName(configMapName);
+			Resource<ConfigMap, DoneableConfigMap> dt = getAlertRuleConfigMap();
 			
 			if(dt.get() !=null && dt.get().getData() != null) {
 				String d = dt.get().getData().get(dataTitle);
@@ -73,12 +71,9 @@ public class AlertService {
 		return list;
 	}
 
-	public AlertingRuleEntity getAlertRule(String namespace, String alert)throws Exception {
+	public AlertingRuleEntity getAlertRule(String namespace, String alert) throws Exception {
 		AlertingRuleEntity alertingRuleEntity = null;
-		Yaml yaml = new Yaml();
-		
-		DefaultKubernetesClient client = K8SUtil.kubernetesClient();
-		Resource<ConfigMap, DoneableConfigMap> dt = client.inNamespace(targetNamespace).configMaps().withName(configMapName);
+		Resource<ConfigMap, DoneableConfigMap> dt = getAlertRuleConfigMap();
 		if (dt.get() != null && dt.get().getData() != null) {
 			String d = dt.get().getData().get(dataTitle);
 			PrometheusEntity pn = yaml.loadAs(d,PrometheusEntity.class);
@@ -100,75 +95,14 @@ public class AlertService {
 	public boolean createAlertRule(AlertingRuleEntity alertingRuleEntity){
 		boolean isSuccess = true;
 		try {
-			Yaml yaml = new Yaml(new Constructor(PrometheusEntity.class)); 
-			String type = alertingRuleEntity.getType();
-			String template = getPrometheusTemplate(type);
-			String severity = "";
-			if("P1".equals(alertingRuleEntity.getPriority())) {
-				severity = "critical";
-			}else if("P3".equals(alertingRuleEntity.getPriority())) {
-				severity = "warning";
-			}else if("P4".equals(alertingRuleEntity.getPriority())) {
-				severity = "low";
-			}
-			alertingRuleEntity.setSeverity(severity);
-			alertingRuleEntity.setChannel("default");
+			Resource<ConfigMap, DoneableConfigMap> dt = getAlertRuleConfigMap();
+			String d = dt.get().getData().get(dataTitle);
+			PrometheusEntity pn = yaml.loadAs(d,PrometheusEntity.class);
+			List<PrometheusGroups> pgl = pn.getGroups();
+			PrometheusGroups pg = pgl.get(0); 
+			List<AlertRule> rules = pg.getRules();
 			
-			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
-			Resource<ConfigMap, DoneableConfigMap> dt = client.inNamespace(targetNamespace).configMaps().withName(configMapName);
-			
-			//configMap이 존재하지 않을 경우 생성
-			if(dt.get() == null) {
-				ConfigMap c = new ConfigMapBuilder().withNewMetadata().withName(configMapName).endMetadata().build();
-				dt.createOrReplace(c);
-			}
-			
-			PrometheusEntity pn = null;
-			List<PrometheusGroups> pgl = null;
-			PrometheusGroups pg = null;
-			List<AlertRule> rules = null;
-			if(dt.get().getData() == null || dt.get().getData().get(dataTitle) == null) {
-				pn = new PrometheusEntity();
-				pgl = new ArrayList<PrometheusGroups>();
-				pg = new PrometheusGroups(dataTitle,new ArrayList<>());
-				pn.setGroups(pgl);
-				pgl.add(pg);
-			}else {
-				String d = dt.get().getData().get(dataTitle);
-				pn = yaml.loadAs(d,PrometheusEntity.class);
-				pgl = pn.getGroups();
-				if(pgl == null) {
-					pgl = new ArrayList<PrometheusGroups>();
-					pn.setGroups(pgl);
-					pgl.add(new PrometheusGroups(dataTitle,new ArrayList<>()));
-				}
-				pg = pn.getGroups().get(0); 
-			}
-			rules = pg.getRules();
-			
-			template = template.replaceAll("\\$\\{serviceName\\}", alertingRuleEntity.getServiceName())
-							.replaceAll("\\$\\{namespace\\}", alertingRuleEntity.getNamespace())
-							.replaceAll("\\$\\{severity\\}", alertingRuleEntity.getSeverity())
-							.replaceAll("\\$\\{channel\\}", alertingRuleEntity.getChannel())
-							.replaceAll("\\$\\{priority\\}", alertingRuleEntity.getPriority())
-							.replaceAll("\\$\\{duration\\}", alertingRuleEntity.getDuration())
-							.replaceAll("\\$\\{condition\\}", alertingRuleEntity.getCondition())
-							.replaceAll("\\$\\{value2\\}", alertingRuleEntity.getValue2())
-							.replaceAll("\\$\\{namespace\\}", alertingRuleEntity.getNamespace());
-			String re = template.replaceAll("\\$\\{role\\}", "master")
-								.replaceAll("\\$\\{exprRole\\}", "");
-			rules.add(yaml.loadAs(re,AlertRule.class));
-			
-			//Replication 관련설정이 아니면 slave가 존재하는지 검사 후 추가
-			if(alertingRuleEntity.getType().indexOf("Replication")==-1) {
-				ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(alertingRuleEntity.getServiceName());
-				boolean hasSlave = releaseMeta!=null && releaseMeta.getClusterEnabled();
-				if(hasSlave) {
-					re = template.replaceAll("\\$\\{role\\}", "slave")
-								 .replaceAll("\\$\\{exprRole\\}", "-slave");
-					rules.add(yaml.loadAs(re, AlertRule.class));
-				}
-			}
+			addRulesTemplate(rules,alertingRuleEntity);
 			String data = parseWriteAlertRule(pn);
 			dt.edit().addToData(dataTitle, data).done();
 		}catch(Exception e) {
@@ -179,48 +113,142 @@ public class AlertService {
 		return isSuccess;
 	}
 
-	public void deleteAlertRule(AlertingRuleEntity alertingRuleEntity) {
-		try {
-			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
-			Yaml yaml = new Yaml();
-			
-			Resource<ConfigMap, DoneableConfigMap> dt = client.inNamespace(targetNamespace).configMaps().withName(configMapName);
-			if(dt.get()!=null && dt.get().getData()!=null) {
-				String d = dt.get().getData().get(dataTitle);
-				PrometheusEntity pn = yaml.loadAs(d,PrometheusEntity.class);
-				List<AlertRule> rules = pn.getGroups().get(0).getRules();
-				for(int i = rules.size()-1 ; i > -1 ;i--) {
-					AlertRule rule = rules.get(i);
-					String as = String.format("%s-%s",alertingRuleEntity.getType(),alertingRuleEntity.getServiceName());
-					if(rule.getAlert().startsWith(as)) {
-						rules.remove(i);
-					}
-				}
-				String data = parseWriteAlertRule(pn);
-				dt.edit().addToData(dataTitle, data).done();
+	private void addRulesTemplate(List<AlertRule> rules, AlertingRuleEntity alertingRuleEntity) {
+		String template = getPrometheusTemplate(alertingRuleEntity.getType()); 
+		String severity = "";
+		if("P1".equals(alertingRuleEntity.getPriority())) {
+			severity = "critical";
+		}else if("P3".equals(alertingRuleEntity.getPriority())) {
+			severity = "warning";
+		}else if("P4".equals(alertingRuleEntity.getPriority())) {
+			severity = "low";
+		}
+		alertingRuleEntity.setSeverity(severity);
+		alertingRuleEntity.setChannel("default");
+		template = template.replaceAll("\\$\\{serviceName\\}", alertingRuleEntity.getServiceName())
+				.replaceAll("\\$\\{namespace\\}", alertingRuleEntity.getNamespace())
+				.replaceAll("\\$\\{severity\\}", alertingRuleEntity.getSeverity())
+				.replaceAll("\\$\\{channel\\}", alertingRuleEntity.getChannel())
+				.replaceAll("\\$\\{priority\\}", alertingRuleEntity.getPriority())
+				.replaceAll("\\$\\{duration\\}", alertingRuleEntity.getDuration())
+				.replaceAll("\\$\\{condition\\}", alertingRuleEntity.getCondition())
+				.replaceAll("\\$\\{value2\\}", alertingRuleEntity.getValue2())
+				.replaceAll("\\$\\{namespace\\}", alertingRuleEntity.getNamespace());
+		String re = template.replaceAll("\\$\\{role\\}", "master")
+							.replaceAll("\\$\\{exprRole\\}", "");
+		rules.add(yaml.loadAs(re,AlertRule.class));
+		
+		//Replication 관련설정이 아니면 slave가 존재하는지 검사 후 추가
+		if(alertingRuleEntity.getType().indexOf("Replication")==-1) {
+			ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(alertingRuleEntity.getServiceName());
+			boolean hasSlave = releaseMeta!=null && releaseMeta.getClusterEnabled();
+			if(hasSlave) {
+				re = template.replaceAll("\\$\\{role\\}", "slave")
+							 .replaceAll("\\$\\{exprRole\\}", "-slave");
+				rules.add(yaml.loadAs(re, AlertRule.class));
 			}
+		}
+		
+	}
+
+	public boolean deleteAlertRule(AlertingRuleEntity alertingRuleEntity) {
+		boolean isSuccess = true;
+		try {
+			Resource<ConfigMap, DoneableConfigMap> dt = getAlertRuleConfigMap();
+			String d = dt.get().getData().get(dataTitle);
+			PrometheusEntity pn = yaml.loadAs(d,PrometheusEntity.class);
+			List<AlertRule> rules = pn.getGroups().get(0).getRules();
+			for(int i = rules.size()-1 ; i > -1 ;i--) {
+				AlertRule rule = rules.get(i);
+				String as = String.format("%s-%s",alertingRuleEntity.getType(),alertingRuleEntity.getServiceName());
+				if(rule.getAlert().startsWith(as)) {
+					rules.remove(i);
+				}
+			}
+			String data = parseWriteAlertRule(pn);
+			dt.edit().addToData(dataTitle, data).done();
 		} catch (Exception e) {
+			isSuccess = false;
 			log.error(e.getMessage(), e);
 		}
+		return isSuccess;
 	}
+	
+	@SuppressWarnings("unchecked")
+	public boolean updateDefaultAlertRule(AlertingRuleEntity alertingRuleEntity) {
+		boolean isSuccess = true;
+		
+		try {
+			Resource<ConfigMap, DoneableConfigMap> dt = getAlertRuleConfigMap();
+			String d = dt.get().getData().get(dataTitle);
+			PrometheusEntity pn = yaml.loadAs(d,PrometheusEntity.class);
+			List<AlertRule> rules = pn.getGroups().get(0).getRules();
+			for(int i = rules.size()-1 ; i > -1 ;i--) {
+				AlertRule rule = rules.get(i);
+				String asn = alertingRuleEntity.getServiceName();
+				if(rule.getAlert().endsWith(asn+"-mariadb-master")||rule.getAlert().endsWith(asn+"-mariadb-slave")) {
+					rules.remove(i);
+				}
+			}
+			ClassPathResource cp = new ClassPathResource("mariadb/prometheus-zdb-rules-default-value.yaml");
+			Map<String, LinkedHashMap<String, Object>> re = (Map<String, LinkedHashMap<String, Object>>) yaml.load(cp.getInputStream());
+			Iterator<String> it = re.keySet().iterator();
+			while(it.hasNext()) {
+				String type = it.next();
+				LinkedHashMap<String, Object> defMap = re.get(type);
+				alertingRuleEntity.setType(type);
+				alertingRuleEntity.setCondition(String.valueOf(defMap.get("condition")));
+				alertingRuleEntity.setValue2(String.valueOf(defMap.get("value")));
+				alertingRuleEntity.setPriority(String.valueOf(defMap.get("priority")));
+				alertingRuleEntity.setDuration(String.valueOf(defMap.get("for")));
+				addRulesTemplate(rules,alertingRuleEntity);
+			}
+			String data = parseWriteAlertRule(pn);
+			dt.edit().addToData(dataTitle, data).done();
+		} catch (Exception e) {
+			isSuccess = false;
+			log.error(e.getMessage(), e);
+		}
+		return isSuccess;		
+	}
+	
+	//alertRule 설정 configmap
+	private Resource<ConfigMap, DoneableConfigMap> getAlertRuleConfigMap() throws Exception{
+		DefaultKubernetesClient client = K8SUtil.kubernetesClient();
+		Resource<ConfigMap, DoneableConfigMap> dt = client.inNamespace(targetNamespace).configMaps().withName(configMapName);
+		
+		if(dt.get().getData() == null || dt.get().getData().get(dataTitle) == null) {
+			ConfigMap c = new ConfigMapBuilder().withNewMetadata().withName(configMapName).endMetadata().build();
+			dt.createOrReplace(c);
+			PrometheusEntity pn = null;
+			List<PrometheusGroups> pgl = null;
+			PrometheusGroups pg = null;			
+			pn = new PrometheusEntity();
+			pgl = new ArrayList<PrometheusGroups>();
+			pg = new PrometheusGroups(dataTitle,new ArrayList<>());
+			pn.setGroups(pgl);
+			pgl.add(pg);			
+			String data = parseWriteAlertRule(pn);
+			dt.edit().addToData(dataTitle, data).done();
+		}
+		return dt;
+	}
+	
 	@SuppressWarnings("unchecked")
 	private String getPrometheusTemplate(String type) {
-		String re = "";
-		Yaml yaml = new Yaml();
+		String template = "";
 		ClassPathResource cp = new ClassPathResource("mariadb/prometheus-zdb-rules-template.yaml");
 		
- 		try {
- 			Map<String,LinkedHashMap<String,Object>> template = (Map<String, LinkedHashMap<String, Object>>) yaml.load(cp.getInputStream());
- 			LinkedHashMap<String,Object> r = template.get(type);
- 			re = yaml.dumpAsMap(r);
+		try {
+			Map<String, LinkedHashMap<String, Object>> re = (Map<String, LinkedHashMap<String, Object>>) yaml.load(cp.getInputStream());
+			template = yaml.dumpAsMap(re.get(type));
 		} catch (IOException e) {
 			log.error(e.getMessage(), e);
 		}	
- 		return re;
+ 		return template;
 	}
 
 	private String parseWriteAlertRule(PrometheusEntity pn) {
-		Yaml yaml = new Yaml();
 		String re = yaml.dumpAsMap(pn);
 		re = re.replaceAll("forVariable:.*[\\s]+", "");
 		return re;

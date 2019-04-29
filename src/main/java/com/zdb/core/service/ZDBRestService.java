@@ -324,7 +324,10 @@ public interface ZDBRestService {
 	
 	Result createAlertRule(String txId, AlertingRuleEntity alertingRuleEntity);
 
+	Result updateDefaultAlertRule(String txId, AlertingRuleEntity alertingRuleEntity);
+
 	Result updateAlertRule(String txId, AlertingRuleEntity alertingRuleEntity);
 
 	Result deleteAlertRule(String txId, AlertingRuleEntity alertingRuleEntity);
+
 }

@@ -2028,6 +2028,16 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			return new Result("", Result.ERROR, e.getMessage(), e);
 		}
 	}
+	@Override
+	public Result updateDefaultAlertRule(String txId, AlertingRuleEntity alertingRuleEntity) {
+		try {
+			alertService.updateDefaultAlertRule(alertingRuleEntity);
+			return new Result("", Result.OK, "설정값이 저장되었습니다.");
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
 
 	@Override
 	public Result updateAlertRule(String txId, AlertingRuleEntity alertingRuleEntity) {

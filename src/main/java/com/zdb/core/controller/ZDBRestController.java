@@ -2896,7 +2896,7 @@ public class ZDBRestController {
 		}
 	} 
 	@RequestMapping(value="/{namespace}/alert/rule/{alert}",method = RequestMethod.POST)
-	public ResponseEntity<String> createAlertRule(@PathVariable("namespace") String namespaces,@PathVariable String alert,@RequestBody final AlertingRuleEntity alertingRuleEntity) throws Exception {
+	public ResponseEntity<String> createAlertRule(@PathVariable String namespace,@PathVariable String alert,@RequestBody final AlertingRuleEntity alertingRuleEntity) throws Exception {
 		try {
 			String txId = txId();
 			Result result = commonService.createAlertRule(txId,alertingRuleEntity);
@@ -2906,7 +2906,23 @@ public class ZDBRestController {
 			Result result = new Result(null, IResult.ERROR, RequestEvent.CREATE_ALERT_RULE + " 오류").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
-	} 
+	}
+	@RequestMapping(value="/{namespace}/alert/defaultRule/{serviceName}",method = RequestMethod.PUT)
+	public ResponseEntity<String> updateDefaultAlertRule(@PathVariable String namespace,@PathVariable String serviceName) throws Exception {
+		try {
+			String txId = txId();
+			AlertingRuleEntity alertingRuleEntity = new AlertingRuleEntity();
+			alertingRuleEntity.setNamespace(namespace);
+			alertingRuleEntity.setServiceName(serviceName);
+			Result result = commonService.updateDefaultAlertRule(txId,alertingRuleEntity);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(null, IResult.ERROR, RequestEvent.CREATE_ALERT_RULE + " 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
 	@RequestMapping(value="/{namespace}/alert/rule/{alert}",method = RequestMethod.PUT)
 	public ResponseEntity<String> updateAlertRule(@PathVariable("namespace") String namespaces,@PathVariable String alert,@RequestBody final AlertingRuleEntity alertingRuleEntity) throws Exception {
 		try {
