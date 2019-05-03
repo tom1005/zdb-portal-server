@@ -1,17 +1,17 @@
 package com.zdb.mariadb;
 
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import org.crsh.console.jline.internal.Log;
 
+import com.zdb.core.util.ExecUtil;
 import com.zdb.core.util.K8SUtil;
 
 import io.fabric8.kubernetes.api.model.DoneablePod;
@@ -19,12 +19,9 @@ import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.fabric8.kubernetes.client.Callback;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
-import io.fabric8.kubernetes.client.dsl.ExecListener;
 import io.fabric8.kubernetes.client.dsl.ExecWatch;
-import io.fabric8.kubernetes.client.dsl.Execable;
 import io.fabric8.kubernetes.client.dsl.PodResource;
 import io.fabric8.kubernetes.client.utils.BlockingInputStreamPumper;
-import okhttp3.Response;
 
 public class MariaDBShutDownUtil {
 	
@@ -71,17 +68,45 @@ public class MariaDBShutDownUtil {
 				password = new String(Base64.getDecoder().decode(password));
 			}
 			
-			String[] commands = new String[] { "/bin/sh", "-c", "/opt/bitnami/mariadb/bin/mysqladmin -u root -p"+password+" -h 127.0.0.1 shutdown"};
-			
-			for (int i = 0; i < commands.length; i++) {
-				commands[i] = URLEncoder.encode(commands[i], "UTF-8");
-			}
+//			String[] commands = new String[] { "/bin/sh", "-c", "/opt/bitnami/mariadb/bin/mysqladmin -u root -p"+password+" -h 127.0.0.1 shutdown"};
+//			
+//			for (int i = 0; i < commands.length; i++) {
+//				commands[i] = URLEncoder.encode(commands[i], "UTF-8");
+//			}
 			
 			List<Pod> pods = client.inNamespace(namespace).pods().withLabel("release", serviceName).list().getItems();
 			
+			List<Pod> _pods = new ArrayList<>();
+			for (Pod pod : pods) {
+				_pods.add(pod);
+			}
+			
+			if(_pods != null && _pods.size() > 1) {
+				Collections.sort(_pods, new Comparator<Pod>() {
+					@Override
+					public int compare(Pod o1, Pod o2) {
+						String app = o1.getMetadata().getLabels().get("app");
+						
+						if("mariadb".equals(app)) {
+							String c1 = o1.getMetadata().getLabels().get("component");
+							String c2 = o2.getMetadata().getLabels().get("component");
+							
+							return c2.compareTo(c1);
+							
+						} else if("redis".equals(app)) {
+							String c1 = o1.getMetadata().getLabels().get("role");
+							String c2 = o2.getMetadata().getLabels().get("role");
+							return c2.compareTo(c1);
+						}
+						
+						return 0;
+					}
+				});
+			}
+			
 			List<String> podNameList = new ArrayList<>();
 			
-			for (Pod pod : pods) {
+			for (Pod pod : _pods) {
 				String name = pod.getMetadata().getName();
 				
 				if (podName != null) {
@@ -98,43 +123,14 @@ public class MariaDBShutDownUtil {
 				}
 			}
 			
-			final CountDownLatch latch = new CountDownLatch(podNameList.size());
+			String cmd = "/opt/bitnami/mariadb/bin/mysqladmin -u root -p"+password+" -h 127.0.0.1 shutdown";
+			
 			for (String name : podNameList) {
-				Execable<String, ExecWatch> usingListener = client.inNamespace(namespace).pods().withName(name).inContainer("mariadb").redirectingOutput()
-						.usingListener(new ExecListener() {
-							@Override
-							public void onOpen(Response response) {
-							}
-
-							@Override
-							public void onFailure(Throwable t, Response response) {
-								latch.countDown();
-								System.err.println(response.toString());
-							}
-
-							@Override
-							public void onClose(int code, String reason) {
-								latch.countDown();
-							}
-						});
-				watch = usingListener.exec(commands);
-
-				CustomCallback callback = new CustomCallback();
-
-				pump = new BlockingInputStreamPumper(watch.getOutput(), callback);
-				executorService.submit(pump);
-				Future<String> outPumpFuture = executorService.submit(pump, "Done");
-				executorService.scheduleAtFixedRate(new FutureChecker("Pump", outPumpFuture), 0, 5, TimeUnit.SECONDS);
-
-				latch.await(5, TimeUnit.SECONDS);
-				watch.close();
-
-				Log.info(name +" is shutdown. ->"+callback.getResult());
-				
+				new ExecUtil().exec(K8SUtil.kubernetesClient(), namespace, name, "mariadb", cmd);
 				Thread.sleep(2000);
 			}
 			
-			for (Pod pod : pods) {
+			for (Pod pod : _pods) {
 				String name = pod.getMetadata().getName();
 				
 				if (podName != null) {

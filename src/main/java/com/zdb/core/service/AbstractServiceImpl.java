@@ -919,10 +919,13 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				} else if ("redis".equals(overview.getServiceType())) {
 					role = "master";
 				}
-				if(role == null) {
-					System.out.println();
-				}
+				
 				if( replicas == null || replicas.intValue() == 0) {
+					if("master".equals(role)) {
+						role = "Master";
+					}else if("slave".equals(role)) {
+						role = "Slave";
+					}
 					overview.setStatusMessage(role + " 실행 인스턴스 개수가 0 입니다.");
 					break;
 				}
@@ -1179,6 +1182,23 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				}
 			}
 			
+		}
+		
+		if(overview.isClusterEnabled() && k8sService.isFailoverEnable(overview.getNamespace(), overview.getServiceName())) {
+			boolean failoverService = k8sService.isFailoverService(overview.getNamespace(), overview.getServiceName());
+			if ("mariadb".equals(overview.getServiceType()) && failoverService) {
+				
+				String msg = overview.getStatusMessage();
+				if(msg != null && msg.length() > 0) {
+					msg = msg + "<br>";
+				} else {
+					msg = "";
+				}
+				if(overview.getStatus() == ZDBStatus.GREEN) {
+					overview.setStatus(ZDBStatus.YELLOW);
+				}
+				overview.setStatusMessage(msg + "Master L/B가 Slave DB로 Failover 되었습니다.<br>Master DB 는 Failback 실행 후 서비스가 가능합니다.");
+			}
 		}
 	}
 	
