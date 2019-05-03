@@ -15,7 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
-//@Profile({"prod"})
+@Profile({"prod"})
 public class DiskUsageCollector {
 	
 	@Autowired
