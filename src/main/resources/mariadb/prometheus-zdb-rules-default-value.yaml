@@ -1,0 +1,45 @@
+ZDB-MariaDB-PodHealthCheck:
+    condition: ==
+    value: 1
+    priority: P1
+    for: 1m
+ZDB-MariaDB-ContainerHealthCheck:
+    condition: == 
+    value: 0
+    priority: P1
+    for: 1m
+ZDB-MariaDB-DBHealthCheck:
+    condition: == 
+    value: 0
+    priority: P1
+    for: 1m
+ZDB-MariaDB-CPUUsage:
+    condition: '>'
+    value: 80
+    priority: P3
+    for: 1m
+ZDB-MariaDB-MemoryUsage:
+    condition: '>'
+    value: 95
+    priority: P3
+    for: 1m
+ZDB-MariaDB-Connections:
+    condition: '>'
+    value: 80
+    priority: P3
+    for: 1m
+ZDB-MariaDB-SlowQueries:
+    condition: '>'
+    value: 0.1
+    priority: P3
+    for: 1m  
+ZDB-MariaDB-ReplicationStatus:
+    condition: ==
+    value: 0
+    priority: P4
+    for: 1m   
+ZDB-MariaDB-ReplicationDelay:
+    condition: '>' 
+    value: 0
+    priority: P4
+    for: 1m    
