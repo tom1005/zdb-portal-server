@@ -611,7 +611,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 				String[] split = redisConf.split("\n");
 				
 				for (String line : split) {
-					String[] params = line.split(" ");
+					String[] params = line.trim().split(" ");
 					if(params.length == 2) {
 						String key = params[0].trim();
 						String value = params[1].trim();
@@ -631,10 +631,20 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 				zdbRedisConfig.setListMaxZiplistSize(redisConfigMap.get("list-max-ziplist-size"));
 				zdbRedisConfig.setZsetMaxZiplistEntries(redisConfigMap.get("zset-max-ziplist-entries"));
 				zdbRedisConfig.setZsetMaxZiplistValue(redisConfigMap.get("zset-max-ziplist-value"));
-				if (redisConfigMap.get("notify-keyspace-events").equals("\"\"")) {
-					zdbRedisConfig.setNotifyKeyspaceEvents("");
+//				if (redisConfigMap.get("notify-keyspace-events").equals("\"\"")) {
+//					zdbRedisConfig.setNotifyKeyspaceEvents("");
+//				} else {
+//					zdbRedisConfig.setNotifyKeyspaceEvents(redisConfigMap.get("notify-keyspace-events"));
+//				}
+				if (redisConfigMap.containsKey("notify-keyspace-events")) {
+					String notify_keyspace_events = redisConfigMap.get("notify-keyspace-events");
+					if(notify_keyspace_events == null || notify_keyspace_events.trim().isEmpty()) {
+						zdbRedisConfig.setNotifyKeyspaceEvents("\"\"");
+					} else {
+						zdbRedisConfig.setNotifyKeyspaceEvents(notify_keyspace_events.trim());
+					}
 				} else {
-					zdbRedisConfig.setNotifyKeyspaceEvents(redisConfigMap.get("notify-keyspace-events"));
+					zdbRedisConfig.setNotifyKeyspaceEvents("");
 				}
 
 				result = new Result(txId, IResult.OK, "");
@@ -792,7 +802,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 				String redisConf = data.get("redis-config");
 				String[] split = redisConf.split("\n");
 				for (String line : split) {
-					String[] params = line.split(" ");
+					String[] params = line.trim().split(" ");
 					if(params.length == 2) {
 						String key = params[0].trim();
 						String value = params[1].trim();
@@ -810,23 +820,37 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 				redisConfigMap.put("list-max-ziplist-size", config.get("list-max-ziplist-size"));
 				redisConfigMap.put("zset-max-ziplist-entries", config.get("zset-max-ziplist-entries"));
 				redisConfigMap.put("zset-max-ziplist-value", config.get("zset-max-ziplist-value"));
-				if (config.get("notify-keyspace-events").equals("")) {
-					redisConfigMap.put("notify-keyspace-events", config.get("\"\""));
-				} else {
-					redisConfigMap.put("notify-keyspace-events", config.get("notify-keyspace-events"));
-				}
+				redisConfigMap.put("notify-keyspace-events", config.get("notify-keyspace-events") == null || config.get("notify-keyspace-events").trim().length() == 0 ? "\"\"" : config.get("notify-keyspace-events"));
+//				if (config.get("notify-keyspace-events").equals("")) {
+//					redisConfigMap.put("notify-keyspace-events", config.get("\"\""));
+//				} else {
+//					redisConfigMap.put("notify-keyspace-events", config.get("notify-keyspace-events"));
+//				}
 				
-				StringBuilder mapAsString = new StringBuilder("");
+				InputStream is = new ClassPathResource("redis/config_values.template").getInputStream();
+				String inputValue = IOUtils.toString(is, StandardCharsets.UTF_8.name());
+
+				redisConfigMap.put("bind","0.0.0.0");
+				redisConfigMap.put("logfile","/opt/bitnami/redis/logs/redis-server.log");
+				redisConfigMap.put("pidfile","/opt/bitnami/redis/tmp/redis.pid");
+				redisConfigMap.put("dir","/opt/bitnami/redis/data");
+				redisConfigMap.put("maxmemory","192mb");
+				
+//				StringBuilder mapAsString = new StringBuilder("");
 			    for (String key : redisConfigMap.keySet()) {
-			        mapAsString.append(key + " " + redisConfigMap.get(key) + "\n");
+//			        mapAsString.append(key + " " + redisConfigMap.get(key) + "\n");
+			    	inputValue = inputValue.replace("${" + key + "}", redisConfigMap.get(key));
 			    }
-			    mapAsString.delete(mapAsString.length()-2, mapAsString.length()).append("");
-				String redisConfigMapAsString = mapAsString.toString();
+//			    mapAsString.delete(mapAsString.length()-2, mapAsString.length()).append("");
+//				String redisConfigMapAsString = mapAsString.toString();
 				
 				String configMapName = configMap.getMetadata().getName();
-				client.configMaps().inNamespace(namespace).withName(configMapName).edit().addToData("redis-config", redisConfigMapAsString).done();
+				client.configMaps().inNamespace(namespace).withName(configMapName).edit().addToData("redis-config", inputValue).done();
 			}
-			result = new Result(txId, IResult.OK, "환경설정 변경 완료: " + historyValue);		
+			result = new Result(txId, IResult.OK, "환경설정 변경");	
+			if (!historyValue.toString().isEmpty()) {
+				result.putValue(Result.HISTORY, historyValue);
+			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			result = new Result(txId, IResult.ERROR, "환경설정 변경 요청 오류 - " + e.getLocalizedMessage());
@@ -860,14 +884,18 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 				String[] split = cnf.split("\n");
 				
 				for (String line : split) {
-					String[] params = line.split(" ");
+					String[] params = line.trim().split(" ");
 					if(params.length == 2) {
 						String key = params[0].trim();
 						String value = params[1].trim();
 						currentConfigMap.put(key, value);
 						
 						String newValue = newConfig.get(key);
-						
+						if("notify-keyspace-events".equals(key)) {
+							if(newValue == null || newValue.trim().isEmpty()) {
+								newValue = "\"\"";
+							}
+						}
 						if(value != null && newValue != null && !value.equals(newValue)) {
 							sb.append(key).append(" : ").append(value).append(" → ").append(newValue).append("\n");
 						}
