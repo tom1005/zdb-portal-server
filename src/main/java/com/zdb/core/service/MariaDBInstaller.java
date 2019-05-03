@@ -633,19 +633,29 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 					log.error(e.getMessage(), e);
 				}
 
-				{ // account 삭제
+				try { // account 삭제
 					MariaDBAccount.deleteAccounts(accountRepository, namespace, serviceName);
+				} catch (Exception e) {
+					log.error(e.getMessage(), e);
 				}
 
-				{ // config 삭제
+				try { // config 삭제
 					MariaDBConfiguration.deleteConfig(configRepository, namespace, serviceName);
+				} catch (Exception e) {
+					log.error(e.getMessage(), e);
 				}
 				
-				// disk usage 정보 삭제처리 
-				diskUsageRepository.deleteByNamespaceAndReleaseName(namespace, serviceName);
+				try {// disk usage 정보 삭제처리 
+					diskUsageRepository.deleteByNamespaceAndReleaseName(namespace, serviceName);	
+				} catch (Exception e) {
+					log.error(e.getMessage(), e);
+				}
 				
-				// tag 정보 삭제 
-				tagRepository.deleteByNamespaceAndReleaseName(namespace, serviceName);
+				try {// tag 정보 삭제 
+					tagRepository.deleteByNamespaceAndReleaseName(namespace, serviceName);
+				} catch (Exception e) {
+					log.error(e.getMessage(), e);
+				}
 				
 				try {
 					// Backup Resource 삭제 요청

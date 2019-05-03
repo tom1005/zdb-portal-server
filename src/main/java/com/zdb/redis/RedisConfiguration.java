@@ -65,20 +65,18 @@ public class RedisConfiguration {
 	 */
 	public static void setConfig(final ZDBRedisConfigRepository repo, final Jedis jedis, final String namespace, final String releaseName, Map<String, String> newConfigMap) throws Exception, JedisException {
 		// Set Configuration to Service
-		setConfig(jedis, "timeout"					, newConfigMap.get("timeout"));
-		setConfig(jedis, "tcp-keepalive"			, newConfigMap.get("tcp-keepalive"));
-		setConfig(jedis, "maxmemory-policy"			, newConfigMap.get("maxmemory-policy"));
-		setConfig(jedis, "maxmemory-samples"		, newConfigMap.get("maxmemory-samples"));
-		setConfig(jedis, "slowlog-log-slower-than"	, newConfigMap.get("slowlog-log-slower-than"));
-		setConfig(jedis, "slowlog-max-len"			, newConfigMap.get("slowlog-max-len"));
-		setConfig(jedis, "hash-max-ziplist-entries"	, newConfigMap.get("hash-max-ziplist-entries"));
-		setConfig(jedis, "hash-max-ziplist-value"	, newConfigMap.get("hash-max-ziplist-value"));
-		setConfig(jedis, "list-max-ziplist-size"	, newConfigMap.get("list-max-ziplist-size"));
-		setConfig(jedis, "zset-max-ziplist-entries"	, newConfigMap.get("zset-max-ziplist-entries"));
-		setConfig(jedis, "zset-max-ziplist-value"	, newConfigMap.get("zset-max-ziplist-value"));
-		if (!newConfigMap.get("notify-keyspace-events").equals("")) {
-			setConfig(jedis, "notify-keyspace-events"	, newConfigMap.get("notify-keyspace-events"));
-		}
+		setConfig(jedis, "timeout"					, newConfigMap.get("timeout") == null ? "0" : newConfigMap.get("timeout"));
+		setConfig(jedis, "tcp-keepalive"			, newConfigMap.get("tcp-keepalive") == null ? "300" : newConfigMap.get("tcp-keepalive"));
+		setConfig(jedis, "maxmemory-policy"			, newConfigMap.get("maxmemory-policy") == null ? "noeviction" : newConfigMap.get("maxmemory-policy"));
+		setConfig(jedis, "maxmemory-samples"		, newConfigMap.get("maxmemory-samples") == null ? "5" : newConfigMap.get("maxmemory-samples"));
+		setConfig(jedis, "slowlog-log-slower-than"	, newConfigMap.get("slowlog-log-slower-than") == null ? "10000" : newConfigMap.get("slowlog-log-slower-than"));
+		setConfig(jedis, "slowlog-max-len"			, newConfigMap.get("slowlog-max-len") == null ? "128" : newConfigMap.get("slowlog-max-len"));
+		setConfig(jedis, "hash-max-ziplist-entries"	, newConfigMap.get("hash-max-ziplist-entries") == null ? "512" : newConfigMap.get("hash-max-ziplist-entries"));
+		setConfig(jedis, "hash-max-ziplist-value"	, newConfigMap.get("hash-max-ziplist-value") == null ? "64" : newConfigMap.get("hash-max-ziplist-value"));
+		setConfig(jedis, "list-max-ziplist-size"	, newConfigMap.get("list-max-ziplist-size") == null ? "-2" : newConfigMap.get("list-max-ziplist-size"));
+		setConfig(jedis, "zset-max-ziplist-entries"	, newConfigMap.get("zset-max-ziplist-entries") == null ? "128" : newConfigMap.get("zset-max-ziplist-entries"));
+		setConfig(jedis, "zset-max-ziplist-value"	, newConfigMap.get("zset-max-ziplist-value") == null ? "64" : newConfigMap.get("zset-max-ziplist-value"));
+		setConfig(jedis, "notify-keyspace-events"	, newConfigMap.get("notify-keyspace-events") == null || "\"\"".equals(newConfigMap.get("notify-keyspace-events")) ? "" : newConfigMap.get("notify-keyspace-events").trim());
 		
 		if ("true".equals(newConfigMap.get("save"))) {
 			setConfig(jedis, "save", "900 1 300 10 60 10000");
@@ -94,7 +92,7 @@ public class RedisConfiguration {
 				return;
 			}
 			jedis.configSet(key, value);
-			String query = String.format("CONFIG SET " + key + " " + value);
+			String query = String.format("CONFIG SET %s %s", key, value);
 			logger.debug("Query:", query);
 		} catch (Exception e) {
 			logger.error("Exception: ", e);

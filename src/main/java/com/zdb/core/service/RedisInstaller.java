@@ -599,35 +599,39 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 			final Future<UninstallReleaseResponse> releaseFuture = releaseManager.uninstall(uninstallRequestBuilder.build());
 			
 			if (releaseFuture != null) {
-				final Release release = releaseFuture.get().getRelease();
-				result.putValue(IResult.DELETE, release);
-
-				ReleaseMetaData releaseMeta = new ReleaseMetaData();
-				releaseMeta.setAction("DELETE");
-				releaseMeta.setApp(release.getChart().getMetadata().getName());
-				releaseMeta.setAppVersion(release.getChart().getMetadata().getAppVersion());
-				releaseMeta.setChartVersion(release.getChart().getMetadata().getVersion());
-				releaseMeta.setChartName(release.getChart().getMetadata().getName());
-				releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds() * 1000L));
-				releaseMeta.setNamespace(namespace);
-				releaseMeta.setReleaseName(serviceName);
-				releaseMeta.setStatus(release.getInfo().getStatus().getCode().name());
-				releaseMeta.setDescription(release.getInfo().getDescription());
-				releaseMeta.setManifest(release.getManifest());
-				releaseMeta.setStatus("DELETED");
-				releaseMeta.setUpdateTime(new Date(System.currentTimeMillis()));
-
-				log.info(new Gson().toJson(releaseMeta));
-
-				if (releaseMetaData != null) {
-					releaseMetaData.setStatus(release.getInfo().getStatus().getCode().name());
-					releaseMetaData.setUpdateTime(new Date(System.currentTimeMillis()));
-					releaseRepository.save(releaseMetaData);
-				} else {
-					releaseRepository.save(releaseMeta);
+				try {
+					final Release release = releaseFuture.get().getRelease();
+					result.putValue(IResult.DELETE, release);
+	
+					ReleaseMetaData releaseMeta = new ReleaseMetaData();
+					releaseMeta.setAction("DELETE");
+					releaseMeta.setApp(release.getChart().getMetadata().getName());
+					releaseMeta.setAppVersion(release.getChart().getMetadata().getAppVersion());
+					releaseMeta.setChartVersion(release.getChart().getMetadata().getVersion());
+					releaseMeta.setChartName(release.getChart().getMetadata().getName());
+					releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds() * 1000L));
+					releaseMeta.setNamespace(namespace);
+					releaseMeta.setReleaseName(serviceName);
+					releaseMeta.setStatus(release.getInfo().getStatus().getCode().name());
+					releaseMeta.setDescription(release.getInfo().getDescription());
+					releaseMeta.setManifest(release.getManifest());
+					releaseMeta.setStatus("DELETED");
+					releaseMeta.setUpdateTime(new Date(System.currentTimeMillis()));
+	
+					log.info(new Gson().toJson(releaseMeta));
+	
+					if (releaseMetaData != null) {
+						releaseMetaData.setStatus(release.getInfo().getStatus().getCode().name());
+						releaseMetaData.setUpdateTime(new Date(System.currentTimeMillis()));
+						releaseRepository.save(releaseMetaData);
+					} else {
+						releaseRepository.save(releaseMeta);
+					}
+				} catch (Exception e) {
+					log.error(e.getMessage(), e);
 				}
 
-				{ // pvc 삭제
+				try { // pvc 삭제
 					List<PersistentVolumeClaim> persistentVolumeClaims = K8SUtil.getPersistentVolumeClaims(namespace, serviceName);
 
 					for (PersistentVolumeClaim pvc : persistentVolumeClaims) {
@@ -644,13 +648,21 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 					if (persistentVolumeClaims.size() > 0) {
 						diskUsageRepository.deleteByNamespaceAndReleaseName(namespace, serviceName);
 					}
+				} catch (Exception e) {
+					log.error(e.getMessage(), e);
 				}
 
-				// tag 정보 삭제 
-				tagRepository.deleteByNamespaceAndReleaseName(namespace, serviceName);
+				try {// tag 정보 삭제 
+					tagRepository.deleteByNamespaceAndReleaseName(namespace, serviceName);
+				} catch (Exception e) {
+					log.error(e.getMessage(), e);
+				}
 				
-				// backup resource 삭제 요청
-				backupProvider.removeServiceResource(txId, namespace, ZDBType.Redis.getName(), serviceName);
+				try {// backup resource 삭제 요청
+					backupProvider.removeServiceResource(txId, namespace, ZDBType.Redis.getName(), serviceName);
+				} catch (Exception e) {
+					log.error(e.getMessage(), e);
+				}
 				
 				event.setStatus(IResult.OK);
 				event.setResultMessage("Successfully deleted.");

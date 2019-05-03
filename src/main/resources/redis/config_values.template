@@ -1,0 +1,21 @@
+    bind ${bind}
+    logfile ${logfile}
+    pidfile ${pidfile}
+    dir ${dir}
+    rename-command FLUSHDB FDB
+    rename-command FLUSHALL FALL
+    maxmemory ${maxmemory}
+    timeout ${timeout}
+    tcp-keepalive ${tcp-keepalive}
+    maxmemory-policy ${maxmemory-policy}
+    maxmemory-samples ${maxmemory-samples}
+    slowlog-log-slower-than ${slowlog-log-slower-than}
+    slowlog-max-len ${slowlog-max-len}
+    notify-keyspace-events ${notify-keyspace-events}
+    hash-max-ziplist-entries ${hash-max-ziplist-entries}
+    hash-max-ziplist-value ${hash-max-ziplist-value}
+    list-max-ziplist-size ${list-max-ziplist-size}
+    zset-max-ziplist-entries ${zset-max-ziplist-entries}
+    zset-max-ziplist-value ${zset-max-ziplist-value}
+    appendonly no
+    save ""

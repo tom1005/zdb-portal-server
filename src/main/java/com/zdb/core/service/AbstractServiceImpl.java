@@ -919,10 +919,13 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				} else if ("redis".equals(overview.getServiceType())) {
 					role = "master";
 				}
-				if(role == null) {
-					System.out.println();
-				}
+				
 				if( replicas == null || replicas.intValue() == 0) {
+					if("master".equals(role)) {
+						role = "Master";
+					}else if("slave".equals(role)) {
+						role = "Slave";
+					}
 					overview.setStatusMessage(role + " 실행 인스턴스 개수가 0 입니다.");
 					break;
 				}
@@ -1180,6 +1183,23 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			}
 			
 		}
+		
+		if(overview.isClusterEnabled() && k8sService.isFailoverEnable(overview.getNamespace(), overview.getServiceName())) {
+			boolean failoverService = k8sService.isFailoverService(overview.getNamespace(), overview.getServiceName());
+			if ("mariadb".equals(overview.getServiceType()) && failoverService) {
+				
+				String msg = overview.getStatusMessage();
+				if(msg != null && msg.length() > 0) {
+					msg = msg + "<br>";
+				} else {
+					msg = "";
+				}
+				if(overview.getStatus() == ZDBStatus.GREEN) {
+					overview.setStatus(ZDBStatus.YELLOW);
+				}
+				overview.setStatusMessage(msg + "Master L/B가 Slave DB로 Failover 되었습니다.<br>Master DB 는 Failback 실행 후 서비스가 가능합니다.");
+			}
+		}
 	}
 	
 	private String getEventMessage(String m) {
@@ -1351,9 +1371,39 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				return new Result(txId, IResult.ERROR, "설치된 서비스가 존재하지 않습니다.");
 			}
 
-			List<Pod> pods = k8sService.getPods(namespace, serviceName);
+			List<Pod> tempPods = k8sService.getPods(namespace, serviceName);
+			
+			List<Pod> pods = new ArrayList<>();
+			for (Pod pod : tempPods) {
+				pods.add(pod);
+			}
+			
+			if(pods != null && pods.size() > 1) {
+				Collections.sort(pods, new Comparator<Pod>() {
+					@Override
+					public int compare(Pod o1, Pod o2) {
+						if(dbType == ZDBType.MariaDB) {
+							String c1 = o1.getMetadata().getLabels().get("component");
+							String c2 = o2.getMetadata().getLabels().get("component");
+							
+							return c2.compareTo(c1);
+							
+						} else if(dbType == ZDBType.Redis) {
+							String c1 = o1.getMetadata().getLabels().get("role");
+							String c2 = o2.getMetadata().getLabels().get("role");
+							return c2.compareTo(c1);
+						}
+						
+						return 0;
+					}
+				});
+			}
+			
+			// auto-failover 를 고려해 slave 먼저 삭제 해야 함.
 
 			for (Pod pod : pods) {
+				String c1 = pod.getMetadata().getLabels().get("component");
+				log.error(c1);
 				PodResource<Pod, DoneablePod> podResource = client.inNamespace(namespace).pods().withName(pod.getMetadata().getName());
 				if (podResource != null) {
 					podResource.delete();

@@ -1880,7 +1880,7 @@ public class K8SService {
 		return serviceList;
 	}
 	
-	public static boolean isFailoverService(String namespace, String serviceName) throws Exception {
+	public boolean isFailoverService(String namespace, String serviceName) throws Exception {
 
 		try (DefaultKubernetesClient client = K8SUtil.kubernetesClient();){
 			return isFailoverService(client, namespace, serviceName);
@@ -1891,7 +1891,7 @@ public class K8SService {
 		return false;
 	}	
 	
-	public static boolean isFailoverEnable(String namespace, String serviceName) throws Exception {
+	public boolean isFailoverEnable(String namespace, String serviceName) throws Exception {
 
 		try (DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
 			if (serviceName != null && !serviceName.isEmpty()) {
@@ -1930,7 +1930,7 @@ public class K8SService {
 	 * @return
 	 * @throws Exception
 	 */
-	public static boolean isFailoverService(DefaultKubernetesClient client, String namespace, String serviceName) throws Exception {
+	public boolean isFailoverService(DefaultKubernetesClient client, String namespace, String serviceName) throws Exception {
 
 		try{
 			// app=mariadb,chart=mariadb-4.2.3,component=master,heritage=Tiller,release=zdb-test2-mha
