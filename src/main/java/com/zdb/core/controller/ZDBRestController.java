@@ -225,7 +225,7 @@ public class ZDBRestController {
 			event.setNamespace(entity.getNamespace());
 			event.setServiceName(entity.getServiceName());
 			event.setOperation(RequestEvent.CREATE);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			history.append("Namespace").append(":").append(entity.getNamespace()).append("\n");
 			history.append("ServiceName").append(":").append(entity.getServiceName()).append("\n");
@@ -313,7 +313,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.CREATE_PUBLIC_SVC);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			// mariadb , redis, postgresql, rabbitmq, mongodb
 			log.info("{}, {}, {}", userInfo.getUserId(), userInfo.getUserName(), userInfo.getAccessRole());
@@ -355,7 +355,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.DELETE_PUBLIC_SVC);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			// mariadb , redis, postgresql, rabbitmq, mongodb
 			log.info("{}, {}, {}", userInfo.getUserId(), userInfo.getUserName(), userInfo.getAccessRole());
@@ -406,7 +406,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.SCALE_UP);
-			event.setUserId(userInfo.getUserName());	
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());	
 			
 			ZDBType dbType = ZDBType.getType(serviceType);
 
@@ -470,7 +470,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.STORAGE_SCALE_UP);
-			event.setUserId(userInfo.getUserName());	
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());	
 			
 			ZDBType dbType = ZDBType.getType(serviceType);
 
@@ -541,7 +541,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.SCALE_OUT);
-			event.setUserId(userInfo.getUserName());	
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());	
 			
 			ZDBType dbType = ZDBType.getType(serviceType);
 
@@ -598,7 +598,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setStartTime(new Date(System.currentTimeMillis()));
 			event.setOperation(RequestEvent.DELETE);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			com.zdb.core.domain.Result result = null;
 
@@ -650,7 +650,7 @@ public class ZDBRestController {
 			event.setOperation(RequestEvent.RESTART);
 			event.setNamespace(namespace);
 			event.setStartTime(new Date(System.currentTimeMillis()));
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			com.zdb.core.domain.Result result = null;
 
@@ -778,7 +778,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.UPDATE_CONFIG);
-			event.setUserId(userInfo.getUserName());	
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());	
 			
 			switch (dbType) {
 			case MariaDB:
@@ -865,7 +865,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.CREATE_DB_USER);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			result = ((MariaDBServiceImpl) mariadbService).createDBUser(txId, namespace, serviceName, account);
 			
@@ -909,7 +909,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.UPDATE_DB_USER);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			result = ((MariaDBServiceImpl) mariadbService).updateDBUser(txId(), namespace, serviceName, account);
 			
@@ -953,7 +953,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.DELETE_DB_USER);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			// mariadb , redis, postgresql, rabbitmq, mongodb
 			ZDBType dbType = ZDBType.getType(serviceType);
@@ -1459,7 +1459,7 @@ public class ZDBRestController {
 			event.setOperation(RequestEvent.MODIFY_PASSWORD);
 			event.setNamespace(namespace);
 			event.setStartTime(new Date(System.currentTimeMillis()));
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			String newPassword = param.get("newPassword");
 			String secretType = param.get("secretType");
@@ -1570,7 +1570,7 @@ public class ZDBRestController {
 			event.setOperation(RequestEvent.POD_RESTART);
 			event.setNamespace(namespace);
 			event.setStartTime(new Date(System.currentTimeMillis()));
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			com.zdb.core.domain.Result result = null;
 			
@@ -1630,7 +1630,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.CREATE);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			Result result = ((MariaDBServiceImpl)mariadbService).updateConfig(txId, namespace, serviceName, config);
 			
@@ -1671,7 +1671,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.CREATE_TAG);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			Result result = mariadbService.createTag(tag);
 
@@ -1713,7 +1713,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.DELETE_TAG);
-			event.setUserId(userInfo.getUserName());	
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());	
 			Result result = mariadbService.deleteTag(tag);
 			
 			event.setStatus(result.getCode());
@@ -1880,7 +1880,7 @@ public class ZDBRestController {
 			event.setNamespace(entity.getNamespace());
 			event.setServiceName(entity.getServiceName());
 			event.setOperation(RequestEvent.CREATE_PVC);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			log.info("{}, {}, {}", userInfo.getUserId(), userInfo.getUserName(), userInfo.getAccessRole());
 
@@ -2068,7 +2068,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.SERVICE_OFF);
-			event.setUserId(userInfo.getUserName());	
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());	
 			
 			ZDBType dbType = ZDBType.getType(serviceType);
 
@@ -2136,7 +2136,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.SERVICE_ON);
-			event.setUserId(userInfo.getUserName());	
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());	
 			
 			ZDBType dbType = ZDBType.getType(serviceType);
 
@@ -2200,7 +2200,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.SERVICE_MASTER_TO_SLAVE);
-			event.setUserId(userInfo.getUserName());	
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());	
 			
 			ZDBType dbType = ZDBType.getType(serviceType);
 
@@ -2211,6 +2211,8 @@ public class ZDBRestController {
 				result = mariadbService.serviceChangeMasterToSlave(txId, namespace, serviceType, serviceName);
 				break;
 			case Redis:
+				result = redisService.serviceChangeMasterToSlave(txId, namespace, serviceType, serviceName);
+				break;
 			default:
 				log.error(RequestEvent.SERVICE_MASTER_TO_SLAVE+" - Not support.");
 				result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_MASTER_TO_SLAVE+" - Not support.");
@@ -2258,7 +2260,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.SERVICE_SLAVE_TO_MASTER);
-			event.setUserId(userInfo.getUserName());	
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());	
 			
 			ZDBType dbType = ZDBType.getType(serviceType);
 			
@@ -2269,6 +2271,8 @@ public class ZDBRestController {
 				result = mariadbService.serviceChangeSlaveToMaster(txId, namespace, serviceType, serviceName);
 				break;
 			case Redis:
+				result = redisService.serviceChangeSlaveToMaster(txId, namespace, serviceType, serviceName);
+				break;
 			default:
 				log.error(RequestEvent.SERVICE_SLAVE_TO_MASTER+" - Not support.");
 				result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_SLAVE_TO_MASTER+" - Not support.");
@@ -2365,7 +2369,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.SLOWLOG_ROTATION);
-			event.setUserId(userInfo.getUserName());	
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());	
 			
 			ZDBType dbType = ZDBType.getType(serviceType);
 
@@ -2639,7 +2643,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.CHANGE_PORT);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			ZDBType dbType = ZDBType.getType(serviceType);
 
@@ -2758,7 +2762,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.CREATE_DATABASE);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			result = ((MariaDBServiceImpl) mariadbService).createDatabase(txId, namespace, serviceName, database);
 			
@@ -2801,7 +2805,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.DELETE_DATABASE);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			// mariadb , redis, postgresql, rabbitmq, mongodb
 			ZDBType dbType = ZDBType.getType(serviceType);

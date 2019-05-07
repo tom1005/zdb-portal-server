@@ -1855,8 +1855,8 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				}
 			
 			} else {
-				log.error("{} 의 slave 가 존재하지 않거나 서비스 가용 상태가 아닙니다.", serviceName);
-				return new Result(txId, Result.ERROR, serviceName + "의 slave 가 존재하지 않거나 서비스 가용 상태가 아닙니다.");
+				log.error("{} 의 Slave 가 존재하지 않거나 서비스 가용 상태가 아닙니다.", serviceName);
+				return new Result(txId, Result.ERROR, serviceName + "의 Slave 가 존재하지 않거나 서비스 가용 상태가 아닙니다.");
 			}
 			
 			
@@ -1896,7 +1896,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				if (response.getStatusCode() == HttpStatus.OK) {
 					result = new Result(txId, Result.OK, "서비스 L/B가 Slave 인스턴스로 전환 되었습니다.");
 					if (!history.toString().isEmpty()) {
-						result.putValue(Result.HISTORY, history.toString() +" 가 master 에서 slave 로 전환 되었습니다.\nmaster 서비스로 연결된 App.은 slave DB에 읽기/쓰기 됩니다.");
+						result.putValue(Result.HISTORY, history.toString() +" 가 Master 에서 Slave 로 전환 되었습니다.\nMaster 서비스로 연결된 App.은 Slave DB에 읽기/쓰기 됩니다.");
 					}
 					
 					List<Service> svcList = K8SUtil.getServices(namespace, serviceName);
