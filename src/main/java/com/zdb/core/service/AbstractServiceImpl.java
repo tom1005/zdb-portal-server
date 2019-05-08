@@ -25,6 +25,7 @@ import javax.persistence.TypedQuery;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Expression;
+import javax.persistence.criteria.Path;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 
@@ -44,6 +45,7 @@ import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.Exchange;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.NamespaceResource;
+import com.zdb.core.domain.PersistentVolumeClaimEntity;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
@@ -2111,6 +2113,86 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			return new Result("", Result.ERROR, e.getMessage(), e);
 		}
 	}
-	
+	@Override
+	public Result getStorages(String namespace, String keyword,String app,String storageClassName, String billingType, String phase,String stDate,String edDate) throws Exception {
+		try {
+			CriteriaBuilder builder = entityManager.getCriteriaBuilder();
+			CriteriaQuery<PersistentVolumeClaimEntity> query = builder.createQuery(PersistentVolumeClaimEntity.class);
+			Root<PersistentVolumeClaimEntity> root = query.from(PersistentVolumeClaimEntity.class);
+			// where절에 들어갈 옵션 목록.
+			List<Predicate> predicates = new ArrayList<>();
+
+			// where절에 like문 추가
+			if (StringUtils.hasText(namespace)) {
+				predicates.add(builder.equal(root.get("namespace"), namespace));
+			}
+			if (StringUtils.hasText(keyword)) {
+				Predicate releaseName = builder.like(root.get("release"), "%" + keyword + "%");
+				Predicate name = builder.like(root.get("name"), "%" + keyword + "%");
+				predicates.add(builder.or(releaseName, name));
+			}
+			if (StringUtils.hasText(app)) {
+				if(app.equals("-")) {
+					predicates.add(builder.isNull(root.get("app")));
+				}else {
+					predicates.add(builder.like(root.get("app"), "%" + app + "%"));
+				}
+			}
+			if (StringUtils.hasText(storageClassName)) {
+				if(storageClassName.equals("-")) {
+					predicates.add(builder.isNull(root.get("storageClassName")));
+				}else {
+					predicates.add(builder.like(root.get("storageClassName"), "%" + storageClassName + "%"));
+				}
+			}
+			if (StringUtils.hasText(billingType)) {
+				if(billingType.equals("-")) {
+					predicates.add(builder.isNull(root.get("billingType")));
+				}else {
+					predicates.add(builder.like(root.get("billingType"), "%" + billingType + "%"));
+				}
+			}
+			if (StringUtils.hasText(phase)) {
+				if(phase.equals("-")) {
+					predicates.add(builder.isNull(root.get("phase")));
+				}else {
+					predicates.add(builder.like(root.get("phase"), "%" + phase + "%"));
+				}
+			}
+			if (StringUtils.hasText(stDate)) {
+				Expression<Date> creationTimestamp = root.get("creationTimestamp");
+				GregorianCalendar gc1 = new GregorianCalendar();
+				gc1.setTime(DateUtil.parseDate(stDate,"yyyy-MM-dd"));
+				//gc1.add(Calendar.HOUR_OF_DAY, -9);				
+				predicates.add(builder.greaterThanOrEqualTo(creationTimestamp, gc1.getTime()));
+			}
+			if (StringUtils.hasText(edDate)) {
+				Expression<Date> creationTimestamp = root.get("creationTimestamp");
+				GregorianCalendar gc2 = new GregorianCalendar();
+				gc2.setTime(DateUtil.parseDate(edDate,"yyyy-MM-dd"));
+				//gc2.add(Calendar.HOUR_OF_DAY, 24 -9);	
+				gc2.add(Calendar.HOUR_OF_DAY, 24);				
+				predicates.add(builder.lessThan(creationTimestamp, gc2.getTime()));
+			}
+			//zcp-system 필터
+			predicates.add(builder.notEqual(root.get("namespace"), "zcp-system"));
+			
+			// 옵션 목록을 where절에 추가
+			query.where(predicates.toArray(new Predicate[] {}));
+			//query.orderBy(builder.desc(root.get("lastTimestamp")));
+
+			// 쿼리를 select문 추가
+			query.select(root);
+			// 최종적인 쿼리를 만큼
+			TypedQuery<PersistentVolumeClaimEntity> typedQuery = entityManager.createQuery(query);
+			// 쿼리 실행 후 결과 확인
+			List<PersistentVolumeClaimEntity> resultList = typedQuery.getResultList();
+			
+			return new Result("", Result.OK).putValue(IResult.STORAGES, resultList);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
 	
 }

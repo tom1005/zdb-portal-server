@@ -330,4 +330,6 @@ public interface ZDBRestService {
 
 	Result deleteAlertRule(String txId, AlertingRuleEntity alertingRuleEntity);
 
+	Result getStorages(String namespace, String keyword, String app, String storageClassName, String billingType, String phase, String stDate, String edDate) throws Exception;
+
 }

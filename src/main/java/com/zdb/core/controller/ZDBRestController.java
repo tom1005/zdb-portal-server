@@ -3000,5 +3000,28 @@ public class ZDBRestController {
 			result = new Result(null, IResult.ERROR, RequestEvent.SELECT_PROCESS + " 오류").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
-	} 
+	}
+	
+	@RequestMapping(value="/storages",method = RequestMethod.GET)
+	public ResponseEntity<String> getStorages(
+		@RequestParam(required=false) final String namespace,
+		@RequestParam(required=false) final String keyword,
+		@RequestParam(required=false) final String app,
+		@RequestParam(required=false) final String storageClassName,
+		@RequestParam(required=false) final String billingType,
+		@RequestParam(required=false) final String phase,
+		@RequestParam(required=false) final String stDate,
+		@RequestParam(required=false) final String edDate
+		) {
+		try {
+			Result result = mariadbService.getStorages(namespace, keyword,app,storageClassName, billingType, phase,stDate,edDate);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			
+			Result result = new Result(null, IResult.ERROR, "스토리지 조회 오류!").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
 }
