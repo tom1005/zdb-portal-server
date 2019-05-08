@@ -566,7 +566,7 @@ public class K8SService {
 		// failover 상태 
 		//   - 정상 : MasterToMaster, 
 		//   - failover 된 상태 : MasterToSlave
-		so.setServiceFailOverStatus(getServiceFailOverStatus(namespace, "mariadb", serviceName));
+		so.setServiceFailOverStatus(getServiceFailOverStatus(namespace, so.getServiceType(), serviceName));
 		
 		// 태그 정보 
 
