@@ -9,7 +9,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -23,16 +22,21 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import com.google.gson.Gson;
 import com.zdb.core.collector.MetaDataCollector;
 import com.zdb.core.domain.Connection;
 import com.zdb.core.domain.ConnectionInfo;
 import com.zdb.core.domain.IResult;
-import com.zdb.core.domain.Mycnf;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
@@ -43,11 +47,11 @@ import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBRedisConfig;
 import com.zdb.core.job.EventAdapter;
 import com.zdb.core.job.Job;
+import com.zdb.core.job.Job.JobResult;
 import com.zdb.core.job.JobExecutor;
 import com.zdb.core.job.JobHandler;
 import com.zdb.core.job.JobParameter;
 import com.zdb.core.job.ServiceOnOffJob;
-import com.zdb.core.job.Job.JobResult;
 import com.zdb.core.repository.ZDBRedisConfigRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
@@ -62,15 +66,17 @@ import hapi.release.ReleaseOuterClass.Release;
 import hapi.services.tiller.Tiller.UpdateReleaseRequest;
 import hapi.services.tiller.Tiller.UpdateReleaseResponse;
 import io.fabric8.kubernetes.api.model.ConfigMap;
-import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
-import io.fabric8.kubernetes.api.model.DoneableConfigMap;
+import io.fabric8.kubernetes.api.model.DoneableService;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.Secret;
+import io.fabric8.kubernetes.api.model.Service;
+import io.fabric8.kubernetes.api.model.ServiceList;
 import io.fabric8.kubernetes.api.model.ServicePort;
 import io.fabric8.kubernetes.api.model.extensions.Deployment;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import lombok.extern.slf4j.Slf4j;
 import redis.clients.jedis.Jedis;
@@ -82,7 +88,7 @@ import redis.clients.jedis.exceptions.JedisException;
  * @author 06919
  *
  */
-@Service("redisService")
+@org.springframework.stereotype.Service("redisService")
 @Slf4j
 @Configuration
 public class RedisServiceImpl extends AbstractServiceImpl {
@@ -516,9 +522,9 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 
 		List<Connection> connectionList = new ArrayList<>();
 
-		List<io.fabric8.kubernetes.api.model.Service> services = K8SUtil.getServices(namespace, serviceName);
+		List<Service> services = K8SUtil.getServices(namespace, serviceName);
 
-		for (io.fabric8.kubernetes.api.model.Service service : services) {
+		for (Service service : services) {
 			Connection connection = new Connection();
 
 			try {
@@ -1176,6 +1182,203 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 		return result;
 	}
 
+	@Override
+	public Result serviceChangeMasterToSlave(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+		Result result = null;
+		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
+			
+			StringBuffer history = new StringBuffer();
+			
+			Pod pod = k8sService.getPod(namespace, serviceName, "slave");
+			
+			if( pod == null || !PodManager.isReady(pod)) {
+				log.error("{} 의 Slave 가 존재하지 않거나 서비스 가용 상태가 아닙니다.", serviceName);
+				return new Result(txId, Result.ERROR, serviceName + "의 Slave 가 존재하지 않거나 서비스 가용 상태가 아닙니다.");
+			}
+			
+			
+			MixedOperation<Service, ServiceList, DoneableService, Resource<Service, DoneableService>> services = client.inNamespace(namespace).services();
+			
+			List<Service> items = services.withLabel("release", serviceName).list().getItems();
+			
+			List<Service> masterItems = new ArrayList<>();
+			
+			if(items.size() > 0) {
+				for (Service service : items) {
+					String name = service.getMetadata().getName();
+					if(name.indexOf("redis-master") > -1) {
+						masterItems.add(service);
+					}
+				}
+			}
+			
+			if(masterItems.size() > 0) {
+				log.info("서비스 전환 대상 서비스가 {}개 존재합니다.", masterItems.size());
+				for (Service service : masterItems) {
+					log.info("	- {}", service.getMetadata().getName());
+				}
+			} else {
+				log.error("서비스 전환 대상 서비스가 없습니다.");
+				return new Result(txId, Result.ERROR, "서비스 전환 대상 서비스가 없습니다.");
+			}
+			
+			for (Service service : masterItems) {
+				RestTemplate rest = K8SUtil.getRestTemplate();
+				String idToken = K8SUtil.getToken();
+				String masterUrl = K8SUtil.getMasterURL();
+				
+				HttpHeaders headers = new HttpHeaders();
+				headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
+				headers.set("Authorization", "Bearer " + idToken);
+				headers.set("Content-Type", "application/json-patch+json");
+				
+//					{ "spec": { "selector": { "component": "slave", } } }
+				
+				String data = "[{\"op\":\"replace\",\"path\":\"/spec/selector/role\",\"value\":\"slave\"}]";
+			    
+				HttpEntity<String> requestEntity = new HttpEntity<>(data, headers);
+
+				String endpoint = masterUrl + "/api/v1/namespaces/{namespace}/services/{name}";
+				ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.PATCH, requestEntity, String.class, namespace, service.getMetadata().getName());
+				
+				if (response.getStatusCode() == HttpStatus.OK) {
+					result = new Result(txId, Result.OK, "서비스 L/B가 Slave 인스턴스로 전환 되었습니다.");
+					if (!history.toString().isEmpty()) {
+						result.putValue(Result.HISTORY, history.toString() +" 가 Master 에서 Slave 로 전환 되었습니다.\nMaster 서비스로 연결된 App.은 Slave 노드에 읽기 모드로 동작 합니다.");
+					}
+					
+					List<Service> svcList = K8SUtil.getServices(namespace, serviceName);
+					metaDataCollector.save(svcList);
+					
+					// send websocket
+					try {
+						ServiceOverview serviceOverview = k8sService.getServiceWithName(namespace, serviceType, serviceName);
+						
+						Result r = Result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
+						messageSender.convertAndSend("/service/" + serviceOverview.getServiceName(), r);
+					} catch (MessagingException e1) {
+						e1.printStackTrace();
+					} catch (Exception e1) {
+						e1.printStackTrace();
+					}
+				} else {
+					System.err.println("HttpStatus ; " + response.getStatusCode());
+					
+					log.error(response.getBody());
+					result = new Result(txId, Result.ERROR, "서비스 전환 오류.");
+				}
+			}
+			
+			return result;	
+		} catch (FileNotFoundException | KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result(txId, Result.UNAUTHORIZED, "클러스터에 접근이 불가하거나 인증에 실패 했습니다.", null);
+			} else {
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result(txId, Result.ERROR, e.getMessage(), e);
+		}
+	}
+	
+	@Override
+	public Result serviceChangeSlaveToMaster(String txId, String namespace, String serviceType, String serviceName) throws Exception {
+		Result result = null;
+		
+		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
+			
+			StringBuffer history = new StringBuffer();
+
+			MixedOperation<io.fabric8.kubernetes.api.model.Service, ServiceList, DoneableService, Resource<io.fabric8.kubernetes.api.model.Service, DoneableService>> services = client.inNamespace(namespace).services();
+			
+			List<Service> items = services.withLabel("release", serviceName).list().getItems();
+			
+			List<Service> masterItems = new ArrayList<>();
+			
+			if(items.size() > 0) {
+				for (Service service : items) {
+					String name = service.getMetadata().getName();
+					if(name.indexOf("redis-master") > -1) {
+						masterItems.add(service);
+					}
+				}
+			}
+			
+			if(masterItems.size() > 0) {
+				log.info("서비스 전환 대상 서비스가 {}개 존재합니다.", masterItems.size());
+				for (Service service : masterItems) {
+					log.info("	- {}", service.getMetadata().getName());
+				}
+			} else {
+				log.error("서비스 전환 대상 서비스가 없습니다.");
+				return new Result(txId, Result.ERROR, "서비스 전환 대상 서비스가 없습니다.");
+			}
+			
+			for (Service service : masterItems) {
+				RestTemplate rest = K8SUtil.getRestTemplate();
+				String idToken = K8SUtil.getToken();
+				String masterUrl = K8SUtil.getMasterURL();
+				
+				HttpHeaders headers = new HttpHeaders();
+				headers.set("Accept", MediaType.APPLICATION_JSON_VALUE);
+				headers.set("Authorization", "Bearer " + idToken);
+				headers.set("Content-Type", "application/json-patch+json");
+				
+//					{ "spec": { "selector": { "role": "slave", } } }
+				String data = "[{\"op\":\"replace\",\"path\":\"/spec/selector/role\",\"value\":\"master\"}]";
+			    
+				HttpEntity<String> requestEntity = new HttpEntity<>(data, headers);
+
+				String name = service.getMetadata().getName();
+				String endpoint = masterUrl + "/api/v1/namespaces/{namespace}/services/{name}";
+				ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.PATCH, requestEntity, String.class, namespace, name);
+				
+				if (response.getStatusCode() == HttpStatus.OK) {
+					
+//					result = new Result(txId, Result.OK, "서비스 전환 완료(slave->master)");
+					result = new Result(txId, Result.OK, "서비스 L/B가 Master 인스턴스로 전환 되었습니다.");
+					if (!history.toString().isEmpty()) {
+						result.putValue(Result.HISTORY, history.toString() +" 가 Slave 에서 Master 로 전환 되었습니다.");
+					}
+					
+					List<Service> svcList = K8SUtil.getServices(namespace, serviceName);
+					metaDataCollector.save(svcList);
+					
+					// websocket send.
+					try {
+						ServiceOverview serviceOverview = k8sService.getServiceWithName(namespace, serviceType, serviceName);
+						
+						Result r = Result.RESULT_OK.putValue(IResult.SERVICEOVERVIEW, serviceOverview);
+						messageSender.convertAndSend("/service/" + serviceOverview.getServiceName(), r);
+					} catch (MessagingException e1) {
+						e1.printStackTrace();
+					} catch (Exception e1) {
+						e1.printStackTrace();
+					}
+				} else {
+					System.err.println("HttpStatus ; " + response.getStatusCode());
+					
+					log.error(response.getBody());
+					result = new Result(txId, Result.ERROR, "서비스 전환 오류.");
+				}
+			}
+			
+			return result;	
+		} catch (FileNotFoundException | KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result(txId, Result.UNAUTHORIZED, "클러스터에 접근이 불가하거나 인증에 실패 했습니다.", null);
+			} else {
+				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result(txId, Result.ERROR, e.getMessage(), e);
+		}
+	}
+	
 	@Override
 	public Result getFileLog(String namespace, String serviceName,String logType, String dates) {
 		// TODO Auto-generated method stub
