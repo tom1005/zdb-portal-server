@@ -1390,7 +1390,10 @@ public class ZDBRestController {
 			        				     @PathVariable("podName") final String podName ) {
 		try {
 			//http://169.56.80.189/api/v1/model/namespaces/zdb-maria/pod-list/maria-test777-mariadb-0/metrics/cpu-usage
-			Result result = mariadbService.getPodMetrics(namespace, podName);
+			//Result result = mariadbService.getPodMetrics(namespace, podName);
+			
+			// modified 20190510 heapster, metric-server 모두 지원 
+			Result result = mariadbService.getPodMetricsV2(namespace, podName);
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);

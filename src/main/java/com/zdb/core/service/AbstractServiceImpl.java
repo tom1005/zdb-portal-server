@@ -25,7 +25,6 @@ import javax.persistence.TypedQuery;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Expression;
-import javax.persistence.criteria.Path;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 
@@ -70,7 +69,9 @@ import com.zdb.core.util.DateUtil;
 import com.zdb.core.util.HeapsterMetricUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.NamespaceResourceChecker;
+import com.zdb.core.util.NumberUtils;
 import com.zdb.core.util.ZDBLogViewer;
+import com.zdb.core.vo.PodMetrics;
 import com.zdb.redis.RedisConfiguration;
 import com.zdb.redis.RedisConnection;
 
@@ -1303,9 +1304,89 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		return null;
 	}
 	
-	public Result getPodMetrics(String namespace, String podName) throws Exception {
+	/* (non-Javadoc)
+	 * @see com.zdb.core.service.ZDBRestService#getPodMetricsV2(java.lang.String, java.lang.String)
+	 */
+	public Result getPodMetricsV2(String namespace, String podName) throws Exception {
 		Result result = new Result("", Result.OK);
 
+		Deployment deployment = K8SUtil.kubernetesClient().inNamespace("kube-system").extensions().deployments().withName("heapster").get();
+		
+		try {
+			HeapsterMetricUtil metricUtil = new HeapsterMetricUtil();
+			
+			// heapster 사용 
+			if(deployment != null) {
+				PodMetrics metrics = metricUtil.getMetricFromHeapster(namespace, podName);
+				List<com.zdb.core.vo.Container> containers = metrics.getContainers();
+				
+				String timestamp = metrics.getTimestamp();
+				
+				double cupValue = 0;
+				double memValue = 0;
+				for (com.zdb.core.vo.Container c : containers) {
+					String cpu = c.getUsage().getCpu();
+					String memory = c.getUsage().getMemory();
+					
+					Double cpuByM = NumberUtils.cpuByM(cpu);
+					cupValue += cpuByM.doubleValue();
+					
+					Double memoryByMi = NumberUtils.memoryByMi(memory);
+					memValue += (memoryByMi.doubleValue());
+				}
+			
+				String cpuStringValue = String.format("{\"metrics\":[{\"timestamp\":\"%s\",\"value\":%d}]}",timestamp, ((int)cupValue));
+				String memStringValue = String.format("{\"metrics\":[{\"timestamp\":\"%s\",\"value\":%s}]}",timestamp, ((int)memValue)+"");
+				
+				Gson gson = new GsonBuilder().create();
+				java.util.Map<String, Object> cpuUsage = gson.fromJson(cpuStringValue, java.util.Map.class);
+				java.util.Map<String, Object> memoryUsage = gson.fromJson(memStringValue, java.util.Map.class);
+				
+				result.putValue(IResult.METRICS_CPU_USAGE, cpuUsage.get("metrics"));
+				result.putValue(IResult.METRICS_MEM_USAGE, memoryUsage.get("metrics"));
+				
+			} else {
+				// metricserver 사용 
+//				[{"timestamp":"2019-03-19T11:26:00Z","value":2}]
+				
+				PodMetrics metrics = metricUtil.getMetricFromMetricServer(namespace, podName);
+				List<com.zdb.core.vo.Container> containers = metrics.getContainers();
+				
+				String timestamp = metrics.getTimestamp();
+				
+				double cupValue = 0;
+				double memValue = 0;
+				for (com.zdb.core.vo.Container c : containers) {
+					String cpu = c.getUsage().getCpu();
+					String memory = c.getUsage().getMemory();
+					
+					Double cpuByM = NumberUtils.cpuByM(cpu);
+					cupValue += cpuByM.doubleValue();
+					
+					Double memoryByMi = NumberUtils.memoryByMi(memory);
+					memValue += memoryByMi.doubleValue();
+				}
+			
+				String cpuStringValue = String.format("[{\"timestamp\":\"%s\",\"value\":%d}]",timestamp, ((int)cupValue));
+				String memStringValue = String.format("[{\"timestamp\":\"%s\",\"value\":%d}]",timestamp, ((int)memValue));
+				
+				Gson gson = new GsonBuilder().create();
+				java.util.Map<String, Object> cpuUsage = gson.fromJson(cpuStringValue, java.util.Map.class);
+				java.util.Map<String, Object> memoryUsage = gson.fromJson(memStringValue, java.util.Map.class);
+				
+				result.putValue(IResult.METRICS_CPU_USAGE, cpuUsage);
+				result.putValue(IResult.METRICS_MEM_USAGE, memoryUsage);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
+
+		return result;
+	}
+	
+	public Result getPodMetrics(String namespace, String podName) throws Exception {
+		Result result = new Result("", Result.OK);
+		
 		HeapsterMetricUtil metricUtil = new HeapsterMetricUtil();
 		try {
 			Object cpuUsage = metricUtil.getCPUUsage(namespace, podName);
@@ -1317,7 +1398,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			result.putValue(IResult.METRICS_CPU_USAGE, "");
 			result.putValue(IResult.METRICS_MEM_USAGE, "");
 		}
-
+		
 		return result;
 	}
 	

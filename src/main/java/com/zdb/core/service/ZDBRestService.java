@@ -152,6 +152,8 @@ public interface ZDBRestService {
 	Result getConnectionInfo(String namespace, String serviceType, String serviceName) throws Exception;
 
 	Result getPodMetrics(String namespace, String podName) throws Exception;
+
+	Result getPodMetricsV2(String namespace, String podName) throws Exception;
 	
 	Result updateDBVariables(final String txId, final String namespace, final String serviceName, Map<String, String> config) throws Exception;
 
