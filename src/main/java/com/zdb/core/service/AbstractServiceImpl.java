@@ -3,6 +3,7 @@ package com.zdb.core.service;
 import java.io.FileNotFoundException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
@@ -61,6 +62,7 @@ import com.zdb.core.domain.ZDBType;
 import com.zdb.core.repository.DiskUsageRepository;
 import com.zdb.core.repository.EventRepository;
 import com.zdb.core.repository.MetadataRepository;
+import com.zdb.core.repository.PersistentVolumeClaimRepository;
 import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBConfigRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
@@ -134,6 +136,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	
 	@Autowired
 	protected AlertService alertService;
+	
+	@Autowired PersistentVolumeClaimRepository persistentVolumeClaimRepository;
 	
 	protected String chartUrl;
 	
@@ -2260,8 +2264,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			
 			// 옵션 목록을 where절에 추가
 			query.where(predicates.toArray(new Predicate[] {}));
-			//query.orderBy(builder.desc(root.get("lastTimestamp")));
-
+			query.orderBy(builder.desc(root.get("creationTimestamp")),builder.desc(root.get("name")));
+			
 			// 쿼리를 select문 추가
 			query.select(root);
 			// 최종적인 쿼리를 만큼
@@ -2275,5 +2279,32 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			return new Result("", Result.ERROR, e.getMessage(), e);
 		}
 	}
+	@Override
+	public Result getStoragesData() throws Exception {
+		HashMap<String, List<String>> storageData = new HashMap<>();
+		List<String> cols = Arrays.asList("app","billingType");
+		List<Predicate> predicates = new ArrayList<>();
+		try {
+			CriteriaBuilder builder = entityManager.getCriteriaBuilder();
+			CriteriaQuery<String> query = builder.createQuery(String.class);
+			Root<PersistentVolumeClaimEntity> root = query.from(PersistentVolumeClaimEntity.class);
+			for(String col:cols) {
+				query.select(root.get(col)).distinct(true);
+				predicates.add(builder.isNotNull(root.get(col)));
+				query.where(predicates.toArray(new Predicate[] {}));
+				
+				TypedQuery<String> q = entityManager.createQuery(query);	
+				List<String> li = q.getResultList();
+				storageData.put(col, li);
+			}
+			
+			return new Result("", Result.OK).putValue(IResult.STORAGES_DATA, storageData);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
+	
+	
 	
 }

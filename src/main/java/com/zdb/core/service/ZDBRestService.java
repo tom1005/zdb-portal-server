@@ -334,4 +334,6 @@ public interface ZDBRestService {
 
 	Result getStorages(String namespace, String keyword, String app, String storageClassName, String billingType, String phase, String stDate, String edDate) throws Exception;
 
+	Result getStoragesData() throws Exception;
+
 }
