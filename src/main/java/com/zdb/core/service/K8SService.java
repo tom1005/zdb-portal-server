@@ -22,12 +22,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.zdb.core.domain.CommonConstants;
 import com.zdb.core.domain.DiskUsage;
 import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.MetaData;
 import com.zdb.core.domain.PersistenceSpec;
-import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.ScheduleEntity;
@@ -45,7 +45,9 @@ import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.util.HeapsterMetricUtil;
 import com.zdb.core.util.K8SUtil;
+import com.zdb.core.util.NumberUtils;
 import com.zdb.core.util.PodManager;
+import com.zdb.core.vo.PodMetrics;
 
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.Container;
@@ -694,6 +696,8 @@ public class K8SService {
 				so.getDiskUsageOfPodMap().put(podName, disk);
 			}
 
+			Deployment deployment = K8SUtil.kubernetesClient().inNamespace("kube-system").extensions().deployments().withName("heapster").get();
+			
 			// metric 정보를 ui 에 담에서 전송...
 			for (Pod pod : so.getPods()) {
 				if (PodManager.isReady(pod)) {
@@ -701,10 +705,69 @@ public class K8SService {
 
 					try {
 						HeapsterMetricUtil metricUtil = new HeapsterMetricUtil();
-						Object cpuUsage = metricUtil.getCPUUsage(namespace, podName);
-						so.getCpuUsageOfPodMap().put(podName, cpuUsage);
-						Object memoryUsage = metricUtil.getMemoryUsage(namespace, podName);
-						so.getMemoryUsageOfPodMap().put(podName, memoryUsage);
+						
+						// heapster 사용 
+						if(deployment != null) {
+							PodMetrics metrics = metricUtil.getMetricFromHeapster(namespace, podName);
+							List<com.zdb.core.vo.Container> containers = metrics.getContainers();
+							
+							String timestamp = metrics.getTimestamp();
+							
+							double cupValue = 0;
+							double memValue = 0;
+							for (com.zdb.core.vo.Container c : containers) {
+								String cpu = c.getUsage().getCpu();
+								String memory = c.getUsage().getMemory();
+								
+								Double cpuByM = NumberUtils.cpuByM(cpu);
+								cupValue += cpuByM.doubleValue();
+								
+								Double memoryByMi = NumberUtils.memoryByMi(memory);
+								memValue += (memoryByMi.doubleValue());
+							}
+						
+							String cpuStringValue = String.format("{\"metrics\":[{\"timestamp\":\"%s\",\"value\":%d}]}",timestamp, ((int)cupValue));
+							String memStringValue = String.format("{\"metrics\":[{\"timestamp\":\"%s\",\"value\":%s}]}",timestamp, ((int)memValue)+"");
+							
+							Gson gson = new GsonBuilder().create();
+							java.util.Map<String, Object> cpuUsage = gson.fromJson(cpuStringValue, java.util.Map.class);
+							java.util.Map<String, Object> memoryUsage = gson.fromJson(memStringValue, java.util.Map.class);
+							so.getCpuUsageOfPodMap().put(podName, cpuUsage.get("metrics"));							
+							so.getMemoryUsageOfPodMap().put(podName, memoryUsage.get("metrics"));
+//							
+							
+						} else {
+							// metricserver 사용 
+//							[{"timestamp":"2019-03-19T11:26:00Z","value":2}]
+							
+							PodMetrics metrics = metricUtil.getMetricFromMetricServer(namespace, podName);
+							List<com.zdb.core.vo.Container> containers = metrics.getContainers();
+							
+							String timestamp = metrics.getTimestamp();
+							
+							double cupValue = 0;
+							double memValue = 0;
+							for (com.zdb.core.vo.Container c : containers) {
+								String cpu = c.getUsage().getCpu();
+								String memory = c.getUsage().getMemory();
+								
+								Double cpuByM = NumberUtils.cpuByM(cpu);
+								cupValue += cpuByM.doubleValue();
+								
+								Double memoryByMi = NumberUtils.memoryByMi(memory);
+								memValue += memoryByMi.doubleValue();
+							}
+						
+							String cpuStringValue = String.format("[{\"timestamp\":\"%s\",\"value\":%d}]",timestamp, ((int)cupValue));
+							String memStringValue = String.format("[{\"timestamp\":\"%s\",\"value\":%d}]",timestamp, ((int)memValue));
+							
+							Gson gson = new GsonBuilder().create();
+							java.util.Map<String, Object> cpuUsage = gson.fromJson(cpuStringValue, java.util.Map.class);
+							java.util.Map<String, Object> memoryUsage = gson.fromJson(memStringValue, java.util.Map.class);
+							
+							so.getCpuUsageOfPodMap().put(podName, cpuUsage);
+							so.getMemoryUsageOfPodMap().put(podName, memoryUsage);
+						}
 					} catch (Exception e) {
 						log.error(e.getMessage(), e);
 					}
