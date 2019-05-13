@@ -379,20 +379,21 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 					scheduleInfo.setIncrementPeriod(schedule.getIncrementPeriod());
 					
 					List<BackupEntity> backuplist = backupRepository.findBackupListByScheduleId(schedule.getScheduleId());
+					log.info(">>>> getScheduleInfoList : ScheduleId - " + schedule.getScheduleId());
+					log.info(">>>> getScheduleInfoList : backuplist Size - " + backuplist.size());
 					for(int i=0; i<backuplist.size(); i++) {
 						BackupEntity backup = backuplist.get(i);
-						if(backup.getStatus() == "OK") {
-							if(backup.getType().equals("FULL")) {
-								fullFileSize += backup.getFileSize();
-								fullExecutionMilSec += backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime();
-								fullBackupCnt++;
-							}else if(backup.getType().equals("INCR")) {
-								incrFileSize += backup.getFileSize();
-								incrExecutionMilSec += backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime();
-								incrtBackupCnt++;
-								if (log.isInfoEnabled()) {
-									log.info(">>>> getScheduleInfoList ");
-								}
+						log.info(">>>> getScheduleInfoList : backuplist(" + i + "{" +" TYPE:"+backup.getType()+", " + " FileSize: " + backup.getFileSize() + "}");
+						if(backup.getType().equals("FULL")) {
+							fullFileSize += backup.getFileSize();
+							fullExecutionMilSec += backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime();
+							fullBackupCnt++;
+						}else if(backup.getType().equals("INCR")) {
+							incrFileSize += backup.getFileSize();
+							incrExecutionMilSec += backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime();
+							incrtBackupCnt++;
+							if (log.isInfoEnabled()) {
+								log.info(">>>> getScheduleInfoList ");
 							}
 						}
 					}
