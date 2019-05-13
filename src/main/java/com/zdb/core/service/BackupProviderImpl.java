@@ -379,11 +379,8 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 					scheduleInfo.setIncrementPeriod(schedule.getIncrementPeriod());
 					
 					List<BackupEntity> backuplist = backupRepository.findBackupListByScheduleId(schedule.getScheduleId());
-					log.info(">>>> getScheduleInfoList : ScheduleId - " + schedule.getScheduleId());
-					log.info(">>>> getScheduleInfoList : backuplist Size - " + backuplist.size());
 					for(int i=0; i<backuplist.size(); i++) {
 						BackupEntity backup = backuplist.get(i);
-						log.info(">>>> getScheduleInfoList : backuplist(" + i + "{" +" TYPE:"+backup.getType()+", " + " FileSize: " + backup.getFileSize() + "}");
 						if(backup.getType().equals("FULL")) {
 							fullFileSize += backup.getFileSize();
 							fullExecutionMilSec += backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime();
@@ -392,24 +389,15 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 							incrFileSize += backup.getFileSize();
 							incrExecutionMilSec += backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime();
 							incrtBackupCnt++;
-							if (log.isInfoEnabled()) {
-								log.info(">>>> getScheduleInfoList ");
-							}
 						}
 					}
 					
-					if (log.isInfoEnabled()) {
-						log.info(">>>> getScheduleInfoList : {" +" namespacee:"+releaseMeta.getNamespace()+", " + " serviceName: " + releaseMeta.getReleaseName() + "}");
-						log.info(">>>> getScheduleInfoList : {" +"fullFileSize:"+fullFileSize+", " + " incrFileSize: " + incrFileSize + "}");
-					}
-					
-					
 					if(fullBackupCnt != 0) {
-						fullFileSize = fullFileSize/fullBackupCnt;
+						fullFileSize = fullFileSize/fullBackupCnt/1024/1024;
 						fullExecutionTime = getExecutionTimeConvertion(fullExecutionMilSec/fullBackupCnt);
 					}
 					if(incrtBackupCnt != 0) {
-						incrFileSize = incrFileSize/fullBackupCnt;
+						incrFileSize = incrFileSize/fullBackupCnt/1024/1024;
 						incrExecutionTime = getExecutionTimeConvertion(incrExecutionMilSec/incrtBackupCnt);
 					}
 					scheduleInfo.setFullFileSize(fullFileSize);
