@@ -337,72 +337,87 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 			log.debug("getSchedule - namespace : "+namespace);
 			
 			List<ScheduleInfoEntity> scheduleInfolist = new ArrayList<ScheduleInfoEntity>();
-			List<ReleaseMetaData> releaseMetaList = releaseRepository.findForBackupList();
+			List<ReleaseMetaData> releaseMetaList = null;
+			if(namespace.equals("all")) {
+				releaseMetaList = releaseRepository.findForBackupList();
+			}else {
+				releaseMetaList = releaseRepository.findByNamespace(namespace);
+			}
+			
 			releaseMetaList.forEach(releaseMeta -> {
-				if ( namespace.equals("_DEFAULT_ALL") || releaseMeta.getNamespace().equals(namespace)) {
+				
+				long fullFileSize = 0l;
+				long fullExecutionMilSec = 0l;
+				String fullExecutionTime = "";
+				long incrFileSize = 0l;
+				long incrExecutionMilSec = 0l;
+				String incrExecutionTime = "";
+				int fullBackupCnt = 0;
+				int incrtBackupCnt = 0;
+				
+				ScheduleInfoEntity scheduleInfo = new ScheduleInfoEntity();
+				scheduleInfo.setNamespace(releaseMeta.getNamespace());
+				scheduleInfo.setServiceType(releaseMeta.getApp());
+				scheduleInfo.setServiceName(releaseMeta.getReleaseName());
+				
+				scheduleInfo.setUseYn("N");
+				scheduleInfo.setStartTime(ZDBConfigService.backupTimeValue);
+				scheduleInfo.setStorePeriod(Integer.parseInt(ZDBConfigService.backupDuratioValue));
+				scheduleInfo.setIncrementYn("N");
+				scheduleInfo.setIncrementPeriod(0);
+				
+				scheduleInfo.setFullFileSize(fullFileSize);
+				scheduleInfo.setFullExecutionTime(fullExecutionTime);
+				scheduleInfo.setIncrFileSize(incrFileSize);
+				
+				ScheduleEntity schedule = scheduleRepository.findScheduleByName(releaseMeta.getNamespace(), releaseMeta.getApp(), releaseMeta.getReleaseName());
+				if(schedule != null) {
+					scheduleInfo.setUseYn(schedule.getUseYn());
+					scheduleInfo.setStartTime(schedule.getStartTime());
+					scheduleInfo.setStorePeriod(schedule.getStorePeriod());
+					scheduleInfo.setIncrementYn(schedule.getIncrementYn());
+					scheduleInfo.setIncrementPeriod(schedule.getIncrementPeriod());
 					
-					long fullFileSize = 0l;
-					long fullExecutionMilSec = 0l;
-					String fullExecutionTime = "";
-					long incrFileSize = 0l;
-					long incrExecutionMilSec = 0l;
-					String incrExecutionTime = "";
-					int fullBackupCnt = 0;
-					int incrtBackupCnt = 0;
+					List<BackupEntity> backuplist = backupRepository.findBackupListByScheduleId(schedule.getScheduleId());
+					for(int i=0; i<backuplist.size(); i++) {
+						BackupEntity backup = backuplist.get(i);
+						if(backup.getStatus() == "OK") {
+							if(backup.getType().equals("FULL")) {
+								fullFileSize += backup.getFileSize();
+								fullExecutionMilSec += backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime();
+								fullBackupCnt++;
+							}else if(backup.getType().equals("INCR")) {
+								incrFileSize += backup.getFileSize();
+								incrExecutionMilSec += backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime();
+								incrtBackupCnt++;
+								if (log.isInfoEnabled()) {
+									log.info(">>>> getScheduleInfoList ");
+								}
+							}
+						}
+					}
 					
-					ScheduleInfoEntity scheduleInfo = new ScheduleInfoEntity();
-					scheduleInfo.setNamespace(releaseMeta.getNamespace());
-					scheduleInfo.setServiceType(releaseMeta.getApp());
-					scheduleInfo.setServiceName(releaseMeta.getReleaseName());
+					if (log.isInfoEnabled()) {
+						log.info(">>>> getScheduleInfoList : {" +" namespacee:"+releaseMeta.getNamespace()+", " + " serviceName: " + releaseMeta.getReleaseName() + "}");
+						log.info(">>>> getScheduleInfoList : {" +"fullFileSize:"+fullFileSize+", " + " incrFileSize: " + incrFileSize + "}");
+					}
 					
-					scheduleInfo.setUseYn("N");
-					scheduleInfo.setStartTime(ZDBConfigService.backupTimeValue);
-					scheduleInfo.setStorePeriod(Integer.parseInt(ZDBConfigService.backupDuratioValue));
-					scheduleInfo.setIncrementYn("N");
-					scheduleInfo.setIncrementPeriod(0);
+					
+					if(fullBackupCnt != 0) {
+						fullFileSize = fullFileSize/fullBackupCnt;
+						fullExecutionTime = getExecutionTimeConvertion(fullExecutionMilSec/fullBackupCnt);
+					}
+					if(incrtBackupCnt != 0) {
+						incrFileSize = incrFileSize/fullBackupCnt;
+						incrExecutionTime = getExecutionTimeConvertion(incrExecutionMilSec/incrtBackupCnt);
+					}
 					scheduleInfo.setFullFileSize(fullFileSize);
 					scheduleInfo.setFullExecutionTime(fullExecutionTime);
 					scheduleInfo.setIncrFileSize(incrFileSize);
 					scheduleInfo.setIncrExecutionTime(incrExecutionTime);
-					
-					ScheduleEntity schedule = scheduleRepository.findScheduleByName(releaseMeta.getNamespace(), releaseMeta.getApp(), releaseMeta.getReleaseName());
-					if(schedule != null) {
-						scheduleInfo.setUseYn(schedule.getUseYn());
-						scheduleInfo.setStartTime(schedule.getStartTime());
-						scheduleInfo.setStorePeriod(schedule.getStorePeriod());
-						scheduleInfo.setIncrementYn(schedule.getIncrementYn());
-						scheduleInfo.setIncrementPeriod(schedule.getIncrementPeriod());
-						
-						List<BackupEntity> backuplist = backupRepository.findBackupListByScheduleId(schedule.getScheduleId());
-						for(int i=0; i<backuplist.size(); i++) {
-							BackupEntity backup = backuplist.get(i);
-							if(backup.getStatus() == "OK") {
-								if(backup.getType().equals("FULL")) {
-									fullFileSize += backup.getFileSize();
-									fullExecutionMilSec += backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime();
-									fullBackupCnt++;
-								}else if(backup.getType().equals("INCR")) {
-									incrFileSize += backup.getFileSize();
-									incrExecutionMilSec += backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime();
-									incrtBackupCnt++;
-								}
-							}
-						}
-						if(fullBackupCnt != 0) {
-							fullFileSize = fullFileSize/fullBackupCnt;
-							fullExecutionTime = getExecutionTimeConvertion(fullExecutionMilSec/fullBackupCnt);
-						}
-						if(incrtBackupCnt != 0) {
-							incrFileSize = incrFileSize/fullBackupCnt;
-							incrExecutionTime = getExecutionTimeConvertion(incrExecutionMilSec/incrtBackupCnt);
-						}
-						scheduleInfo.setFullFileSize(fullFileSize);
-						scheduleInfo.setFullExecutionTime(fullExecutionTime);
-						scheduleInfo.setIncrFileSize(incrFileSize);
-						scheduleInfo.setIncrExecutionTime(incrExecutionTime);
-					}
-					scheduleInfolist.add(scheduleInfo);
 				}
+				scheduleInfolist.add(scheduleInfo);
+				
 			});
 			
 			
