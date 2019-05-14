@@ -120,7 +120,7 @@ public interface ZDBRestService {
 	Result getEvents(String namespace, String servceName, String kind, String startTime, String endTime, String keyword) throws Exception;
 	
 	/**
-	 *  get persistent volume claims
+	 *  get user namespaces
 	 * @param namespace
 	 */
 	Result getNamespaces(List<String> filters) throws Exception;
