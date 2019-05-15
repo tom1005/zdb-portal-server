@@ -13,5 +13,8 @@ public class BackupResult {
 	private String fromBackup;
 	private String archiveFileSize;
 	private String userName;
+	private String backupTime;
+	private String archiveTime; 
+	private String uploadTime;
 
 }	
