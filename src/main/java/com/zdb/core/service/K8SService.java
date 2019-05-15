@@ -17,9 +17,17 @@ import java.util.Set;
 
 import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -96,6 +104,9 @@ public class K8SService {
 	
 	@Autowired
 	private ScheduleEntityRepository scheduleEntity;
+	
+	@Value("${iam.baseUrl}")
+	public String iamBaseUrl;
 	
 	/**
 	 * @param namespace
@@ -1564,6 +1575,36 @@ public class K8SService {
 		
 		return list;
 	
+	}
+	
+	public Map getUserInfo(String userId) throws Exception {
+		RestTemplate rest = K8SUtil.getRestTemplate();
+
+		HttpHeaders headers = new HttpHeaders();
+		List<MediaType> mediaTypeList = new ArrayList<MediaType>();
+		mediaTypeList.add(MediaType.APPLICATION_JSON);
+		headers.setAccept(mediaTypeList);
+		headers.set("Content-Type", "application/json-patch+json");
+
+		// https://pog-dev-internal-iam.cloudzcp.io:443/iam/user/1da3110f-aade-43e2-b0fb-2d125a5a5529
+		HttpEntity<String> requestEntity = new HttpEntity<>(headers);
+		String endpoint = iamBaseUrl + "/iam/user/{user}";
+		ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.GET, requestEntity, String.class, userId);
+
+
+		if(response.getStatusCode() == HttpStatus.OK) {
+			String body = response.getBody();
+			
+			Gson gson = new GsonBuilder().setPrettyPrinting().create();
+			Map result = gson.fromJson(body, Map.class);
+			if ("200".equals(result.get("code"))) {
+				return ((Map) result.get("data"));
+			} else {
+				throw new Exception("The user("+userId+") does not exist");
+			}
+		}
+
+		throw new Exception("The user("+userId+") does not exist");
 	}
 	
 	/**

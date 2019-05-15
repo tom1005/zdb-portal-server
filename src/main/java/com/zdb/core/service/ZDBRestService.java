@@ -336,4 +336,6 @@ public interface ZDBRestService {
 
 	Result getStoragesData() throws Exception;
 
+	Result getUserNamespaces(String userId) throws Exception;
+
 }

@@ -39,6 +39,7 @@ import org.springframework.web.client.RestTemplate;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.zdb.core.domain.AlertingRuleEntity;
+import com.zdb.core.domain.CommonConstants;
 import com.zdb.core.domain.DefaultExchange;
 import com.zdb.core.domain.EventMetaData;
 import com.zdb.core.domain.EventType;
@@ -765,6 +766,49 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			return new Result("", Result.ERROR, e.getMessage(), e);
 		}
 
+		return new Result("", Result.OK).putValue(IResult.NAMESPACES, "");
+	}
+
+	@Override
+	public Result getUserNamespaces(String userId) throws Exception {
+		try {
+			List<String> namespaceFilter = Collections.emptyList();
+					
+//			List<Namespace> namespaces = k8sService.getNamespaces();
+			List<Namespace> namespaces = K8SUtil.kubernetesClient().inAnyNamespace().namespaces().withLabel(CommonConstants.ZDB_LABEL, "true").list().getItems();
+			
+			Map userInfo = k8sService.getUserInfo(userId);
+			if(userInfo != null) {
+				Object obj = userInfo.get("namespaces");
+				if(obj instanceof java.util.ArrayList) {
+					namespaceFilter = (List) obj;
+				}
+			}
+			
+			for (Iterator<Namespace> iterator = namespaces.iterator(); iterator.hasNext();) {
+				Namespace namespace = (Namespace) iterator.next();
+				if (!namespaceFilter.contains(namespace.getMetadata().getName())) {
+					iterator.remove();
+				}
+			}
+			if (namespaces != null) {
+				Ascending descending = new Ascending();
+				Collections.sort(namespaces, descending);
+				
+				return new Result("", Result.OK).putValue(IResult.NAMESPACES, namespaces);
+			}
+		} catch (KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result("", Result.UNAUTHORIZED, "클러스터에 접근이 불가하거나 인증에 실패 했습니다.", null);
+			} else {
+				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+		
 		return new Result("", Result.OK).putValue(IResult.NAMESPACES, "");
 	}
 	
