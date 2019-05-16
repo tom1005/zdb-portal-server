@@ -1206,7 +1206,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 			if(items.size() > 0) {
 				for (Service service : items) {
 					String name = service.getMetadata().getName();
-					if(name.indexOf("redis-master") > -1) {
+					if(name.indexOf("-master") > -1) {
 						masterItems.add(service);
 					}
 				}
@@ -1300,7 +1300,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 			if(items.size() > 0) {
 				for (Service service : items) {
 					String name = service.getMetadata().getName();
-					if(name.indexOf("redis-master") > -1) {
+					if(name.indexOf("-master") > -1) {
 						masterItems.add(service);
 					}
 				}
@@ -1338,9 +1338,9 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 				if (response.getStatusCode() == HttpStatus.OK) {
 					
 //					result = new Result(txId, Result.OK, "서비스 전환 완료(slave->master)");
-					result = new Result(txId, Result.OK, "서비스 L/B가 Master 인스턴스로 전환 되었습니다.");
+					result = new Result(txId, Result.OK, "서비스 L/B가 마스터로 전환 되었습니다.");
 					if (!history.toString().isEmpty()) {
-						result.putValue(Result.HISTORY, history.toString() +" 가 Slave 에서 Master 로 전환 되었습니다.");
+						result.putValue(Result.HISTORY, history.toString() +" 가 슬레이브에서 마스터로 전환 되었습니다.");
 					}
 					
 					List<Service> svcList = K8SUtil.getServices(namespace, serviceName);

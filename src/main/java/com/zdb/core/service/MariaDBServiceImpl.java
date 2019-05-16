@@ -1856,7 +1856,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			
 			} else {
 				log.error("{} 의 Slave 가 존재하지 않거나 서비스 가용 상태가 아닙니다.", serviceName);
-				return new Result(txId, Result.ERROR, serviceName + "의 Slave 가 존재하지 않거나 서비스 가용 상태가 아닙니다.");
+				return new Result(txId, Result.ERROR, serviceName + "의 슬레이브가 존재하지 않거나 서비스 가용 상태가 아닙니다.");
 			}
 			
 			
@@ -1894,9 +1894,9 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.PATCH, requestEntity, String.class, namespace, service.getMetadata().getName());
 				
 				if (response.getStatusCode() == HttpStatus.OK) {
-					result = new Result(txId, Result.OK, "서비스 L/B가 Slave 인스턴스로 전환 되었습니다.");
+					result = new Result(txId, Result.OK, "서비스 L/B가 슬레이브로 전환 되었습니다.");
 					if (!history.toString().isEmpty()) {
-						result.putValue(Result.HISTORY, history.toString() +" 가 Master 에서 Slave 로 전환 되었습니다.\nMaster 서비스로 연결된 App.은 Slave DB에 읽기/쓰기 됩니다.");
+						result.putValue(Result.HISTORY, history.toString() +" 가 마스터에서 슬레이브로 전환 되었습니다.\nMaster 서비스로 연결된 App.은 슬레이브에 읽기/쓰기 됩니다.");
 					}
 					
 					List<Service> svcList = K8SUtil.getServices(namespace, serviceName);
@@ -1979,9 +1979,9 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				if (response.getStatusCode() == HttpStatus.OK) {
 					
 //					result = new Result(txId, Result.OK, "서비스 전환 완료(slave->master)");
-					result = new Result(txId, Result.OK, "서비스 L/B가 Master 인스턴스로 전환 되었습니다.");
+					result = new Result(txId, Result.OK, "서비스 L/B가 마스터로 전환 되었습니다.");
 					if (!history.toString().isEmpty()) {
-						result.putValue(Result.HISTORY, history.toString() +" 가 slave 에서 master 로 전환 되었습니다.");
+						result.putValue(Result.HISTORY, history.toString() +" 가 슬레이브에서 마스터로 전환 되었습니다.");
 					}
 					
 					List<Service> svcList = K8SUtil.getServices(namespace, serviceName);
@@ -2057,7 +2057,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				
 			} else {
 				log.error("{} 의 slave 가 존재하지 않거나 서비스 가용 상태가 아닙니다.", serviceName);
-				return new Result(txId, Result.ERROR, serviceName + "의 master 가 존재하지 않거나 서비스 가용 상태가 아닙니다.");
+				return new Result(txId, Result.ERROR, serviceName + "의 마스터가 존재하지 않거나 서비스 가용 상태가 아닙니다.");
 			}
 			
 			Result result = new Result(txId, Result.OK, "Slowlog rotation 완료");
@@ -2187,7 +2187,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 
 			List<StatefulSet> stsList = statefulSets.withLabel("app", "mariadb").withLabel("release", serviceName).list().getItems();
 			if(stsList == null || stsList.size() < 2) {
-				result = new Result(txId, Result.ERROR , "Master/Slave 로 구성된 서비스에서만 설정 가능합니다. ["+namespace +" > "+ serviceName +"]");
+				result = new Result(txId, Result.ERROR , "마스터/슬레이브로 구성된 서비스에서만 설정 가능합니다. ["+namespace +" > "+ serviceName +"]");
 				return result;
 			}
 			
@@ -2710,7 +2710,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 							
 							break;
 						} else {
-							return new Result(txId, Result.ERROR, "Slave DB 상태 확인 후 다시 실행하세요.");
+							return new Result(txId, Result.ERROR, "슬레이브 상태 확인 후 다시 실행하세요.");
 						}
 					} 
 				}
@@ -2745,13 +2745,13 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 						//7. Slave DB- CHANGE MASTER  & start slave
 						if (binFile != null && !binFile.isEmpty() && position != null && !position.isEmpty()) {
 							if(masterServiceName == null || masterServiceName.isEmpty()) {
-								return new Result(txId, Result.ERROR, "Master 서비스명을 조회 오류." + " ["+namespace+" > "+serviceName +"]");
+								return new Result(txId, Result.ERROR, "마스터 서비스명을 조회 오류." + " ["+namespace+" > "+serviceName +"]");
 							}
 							changeMaster(K8SUtil.kubernetesClient(), namespace, slavePodName, masterServiceName, port, binFile, position);
 
 							history.append("포트 변경 : "+servicePort+" > " + port);
 						} else {
-							return new Result(txId, Result.ERROR, "Master DB의 bin file or position 조회 오류" + " ["+namespace+" > "+serviceName +"]");
+							return new Result(txId, Result.ERROR, "마스터 DB의 bin file or position 조회 오류" + " ["+namespace+" > "+serviceName +"]");
 						}
 					}
 				}
@@ -2922,7 +2922,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		}
 		
 		if(!replicationStatus) {
-			throw new Exception("Slave 복제 오류로 포트 변경이 불가 합니다.");
+			throw new Exception("슬레이브 복제 오류로 포트 변경이 불가 합니다.");
 		}
 		
 		if(!"0".equals(seconds_Behind_Master)) {
@@ -2930,7 +2930,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		}
 		
 		if(!replicationStatus) {
-			throw new Exception("Slave 복제 지연으로 포트 변경이 불가 합니다. 잠시 후 다시 시도하세요.");
+			throw new Exception("슬레이브 복제 지연으로 포트 변경이 불가 합니다. 잠시 후 다시 시도하세요.");
 		}
 		
 		return replicationStatus;
