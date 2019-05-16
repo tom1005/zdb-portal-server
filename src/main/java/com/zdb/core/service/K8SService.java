@@ -42,6 +42,10 @@ import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.ScheduleEntity;
 import com.zdb.core.domain.ServiceOverview;
 import com.zdb.core.domain.SlaveReplicationStatus;
+<<<<<<< HEAD
+=======
+import com.zdb.core.domain.SlaveStatus;
+>>>>>>> refs/heads/local_dev
 import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.ZDBPersistenceEntity;
 import com.zdb.core.domain.ZDBStatus;
@@ -51,6 +55,7 @@ import com.zdb.core.job.JobHandler;
 import com.zdb.core.repository.DiskUsageRepository;
 import com.zdb.core.repository.MetadataRepository;
 import com.zdb.core.repository.ScheduleEntityRepository;
+import com.zdb.core.repository.SlaveStatusRepository;
 import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.util.HeapsterMetricUtil;
@@ -92,7 +97,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Configuration
 public class K8SService {
-
+	
+	@Autowired
+	private SlaveStatusRepository slaveStatusRepo;
+	
 	@Autowired
 	private  MetadataRepository metadataRepository;
 	
@@ -616,9 +624,14 @@ public class K8SService {
 					// Slave - ReplicationStatus: so.setReplicationStatus(slaveSrtatus)
 					if ("master".equals(component)) {
 						isMaster = true;
+<<<<<<< HEAD
 						so.setSlaveStatus(getReplicationStatus(so, pod, "master"));
 					} else {
 						so.setSlaveStatus(getReplicationStatus(so, pod, "slave"));
+=======
+					} else {
+						so.setSlaveStatus(replicationStatus(pod.getMetadata().getName()));
+>>>>>>> refs/heads/local_dev
 					}
 				}
 				if (!isMaster) {
@@ -1175,6 +1188,67 @@ public class K8SService {
 		resourceSpec.setMemory(memSum+""+memUnit);
 		
 		return resourceSpec;
+	}
+	
+	/**
+	 * slave replication status 조회 
+	 */
+	public SlaveReplicationStatus replicationStatus(String name) throws Exception {
+		
+		long currentTime = System.currentTimeMillis();
+		SlaveReplicationStatus rs = new SlaveReplicationStatus();
+		
+		SlaveStatus ssr = slaveStatusRepo.findOne(name);
+        String replicationStatus = ssr.getStatus();
+        String read_Master_Log_Pos = ssr.getReadMasterLogPos();
+        String exec_Master_Log_Pos = ssr.getExecMasterLogPos();
+        String slave_IO_Running = ssr.getSlaveIORunning();
+		String slave_SQL_Running = ssr.getSlaveSQLRunning();
+		String last_Errno = ssr.getLastErrno();
+		String last_Error = ssr.getLastError();
+		String last_IO_Errno = ssr.getLastIOErrno();
+		String last_IO_Error = ssr.getLastIOError();
+		String seconds_Behind_Master = ssr.getSecondsBehindMaster();
+		Date updateTime = ssr.getUpdateTime();
+		
+		// timeover시 확인 test
+		//SimpleDateFormat testTime = new SimpleDateFormat("HH:mm:ss", Locale.KOREA);
+		//Date test1 = testTime.parse("17:00:00");
+		//long diff = currentTime - test1.getTime();
+        
+		long diff = currentTime - updateTime.getTime();
+		long diff_sec = diff / 1000;
+		
+        String message = String.format("read_Master_Log_Pos: %s, <br>"
+				+ "exec_Master_Log_Pos: %s, <br>"
+				+ "slave_IO_Running: %s, <br>"
+				+ "slave_SQL_Running: %s, <br>"
+				+ "last_Errno: %s, <br>"
+				+ "last_Error: %s, <br>"
+				+ "last_IO_Errno: %s, <br>"
+				+ "last_IO_Error: %s, <br>"
+				+ "seconds_Behind_Master: %s", 
+				read_Master_Log_Pos, 
+				exec_Master_Log_Pos, 
+				slave_IO_Running, 
+				slave_SQL_Running, 
+				last_Errno, 
+				last_Error, 
+				last_IO_Errno, 
+				last_IO_Error, 
+				seconds_Behind_Master);
+		
+        if (diff_sec <= 120) {
+        	rs.setReplicationStatus(replicationStatus);
+    		rs.setMessage(message);
+        } else {
+        	rs.setReplicationStatus("over");
+        	rs.setMessage("Resource Lookup - TimeOver");
+        }
+		
+		
+		return rs;
+        
 	}
 	
 	private ResourceSpec getResourceSpec(ServiceOverview so) {

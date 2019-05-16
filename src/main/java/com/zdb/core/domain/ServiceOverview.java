@@ -58,7 +58,10 @@ public class ServiceOverview {
 	
 	private String failoverEnabled;
 	
+<<<<<<< HEAD
 	// TODO slave status model
+=======
+>>>>>>> refs/heads/local_dev
 	private SlaveReplicationStatus slaveStatus;
 	
 	private String serviceFailOverStatus;
