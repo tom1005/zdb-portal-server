@@ -42,10 +42,7 @@ import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.ScheduleEntity;
 import com.zdb.core.domain.ServiceOverview;
 import com.zdb.core.domain.SlaveReplicationStatus;
-<<<<<<< HEAD
-=======
 import com.zdb.core.domain.SlaveStatus;
->>>>>>> refs/heads/local_dev
 import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.ZDBPersistenceEntity;
 import com.zdb.core.domain.ZDBStatus;
@@ -624,14 +621,8 @@ public class K8SService {
 					// Slave - ReplicationStatus: so.setReplicationStatus(slaveSrtatus)
 					if ("master".equals(component)) {
 						isMaster = true;
-<<<<<<< HEAD
-						so.setSlaveStatus(getReplicationStatus(so, pod, "master"));
-					} else {
-						so.setSlaveStatus(getReplicationStatus(so, pod, "slave"));
-=======
 					} else {
 						so.setSlaveStatus(replicationStatus(pod.getMetadata().getName()));
->>>>>>> refs/heads/local_dev
 					}
 				}
 				if (!isMaster) {
