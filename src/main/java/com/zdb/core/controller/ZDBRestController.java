@@ -1131,18 +1131,24 @@ public class ZDBRestController {
 	public ResponseEntity<String> getNamespaces() {
 		try {
 			UserInfo userInfo = getUserInfo();
-			String namespaces = userInfo.getNamespaces();
-			List<String> userNamespaces = new ArrayList<>();
-			if(namespaces != null) {
-				String[] split = namespaces.split(",");
-				for (String ns : split) {
-					userNamespaces.add(ns.trim());
-				}
+//			String namespaces = userInfo.getNamespaces();
+//			List<String> userNamespaces = new ArrayList<>();
+//			if (namespaces != null) {
+//				String[] split = namespaces.split(",");
+//				for (String ns : split) {
+//					userNamespaces.add(ns.trim());
+//				}
+//			}
+
+			if (userInfo == null || userInfo.getUserId() == null) {
+				new Result(null, IResult.ERROR, "네임스페이스 조회 오류");
+				return new ResponseEntity<String>("네임스페이스 조회 오류.[사용자 정보를 알 수 없습니다.]", HttpStatus.EXPECTATION_FAILED);
 			}
-			
-			Result result = mariadbService.getNamespaces(userNamespaces);
+
+			// Result result = mariadbService.getNamespaces(userNamespaces);
+			Result result = mariadbService.getUserNamespaces(userInfo.getUserId());
 			return new ResponseEntity<String>(result.toJson(), result.status());
-			
+
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 

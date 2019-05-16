@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -17,9 +18,17 @@ import java.util.Set;
 
 import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -32,6 +41,7 @@ import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.ScheduleEntity;
 import com.zdb.core.domain.ServiceOverview;
+import com.zdb.core.domain.SlaveReplicationStatus;
 import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.ZDBPersistenceEntity;
 import com.zdb.core.domain.ZDBStatus;
@@ -47,6 +57,7 @@ import com.zdb.core.util.HeapsterMetricUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.NumberUtils;
 import com.zdb.core.util.PodManager;
+import com.zdb.core.util.StatusUtil;
 import com.zdb.core.vo.PodMetrics;
 
 import io.fabric8.kubernetes.api.model.ConfigMap;
@@ -96,6 +107,9 @@ public class K8SService {
 	
 	@Autowired
 	private ScheduleEntityRepository scheduleEntity;
+	
+	@Value("${iam.baseUrl}")
+	public String iamBaseUrl;
 	
 	/**
 	 * @param namespace
@@ -597,8 +611,14 @@ public class K8SService {
 					}
 				} else if ("mariadb".equals(app)) {
 					String component = labels.get("component");
+					
+					// TODO
+					// Slave - ReplicationStatus: so.setReplicationStatus(slaveSrtatus)
 					if ("master".equals(component)) {
 						isMaster = true;
+						so.setSlaveStatus(getReplicationStatus(so, pod, "master"));
+					} else {
+						so.setSlaveStatus(getReplicationStatus(so, pod, "slave"));
 					}
 				}
 				if (!isMaster) {
@@ -1566,6 +1586,36 @@ public class K8SService {
 	
 	}
 	
+	public Map getUserInfo(String userId) throws Exception {
+		RestTemplate rest = K8SUtil.getRestTemplate();
+
+		HttpHeaders headers = new HttpHeaders();
+		List<MediaType> mediaTypeList = new ArrayList<MediaType>();
+		mediaTypeList.add(MediaType.APPLICATION_JSON);
+		headers.setAccept(mediaTypeList);
+		headers.set("Content-Type", "application/json-patch+json");
+
+		// https://pog-dev-internal-iam.cloudzcp.io:443/iam/user/1da3110f-aade-43e2-b0fb-2d125a5a5529
+		HttpEntity<String> requestEntity = new HttpEntity<>(headers);
+		String endpoint = iamBaseUrl + "/iam/user/{user}";
+		ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.GET, requestEntity, String.class, userId);
+
+
+		if(response.getStatusCode() == HttpStatus.OK) {
+			String body = response.getBody();
+			
+			Gson gson = new GsonBuilder().setPrettyPrinting().create();
+			Map result = gson.fromJson(body, Map.class);
+			if ("200".equals(result.get("code"))) {
+				return ((Map) result.get("data"));
+			} else {
+				throw new Exception("The user("+userId+") does not exist");
+			}
+		}
+
+		throw new Exception("The user("+userId+") does not exist");
+	}
+	
 	/**
 	 * @param namespace
 	 * @param serviceType
@@ -1903,6 +1953,108 @@ public class K8SService {
 //		latch.await();
 		
 		return persistenceSpec;
+	}
+//	TODO
+	private SlaveReplicationStatus getReplicationStatus(ServiceOverview so, Pod pod, String check) {
+		SlaveReplicationStatus rs = new SlaveReplicationStatus();
+		
+		if(check == "master") {
+			rs.setReplicationStatus("-");
+			rs.setMessage("master");
+			
+			return rs;
+		} else {
+			String clusterName = pod.getMetadata().getClusterName();
+			String namespace = pod.getMetadata().getNamespace();
+			String name = pod.getMetadata().getName();
+			
+			String read_Master_Log_Pos = "";
+			String exec_Master_Log_Pos = "";
+			int slave_IO_Running = 0;
+			int slave_SQL_Running = 0;
+			String last_Errno = "";
+			String last_Error = "";
+			String last_IO_Errno = "";
+			String last_IO_Error = "";
+			String seconds_Behind_Master = "";
+			String replicationStatus = "-";
+			
+			StatusUtil statusUtil = new StatusUtil();
+			Map<String, String> statusValueMap = Collections.emptyMap();
+			
+			try {
+				statusValueMap = statusUtil.slaveStatus(K8SUtil.kubernetesClient(), namespace, name);
+			} catch (Exception e) {
+				log.error(name);
+			}
+			
+			if(statusValueMap == null || statusValueMap.isEmpty()) {
+				log.error(clusterName+" > " +namespace +" > " +name+" unknown slave replication status");
+			} else {
+				read_Master_Log_Pos = statusValueMap.get("Read_Master_Log_Pos");
+				exec_Master_Log_Pos = statusValueMap.get("Exec_Master_Log_Pos");
+				String _slave_IO_Running = statusValueMap.get("Slave_IO_Running");
+				String _slave_SQL_Running = statusValueMap.get("Slave_SQL_Running");
+				last_Errno = statusValueMap.get("Last_Errno");
+				last_Error = statusValueMap.get("Last_Error");
+				last_IO_Errno = statusValueMap.get("Last_IO_Errno");//Last_IO_Errno
+				last_IO_Error = statusValueMap.get("Last_IO_Error");//Last_IO_Error
+				seconds_Behind_Master = statusValueMap.get("Seconds_Behind_Master");	
+				
+				replicationStatus = "OK";
+				
+				if(!"0".equals(last_Errno) || null != last_Error) {
+					replicationStatus = "Error";
+				}
+				
+				if(!"0".equals(last_IO_Errno) || (null != last_IO_Error && !last_IO_Error.isEmpty())) {
+					replicationStatus = "Error";
+				}
+				
+				if(!"Yes".equals(_slave_IO_Running) || !"Yes".equals(_slave_SQL_Running) ) {
+					replicationStatus = "Error";
+				}
+				
+				if(!"0".equals(seconds_Behind_Master)) {
+					replicationStatus = "warning";
+				}
+			}
+//			String message = String.format("read_Master_Log_Pos: %s, '\\n' "
+//					+ "exec_Master_Log_Pos: %s, '\\n' "
+//					+ "slave_IO_Running: %d, '\\n' "
+//					+ "slave_SQL_Running: %d, '\\n' "
+//					+ "last_Errno: $s, '\\n' "
+//					+ "last_Error: %s, '\\n' "
+//					+ "last_IO_Errno: %s, '\\n' "
+//					+ "last_IO_Error: %s, '\\n' "
+//					+ "seconds_Behind_Master: %s", 
+//					read_Master_Log_Pos, exec_Master_Log_Pos, slave_IO_Running, slave_SQL_Running, 
+//					last_Errno, last_Error, last_IO_Errno, last_IO_Error, seconds_Behind_Master);
+			String message = String.format("read_Master_Log_Pos: %s, <br>"
+					+ "exec_Master_Log_Pos: %s, <br>"
+					+ "slave_IO_Running: %d, <br>"
+					+ "slave_SQL_Running: %d, <br>"
+					+ "last_Errno: %s, <br>"
+					+ "last_Error: %s, <br>"
+					+ "last_IO_Errno: %s, <br>"
+					+ "last_IO_Error: %s, <br>"
+					+ "seconds_Behind_Master: %s", 
+					read_Master_Log_Pos, 
+					exec_Master_Log_Pos, 
+					slave_IO_Running, 
+					slave_SQL_Running, 
+					last_Errno, 
+					last_Error, 
+					last_IO_Errno, 
+					last_IO_Error, 
+					seconds_Behind_Master);
+			
+			rs.setReplicationStatus(replicationStatus);
+			rs.setMessage(message);
+			return rs;
+		}
+		
+		
 	}
 	
 	public List<StatefulSet> getAutoFailoverServices(String namespace, String serviceName) {

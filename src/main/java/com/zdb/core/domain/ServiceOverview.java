@@ -58,6 +58,9 @@ public class ServiceOverview {
 	
 	private String failoverEnabled;
 	
+	// TODO slave status model
+	private SlaveReplicationStatus slaveStatus;
+	
 	private String serviceFailOverStatus;
 	
 	private List<PersistentVolumeClaim> persistentVolumeClaims = new ArrayList<>();
