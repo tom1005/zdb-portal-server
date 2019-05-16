@@ -22,6 +22,7 @@ import com.zdb.core.util.K8SUtil;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.Event;
 import io.fabric8.kubernetes.api.model.HasMetadata;
+import io.fabric8.kubernetes.api.model.Job;
 import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Pod;
@@ -69,176 +70,181 @@ public class MetaDataCollector {
 			if (!"prod".equals(profile)) {
 				return;
 			}
-			long s = System.currentTimeMillis();
-			List<Namespace> namespaces = K8SUtil.getNamespaces();
-			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
+			
+			Job job = K8SUtil.kubernetesClient().inNamespace("zdb-system").extensions().jobs().withName("zdb-portal-job").get();
+			if(job == null) {
+				long s = System.currentTimeMillis();
+				List<Namespace> namespaces = K8SUtil.getNamespaces();
+				DefaultKubernetesClient client = K8SUtil.kubernetesClient();
 
-			save(namespaces);
-			
-			List<Deployment> allDeployments = new ArrayList<>();
-			List<Pod> allPods = new ArrayList<>();
-			List<ReplicaSet> allReplicaaSets = new ArrayList<>();
-			List<StatefulSet> allStatuefulSets = new ArrayList<>();
-			List<Service> allServices = new ArrayList<>();
-			List<ConfigMap> allConfigMaps = new ArrayList<>();
-			List<Secret> allSecrets = new ArrayList<>();
-			List<PersistentVolumeClaim> allPvcs = new ArrayList<>();
-			
-			// Kube 기준 동기화
-			for (Namespace ns : namespaces) {
-				String name = ns.getMetadata().getName();
+				save(namespaces);
 				
-				// deployments
-				List<Deployment> deployments = client.inNamespace(name).extensions().deployments().list().getItems();
-				save(deployments);
-				allDeployments.addAll(deployments);
+				List<Deployment> allDeployments = new ArrayList<>();
+				List<Pod> allPods = new ArrayList<>();
+				List<ReplicaSet> allReplicaaSets = new ArrayList<>();
+				List<StatefulSet> allStatuefulSets = new ArrayList<>();
+				List<Service> allServices = new ArrayList<>();
+				List<ConfigMap> allConfigMaps = new ArrayList<>();
+				List<Secret> allSecrets = new ArrayList<>();
+				List<PersistentVolumeClaim> allPvcs = new ArrayList<>();
 				
-				// pods
-				List<Pod> pods = client.inNamespace(name).pods().list().getItems();
-				save(pods);
-				allPods.addAll(pods);
-				
-				// replicasets
-				List<ReplicaSet> replicaSets = client.inNamespace(name).extensions().replicaSets().list().getItems();
-				save(replicaSets);
-				allReplicaaSets.addAll(replicaSets);
-				
-				// statefulsets
-				List<StatefulSet> statefulSets = client.inNamespace(name).apps().statefulSets().list().getItems();
-				save(statefulSets);
-				allStatuefulSets.addAll(statefulSets);
-				
-				// services
-				List<Service> services = client.inNamespace(name).services().list().getItems();
-				save(services);
-				allServices.addAll(services);
-				
-				// configmap
-				List<ConfigMap> configMaps = client.inNamespace(name).configMaps().list().getItems();
-				save(configMaps);
-				allConfigMaps.addAll(configMaps);
-				
-				// secrets
-				List<Secret> secrets = client.inNamespace(name).secrets().list().getItems();
-				save(secrets);
-				allSecrets.addAll(secrets);
-				
-				List<PersistentVolumeClaim> pvcs = client.inNamespace(name).persistentVolumeClaims().list().getItems();
-				save(pvcs);
-				allPvcs.addAll(pvcs);
-				
-			}
-			
-			List<PersistentVolumeClaim> allPersistentVolumeClaimList = client.inAnyNamespace().persistentVolumeClaims().list().getItems();
-			
-			for (PersistentVolumeClaim pvc : allPersistentVolumeClaimList) {
-				try {
-					PersistentVolumeClaimEntity entity = pvcRepo.findOne(pvc.getSpec().getVolumeName());
-					if(entity != null) {
-						if("DELETED".equals(entity.getPhase())) {
-							continue;
-						}
-					} else {
-						entity = new PersistentVolumeClaimEntity();
-						entity.setVolumeName(pvc.getSpec().getVolumeName());
-						
-					}
-					entity.setCreationTimestamp(pvc.getMetadata().getCreationTimestamp());
-					try {
-						entity.setApp(pvc.getMetadata().getLabels().get("app"));
-					} catch (Exception e) {
-					}
-					try {
-						entity.setBillingType(pvc.getMetadata().getLabels().get("billingType"));
-					} catch (Exception e) {
-					}
-					try {
-						entity.setComponent(pvc.getMetadata().getLabels().get("component"));
-					} catch (Exception e) {
-					}
-					try {
-						entity.setRelease(pvc.getMetadata().getLabels().get("release"));
-					} catch (Exception e) {
-					}
-					try {
-						entity.setZone(pvc.getMetadata().getLabels().get("zone"));
-					} catch (Exception e) {
-					}
-					try {
-						entity.setRegion(pvc.getMetadata().getLabels().get("region"));
-					} catch (Exception e) {
-					}
-					entity.setNamespace(pvc.getMetadata().getNamespace());
-					entity.setName(pvc.getMetadata().getName());
-					entity.setPhase(pvc.getStatus().getPhase());
-					entity.setUid(pvc.getMetadata().getUid());
-					entity.setStorageClassName(pvc.getSpec().getStorageClassName());
-					try {
-						entity.setAccessModes(pvc.getSpec().getAccessModes().get(0));
-					} catch (Exception e) {
-					}
-					try {
-						String amount = pvc.getSpec().getResources().getRequests().get("storage").getAmount();
-						entity.setStoragSize(amount);
-					} catch (Exception e) {
-					}
-					entity.setResourceVersion(pvc.getMetadata().getResourceVersion());
-					entity.setUpdateTimestamp(DateUtil.formatDate(DateUtil.currentDate()));
+				// Kube 기준 동기화
+				for (Namespace ns : namespaces) {
+					String name = ns.getMetadata().getName();
 					
-					pvcRepo.save(entity);
-				} catch (Exception e) {
-					log.error("PersistentVolumeClaim "+pvc.getMetadata().getName() +" 정보 저장 에러.");
+					// deployments
+					List<Deployment> deployments = client.inNamespace(name).extensions().deployments().list().getItems();
+					save(deployments);
+					allDeployments.addAll(deployments);
+					
+					// pods
+					List<Pod> pods = client.inNamespace(name).pods().list().getItems();
+					save(pods);
+					allPods.addAll(pods);
+					
+					// replicasets
+					List<ReplicaSet> replicaSets = client.inNamespace(name).extensions().replicaSets().list().getItems();
+					save(replicaSets);
+					allReplicaaSets.addAll(replicaSets);
+					
+					// statefulsets
+					List<StatefulSet> statefulSets = client.inNamespace(name).apps().statefulSets().list().getItems();
+					save(statefulSets);
+					allStatuefulSets.addAll(statefulSets);
+					
+					// services
+					List<Service> services = client.inNamespace(name).services().list().getItems();
+					save(services);
+					allServices.addAll(services);
+					
+					// configmap
+					List<ConfigMap> configMaps = client.inNamespace(name).configMaps().list().getItems();
+					save(configMaps);
+					allConfigMaps.addAll(configMaps);
+					
+					// secrets
+					List<Secret> secrets = client.inNamespace(name).secrets().list().getItems();
+					save(secrets);
+					allSecrets.addAll(secrets);
+					
+					List<PersistentVolumeClaim> pvcs = client.inNamespace(name).persistentVolumeClaims().list().getItems();
+					save(pvcs);
+					allPvcs.addAll(pvcs);
+					
 				}
+				
+				List<PersistentVolumeClaim> allPersistentVolumeClaimList = client.inAnyNamespace().persistentVolumeClaims().list().getItems();
+				
+				for (PersistentVolumeClaim pvc : allPersistentVolumeClaimList) {
+					try {
+						PersistentVolumeClaimEntity entity = pvcRepo.findOne(pvc.getSpec().getVolumeName());
+						if(entity != null) {
+							if("DELETED".equals(entity.getPhase())) {
+								continue;
+							}
+						} else {
+							entity = new PersistentVolumeClaimEntity();
+							entity.setVolumeName(pvc.getSpec().getVolumeName());
+							
+						}
+						entity.setCreationTimestamp(pvc.getMetadata().getCreationTimestamp());
+						try {
+							entity.setApp(pvc.getMetadata().getLabels().get("app"));
+						} catch (Exception e) {
+						}
+						try {
+							entity.setBillingType(pvc.getMetadata().getLabels().get("billingType"));
+						} catch (Exception e) {
+						}
+						try {
+							entity.setComponent(pvc.getMetadata().getLabels().get("component"));
+						} catch (Exception e) {
+						}
+						try {
+							entity.setRelease(pvc.getMetadata().getLabels().get("release"));
+						} catch (Exception e) {
+						}
+						try {
+							entity.setZone(pvc.getMetadata().getLabels().get("zone"));
+						} catch (Exception e) {
+						}
+						try {
+							entity.setRegion(pvc.getMetadata().getLabels().get("region"));
+						} catch (Exception e) {
+						}
+						entity.setNamespace(pvc.getMetadata().getNamespace());
+						entity.setName(pvc.getMetadata().getName());
+						entity.setPhase(pvc.getStatus().getPhase());
+						entity.setUid(pvc.getMetadata().getUid());
+						entity.setStorageClassName(pvc.getSpec().getStorageClassName());
+						try {
+							entity.setAccessModes(pvc.getSpec().getAccessModes().get(0));
+						} catch (Exception e) {
+						}
+						try {
+							String amount = pvc.getSpec().getResources().getRequests().get("storage").getAmount();
+							entity.setStoragSize(amount);
+						} catch (Exception e) {
+						}
+						entity.setResourceVersion(pvc.getMetadata().getResourceVersion());
+						entity.setUpdateTimestamp(DateUtil.formatDate(DateUtil.currentDate()));
+						
+						pvcRepo.save(entity);
+					} catch (Exception e) {
+						log.error("PersistentVolumeClaim "+pvc.getMetadata().getName() +" 정보 저장 에러.");
+					}
+				}
+				
+				// DB기준 체크(Kube에 삭제되고 DB에 남아있는 데이터 삭제)
+				Iterable<MetaData> findAll = metaRepo.findAll();
+				for (MetaData metaData : findAll) {
+					
+					String kind = metaData.getKind();
+					String namespace = metaData.getNamespace();
+					String name = metaData.getName();
+					String uid = String.format("%s-%s", kind, name);//metaData.getUid();
+					
+					boolean flag = false;
+					if("Deployment".equals(kind)) {
+						flag = exist(allDeployments, uid, namespace, name);
+					} else if("Pod".equals(kind)) {
+						flag = exist(allPods, uid, namespace, name);
+					} else if("ReplicaSet".equals(kind)) {
+						flag = exist(allReplicaaSets, uid, namespace, name);
+					} else if("StatefulSet".equals(kind)) {
+						flag = exist(allStatuefulSets, uid, namespace, name);
+					} else if("Service".equals(kind)) {
+						flag = exist(allServices, uid, namespace, name);
+					} else if("ConfigMap".equals(kind)) {
+						flag = exist(allConfigMaps, uid, namespace, name);
+					} else if("Secret".equals(kind)) {
+						flag = exist(allSecrets, uid, namespace, name);
+					} else if("Namespace".equals(kind)) {
+						flag = exist(namespaces, uid, name);
+					} else if("PersistentVolumeClaim".equals(kind)) {
+						flag = exist(allPvcs, uid, name);
+					}
+					
+					// not exist
+					if(!flag) {
+						metaData.setAction("DELETED");
+						metaData.setUpdateTime(DateUtil.currentDate());
+						metaData.setStatus("");
+						metaRepo.save(metaData);
+						log.info("MetaData DELETED.{} {} {}", kind, namespace, name);
+					} else {
+						metaData.setAction("AUTO_SYNC");
+						metaData.setUpdateTime(DateUtil.currentDate());
+						metaRepo.save(metaData);
+					}
+					
+				}
+				
+				log.info("MetaData Sync : " + (System.currentTimeMillis() - s));
+				
+			} else {
+				log.debug("{}", "zdb-portal-job 을 통해 MetaData 정보 조회 됩니다.");
 			}
-			
-			// DB기준 체크(Kube에 삭제되고 DB에 남아있는 데이터 삭제)
-			Iterable<MetaData> findAll = metaRepo.findAll();
-			for (MetaData metaData : findAll) {
-				
-				String kind = metaData.getKind();
-				String namespace = metaData.getNamespace();
-				String name = metaData.getName();
-				String uid = String.format("%s-%s", kind, name);//metaData.getUid();
-				
-				boolean flag = false;
-				if("Deployment".equals(kind)) {
-					flag = exist(allDeployments, uid, namespace, name);
-				} else if("Pod".equals(kind)) {
-					flag = exist(allPods, uid, namespace, name);
-				} else if("ReplicaSet".equals(kind)) {
-					flag = exist(allReplicaaSets, uid, namespace, name);
-				} else if("StatefulSet".equals(kind)) {
-					flag = exist(allStatuefulSets, uid, namespace, name);
-				} else if("Service".equals(kind)) {
-					flag = exist(allServices, uid, namespace, name);
-				} else if("ConfigMap".equals(kind)) {
-					flag = exist(allConfigMaps, uid, namespace, name);
-				} else if("Secret".equals(kind)) {
-					flag = exist(allSecrets, uid, namespace, name);
-				} else if("Namespace".equals(kind)) {
-					flag = exist(namespaces, uid, name);
-				} else if("PersistentVolumeClaim".equals(kind)) {
-					flag = exist(allPvcs, uid, name);
-				}
-				
-				// not exist
-				if(!flag) {
-					metaData.setAction("DELETED");
-					metaData.setUpdateTime(DateUtil.currentDate());
-					metaData.setStatus("");
-					metaRepo.save(metaData);
-					log.info("MetaData DELETED.{} {} {}", kind, namespace, name);
-				} else {
-					metaData.setAction("AUTO_SYNC");
-					metaData.setUpdateTime(DateUtil.currentDate());
-					metaRepo.save(metaData);
-				}
-				
-			}
-			
-			log.info("MetaData Sync : " + (System.currentTimeMillis() - s));
-			
-			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 		}

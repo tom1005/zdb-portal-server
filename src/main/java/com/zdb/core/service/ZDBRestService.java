@@ -120,7 +120,7 @@ public interface ZDBRestService {
 	Result getEvents(String namespace, String servceName, String kind, String startTime, String endTime, String keyword) throws Exception;
 	
 	/**
-	 *  get persistent volume claims
+	 *  get user namespaces
 	 * @param namespace
 	 */
 	Result getNamespaces(List<String> filters) throws Exception;
@@ -335,5 +335,7 @@ public interface ZDBRestService {
 	Result getStorages(String namespace, String keyword, String app, String storageClassName, String billingType, String phase, String stDate, String edDate) throws Exception;
 
 	Result getStoragesData() throws Exception;
+
+	Result getUserNamespaces(String userId) throws Exception;
 
 }
