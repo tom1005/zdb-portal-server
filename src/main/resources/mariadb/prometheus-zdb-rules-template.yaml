@@ -1,6 +1,6 @@
 ZDB-MariaDB-PodHealthCheck:
     alert: ZDB-MariaDB-PodHealthCheck-${serviceName}-mariadb-${role}
-    expr: absent(mysql_up{service="${serviceName}-mariadb-${role}"}) ${condition} ${value2}
+    expr: absent(mysql_up{service="${serviceName}-mariadb${exprRole}"}) ${condition} ${value2}
     for: 1m          
     labels:
       channel: ${channel}
@@ -14,7 +14,7 @@ ZDB-MariaDB-PodHealthCheck:
       summary: 'Pod 동작 중단'
 ZDB-MariaDB-ContainerHealthCheck:
     alert: ZDB-MariaDB-ContainerHealthCheck-${serviceName}-mariadb-${role}
-    expr: kube_pod_container_status_ready{pod="${serviceName}-mariadb-${role}", container="mariadb"} ${condition} ${value2}
+    expr: kube_pod_container_status_ready{pod="${serviceName}-mariadb${exprRole}", container="mariadb"} ${condition} ${value2}
     for: 1m
     labels:
       channel: ${channel}
@@ -28,7 +28,7 @@ ZDB-MariaDB-ContainerHealthCheck:
       summary: 'MariaDB 컨테이너 동작 중단'
 ZDB-MariaDB-DBHealthCheck:
     alert: ZDB-MariaDB-DBHealthCheck-${serviceName}-mariadb-${role}
-    expr: mysql_up{service="${serviceName}-mariadb-${role}"} ${condition} ${value2}
+    expr: mysql_up{service="${serviceName}-mariadb${exprRole}"} ${condition} ${value2}
     for: 1m
     labels:
       channel: ${channel}
@@ -42,7 +42,7 @@ ZDB-MariaDB-DBHealthCheck:
       summary: 'MariaDB 동작 중단'
 ZDB-MariaDB-CPUUsage:
     alert: ZDB-MariaDB-CPUUsage-${serviceName}-mariadb-${role}
-    expr: (sum(rate(container_cpu_usage_seconds_total{pod_name="${serviceName}-mariadb-${role}", container_name="mariadb"}[1m])) by (pod_name, container_name)) / ((sum(container_spec_cpu_quota{pod_name="${serviceName}-mariadb-${role}", container_name="mariadb"}) by (pod_name, container_name)) / 100000) * 100 ${condition} ${value2}
+    expr: (sum(rate(container_cpu_usage_seconds_total{pod_name="${serviceName}-mariadb${exprRole}", container_name="mariadb"}[1m])) by (pod_name, container_name)) / ((sum(container_spec_cpu_quota{pod_name="${serviceName}-mariadb${exprRole}", container_name="mariadb"}) by (pod_name, container_name)) / 100000) * 100 ${condition} ${value2}
     for: 1m
     labels:
       channel: ${channel}
@@ -56,7 +56,7 @@ ZDB-MariaDB-CPUUsage:
       summary: 'CPU 사용량 임계치 초과'
 ZDB-MariaDB-MemoryUsage:
     alert: ZDB-MariaDB-MemoryUsage-${serviceName}-mariadb-${role}
-    expr: (sum(container_memory_working_set_bytes{pod_name="${serviceName}-mariadb-${role}", container_name="mariadb"}) by (pod_name, container_name)) / (sum (container_spec_memory_limit_bytes{pod_name="${serviceName}-mariadb-${role}", container_name="mariadb"}) by (pod_name, container_name)) * 100 ${condition} ${value2}
+    expr: (sum(container_memory_working_set_bytes{pod_name="${serviceName}-mariadb${exprRole}", container_name="mariadb"}) by (pod_name, container_name)) / (sum (container_spec_memory_limit_bytes{pod_name="${serviceName}-mariadb${exprRole}", container_name="mariadb"}) by (pod_name, container_name)) * 100 ${condition} ${value2}
     for: 1m
     labels:
       channel: ${channel}
@@ -70,7 +70,7 @@ ZDB-MariaDB-MemoryUsage:
       summary: '메모리 사용량 임계치 초과'
 ZDB-MariaDB-Connections:
     alert: ZDB-MariaDB-Connections-${serviceName}-mariadb-${role}
-    expr: (mysql_global_status_threads_connected{service="${serviceName}-mariadb-${role}"} / mysql_global_variables_max_connections{service="${serviceName}-mariadb-${role}"} * 100) ${condition} ${value2}
+    expr: (mysql_global_status_threads_connected{service="${serviceName}-mariadb${exprRole}"} / mysql_global_variables_max_connections{service="${serviceName}-mariadb${exprRole}"} * 100) ${condition} ${value2}
     for: 1m
     labels:
       channel: ${channel}
@@ -84,7 +84,7 @@ ZDB-MariaDB-Connections:
       summary: 'Connections 임계치 초과'
 ZDB-MariaDB-SlowQueries:
     alert: ZDB-MariaDB-SlowQueries-${serviceName}-mariadb-${role}
-    expr: rate(mysql_global_status_slow_queries{service="${serviceName}-mariadb-${role}"}[2m]) ${condition} ${value2}
+    expr: rate(mysql_global_status_slow_queries{service="${serviceName}-mariadb${exprRole}"}[2m]) ${condition} ${value2}
     for: 1m
     labels:
       channel: ${channel}

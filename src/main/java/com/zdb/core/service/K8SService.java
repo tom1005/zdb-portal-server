@@ -17,17 +17,25 @@ import java.util.Set;
 
 import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.zdb.core.domain.CommonConstants;
 import com.zdb.core.domain.DiskUsage;
 import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.MetaData;
 import com.zdb.core.domain.PersistenceSpec;
-import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.ScheduleEntity;
@@ -45,7 +53,9 @@ import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.util.HeapsterMetricUtil;
 import com.zdb.core.util.K8SUtil;
+import com.zdb.core.util.NumberUtils;
 import com.zdb.core.util.PodManager;
+import com.zdb.core.vo.PodMetrics;
 
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.Container;
@@ -94,6 +104,9 @@ public class K8SService {
 	
 	@Autowired
 	private ScheduleEntityRepository scheduleEntity;
+	
+	@Value("${iam.baseUrl}")
+	public String iamBaseUrl;
 	
 	/**
 	 * @param namespace
@@ -566,7 +579,7 @@ public class K8SService {
 		// failover 상태 
 		//   - 정상 : MasterToMaster, 
 		//   - failover 된 상태 : MasterToSlave
-		so.setServiceFailOverStatus(getServiceFailOverStatus(namespace, "mariadb", serviceName));
+		so.setServiceFailOverStatus(getServiceFailOverStatus(namespace, so.getServiceType(), serviceName));
 		
 		// 태그 정보 
 
@@ -694,6 +707,8 @@ public class K8SService {
 				so.getDiskUsageOfPodMap().put(podName, disk);
 			}
 
+			Deployment deployment = K8SUtil.kubernetesClient().inNamespace("kube-system").extensions().deployments().withName("heapster").get();
+			
 			// metric 정보를 ui 에 담에서 전송...
 			for (Pod pod : so.getPods()) {
 				if (PodManager.isReady(pod)) {
@@ -701,10 +716,69 @@ public class K8SService {
 
 					try {
 						HeapsterMetricUtil metricUtil = new HeapsterMetricUtil();
-						Object cpuUsage = metricUtil.getCPUUsage(namespace, podName);
-						so.getCpuUsageOfPodMap().put(podName, cpuUsage);
-						Object memoryUsage = metricUtil.getMemoryUsage(namespace, podName);
-						so.getMemoryUsageOfPodMap().put(podName, memoryUsage);
+						
+						// heapster 사용 
+						if(deployment != null) {
+							PodMetrics metrics = metricUtil.getMetricFromHeapster(namespace, podName);
+							List<com.zdb.core.vo.Container> containers = metrics.getContainers();
+							
+							String timestamp = metrics.getTimestamp();
+							
+							double cupValue = 0;
+							double memValue = 0;
+							for (com.zdb.core.vo.Container c : containers) {
+								String cpu = c.getUsage().getCpu();
+								String memory = c.getUsage().getMemory();
+								
+								Double cpuByM = NumberUtils.cpuByM(cpu);
+								cupValue += cpuByM.doubleValue();
+								
+								Double memoryByMi = NumberUtils.memoryByMi(memory);
+								memValue += (memoryByMi.doubleValue());
+							}
+						
+							String cpuStringValue = String.format("{\"metrics\":[{\"timestamp\":\"%s\",\"value\":%d}]}",timestamp, ((int)cupValue));
+							String memStringValue = String.format("{\"metrics\":[{\"timestamp\":\"%s\",\"value\":%s}]}",timestamp, ((int)memValue)+"");
+							
+							Gson gson = new GsonBuilder().create();
+							java.util.Map<String, Object> cpuUsage = gson.fromJson(cpuStringValue, java.util.Map.class);
+							java.util.Map<String, Object> memoryUsage = gson.fromJson(memStringValue, java.util.Map.class);
+							so.getCpuUsageOfPodMap().put(podName, cpuUsage.get("metrics"));							
+							so.getMemoryUsageOfPodMap().put(podName, memoryUsage.get("metrics"));
+//							
+							
+						} else {
+							// metricserver 사용 
+//							[{"timestamp":"2019-03-19T11:26:00Z","value":2}]
+							
+							PodMetrics metrics = metricUtil.getMetricFromMetricServer(namespace, podName);
+							List<com.zdb.core.vo.Container> containers = metrics.getContainers();
+							
+							String timestamp = metrics.getTimestamp();
+							
+							double cupValue = 0;
+							double memValue = 0;
+							for (com.zdb.core.vo.Container c : containers) {
+								String cpu = c.getUsage().getCpu();
+								String memory = c.getUsage().getMemory();
+								
+								Double cpuByM = NumberUtils.cpuByM(cpu);
+								cupValue += cpuByM.doubleValue();
+								
+								Double memoryByMi = NumberUtils.memoryByMi(memory);
+								memValue += memoryByMi.doubleValue();
+							}
+						
+							String cpuStringValue = String.format("[{\"timestamp\":\"%s\",\"value\":%d}]",timestamp, ((int)cupValue));
+							String memStringValue = String.format("[{\"timestamp\":\"%s\",\"value\":%d}]",timestamp, ((int)memValue));
+							
+							Gson gson = new GsonBuilder().create();
+							java.util.Map<String, Object> cpuUsage = gson.fromJson(cpuStringValue, java.util.Map.class);
+							java.util.Map<String, Object> memoryUsage = gson.fromJson(memStringValue, java.util.Map.class);
+							
+							so.getCpuUsageOfPodMap().put(podName, cpuUsage);
+							so.getMemoryUsageOfPodMap().put(podName, memoryUsage);
+						}
 					} catch (Exception e) {
 						log.error(e.getMessage(), e);
 					}
@@ -1501,6 +1575,36 @@ public class K8SService {
 		
 		return list;
 	
+	}
+	
+	public Map getUserInfo(String userId) throws Exception {
+		RestTemplate rest = K8SUtil.getRestTemplate();
+
+		HttpHeaders headers = new HttpHeaders();
+		List<MediaType> mediaTypeList = new ArrayList<MediaType>();
+		mediaTypeList.add(MediaType.APPLICATION_JSON);
+		headers.setAccept(mediaTypeList);
+		headers.set("Content-Type", "application/json-patch+json");
+
+		// https://pog-dev-internal-iam.cloudzcp.io:443/iam/user/1da3110f-aade-43e2-b0fb-2d125a5a5529
+		HttpEntity<String> requestEntity = new HttpEntity<>(headers);
+		String endpoint = iamBaseUrl + "/iam/user/{user}";
+		ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.GET, requestEntity, String.class, userId);
+
+
+		if(response.getStatusCode() == HttpStatus.OK) {
+			String body = response.getBody();
+			
+			Gson gson = new GsonBuilder().setPrettyPrinting().create();
+			Map result = gson.fromJson(body, Map.class);
+			if ("200".equals(result.get("code"))) {
+				return ((Map) result.get("data"));
+			} else {
+				throw new Exception("The user("+userId+") does not exist");
+			}
+		}
+
+		throw new Exception("The user("+userId+") does not exist");
 	}
 	
 	/**

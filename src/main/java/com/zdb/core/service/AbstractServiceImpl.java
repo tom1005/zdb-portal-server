@@ -3,6 +3,7 @@ package com.zdb.core.service;
 import java.io.FileNotFoundException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
@@ -38,12 +39,14 @@ import org.springframework.web.client.RestTemplate;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.zdb.core.domain.AlertingRuleEntity;
+import com.zdb.core.domain.CommonConstants;
 import com.zdb.core.domain.DefaultExchange;
 import com.zdb.core.domain.EventMetaData;
 import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.Exchange;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.NamespaceResource;
+import com.zdb.core.domain.PersistentVolumeClaimEntity;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
@@ -60,6 +63,7 @@ import com.zdb.core.domain.ZDBType;
 import com.zdb.core.repository.DiskUsageRepository;
 import com.zdb.core.repository.EventRepository;
 import com.zdb.core.repository.MetadataRepository;
+import com.zdb.core.repository.PersistentVolumeClaimRepository;
 import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBConfigRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
@@ -68,7 +72,9 @@ import com.zdb.core.util.DateUtil;
 import com.zdb.core.util.HeapsterMetricUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.NamespaceResourceChecker;
+import com.zdb.core.util.NumberUtils;
 import com.zdb.core.util.ZDBLogViewer;
+import com.zdb.core.vo.PodMetrics;
 import com.zdb.redis.RedisConfiguration;
 import com.zdb.redis.RedisConnection;
 
@@ -131,6 +137,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	
 	@Autowired
 	protected AlertService alertService;
+	
+	@Autowired PersistentVolumeClaimRepository persistentVolumeClaimRepository;
 	
 	protected String chartUrl;
 	
@@ -760,6 +768,49 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 
 		return new Result("", Result.OK).putValue(IResult.NAMESPACES, "");
 	}
+
+	@Override
+	public Result getUserNamespaces(String userId) throws Exception {
+		try {
+			List<String> namespaceFilter = Collections.emptyList();
+					
+//			List<Namespace> namespaces = k8sService.getNamespaces();
+			List<Namespace> namespaces = K8SUtil.kubernetesClient().inAnyNamespace().namespaces().withLabel(CommonConstants.ZDB_LABEL, "true").list().getItems();
+			
+			Map userInfo = k8sService.getUserInfo(userId);
+			if(userInfo != null) {
+				Object obj = userInfo.get("namespaces");
+				if(obj instanceof java.util.ArrayList) {
+					namespaceFilter = (List) obj;
+				}
+			}
+			
+			for (Iterator<Namespace> iterator = namespaces.iterator(); iterator.hasNext();) {
+				Namespace namespace = (Namespace) iterator.next();
+				if (!namespaceFilter.contains(namespace.getMetadata().getName())) {
+					iterator.remove();
+				}
+			}
+			if (namespaces != null) {
+				Ascending descending = new Ascending();
+				Collections.sort(namespaces, descending);
+				
+				return new Result("", Result.OK).putValue(IResult.NAMESPACES, namespaces);
+			}
+		} catch (KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result("", Result.UNAUTHORIZED, "클러스터에 접근이 불가하거나 인증에 실패 했습니다.", null);
+			} else {
+				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+		
+		return new Result("", Result.OK).putValue(IResult.NAMESPACES, "");
+	}
 	
 	class Ascending implements Comparator<Namespace> {
 		 
@@ -1301,9 +1352,89 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		return null;
 	}
 	
-	public Result getPodMetrics(String namespace, String podName) throws Exception {
+	/* (non-Javadoc)
+	 * @see com.zdb.core.service.ZDBRestService#getPodMetricsV2(java.lang.String, java.lang.String)
+	 */
+	public Result getPodMetricsV2(String namespace, String podName) throws Exception {
 		Result result = new Result("", Result.OK);
 
+		Deployment deployment = K8SUtil.kubernetesClient().inNamespace("kube-system").extensions().deployments().withName("heapster").get();
+		
+		try {
+			HeapsterMetricUtil metricUtil = new HeapsterMetricUtil();
+			
+			// heapster 사용 
+			if(deployment != null) {
+				PodMetrics metrics = metricUtil.getMetricFromHeapster(namespace, podName);
+				List<com.zdb.core.vo.Container> containers = metrics.getContainers();
+				
+				String timestamp = metrics.getTimestamp();
+				
+				double cupValue = 0;
+				double memValue = 0;
+				for (com.zdb.core.vo.Container c : containers) {
+					String cpu = c.getUsage().getCpu();
+					String memory = c.getUsage().getMemory();
+					
+					Double cpuByM = NumberUtils.cpuByM(cpu);
+					cupValue += cpuByM.doubleValue();
+					
+					Double memoryByMi = NumberUtils.memoryByMi(memory);
+					memValue += (memoryByMi.doubleValue());
+				}
+			
+				String cpuStringValue = String.format("{\"metrics\":[{\"timestamp\":\"%s\",\"value\":%d}]}",timestamp, ((int)cupValue));
+				String memStringValue = String.format("{\"metrics\":[{\"timestamp\":\"%s\",\"value\":%s}]}",timestamp, ((int)memValue)+"");
+				
+				Gson gson = new GsonBuilder().create();
+				java.util.Map<String, Object> cpuUsage = gson.fromJson(cpuStringValue, java.util.Map.class);
+				java.util.Map<String, Object> memoryUsage = gson.fromJson(memStringValue, java.util.Map.class);
+				
+				result.putValue(IResult.METRICS_CPU_USAGE, cpuUsage.get("metrics"));
+				result.putValue(IResult.METRICS_MEM_USAGE, memoryUsage.get("metrics"));
+				
+			} else {
+				// metricserver 사용 
+//				[{"timestamp":"2019-03-19T11:26:00Z","value":2}]
+				
+				PodMetrics metrics = metricUtil.getMetricFromMetricServer(namespace, podName);
+				List<com.zdb.core.vo.Container> containers = metrics.getContainers();
+				
+				String timestamp = metrics.getTimestamp();
+				
+				double cupValue = 0;
+				double memValue = 0;
+				for (com.zdb.core.vo.Container c : containers) {
+					String cpu = c.getUsage().getCpu();
+					String memory = c.getUsage().getMemory();
+					
+					Double cpuByM = NumberUtils.cpuByM(cpu);
+					cupValue += cpuByM.doubleValue();
+					
+					Double memoryByMi = NumberUtils.memoryByMi(memory);
+					memValue += memoryByMi.doubleValue();
+				}
+			
+				String cpuStringValue = String.format("[{\"timestamp\":\"%s\",\"value\":%d}]",timestamp, ((int)cupValue));
+				String memStringValue = String.format("[{\"timestamp\":\"%s\",\"value\":%d}]",timestamp, ((int)memValue));
+				
+				Gson gson = new GsonBuilder().create();
+				java.util.Map<String, Object> cpuUsage = gson.fromJson(cpuStringValue, java.util.Map.class);
+				java.util.Map<String, Object> memoryUsage = gson.fromJson(memStringValue, java.util.Map.class);
+				
+				result.putValue(IResult.METRICS_CPU_USAGE, cpuUsage);
+				result.putValue(IResult.METRICS_MEM_USAGE, memoryUsage);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
+
+		return result;
+	}
+	
+	public Result getPodMetrics(String namespace, String podName) throws Exception {
+		Result result = new Result("", Result.OK);
+		
 		HeapsterMetricUtil metricUtil = new HeapsterMetricUtil();
 		try {
 			Object cpuUsage = metricUtil.getCPUUsage(namespace, podName);
@@ -1315,7 +1446,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			result.putValue(IResult.METRICS_CPU_USAGE, "");
 			result.putValue(IResult.METRICS_MEM_USAGE, "");
 		}
-
+		
 		return result;
 	}
 	
@@ -2078,6 +2209,16 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			return new Result("", Result.ERROR, e.getMessage(), e);
 		}
 	}
+	@Override
+	public Result updateDefaultAlertRule(String txId, AlertingRuleEntity alertingRuleEntity) {
+		try {
+			alertService.updateDefaultAlertRule(alertingRuleEntity);
+			return new Result("", Result.OK, "설정값이 저장되었습니다.");
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
 
 	@Override
 	public Result updateAlertRule(String txId, AlertingRuleEntity alertingRuleEntity) {
@@ -2101,6 +2242,113 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			return new Result("", Result.ERROR, e.getMessage(), e);
 		}
 	}
+	@Override
+	public Result getStorages(String namespace, String keyword,String app,String storageClassName, String billingType, String phase,String stDate,String edDate) throws Exception {
+		try {
+			CriteriaBuilder builder = entityManager.getCriteriaBuilder();
+			CriteriaQuery<PersistentVolumeClaimEntity> query = builder.createQuery(PersistentVolumeClaimEntity.class);
+			Root<PersistentVolumeClaimEntity> root = query.from(PersistentVolumeClaimEntity.class);
+			// where절에 들어갈 옵션 목록.
+			List<Predicate> predicates = new ArrayList<>();
+
+			// where절에 like문 추가
+			if (StringUtils.hasText(namespace)) {
+				predicates.add(builder.equal(root.get("namespace"), namespace));
+			}
+			if (StringUtils.hasText(keyword)) {
+				Predicate releaseName = builder.like(root.get("release"), "%" + keyword + "%");
+				Predicate name = builder.like(root.get("name"), "%" + keyword + "%");
+				predicates.add(builder.or(releaseName, name));
+			}
+			if (StringUtils.hasText(app)) {
+				if(app.equals("-")) {
+					predicates.add(builder.isNull(root.get("app")));
+				}else {
+					predicates.add(builder.like(root.get("app"), "%" + app + "%"));
+				}
+			}
+			if (StringUtils.hasText(storageClassName)) {
+				if(storageClassName.equals("-")) {
+					predicates.add(builder.isNull(root.get("storageClassName")));
+				}else {
+					predicates.add(builder.like(root.get("storageClassName"), "%" + storageClassName + "%"));
+				}
+			}
+			if (StringUtils.hasText(billingType)) {
+				if(billingType.equals("-")) {
+					predicates.add(builder.isNull(root.get("billingType")));
+				}else {
+					predicates.add(builder.like(root.get("billingType"), "%" + billingType + "%"));
+				}
+			}
+			if (StringUtils.hasText(phase)) {
+				if(phase.equals("-")) {
+					predicates.add(builder.isNull(root.get("phase")));
+				}else {
+					predicates.add(builder.like(root.get("phase"), "%" + phase + "%"));
+				}
+			}
+			if (StringUtils.hasText(stDate)) {
+				Expression<Date> creationTimestamp = root.get("creationTimestamp");
+				GregorianCalendar gc1 = new GregorianCalendar();
+				gc1.setTime(DateUtil.parseDate(stDate,"yyyy-MM-dd"));
+				//gc1.add(Calendar.HOUR_OF_DAY, -9);				
+				predicates.add(builder.greaterThanOrEqualTo(creationTimestamp, gc1.getTime()));
+			}
+			if (StringUtils.hasText(edDate)) {
+				Expression<Date> creationTimestamp = root.get("creationTimestamp");
+				GregorianCalendar gc2 = new GregorianCalendar();
+				gc2.setTime(DateUtil.parseDate(edDate,"yyyy-MM-dd"));
+				//gc2.add(Calendar.HOUR_OF_DAY, 24 -9);	
+				gc2.add(Calendar.HOUR_OF_DAY, 24);				
+				predicates.add(builder.lessThan(creationTimestamp, gc2.getTime()));
+			}
+			//zcp-system 필터
+			predicates.add(builder.notEqual(root.get("namespace"), "zcp-system"));
+			
+			// 옵션 목록을 where절에 추가
+			query.where(predicates.toArray(new Predicate[] {}));
+			query.orderBy(builder.desc(root.get("creationTimestamp")),builder.desc(root.get("name")));
+			
+			// 쿼리를 select문 추가
+			query.select(root);
+			// 최종적인 쿼리를 만큼
+			TypedQuery<PersistentVolumeClaimEntity> typedQuery = entityManager.createQuery(query);
+			// 쿼리 실행 후 결과 확인
+			List<PersistentVolumeClaimEntity> resultList = typedQuery.getResultList();
+			
+			return new Result("", Result.OK).putValue(IResult.STORAGES, resultList);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
+	@Override
+	public Result getStoragesData() throws Exception {
+		HashMap<String, List<String>> storageData = new HashMap<>();
+		List<String> cols = Arrays.asList("app","billingType");
+		List<Predicate> predicates = new ArrayList<>();
+		try {
+			CriteriaBuilder builder = entityManager.getCriteriaBuilder();
+			CriteriaQuery<String> query = builder.createQuery(String.class);
+			Root<PersistentVolumeClaimEntity> root = query.from(PersistentVolumeClaimEntity.class);
+			for(String col:cols) {
+				query.select(root.get(col)).distinct(true);
+				predicates.add(builder.isNotNull(root.get(col)));
+				query.where(predicates.toArray(new Predicate[] {}));
+				
+				TypedQuery<String> q = entityManager.createQuery(query);	
+				List<String> li = q.getResultList();
+				storageData.put(col, li);
+			}
+			
+			return new Result("", Result.OK).putValue(IResult.STORAGES_DATA, storageData);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
+	
 	
 	
 }

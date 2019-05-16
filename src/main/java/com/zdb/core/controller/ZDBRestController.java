@@ -225,7 +225,7 @@ public class ZDBRestController {
 			event.setNamespace(entity.getNamespace());
 			event.setServiceName(entity.getServiceName());
 			event.setOperation(RequestEvent.CREATE);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			history.append("Namespace").append(":").append(entity.getNamespace()).append("\n");
 			history.append("ServiceName").append(":").append(entity.getServiceName()).append("\n");
@@ -313,7 +313,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.CREATE_PUBLIC_SVC);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			// mariadb , redis, postgresql, rabbitmq, mongodb
 			log.info("{}, {}, {}", userInfo.getUserId(), userInfo.getUserName(), userInfo.getAccessRole());
@@ -355,7 +355,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.DELETE_PUBLIC_SVC);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			// mariadb , redis, postgresql, rabbitmq, mongodb
 			log.info("{}, {}, {}", userInfo.getUserId(), userInfo.getUserName(), userInfo.getAccessRole());
@@ -406,7 +406,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.SCALE_UP);
-			event.setUserId(userInfo.getUserName());	
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());	
 			
 			ZDBType dbType = ZDBType.getType(serviceType);
 
@@ -470,7 +470,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.STORAGE_SCALE_UP);
-			event.setUserId(userInfo.getUserName());	
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());	
 			
 			ZDBType dbType = ZDBType.getType(serviceType);
 
@@ -541,7 +541,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.SCALE_OUT);
-			event.setUserId(userInfo.getUserName());	
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());	
 			
 			ZDBType dbType = ZDBType.getType(serviceType);
 
@@ -598,7 +598,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setStartTime(new Date(System.currentTimeMillis()));
 			event.setOperation(RequestEvent.DELETE);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			com.zdb.core.domain.Result result = null;
 
@@ -650,7 +650,7 @@ public class ZDBRestController {
 			event.setOperation(RequestEvent.RESTART);
 			event.setNamespace(namespace);
 			event.setStartTime(new Date(System.currentTimeMillis()));
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			com.zdb.core.domain.Result result = null;
 
@@ -778,7 +778,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.UPDATE_CONFIG);
-			event.setUserId(userInfo.getUserName());	
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());	
 			
 			switch (dbType) {
 			case MariaDB:
@@ -865,7 +865,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.CREATE_DB_USER);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			result = ((MariaDBServiceImpl) mariadbService).createDBUser(txId, namespace, serviceName, account);
 			
@@ -909,7 +909,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.UPDATE_DB_USER);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			result = ((MariaDBServiceImpl) mariadbService).updateDBUser(txId(), namespace, serviceName, account);
 			
@@ -953,7 +953,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.DELETE_DB_USER);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			// mariadb , redis, postgresql, rabbitmq, mongodb
 			ZDBType dbType = ZDBType.getType(serviceType);
@@ -1131,18 +1131,24 @@ public class ZDBRestController {
 	public ResponseEntity<String> getNamespaces() {
 		try {
 			UserInfo userInfo = getUserInfo();
-			String namespaces = userInfo.getNamespaces();
-			List<String> userNamespaces = new ArrayList<>();
-			if(namespaces != null) {
-				String[] split = namespaces.split(",");
-				for (String ns : split) {
-					userNamespaces.add(ns.trim());
-				}
+//			String namespaces = userInfo.getNamespaces();
+//			List<String> userNamespaces = new ArrayList<>();
+//			if (namespaces != null) {
+//				String[] split = namespaces.split(",");
+//				for (String ns : split) {
+//					userNamespaces.add(ns.trim());
+//				}
+//			}
+
+			if (userInfo == null || userInfo.getUserId() == null) {
+				new Result(null, IResult.ERROR, "네임스페이스 조회 오류");
+				return new ResponseEntity<String>("네임스페이스 조회 오류.[사용자 정보를 알 수 없습니다.]", HttpStatus.EXPECTATION_FAILED);
 			}
-			
-			Result result = mariadbService.getNamespaces(userNamespaces);
+
+			// Result result = mariadbService.getNamespaces(userNamespaces);
+			Result result = mariadbService.getUserNamespaces(userInfo.getUserId());
 			return new ResponseEntity<String>(result.toJson(), result.status());
-			
+
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
@@ -1390,7 +1396,10 @@ public class ZDBRestController {
 			        				     @PathVariable("podName") final String podName ) {
 		try {
 			//http://169.56.80.189/api/v1/model/namespaces/zdb-maria/pod-list/maria-test777-mariadb-0/metrics/cpu-usage
-			Result result = mariadbService.getPodMetrics(namespace, podName);
+			//Result result = mariadbService.getPodMetrics(namespace, podName);
+			
+			// modified 20190510 heapster, metric-server 모두 지원 
+			Result result = mariadbService.getPodMetricsV2(namespace, podName);
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -1459,7 +1468,7 @@ public class ZDBRestController {
 			event.setOperation(RequestEvent.MODIFY_PASSWORD);
 			event.setNamespace(namespace);
 			event.setStartTime(new Date(System.currentTimeMillis()));
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			String newPassword = param.get("newPassword");
 			String secretType = param.get("secretType");
@@ -1570,7 +1579,7 @@ public class ZDBRestController {
 			event.setOperation(RequestEvent.POD_RESTART);
 			event.setNamespace(namespace);
 			event.setStartTime(new Date(System.currentTimeMillis()));
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			com.zdb.core.domain.Result result = null;
 			
@@ -1630,7 +1639,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.CREATE);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			Result result = ((MariaDBServiceImpl)mariadbService).updateConfig(txId, namespace, serviceName, config);
 			
@@ -1671,7 +1680,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.CREATE_TAG);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			Result result = mariadbService.createTag(tag);
 
@@ -1713,7 +1722,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.DELETE_TAG);
-			event.setUserId(userInfo.getUserName());	
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());	
 			Result result = mariadbService.deleteTag(tag);
 			
 			event.setStatus(result.getCode());
@@ -1880,7 +1889,7 @@ public class ZDBRestController {
 			event.setNamespace(entity.getNamespace());
 			event.setServiceName(entity.getServiceName());
 			event.setOperation(RequestEvent.CREATE_PVC);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			log.info("{}, {}, {}", userInfo.getUserId(), userInfo.getUserName(), userInfo.getAccessRole());
 
@@ -2068,7 +2077,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.SERVICE_OFF);
-			event.setUserId(userInfo.getUserName());	
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());	
 			
 			ZDBType dbType = ZDBType.getType(serviceType);
 
@@ -2136,7 +2145,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.SERVICE_ON);
-			event.setUserId(userInfo.getUserName());	
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());	
 			
 			ZDBType dbType = ZDBType.getType(serviceType);
 
@@ -2200,7 +2209,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.SERVICE_MASTER_TO_SLAVE);
-			event.setUserId(userInfo.getUserName());	
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());	
 			
 			ZDBType dbType = ZDBType.getType(serviceType);
 
@@ -2211,6 +2220,8 @@ public class ZDBRestController {
 				result = mariadbService.serviceChangeMasterToSlave(txId, namespace, serviceType, serviceName);
 				break;
 			case Redis:
+				result = redisService.serviceChangeMasterToSlave(txId, namespace, serviceType, serviceName);
+				break;
 			default:
 				log.error(RequestEvent.SERVICE_MASTER_TO_SLAVE+" - Not support.");
 				result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_MASTER_TO_SLAVE+" - Not support.");
@@ -2258,7 +2269,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.SERVICE_SLAVE_TO_MASTER);
-			event.setUserId(userInfo.getUserName());	
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());	
 			
 			ZDBType dbType = ZDBType.getType(serviceType);
 			
@@ -2269,6 +2280,8 @@ public class ZDBRestController {
 				result = mariadbService.serviceChangeSlaveToMaster(txId, namespace, serviceType, serviceName);
 				break;
 			case Redis:
+				result = redisService.serviceChangeSlaveToMaster(txId, namespace, serviceType, serviceName);
+				break;
 			default:
 				log.error(RequestEvent.SERVICE_SLAVE_TO_MASTER+" - Not support.");
 				result = new Result(txId, IResult.ERROR, RequestEvent.SERVICE_SLAVE_TO_MASTER+" - Not support.");
@@ -2365,7 +2378,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.SLOWLOG_ROTATION);
-			event.setUserId(userInfo.getUserName());	
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());	
 			
 			ZDBType dbType = ZDBType.getType(serviceType);
 
@@ -2639,7 +2652,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.CHANGE_PORT);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			ZDBType dbType = ZDBType.getType(serviceType);
 
@@ -2758,7 +2771,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.CREATE_DATABASE);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			result = ((MariaDBServiceImpl) mariadbService).createDatabase(txId, namespace, serviceName, database);
 			
@@ -2801,7 +2814,7 @@ public class ZDBRestController {
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
 			event.setOperation(RequestEvent.DELETE_DATABASE);
-			event.setUserId(userInfo.getUserName());
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			// mariadb , redis, postgresql, rabbitmq, mongodb
 			ZDBType dbType = ZDBType.getType(serviceType);
@@ -2896,7 +2909,7 @@ public class ZDBRestController {
 		}
 	} 
 	@RequestMapping(value="/{namespace}/alert/rule/{alert}",method = RequestMethod.POST)
-	public ResponseEntity<String> createAlertRule(@PathVariable("namespace") String namespaces,@PathVariable String alert,@RequestBody final AlertingRuleEntity alertingRuleEntity) throws Exception {
+	public ResponseEntity<String> createAlertRule(@PathVariable String namespace,@PathVariable String alert,@RequestBody final AlertingRuleEntity alertingRuleEntity) throws Exception {
 		try {
 			String txId = txId();
 			Result result = commonService.createAlertRule(txId,alertingRuleEntity);
@@ -2906,7 +2919,23 @@ public class ZDBRestController {
 			Result result = new Result(null, IResult.ERROR, RequestEvent.CREATE_ALERT_RULE + " 오류").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
-	} 
+	}
+	@RequestMapping(value="/{namespace}/alert/defaultRule/{serviceName}",method = RequestMethod.PUT)
+	public ResponseEntity<String> updateDefaultAlertRule(@PathVariable String namespace,@PathVariable String serviceName) throws Exception {
+		try {
+			String txId = txId();
+			AlertingRuleEntity alertingRuleEntity = new AlertingRuleEntity();
+			alertingRuleEntity.setNamespace(namespace);
+			alertingRuleEntity.setServiceName(serviceName);
+			Result result = commonService.updateDefaultAlertRule(txId,alertingRuleEntity);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(null, IResult.ERROR, RequestEvent.CREATE_ALERT_RULE + " 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
 	@RequestMapping(value="/{namespace}/alert/rule/{alert}",method = RequestMethod.PUT)
 	public ResponseEntity<String> updateAlertRule(@PathVariable("namespace") String namespaces,@PathVariable String alert,@RequestBody final AlertingRuleEntity alertingRuleEntity) throws Exception {
 		try {
@@ -2984,5 +3013,40 @@ public class ZDBRestController {
 			result = new Result(null, IResult.ERROR, RequestEvent.SELECT_PROCESS + " 오류").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
-	} 
+	}
+	
+	@RequestMapping(value="/storages",method = RequestMethod.GET)
+	public ResponseEntity<String> getStorages(
+		@RequestParam(required=false) final String namespace,
+		@RequestParam(required=false) final String keyword,
+		@RequestParam(required=false) final String app,
+		@RequestParam(required=false) final String storageClassName,
+		@RequestParam(required=false) final String billingType,
+		@RequestParam(required=false) final String phase,
+		@RequestParam(required=false) final String stDate,
+		@RequestParam(required=false) final String edDate
+		) {
+		try {
+			Result result = mariadbService.getStorages(namespace, keyword,app,storageClassName, billingType, phase,stDate,edDate);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			
+			Result result = new Result(null, IResult.ERROR, "스토리지 조회 오류!").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	@RequestMapping(value="/storages/data",method = RequestMethod.GET)
+	public ResponseEntity<String> getStorageData() {
+		try {
+			Result result = mariadbService.getStoragesData();
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			
+			Result result = new Result(null, IResult.ERROR, "스토리지 데이터 조회 오류!").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
 }
