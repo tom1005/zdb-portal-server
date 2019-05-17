@@ -59,6 +59,7 @@ import com.zdb.core.util.HeapsterMetricUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.NumberUtils;
 import com.zdb.core.util.PodManager;
+import com.zdb.core.util.StatusUtil;
 import com.zdb.core.vo.PodMetrics;
 
 import io.fabric8.kubernetes.api.model.ConfigMap;
@@ -615,6 +616,9 @@ public class K8SService {
 					}
 				} else if ("mariadb".equals(app)) {
 					String component = labels.get("component");
+					
+					// TODO
+					// Slave - ReplicationStatus: so.setReplicationStatus(slaveSrtatus)
 					if ("master".equals(component)) {
 						isMaster = true;
 					} else {
@@ -2014,6 +2018,108 @@ public class K8SService {
 //		latch.await();
 		
 		return persistenceSpec;
+	}
+//	TODO
+	private SlaveReplicationStatus getReplicationStatus(ServiceOverview so, Pod pod, String check) {
+		SlaveReplicationStatus rs = new SlaveReplicationStatus();
+		
+		if(check == "master") {
+			rs.setReplicationStatus("-");
+			rs.setMessage("master");
+			
+			return rs;
+		} else {
+			String clusterName = pod.getMetadata().getClusterName();
+			String namespace = pod.getMetadata().getNamespace();
+			String name = pod.getMetadata().getName();
+			
+			String read_Master_Log_Pos = "";
+			String exec_Master_Log_Pos = "";
+			int slave_IO_Running = 0;
+			int slave_SQL_Running = 0;
+			String last_Errno = "";
+			String last_Error = "";
+			String last_IO_Errno = "";
+			String last_IO_Error = "";
+			String seconds_Behind_Master = "";
+			String replicationStatus = "-";
+			
+			StatusUtil statusUtil = new StatusUtil();
+			Map<String, String> statusValueMap = Collections.emptyMap();
+			
+			try {
+				statusValueMap = statusUtil.slaveStatus(K8SUtil.kubernetesClient(), namespace, name);
+			} catch (Exception e) {
+				log.error(name);
+			}
+			
+			if(statusValueMap == null || statusValueMap.isEmpty()) {
+				log.error(clusterName+" > " +namespace +" > " +name+" unknown slave replication status");
+			} else {
+				read_Master_Log_Pos = statusValueMap.get("Read_Master_Log_Pos");
+				exec_Master_Log_Pos = statusValueMap.get("Exec_Master_Log_Pos");
+				String _slave_IO_Running = statusValueMap.get("Slave_IO_Running");
+				String _slave_SQL_Running = statusValueMap.get("Slave_SQL_Running");
+				last_Errno = statusValueMap.get("Last_Errno");
+				last_Error = statusValueMap.get("Last_Error");
+				last_IO_Errno = statusValueMap.get("Last_IO_Errno");//Last_IO_Errno
+				last_IO_Error = statusValueMap.get("Last_IO_Error");//Last_IO_Error
+				seconds_Behind_Master = statusValueMap.get("Seconds_Behind_Master");	
+				
+				replicationStatus = "OK";
+				
+				if(!"0".equals(last_Errno) || null != last_Error) {
+					replicationStatus = "Error";
+				}
+				
+				if(!"0".equals(last_IO_Errno) || (null != last_IO_Error && !last_IO_Error.isEmpty())) {
+					replicationStatus = "Error";
+				}
+				
+				if(!"Yes".equals(_slave_IO_Running) || !"Yes".equals(_slave_SQL_Running) ) {
+					replicationStatus = "Error";
+				}
+				
+				if(!"0".equals(seconds_Behind_Master)) {
+					replicationStatus = "warning";
+				}
+			}
+//			String message = String.format("read_Master_Log_Pos: %s, '\\n' "
+//					+ "exec_Master_Log_Pos: %s, '\\n' "
+//					+ "slave_IO_Running: %d, '\\n' "
+//					+ "slave_SQL_Running: %d, '\\n' "
+//					+ "last_Errno: $s, '\\n' "
+//					+ "last_Error: %s, '\\n' "
+//					+ "last_IO_Errno: %s, '\\n' "
+//					+ "last_IO_Error: %s, '\\n' "
+//					+ "seconds_Behind_Master: %s", 
+//					read_Master_Log_Pos, exec_Master_Log_Pos, slave_IO_Running, slave_SQL_Running, 
+//					last_Errno, last_Error, last_IO_Errno, last_IO_Error, seconds_Behind_Master);
+			String message = String.format("read_Master_Log_Pos: %s, <br>"
+					+ "exec_Master_Log_Pos: %s, <br>"
+					+ "slave_IO_Running: %d, <br>"
+					+ "slave_SQL_Running: %d, <br>"
+					+ "last_Errno: %s, <br>"
+					+ "last_Error: %s, <br>"
+					+ "last_IO_Errno: %s, <br>"
+					+ "last_IO_Error: %s, <br>"
+					+ "seconds_Behind_Master: %s", 
+					read_Master_Log_Pos, 
+					exec_Master_Log_Pos, 
+					slave_IO_Running, 
+					slave_SQL_Running, 
+					last_Errno, 
+					last_Error, 
+					last_IO_Errno, 
+					last_IO_Error, 
+					seconds_Behind_Master);
+			
+			rs.setReplicationStatus(replicationStatus);
+			rs.setMessage(message);
+			return rs;
+		}
+		
+		
 	}
 	
 	public List<StatefulSet> getAutoFailoverServices(String namespace, String serviceName) {
