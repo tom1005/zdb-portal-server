@@ -2182,6 +2182,19 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			return new Result(null, Result.ERROR, "alert rule 조회 실패 - "+ e.getMessage(), e);
 		}		
 	}
+	@Override
+	public Result getAlertRulesInService(String txId,String serviceName){
+		Result result = Result.RESULT_OK(txId);
+		
+		try {
+			List<AlertingRuleEntity> list = alertService.getAlertRulesInService(serviceName);
+			result.putValue(IResult.ALERT_RULES, list);
+			return result;
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result(null, Result.ERROR, "alert rule 조회 실패 - "+ e.getMessage(), e);
+		}		
+	}
 
 	@Override
 	public Result getAlertRule(String txId,String namespace,String alert) {
@@ -2197,22 +2210,9 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	}
 
 	@Override
-	public Result createAlertRule(String txId, AlertingRuleEntity alertingRuleEntity) {
+	public Result updateDefaultAlertRule(String txId, String namespace,String serviceType,String serviceName) {
 		try {
-			if(alertService.getAlertRule(alertingRuleEntity.getNamespace(), alertingRuleEntity.getAlert())!=null) {
-				return new Result("", Result.ERROR, "이미 설정된 Rule입니다.");
-			}
-			alertService.createAlertRule(alertingRuleEntity);
-			return new Result("", Result.OK, "설정값이 저장되었습니다.");
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-			return new Result("", Result.ERROR, e.getMessage(), e);
-		}
-	}
-	@Override
-	public Result updateDefaultAlertRule(String txId, AlertingRuleEntity alertingRuleEntity) {
-		try {
-			alertService.updateDefaultAlertRule(alertingRuleEntity);
+			alertService.updateDefaultAlertRule(namespace,serviceType,serviceName);
 			return new Result("", Result.OK, "설정값이 저장되었습니다.");
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -2221,10 +2221,9 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	}
 
 	@Override
-	public Result updateAlertRule(String txId, AlertingRuleEntity alertingRuleEntity) {
+	public Result updateAlertRule(String txId, String namespace,String serviceType,String serviceName, List<AlertingRuleEntity> alertRules) {
 		try {
-			alertService.deleteAlertRule(alertingRuleEntity);
-			alertService.createAlertRule(alertingRuleEntity);
+			alertService.updateAlertRule(namespace,serviceType,serviceName,alertRules);
 			return new Result("", Result.OK, "설정값이 저장되었습니다.");
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -2232,16 +2231,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		}
 	}
 
-	@Override
-	public Result deleteAlertRule(String txId, AlertingRuleEntity alertingRuleEntity) {
-		try {
-			alertService.deleteAlertRule(alertingRuleEntity);
-			return new Result("", Result.OK, "설정값이 저장되었습니다.");
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-			return new Result("", Result.ERROR, e.getMessage(), e);
-		}
-	}
 	@Override
 	public Result getStorages(String namespace, String keyword,String app,String storageClassName, String billingType, String phase,String stDate,String edDate) throws Exception {
 		try {

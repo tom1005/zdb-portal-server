@@ -29,7 +29,11 @@ security:
 
 endpoints:
   env:
-    enabled: false          
+    enabled: false     
+    
+props:
+  prometheus:
+    baseUrl: http://pog-dev-prometheus.cloudzcp.io/   
 ---
 spring:
   profiles: local

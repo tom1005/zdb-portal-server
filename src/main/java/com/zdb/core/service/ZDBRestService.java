@@ -322,15 +322,13 @@ public interface ZDBRestService {
 
 	Result getAlertRules(String txId, String namespaces);
 
+	Result getAlertRulesInService(String txId, String serviceName);
+
 	Result getAlertRule(String txId, String namespace,String alert);
 	
-	Result createAlertRule(String txId, AlertingRuleEntity alertingRuleEntity);
+	Result updateDefaultAlertRule(String txId, String namespace,String serviceType,String serviceName);
 
-	Result updateDefaultAlertRule(String txId, AlertingRuleEntity alertingRuleEntity);
-
-	Result updateAlertRule(String txId, AlertingRuleEntity alertingRuleEntity);
-
-	Result deleteAlertRule(String txId, AlertingRuleEntity alertingRuleEntity);
+	Result updateAlertRule(String txId, String namespace, String serviceType, String serviceName, List<AlertingRuleEntity> alertingRuleEntities);
 
 	Result getStorages(String namespace, String keyword, String app, String storageClassName, String billingType, String phase, String stDate, String edDate) throws Exception;
 
