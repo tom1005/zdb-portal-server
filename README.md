@@ -22,6 +22,15 @@ kubectl delete deployment zdb-portal-server-deployment -n zdb-system
 kubectl apply -f ./deploy/zdb-system-deployment.yml
 
 ===============================
+# v1.1.1
+## 추가 기능
+```
+- mariadb 프로세스관리
+- 알람 설정 관리
+
+```
+
+
 # v1.1.0
 ## 환경변수 추가 :
  
@@ -29,14 +38,16 @@ kubectl apply -f ./deploy/zdb-system-deployment.yml
  - chart.antiAffinity: hard 
  
 ### zdb-portal-server-deployment env 추가 
+```
       - env:
         - name: chart.antiAffinity
           valueFrom:
             configMapKeyRef:
               key: chart.antiAffinity
               name: zdb-portal-server-config
+```
 
-
+```
 제품명 - Cloud Z DB
 버전명 - v1.1.0
 릴리즈 일자 - 2019/04/01
@@ -50,5 +61,6 @@ kubectl apply -f ./deploy/zdb-system-deployment.yml
 - MariaDB 백업 기능 개선 및 증분백업, 복원 기능
 
 기타 버그 픽스
+```
 
         

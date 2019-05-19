@@ -402,8 +402,14 @@ public class K8SService {
 		for (ZDBType type : values) {
 			apps.add(type.getName().toLowerCase());
 		}
-		
+		long s = System.currentTimeMillis();
 		List<ReleaseMetaData> releaseListWithNamespaces = new ArrayList<>();
+		
+		List<Namespace> namespaceList = getNamespaces();
+		List<String> nsNameList = new ArrayList<>();
+		for (Namespace ns : namespaceList) {
+			nsNameList.add(ns.getMetadata().getName());
+		}
 		
 		if (namespaces == null || namespaces.isEmpty()) {
 			Iterable<ReleaseMetaData> releaseList = releaseRepository.findAll();
@@ -417,8 +423,10 @@ public class K8SService {
 				set.add(ns.trim());
 			}
 			for (String ns : set) {
-				
 				String namespace = ns.trim();
+				if(!nsNameList.contains(namespace)) {
+					continue;
+				}
 				
 				Iterable<ReleaseMetaData> releaseList = releaseRepository.findByNamespace(namespace);
 				for (ReleaseMetaData release : releaseList) {
@@ -426,13 +434,6 @@ public class K8SService {
 				}
 			}
 		}
-		
-		List<Namespace> namespaceList = getNamespaces();
-		List<String> nsNameList = new ArrayList<>();
-		for (Namespace ns : namespaceList) {
-			nsNameList.add(ns.getMetadata().getName());
-		}
-		
 		List<ScheduleEntity> scheduleEntityList = scheduleEntity.findAll();
 		
 		for (ReleaseMetaData release : releaseListWithNamespaces) {
@@ -444,7 +445,6 @@ public class K8SService {
 			}
 			
 			ServiceOverview so = new ServiceOverview();
-
 			so.setServiceName(release.getReleaseName());
 			so.setNamespace(release.getNamespace());
 			so.setPurpose(release.getPurpose());
@@ -473,12 +473,12 @@ public class K8SService {
 			so.setDeploymentStatus(release.getStatus());
 			
 			setServiceOverview(so, detail);
+			
 			serviceList.add(so);
 		}
 		return serviceList;
 	}
 
-	
 	/**
 	 * @param namespace
 	 * @param serviceType
@@ -616,13 +616,12 @@ public class K8SService {
 					}
 				} else if ("mariadb".equals(app)) {
 					String component = labels.get("component");
-					
-					// TODO
-					// Slave - ReplicationStatus: so.setReplicationStatus(slaveSrtatus)
 					if ("master".equals(component)) {
 						isMaster = true;
 					} else {
-						so.setSlaveStatus(replicationStatus(pod.getMetadata().getName()));
+						if (so.getStatus() != ZDBStatus.RED && PodManager.isReady(pod)) {
+							so.setSlaveStatus(replicationStatus(pod.getMetadata().getName()));
+						}
 					}
 				}
 				if (!isMaster) {
@@ -720,8 +719,6 @@ public class K8SService {
 				so.getDiskUsageOfPodMap().put(podName, disk);
 			}
 
-			Deployment deployment = K8SUtil.kubernetesClient().inNamespace("kube-system").extensions().deployments().withName("heapster").get();
-			
 			// metric 정보를 ui 에 담에서 전송...
 			for (Pod pod : so.getPods()) {
 				if (PodManager.isReady(pod)) {
@@ -731,7 +728,7 @@ public class K8SService {
 						HeapsterMetricUtil metricUtil = new HeapsterMetricUtil();
 						
 						// heapster 사용 
-						if(deployment != null) {
+						if("heapster".equals(kindOfMetricServer())) {
 							PodMetrics metrics = metricUtil.getMetricFromHeapster(namespace, podName);
 							List<com.zdb.core.vo.Container> containers = metrics.getContainers();
 							
@@ -760,7 +757,7 @@ public class K8SService {
 							so.getMemoryUsageOfPodMap().put(podName, memoryUsage.get("metrics"));
 //							
 							
-						} else {
+						} else if("metrics-server".equals(kindOfMetricServer())) {
 							// metricserver 사용 
 //							[{"timestamp":"2019-03-19T11:26:00Z","value":2}]
 							
@@ -798,6 +795,32 @@ public class K8SService {
 				}
 			}
 		}
+	}
+	
+	static String availableMetricServer = null;
+	
+	private String kindOfMetricServer() {
+		
+		if (availableMetricServer == null) {
+			try {// metrics-server
+				Deployment heapster = K8SUtil.kubernetesClient().inNamespace("kube-system").extensions().deployments().withName("heapster").get();
+				if (heapster != null) {
+					availableMetricServer = "heapster";
+					return availableMetricServer;
+				}
+
+				Deployment metrics_server = K8SUtil.kubernetesClient().inNamespace("kube-system").extensions().deployments().withName("metrics-server").get();
+				if (metrics_server != null) {
+					availableMetricServer = "metrics-server";
+					return availableMetricServer;
+				}
+
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		
+		return availableMetricServer;
 	}
 	
 	/**
@@ -1234,7 +1257,7 @@ public class K8SService {
     		rs.setMessage(message);
         } else {
         	rs.setReplicationStatus("over");
-        	rs.setMessage("Resource Lookup - TimeOver");
+        	rs.setMessage("");
         }
 		
 		
