@@ -715,7 +715,7 @@ public class K8SService {
 
 			for (Pod pod : so.getPods()) {
 				String podName = pod.getMetadata().getName();
-				DiskUsage disk = diskRepository.findOne(podName);
+				List<DiskUsage> disk = diskRepository.findByPodName(podName);
 				so.getDiskUsageOfPodMap().put(podName, disk);
 			}
 
