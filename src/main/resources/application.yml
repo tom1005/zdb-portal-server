@@ -128,7 +128,7 @@ chart:
     storageClass: ${storage.class:ibmc-block-silver}
           
 iam:
-    baseUrl: http://zcp-iam.zcp-system
+  baseUrl: http://zcp-iam.zcp-system
 prometheus:
   baseUrl: http://prometheus-service.zcp-system/
             
