@@ -1,7 +1,6 @@
 package com.zdb.core.repository;
  
 import java.util.Date;
-import java.util.List;
  
 import javax.transaction.Transactional;
  
@@ -19,12 +18,12 @@ public interface FailbackEntityRepository extends CrudRepository<FailbackEntity,
     @Query("select t from FailbackEntity t where failbackId=:failbackId" )
     FailbackEntity findFailback(@Param("failbackId") String failbackId);
     
-    @Query("select t from FailbackEntity t "
+    @Query(value =  "select * from zdb.failback_entity "
             + " where namespace=:namespace "
-            + " and serviceType=:serviceType "
-            + " and serviceName=:serviceName"
-            + " and status not in ('FAILBACK_END','FAILED')" )
-    List<FailbackEntity> findFailbackByName(@Param("namespace") String namespace
+            + " and service_type=:serviceType "
+            + " and service_name=:serviceName "
+            + " order by accepted_datetime desc limit 1" , nativeQuery = true)
+    FailbackEntity findFailbackByName(@Param("namespace") String namespace
 			, @Param("serviceType") String serviceType
 			, @Param("serviceName") String serviceName);
     
