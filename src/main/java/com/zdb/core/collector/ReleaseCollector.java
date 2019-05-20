@@ -39,8 +39,17 @@ public class ReleaseCollector {
 	@Scheduled(initialDelayString = "30000", fixedRateString = "120000")
 	public void collect() {
 		try {
-			Job job = K8SUtil.kubernetesClient().inNamespace("zdb-system").extensions().jobs().withName("zdb-portal-job").get();
-			if(job == null) {
+			boolean useCronJob = false;
+			List<Job> jobs = K8SUtil.kubernetesClient().inNamespace("zdb-system").extensions().jobs().list().getItems();
+			for (Job job : jobs) {
+				if(job.getMetadata().getName().startsWith("zdb-portal-job")) {
+					useCronJob = true;
+					break;
+				}
+				
+			}
+			
+			if(!useCronJob) {
 				List<Release> releaseAllList = K8SUtil.getReleaseAllList();
 				
 				for (Release release : releaseAllList) {

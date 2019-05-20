@@ -39,7 +39,8 @@ public class DiskUsageChecker {
 			for (Namespace namespace : nsList) {
 				items.addAll(client.inNamespace(namespace.getMetadata().getName()).pods().list().getItems());
 			}
-			String cmd = "/bin/df -P | grep bitnami | awk '{size = $2} {used = $3} {avail=$4} {use=$5} END { print size \" \"used \" \" avail \" \" use }'";
+//			String cmd = "/bin/df -P | grep bitnami | awk '{size = $2} {used = $3} {avail=$4} {use=$5} END { print size \" \"used \" \" avail \" \" use }'";
+			String cmd = "/bin/df -P | grep -E \"backup|bitnami\" |  awk '{print $2 \" \"  $3 \" \" $4 \" \" $5 \" \" $6}'";
 			
 			for (Pod pod : items) {
 
@@ -53,7 +54,7 @@ public class DiskUsageChecker {
 						// mariadb 는 label 의 app 명을 container 명으로 사용한다.
 						containerName = pod.getMetadata().getLabels().get("release");
 
-						cmd = "/bin/df -P /bitnami/redis/data | awk '{size = $2} {used = $3} {avail=$4} {use=$5} END { print size \" \"used \" \" avail \" \" use }'";
+						cmd = "/bin/df -P /bitnami/redis/data |  awk '{print $2 \" \"  $3 \" \" $4 \" \" $5 \" \" $6}'";
 						String role = pod.getMetadata().getLabels().get("role");
 						if (!"master".equals(role)) {
 							continue;
@@ -92,25 +93,31 @@ public class DiskUsageChecker {
 					
 					String temp = new ExecUtil().exec(k8sClient, namespace, podName, containerName, cmd);
 
-					DiskUsage diskUsage = new DiskUsage();
-					diskUsage.setNamespace(namespace);
-					diskUsage.setReleaseName(releaseName);
-					diskUsage.setPodName(podName);
 
 //					String temp = callback.getResult();
 					if (temp != null && !temp.trim().isEmpty()) {
-						String[] split = temp.split(" ");
+						String[] lines = temp.split("\n");
+						for (String line : lines) {
 
-						// Size Used Avail Use%
-						// 20971520 257088 20714432 2%
-						if (split.length == 4) {
-							diskUsage.setSize(Integer.parseInt(split[0]));
-							diskUsage.setUsed(Integer.parseInt(split[1]));
-							diskUsage.setAvail(Integer.parseInt(split[2]));
-							diskUsage.setUseRate(split[3].trim());
-							diskUsage.setUpdateTime(new Date(System.currentTimeMillis()));
-							list.add(diskUsage);
+							String[] split = line.split(" ");
+							
+							// Size Used Avail Use%
+							// 20971520 257088 20714432 2%
+							if (split.length == 5) {
+								DiskUsage diskUsage = new DiskUsage();
+								diskUsage.setNamespace(namespace);
+								diskUsage.setReleaseName(releaseName);
+								diskUsage.setPodName(podName);
+								diskUsage.setSize(Integer.parseInt(split[0]));
+								diskUsage.setUsed(Integer.parseInt(split[1]));
+								diskUsage.setAvail(Integer.parseInt(split[2]));
+								diskUsage.setUseRate(split[3].trim());
+								diskUsage.setPath(split[4].trim());
+								diskUsage.setUpdateTime(new Date(System.currentTimeMillis()));
+								list.add(diskUsage);
+							}
 						}
+						
 					}
 
 				} catch (Exception e) {

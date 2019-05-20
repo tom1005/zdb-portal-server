@@ -19,14 +19,14 @@ import com.zdb.core.domain.DiskUsage;
 @Repository
 public interface DiskUsageRepository extends CrudRepository<DiskUsage, String> {
 
-	@Query(value = "select release_name, sum(size), sum(avail), sum(used), sum(use_rate) from zdb.disk_usage group by release_name", nativeQuery = true)
-	List<DiskUsage> findGroupByReleaseName();
+//	@Query(value = "select release_name, sum(size), sum(avail), sum(used), sum(use_rate) from zdb.disk_usage group by release_name", nativeQuery = true)
+//	List<DiskUsage> findGroupByReleaseName();
 	
-	@Query(value = "select release_name, size, avail, used, use_rate from zdb.disk_usage where pod_name=:pod_name", nativeQuery = true)
-	DiskUsage findByPodName(@Param("pod_name") String pod_name);
+	@Query(value = "select pod_name, namespace, release_name, size, avail, used, use_rate, path, update_time from zdb.disk_usage where pod_name=:pod_name", nativeQuery = true)
+	List<DiskUsage>  findByPodName(@Param("pod_name") String pod_name);
 
-	@Query(value = "select release_name, sum(size) as size, sum(avail) as avail, sum(used) as used, sum(use_rate) as use_rate from zdb.disk_usage where release_name=:release_name", nativeQuery = true)
-	Object findGroupByReleaseName(@Param("release_name") String release_name);
+//	@Query(value = "select release_name, sum(size) as size, sum(avail) as avail, sum(used) as used, sum(use_rate) as use_rate from zdb.disk_usage where release_name=:release_name", nativeQuery = true)
+//	Object findGroupByReleaseName(@Param("release_name") String release_name);
 	
 	@Transactional
 	@Query(value = "delete from zdb.disk_usage where namespace =:namespace and release_name =:release_name", nativeQuery = true)
