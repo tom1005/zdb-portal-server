@@ -18,7 +18,7 @@ public interface FailbackEntityRepository extends CrudRepository<FailbackEntity,
     @Query("select t from FailbackEntity t where failbackId=:failbackId" )
     FailbackEntity findFailback(@Param("failbackId") String failbackId);
     
-    @Query(value =  "select t from failback_entity t "
+    @Query(value =  "select * from zdb.failback_entity "
             + " where namespace=:namespace "
             + " and service_type=:serviceType "
             + " and service_name=:serviceName "
