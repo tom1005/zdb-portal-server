@@ -336,7 +336,7 @@ public class AlertService {
 		return are;
 	}
 	
-	@Value("${props.prometheus.baseUrl}") private String promBaseUrl;
+	@Value("${prometheus.baseUrl}") private String promBaseUrl;
 	private void reloadAlertRule() {
 		Timer timer = new Timer();
 		TimerTask task = new TimerTask() {

@@ -31,9 +31,7 @@ endpoints:
   env:
     enabled: false     
     
-props:
-  prometheus:
-    baseUrl: http://pog-dev-prometheus.cloudzcp.io/   
+ 
 ---
 spring:
   profiles: local
@@ -68,8 +66,11 @@ chart:
     url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/redis-3.6.6.tgz"
   
 iam:
-    baseUrl: https://pog-dev-internal-iam.cloudzcp.io:443
-      
+  baseUrl: https://pog-dev-internal-iam.cloudzcp.io:443
+
+prometheus:
+  baseUrl: https://pog-dev-prometheus.cloudzcp.io/
+          
 storage:
   storageType: AWS_S3
   accessKey: "6bf48d42eb304e1292f178bf69034f12"
@@ -128,7 +129,9 @@ chart:
           
 iam:
     baseUrl: http://zcp-iam.zcp-system
-          
+prometheus:
+  baseUrl: http://prometheus-service.zcp-system/
+            
 storage:
   storageType: AWS_S3
   accessKey: "${storage.accessKey}"
