@@ -105,6 +105,7 @@ public interface IResult {
 	public static final String TAG = "tag";
 
 	public static final String NODES = "nodes";
+	public static final String NODE_LIST = "nodeList";
 	
 	public static final String BACKUP_SCHEDULE = "BackupSchedule";
 	public static final String BACKUP_DETAIL = "BackupDetail";

@@ -3048,5 +3048,18 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
+	@RequestMapping(value="/nodesInfo",method = RequestMethod.GET)
+	public ResponseEntity<String> getNodeInfo() {
+		try {
+			Result result = commonService.getNodesInfo();
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			
+			Result result = new Result(null, IResult.ERROR, "스토리지 데이터 조회 오류!").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+
 	
 }

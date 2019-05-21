@@ -336,4 +336,6 @@ public interface ZDBRestService {
 
 	Result getUserNamespaces(String userId) throws Exception;
 
+	Result getNodesInfo() throws Exception;
+
 }

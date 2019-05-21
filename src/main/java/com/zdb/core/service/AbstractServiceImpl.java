@@ -31,10 +31,16 @@ import javax.persistence.criteria.Root;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -57,6 +63,9 @@ import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.UserInfo;
 import com.zdb.core.domain.ZDBConfig;
 import com.zdb.core.domain.ZDBEntity;
+import com.zdb.core.domain.ZDBNode;
+import com.zdb.core.domain.ZDBNodeList;
+import com.zdb.core.domain.ZDBNodeList.ZdbNode;
 import com.zdb.core.domain.ZDBPersistenceEntity;
 import com.zdb.core.domain.ZDBStatus;
 import com.zdb.core.domain.ZDBType;
@@ -81,6 +90,7 @@ import com.zdb.redis.RedisConnection;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.DoneablePod;
 import io.fabric8.kubernetes.api.model.Namespace;
+import io.fabric8.kubernetes.api.model.Node;
 import io.fabric8.kubernetes.api.model.NodeList;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.api.model.PersistentVolume;
@@ -145,6 +155,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	static final int WORKER_COUNT = 5;
 	
 	static BlockingQueue<Exchange> deploymentQueue = null;
+
+	@Value("${iam.baseUrl}") String iamBaseUrl;
 	
 	protected AbstractServiceImpl() {
 
@@ -2337,7 +2349,55 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			return new Result("", Result.ERROR, e.getMessage(), e);
 		}
 	}
-	
-	
-	
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public Result getNodesInfo() throws Exception {
+		String url = UriComponentsBuilder.fromUriString(iamBaseUrl)
+                .path("/iam/metrics/nodes")
+                .buildAndExpand()
+                .toString();
+        
+        HttpHeaders headers = new HttpHeaders();
+        HttpEntity<String> requestEntity = new HttpEntity<String>(headers); 
+
+        RestTemplate restTemplate = K8SUtil.getRestTemplate();
+        ResponseEntity<ZDBNodeList> responseEntity = restTemplate.exchange(url, HttpMethod.GET, requestEntity, ZDBNodeList.class);
+        
+        List<ZDBNode> nodes = Collections.emptyList();
+		ZdbNode data = responseEntity.getBody().getData();
+        if(data!= null && data.getItems() != null) {
+        	nodes = data.getItems();
+        	
+        	List<Node> nodeList = K8SUtil.getNodes().getItems();
+        	Iterator<Node> it = nodeList.iterator();
+        	Map<String,ZDBNode> nodeData = new HashMap<>();
+        	while(it.hasNext()) {
+        		Node n = it.next();
+        		ObjectMeta m = n.getMetadata();
+        		String name = m.getName();
+        		ZDBNode zn = new ZDBNode();
+        		zn.setWorkerPool(m.getLabels().get("worker-pool") == null ?  "-" :m.getLabels().get("worker-pool"));
+        		zn.setMemory(NumberUtils.formatMemory(NumberUtils.memoryByMi((n.getStatus().getAllocatable().get("memory").getAmount()))*1024*1024));
+        		zn.setCpu(n.getStatus().getAllocatable().get("cpu").getAmount());
+        		zn.setMachineType(m.getLabels().get("ibm-cloud.kubernetes.io/machine-type"));
+        		
+        		nodeData.put(name, zn);        		
+        	}
+        	for(int i=0;i < nodes.size();i++) {
+        		ZDBNode o = nodes.get(i);
+        		ZDBNode zn = nodeData.get(o.getNodeName());
+        		o.setWorkerPool(zn.getWorkerPool());
+        		o.setMemory(zn.getMemory());
+        		o.setCpu(zn.getCpu());
+        		o.setMachineType(zn.getMachineType());
+        	}
+        }
+		try {
+			return new Result("", Result.OK).putValue(IResult.NODE_LIST, nodes);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
 }
