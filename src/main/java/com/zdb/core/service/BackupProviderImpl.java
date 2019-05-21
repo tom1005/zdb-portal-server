@@ -3,8 +3,10 @@ package com.zdb.core.service;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
@@ -337,6 +339,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 			log.debug("getSchedule - namespace : "+namespace);
 			
 			List<ScheduleInfoEntity> scheduleInfolist = new ArrayList<ScheduleInfoEntity>();
+			
 			List<ReleaseMetaData> releaseMetaList = null;
 			if(namespace.equals("all")) {
 				releaseMetaList = releaseRepository.findForBackupList();
@@ -345,7 +348,6 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 			}
 			
 			releaseMetaList.forEach(releaseMeta -> {
-				
 				long fullFileSize = 0l;
 				long fullExecutionMilSec = 0l;
 				String fullExecutionTime = "";
@@ -406,11 +408,9 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 					scheduleInfo.setIncrExecutionTime(incrExecutionTime);
 				}
 				scheduleInfolist.add(scheduleInfo);
-				
 			});
 			
-			
-			result = new Result(txId, IResult.OK).putValue(IResult.SCHEDULE_INFO_LIST, scheduleInfolist);
+			result = new Result(txId, IResult.OK).putValue(IResult.SCHEDULE_INFO_LIST, new ArrayList<ScheduleInfoEntity>(new HashSet<ScheduleInfoEntity>(scheduleInfolist)));
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			result = Result.RESULT_FAIL(txId, e);
