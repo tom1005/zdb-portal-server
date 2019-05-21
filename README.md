@@ -33,11 +33,15 @@ kubectl apply -f ./deploy/zdb-system-deployment.yml
 - disk_usage 테이블 구조 변경으로 테이블 삭제 후 zdb-portal-server:1.1.1 업그레이드
 ```
 kubectl -n zdb-system -it exec zdb-system-zdb-mariadb-0 -- /bin/bash -c "mysql -uzdb -p -e 'drop table zdb.disk_usage;'"
+kubectl -n zdb-system -it exec zdb-system-zdb-mariadb-0 -- /bin/bash -c "mysql -uzdb -p -e 'drop table zdb.release_meta_data;'"
+kubectl -n zdb-system -it exec zdb-system-zdb-mariadb-0 -- /bin/bash -c "mysql -uzdb -p -e 'drop table zdb.slave_status;'"
 kubectl -n zdb-system -it exec zdb-system-zdb-mariadb-0 -- /bin/bash -c "mysql -uzdb -p -e 'show tables;'"
 
 or
 
 kubectl -n zdb-system -it exec zdb-portal-db-mariadb-0 -- /bin/bash -c "mysql -uzdb -p -e 'drop table zdb.disk_usage;'"
+kubectl -n zdb-system -it exec zdb-portal-db-mariadb-0 -- /bin/bash -c "mysql -uzdb -p -e 'drop table zdb.release_meta_data;'"
+kubectl -n zdb-system -it exec zdb-portal-db-mariadb-0 -- /bin/bash -c "mysql -uzdb -p -e 'drop table zdb.slave_status;'"
 kubectl -n zdb-system -it exec zdb-portal-db-mariadb-0 -- /bin/bash -c "mysql -uzdb -p -e 'show tables;'"
 ```
 
