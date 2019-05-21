@@ -35,14 +35,14 @@ kubectl apply -f ./deploy/zdb-system-deployment.yml
 kubectl -n zdb-system -it exec zdb-system-zdb-mariadb-0 -- /bin/bash -c "mysql -uzdb -p -e 'drop table zdb.disk_usage;'"
 kubectl -n zdb-system -it exec zdb-system-zdb-mariadb-0 -- /bin/bash -c "mysql -uzdb -p -e 'drop table zdb.release_meta_data;'"
 kubectl -n zdb-system -it exec zdb-system-zdb-mariadb-0 -- /bin/bash -c "mysql -uzdb -p -e 'drop table zdb.slave_status;'"
-kubectl -n zdb-system -it exec zdb-system-zdb-mariadb-0 -- /bin/bash -c "mysql -uzdb -p -e 'show tables;'"
+kubectl -n zdb-system -it exec zdb-system-zdb-mariadb-0 -- /bin/bash -c "mysql -uzdb -p -e 'use zdb;show tables;'"
 
 or
 
 kubectl -n zdb-system -it exec zdb-portal-db-mariadb-0 -- /bin/bash -c "mysql -uzdb -p -e 'drop table zdb.disk_usage;'"
 kubectl -n zdb-system -it exec zdb-portal-db-mariadb-0 -- /bin/bash -c "mysql -uzdb -p -e 'drop table zdb.release_meta_data;'"
 kubectl -n zdb-system -it exec zdb-portal-db-mariadb-0 -- /bin/bash -c "mysql -uzdb -p -e 'drop table zdb.slave_status;'"
-kubectl -n zdb-system -it exec zdb-portal-db-mariadb-0 -- /bin/bash -c "mysql -uzdb -p -e 'show tables;'"
+kubectl -n zdb-system -it exec zdb-portal-db-mariadb-0 -- /bin/bash -c "mysql -uzdb -p -e 'use zdb;show tables;'"
 ```
 
 
