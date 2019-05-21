@@ -344,8 +344,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 
 			log.info(">>> install request : "+new Gson().toJson(releaseMeta));
 
-			releaseRepository.save(releaseMeta);
-
 			// install request
 			deploymentRequest(exchange);
 
