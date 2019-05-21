@@ -69,7 +69,7 @@ iam:
   baseUrl: https://pog-dev-internal-iam.cloudzcp.io:443
 
 prometheus:
-  baseUrl: https://pog-dev-prometheus.cloudzcp.io/
+  baseUrl: http://pog-dev-prometheus.cloudzcp.io/
           
 storage:
   storageType: AWS_S3
@@ -130,7 +130,7 @@ chart:
 iam:
   baseUrl: http://zcp-iam.zcp-system
 prometheus:
-  baseUrl: http://prometheus-service.zcp-system/
+  baseUrl: http://prometheus-service.zcp-system:9090/
             
 storage:
   storageType: AWS_S3

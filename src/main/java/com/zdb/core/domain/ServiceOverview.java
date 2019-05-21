@@ -88,7 +88,7 @@ public class ServiceOverview {
 	
 	private Map<String, PersistenceSpec> persistenceSpecOfPodMap = new HashMap<>();
 	
-	private Map<String, DiskUsage> diskUsageOfPodMap = new HashMap<>();
+	private Map<String, List<DiskUsage>> diskUsageOfPodMap = new HashMap<>();
 
 	private Map<String, Object> cpuUsageOfPodMap = new HashMap<>();
 	
