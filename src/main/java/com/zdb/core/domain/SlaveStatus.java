@@ -54,7 +54,7 @@ public class SlaveStatus {
 	@Column(name = "STATUS")
 	String status;
 
-	@Column(name = "MESSAGE")
+	@Column(length=5000000, name = "MESSAGE")
 	String message;
 	
 	@Column(name = "updateTime")

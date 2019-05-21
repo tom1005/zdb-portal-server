@@ -597,7 +597,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 					releaseMeta.setAppVersion(release.getChart().getMetadata().getAppVersion());
 					releaseMeta.setChartVersion(release.getChart().getMetadata().getVersion());
 					releaseMeta.setChartName(release.getChart().getMetadata().getName());
-					releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds()));
+					releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds() * 1000L));
 					releaseMeta.setStatus(release.getInfo().getStatus().getCode().name());
 					releaseMeta.setDescription(release.getInfo().getDescription());
 					releaseMeta.setManifest(release.getManifest());
