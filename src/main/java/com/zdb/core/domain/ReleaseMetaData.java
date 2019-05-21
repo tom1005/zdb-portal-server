@@ -4,11 +4,9 @@ import java.util.Date;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.IdClass;
 import javax.persistence.Lob;
-
-import org.hibernate.annotations.GenericGenerator;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -18,19 +16,19 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
+@IdClass(value=ReleaseMetaDataPK.class)
 public class ReleaseMetaData {
 
 	@Id
-	@GeneratedValue(generator = "uuid")
-	@GenericGenerator(name = "uuid", strategy = "uuid2")
-	@Column(name = "id")
-	String uid;
+	@Column(name = "releasename")
+	String releaseName;
+
+	@Id
+	@Column(name = "createTime")
+	Date createTime;
 
 	@Column(name = "userId")
 	String userId;
-	
-	@Column(name = "createTime")
-	Date createTime;
 	
 	@Column(name = "updateTime")
 	Date updateTime;
@@ -41,9 +39,6 @@ public class ReleaseMetaData {
 	@Column(name = "chartName")
 	String chartName;
 
-	@Column(name = "releasename")
-	String releaseName;
-	
 	@Column(name = "namespace")
 	String namespace;
 	
