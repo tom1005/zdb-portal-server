@@ -169,4 +169,19 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 	BackupEntity findFromBackup(@Param("namespace") String namespace
 			, @Param("serviceType") String serviceType
 			, @Param("serviceName") String serviceName);
+	
+	
+	@Modifying(clearAutomatically = true)
+	@Transactional
+	@Query("UPDATE BackupEntity t SET "
+			+ "t.ondisk = 'N' "
+			+ "WHERE t.namespace=:namespace"
+			+ " and t.serviceType=:serviceType"
+			+ " and t.serviceName=:serviceName"
+			+ " and t.ondisk = 'Y'"
+			)
+	int modify2OndiskDelete( @Param("namespace") String namespace
+			, @Param("serviceType") String serviceType
+			, @Param("serviceName") String serviceName);
+	
 }

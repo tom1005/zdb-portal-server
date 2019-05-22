@@ -8,7 +8,6 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import com.zdb.core.domain.BackupEntity;
 import com.zdb.core.domain.BackupDiskEntity;
 
 @Repository
@@ -17,10 +16,14 @@ public interface BackupDiskEntityRepository extends CrudRepository<BackupDiskEnt
 	@Query("select t from BackupDiskEntity t where backupDiskId=:backupDiskId" )
 	BackupDiskEntity findBackupDisk(@Param("backupDiskId") String backupDiskId);
 
-	@Query("select t from BackupDiskEntity t where serviceType=:serviceType"
-			+ " and serviceName=:serviceName" )
+	@Query(value =  "select * from zdb.backup_disk_entity "
+            + " where namespace=:namespace "
+            + " and service_type=:serviceType "
+            + " and service_name=:serviceName "
+            + " order by created_datetime desc limit 1" , nativeQuery = true)
 	BackupDiskEntity findBackupByServiceName(@Param("serviceType") String serviceType
-			, @Param("serviceName") String serviceName);
+			, @Param("serviceName") String serviceName
+			, @Param("namespace") String namespace);
 	
 	@Modifying(clearAutomatically = true)
 	@Transactional
