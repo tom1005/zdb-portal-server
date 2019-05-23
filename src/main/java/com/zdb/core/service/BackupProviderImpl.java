@@ -6,11 +6,9 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -22,8 +20,10 @@ import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ScheduleEntity;
 import com.zdb.core.domain.ScheduleInfoEntity;
+import com.zdb.core.domain.Tag;
 import com.zdb.core.repository.BackupEntityRepository;
 import com.zdb.core.repository.ScheduleEntityRepository;
+import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.util.K8SUtil;
 
@@ -43,6 +43,9 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 	
 	@Autowired
 	ZDBReleaseRepository releaseRepository;
+	
+	@Autowired
+	TagRepository tagRepository;
 
 	@Override
 	public Result saveSchedule(String txid, ScheduleEntity entity) throws Exception {
@@ -348,66 +351,69 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 			}
 			
 			releaseMetaList.forEach(releaseMeta -> {
-				long fullFileSize = 0l;
-				long fullExecutionMilSec = 0l;
-				String fullExecutionTime = "";
-				long incrFileSize = 0l;
-				long incrExecutionMilSec = 0l;
-				String incrExecutionTime = "";
-				int fullBackupCnt = 0;
-				int incrtBackupCnt = 0;
 				
-				ScheduleInfoEntity scheduleInfo = new ScheduleInfoEntity();
-				scheduleInfo.setNamespace(releaseMeta.getNamespace());
-				scheduleInfo.setServiceType(releaseMeta.getApp());
-				scheduleInfo.setServiceName(releaseMeta.getReleaseName());
-				
-				scheduleInfo.setUseYn("N");
-				scheduleInfo.setStartTime(ZDBConfigService.backupTimeValue);
-				scheduleInfo.setStorePeriod(Integer.parseInt(ZDBConfigService.backupDuratioValue));
-				scheduleInfo.setIncrementYn("N");
-				scheduleInfo.setIncrementPeriod(0);
-				
-				scheduleInfo.setFullFileSize(fullFileSize);
-				scheduleInfo.setFullExecutionTime(fullExecutionTime);
-				scheduleInfo.setIncrFileSize(incrFileSize);
-				
-				ScheduleEntity schedule = scheduleRepository.findScheduleByName(releaseMeta.getNamespace(), releaseMeta.getApp(), releaseMeta.getReleaseName());
-				if(schedule != null) {
-					scheduleInfo.setUseYn(schedule.getUseYn());
-					scheduleInfo.setStartTime(schedule.getStartTime());
-					scheduleInfo.setStorePeriod(schedule.getStorePeriod());
-					scheduleInfo.setIncrementYn(schedule.getIncrementYn());
-					scheduleInfo.setIncrementPeriod(schedule.getIncrementPeriod());
+				if(releaseMeta.getApp().equals("mariadb") || tagRepository.findByNamespaceAndReleaseNameForBackupList(namespace, releaseMeta.getReleaseName()) != null ) {
+					long fullFileSize = 0l;
+					long fullExecutionMilSec = 0l;
+					String fullExecutionTime = "";
+					long incrFileSize = 0l;
+					long incrExecutionMilSec = 0l;
+					String incrExecutionTime = "";
+					int fullBackupCnt = 0;
+					int incrtBackupCnt = 0;
 					
-					List<BackupEntity> backuplist = backupRepository.findBackupListByScheduleId(schedule.getScheduleId());
-					for(int i=0; i<backuplist.size(); i++) {
-						BackupEntity backup = backuplist.get(i);
-						if(backup.getType().equals("FULL")) {
-							fullFileSize += backup.getFileSize();
-							fullExecutionMilSec += backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime();
-							fullBackupCnt++;
-						}else if(backup.getType().equals("INCR")) {
-							incrFileSize += backup.getFileSize();
-							incrExecutionMilSec += backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime();
-							incrtBackupCnt++;
-						}
-					}
+					ScheduleInfoEntity scheduleInfo = new ScheduleInfoEntity();
+					scheduleInfo.setNamespace(releaseMeta.getNamespace());
+					scheduleInfo.setServiceType(releaseMeta.getApp());
+					scheduleInfo.setServiceName(releaseMeta.getReleaseName());
 					
-					if(fullBackupCnt != 0) {
-						fullFileSize = fullFileSize/fullBackupCnt/1024/1024;
-						fullExecutionTime = getExecutionTimeConvertion(fullExecutionMilSec/fullBackupCnt);
-					}
-					if(incrtBackupCnt != 0) {
-						incrFileSize = incrFileSize/fullBackupCnt/1024/1024;
-						incrExecutionTime = getExecutionTimeConvertion(incrExecutionMilSec/incrtBackupCnt);
-					}
+					scheduleInfo.setUseYn("N");
+					scheduleInfo.setStartTime(ZDBConfigService.backupTimeValue);
+					scheduleInfo.setStorePeriod(Integer.parseInt(ZDBConfigService.backupDuratioValue));
+					scheduleInfo.setIncrementYn("N");
+					scheduleInfo.setIncrementPeriod(0);
+					
 					scheduleInfo.setFullFileSize(fullFileSize);
 					scheduleInfo.setFullExecutionTime(fullExecutionTime);
 					scheduleInfo.setIncrFileSize(incrFileSize);
-					scheduleInfo.setIncrExecutionTime(incrExecutionTime);
+					
+					ScheduleEntity schedule = scheduleRepository.findScheduleByName(releaseMeta.getNamespace(), releaseMeta.getApp(), releaseMeta.getReleaseName());
+					if(schedule != null) {
+						scheduleInfo.setUseYn(schedule.getUseYn());
+						scheduleInfo.setStartTime(schedule.getStartTime());
+						scheduleInfo.setStorePeriod(schedule.getStorePeriod());
+						scheduleInfo.setIncrementYn(schedule.getIncrementYn());
+						scheduleInfo.setIncrementPeriod(schedule.getIncrementPeriod());
+						
+						List<BackupEntity> backuplist = backupRepository.findBackupListByScheduleId(schedule.getScheduleId());
+						for(int i=0; i<backuplist.size(); i++) {
+							BackupEntity backup = backuplist.get(i);
+							if(backup.getType().equals("FULL")) {
+								fullFileSize += backup.getFileSize();
+								fullExecutionMilSec += backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime();
+								fullBackupCnt++;
+							}else if(backup.getType().equals("INCR")) {
+								incrFileSize += backup.getFileSize();
+								incrExecutionMilSec += backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime();
+								incrtBackupCnt++;
+							}
+						}
+						
+						if(fullBackupCnt != 0) {
+							fullFileSize = fullFileSize/fullBackupCnt/1024/1024;
+							fullExecutionTime = getExecutionTimeConvertion(fullExecutionMilSec/fullBackupCnt);
+						}
+						if(incrtBackupCnt != 0) {
+							incrFileSize = incrFileSize/fullBackupCnt/1024/1024;
+							incrExecutionTime = getExecutionTimeConvertion(incrExecutionMilSec/incrtBackupCnt);
+						}
+						scheduleInfo.setFullFileSize(fullFileSize);
+						scheduleInfo.setFullExecutionTime(fullExecutionTime);
+						scheduleInfo.setIncrFileSize(incrFileSize);
+						scheduleInfo.setIncrExecutionTime(incrExecutionTime);
+					}
+					scheduleInfolist.add(scheduleInfo);
 				}
-				scheduleInfolist.add(scheduleInfo);
 			});
 			
 			result = new Result(txId, IResult.OK).putValue(IResult.SCHEDULE_INFO_LIST, new ArrayList<ScheduleInfoEntity>(new HashSet<ScheduleInfoEntity>(scheduleInfolist)));

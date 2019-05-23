@@ -33,4 +33,7 @@ public interface TagRepository extends CrudRepository<Tag, String> {
 	@Query(value = "select * from zdb.tag where namespace =:namespace and release_name =:release_name and tag_name =:tag_name limit 1", nativeQuery = true)
 	Tag findByNamespaceAndReleaseNameAndTag(@Param("namespace") String namespace, @Param("release_name") String release_name, @Param("tag_name") String tag_name);
 	
+	@Query(value = "select * from zdb.tag where namespace =:namespace and release_name =:release_name and tagName = 'data' limit 1", nativeQuery = true)
+	Tag findByNamespaceAndReleaseNameForBackupList(@Param("namespace") String namespace, @Param("release_name") String release_name);
+	
 }
