@@ -48,5 +48,6 @@ public class BackupEntity {
 	private long toLsn = 0l;
 	private long fromLsn = 0l;
 	private String fromBackupId = "";
+	private String ondisk;
 	
 }
