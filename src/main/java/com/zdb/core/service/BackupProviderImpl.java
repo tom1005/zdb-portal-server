@@ -352,7 +352,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 			
 			releaseMetaList.forEach(releaseMeta -> {
 				
-				if(releaseMeta.getApp().equals("mariadb") || tagRepository.findByNamespaceAndReleaseNameForBackupList(namespace, releaseMeta.getReleaseName()) != null ) {
+				if(releaseMeta.getApp().equals("mariadb") || tagRepository.findByNamespaceAndReleaseNameAndTag(releaseMeta.getNamespace(), releaseMeta.getReleaseName(), "data") != null ) {
 					long fullFileSize = 0l;
 					long fullExecutionMilSec = 0l;
 					String fullExecutionTime = "";

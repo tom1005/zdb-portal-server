@@ -32,6 +32,15 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 	List<BackupEntity> findBackupByService(@Param("serviceType") String serviceType
 			, @Param("serviceName") String serviceName);
 	
+	@Query(value =  "select * from zdb.backup_entity "
+            + " where namespace=:namespace "
+            + " and service_type=:serviceType "
+            + " and service_name=:serviceName "
+            + " order by accepted_datetime desc limit 1" , nativeQuery = true)
+	BackupEntity findBackupStatus(@Param("namespace") String namespace
+			, @Param("serviceType") String serviceType
+			, @Param("serviceName") String serviceName);
+	
 	@Query("select t from BackupEntity t where namespace=:namespace"
 			+ " and serviceType=:serviceType"
 			+ " and serviceName=:serviceName"

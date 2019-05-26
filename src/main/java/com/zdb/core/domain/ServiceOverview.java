@@ -94,6 +94,12 @@ public class ServiceOverview {
 	
 	private Map<String, Object> memoryUsageOfPodMap = new HashMap<>();
 	
+	private boolean ondiskFlag;
+	
+	private String backupStatus;
+	
+	private String failbackStatus;
+	
 	/**
 	 * @return
 	 */
