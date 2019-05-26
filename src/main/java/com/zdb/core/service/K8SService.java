@@ -32,9 +32,12 @@ import org.springframework.web.client.RestTemplate;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.zdb.core.domain.BackupDiskEntity;
+import com.zdb.core.domain.BackupEntity;
 import com.zdb.core.domain.CommonConstants;
 import com.zdb.core.domain.DiskUsage;
 import com.zdb.core.domain.EventType;
+import com.zdb.core.domain.FailbackEntity;
 import com.zdb.core.domain.MetaData;
 import com.zdb.core.domain.PersistenceSpec;
 import com.zdb.core.domain.ReleaseMetaData;
@@ -49,7 +52,10 @@ import com.zdb.core.domain.ZDBStatus;
 import com.zdb.core.domain.ZDBType;
 import com.zdb.core.job.Job.JobResult;
 import com.zdb.core.job.JobHandler;
+import com.zdb.core.repository.BackupDiskEntityRepository;
+import com.zdb.core.repository.BackupEntityRepository;
 import com.zdb.core.repository.DiskUsageRepository;
+import com.zdb.core.repository.FailbackEntityRepository;
 import com.zdb.core.repository.MetadataRepository;
 import com.zdb.core.repository.ScheduleEntityRepository;
 import com.zdb.core.repository.SlaveStatusRepository;
@@ -112,6 +118,15 @@ public class K8SService {
 	
 	@Autowired
 	private ScheduleEntityRepository scheduleEntity;
+	
+	@Autowired
+	private BackupDiskEntityRepository backupDiskEntityRepository;
+	
+	@Autowired
+	private BackupEntityRepository backupEntityRepository;
+	
+	@Autowired
+	private FailbackEntityRepository failbackEntityRepository;
 	
 	@Value("${iam.baseUrl}")
 	public String iamBaseUrl;
@@ -588,6 +603,29 @@ public class K8SService {
 		//   - 정상 : MasterToMaster, 
 		//   - failover 된 상태 : MasterToSlave
 		so.setServiceFailOverStatus(getServiceFailOverStatus(namespace, so.getServiceType(), serviceName));
+		
+		// Backup 전용 디스크 사용 여부 : ondiskFlag
+		so.setOndiskFlag(false);
+		BackupDiskEntity backupDiskEntity = backupDiskEntityRepository.findBackupByServiceName(so.getServiceType(), serviceName, namespace);
+		if (backupDiskEntity != null && backupDiskEntity.getDeleteYn().equals("N")
+				&& backupDiskEntity.getStatus().equals("")) {
+			so.setOndiskFlag(true);
+		}
+		
+		/*
+		private BackupEntityRepository backupEntityRepository;
+		*/
+		
+		// Bakcup 현재 수행 상태 : backupStatus , findBackupStatus
+		BackupEntity backupEntity = backupEntityRepository.findBackupStatus(namespace, so.getServiceType(), serviceName);
+		if(backupEntity != null)
+			so.setBackupStatus(backupEntity.getStatus());
+		
+		// Failback 수행 상태 : failbackStatus
+		FailbackEntity failbackEntity= failbackEntityRepository.findFailbackByName(namespace, so.getServiceType(), serviceName);
+		if(failbackEntity != null) {
+			so.setFailbackStatus(failbackEntity.getStatus());
+		}
 		
 		// 태그 정보 
 
