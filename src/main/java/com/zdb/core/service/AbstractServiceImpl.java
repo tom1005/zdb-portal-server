@@ -78,7 +78,7 @@ import com.zdb.core.repository.ZDBConfigRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.util.DateUtil;
-import com.zdb.core.util.HeapsterMetricUtil;
+import com.zdb.core.util.MetricUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.ResourceChecker;
 import com.zdb.core.util.NumberUtils;
@@ -1385,7 +1385,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		Deployment deployment = K8SUtil.kubernetesClient().inNamespace("kube-system").extensions().deployments().withName("heapster").get();
 		
 		try {
-			HeapsterMetricUtil metricUtil = new HeapsterMetricUtil();
+			MetricUtil metricUtil = new MetricUtil();
 			
 			// heapster 사용 
 			if(deployment != null) {
@@ -1459,7 +1459,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	public Result getPodMetrics(String namespace, String podName) throws Exception {
 		Result result = new Result("", Result.OK);
 		
-		HeapsterMetricUtil metricUtil = new HeapsterMetricUtil();
+		MetricUtil metricUtil = new MetricUtil();
 		try {
 			Object cpuUsage = metricUtil.getCPUUsage(namespace, podName);
 			result.putValue(IResult.METRICS_CPU_USAGE, cpuUsage);

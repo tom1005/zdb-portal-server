@@ -11,6 +11,7 @@ import org.crsh.console.jline.internal.Log;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
@@ -20,22 +21,24 @@ import com.google.gson.GsonBuilder;
 import com.zdb.core.vo.PodMetrics;
 
 import io.fabric8.kubernetes.api.model.Pod;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 에러로그, slowlog 조회 및 다운로드 
  * @author a06919
  *
  */
-public class HeapsterMetricUtil {
+@Slf4j
+public class MetricUtil {
 	
 	public static void main(String[] args) throws Exception {
 		// curl GET http://heapster.kube-system/api/v1/model/namespaces/zdb-system/pod-list/zdb-system-zdb-mariadb-master-0/metrics/memory-usage
 
-		Object result = new HeapsterMetricUtil().getMemoryUsage("zdb-test", "zdb-test-qq-mariadb-0");
+		Object result = new MetricUtil().getMemoryUsage("zdb-test", "zdb-test-qq-mariadb-0");
 
 		System.out.println(result);
 		
-		result = new HeapsterMetricUtil().getCPUUsage("zdb-test", "zdb-test-qq-mariadb-0");
+		result = new MetricUtil().getCPUUsage("zdb-test", "zdb-test-qq-mariadb-0");
 
 		System.out.println(result);
 		
@@ -121,14 +124,23 @@ public class HeapsterMetricUtil {
 		HttpEntity<String> requestEntity = new HttpEntity<>(headers);
 
 		String endpoint = masterUrl + "/apis/metrics.k8s.io/v1beta1/namespaces/{namespace}/pods/{name}";
-		ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.GET, requestEntity, String.class, namespace, podname);
 
-		String body = response.getBody();
-
-		Gson gson = new GsonBuilder().setPrettyPrinting().create();
-		PodMetrics podMetrics = gson.fromJson(body, PodMetrics.class);
+		try {
+			ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.GET, requestEntity, String.class, namespace, podname);
+			if(response.getStatusCode().value() >= 200 && response.getStatusCode().value() < 400) {
+				String body = response.getBody();
+				if(body != null) {
+					Gson gson = new GsonBuilder().setPrettyPrinting().create();
+					PodMetrics podMetrics = gson.fromJson(body, PodMetrics.class);
+					
+					return podMetrics;
+				}
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
 		
-		return podMetrics;
+		return null;
 	}
 	
 	public PodMetrics getMetricFromHeapster(String namespace, String podname) throws Exception {
@@ -146,13 +158,22 @@ public class HeapsterMetricUtil {
 		
 		HttpEntity<String> requestEntity = new HttpEntity<>(headers);
 		String endpoint = masterUrl + "/api/v1/namespaces/kube-system/services/http:heapster:/proxy/apis/metrics/v1alpha1/namespaces/{namespace}/pods/{name}?labelSelector=";
-		ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.GET, requestEntity, String.class, namespace, podname);
 		
-		String body = response.getBody();
+		try {
+			ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.GET, requestEntity, String.class, namespace, podname);
+			if(response.getStatusCode().value() >= 200 && response.getStatusCode().value() < 400) {
+				String body = response.getBody();
+				if(body != null) {
+					Gson gson = new GsonBuilder().setPrettyPrinting().create();
+					PodMetrics podMetrics = gson.fromJson(body, PodMetrics.class);
+					
+					return podMetrics;
+				}
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
 		
-		Gson gson = new GsonBuilder().setPrettyPrinting().create();
-		PodMetrics podMetrics = gson.fromJson(body, PodMetrics.class);
-		
-		return podMetrics;
+		return null;
 	}
 }
