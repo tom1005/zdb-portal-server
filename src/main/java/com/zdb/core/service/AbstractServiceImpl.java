@@ -80,7 +80,7 @@ import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.util.DateUtil;
 import com.zdb.core.util.HeapsterMetricUtil;
 import com.zdb.core.util.K8SUtil;
-import com.zdb.core.util.NamespaceResourceChecker;
+import com.zdb.core.util.ResourceChecker;
 import com.zdb.core.util.NumberUtils;
 import com.zdb.core.util.ZDBLogViewer;
 import com.zdb.core.vo.PodMetrics;
@@ -205,7 +205,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	@Override
 	public Result getNamespaceResource(String namespace, String userId) throws Exception {
 		try {
-			NamespaceResource namespaceResource = NamespaceResourceChecker.getNamespaceResource(namespace, userId);
+			NamespaceResource namespaceResource = ResourceChecker.getNamespaceResource(namespace, userId);
 			if(namespaceResource != null) {
 				return new Result("", IResult.OK, "").putValue(IResult.NAMESPACE_RESOURCE, namespaceResource);
 			} else {
@@ -239,9 +239,23 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		log.warn("cpu : {}, memory : {}, requestCpu : {}, requestMem : {}, clusterEnabled : {}", cpu, memory, requestCpu, requestMem, clusterEnabled);
 		
 		try {
-			boolean availableResource = NamespaceResourceChecker.isAvailableResource(namespace, userId, requestMem, requestCpu);
+			boolean availableResource = ResourceChecker.isAvailableResource(namespace, userId, requestMem, requestCpu);
 			if(availableResource) {
-				return new Result("", IResult.OK, "");
+				int availableNodeCount = ResourceChecker.availableNodeCount(requestMem, requestCpu);
+				if(clusterEnabled) {
+					if(availableNodeCount > 1) {
+						return new Result("", IResult.OK, "");
+					} else {
+						return new Result("", IResult.ERROR, "노드의 가용 리소스 정보를 확인 후 생성하세요<br>클러스터DB 생성시 2개의 가용한 노드가 필요합니다");
+					}
+				} else {
+					if(availableNodeCount > 0) {
+						return new Result("", IResult.OK, "");
+					} else {
+						return new Result("", IResult.ERROR, "가용한 ZDB 노드가 없습니다<br>노드의 가용 리소스 정보를 확인 후 생성하세요.");
+					}
+				}
+				
 			} else {
 				return new Result("", IResult.ERROR, "가용 리소스가 부족가 부족합니다.");
 			}
@@ -1911,7 +1925,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			gapMem = Integer.parseInt(masterMemory);
 		}
 		
-		boolean availableResource = NamespaceResourceChecker.isAvailableResource(service.getNamespace(), service.getRequestUserId(), gapMem, gapCpu);
+		boolean availableResource = ResourceChecker.isAvailableResource(service.getNamespace(), service.getRequestUserId(), gapMem, gapCpu);
 		return availableResource;
 	}
 	
