@@ -119,8 +119,7 @@ public class ResourceChecker {
 		//AVAILABLE_RESOURCE_CHECK : null or true : 리소스 체크 
 		//AVAILABLE_RESOURCE_CHECK : false : 리소스 체크 skip 
 		if(Boolean.parseBoolean(property)) {
-//			NamespaceResource resource = getNamespaceResource(namespace, userId);
-			NamespaceResource resource = getNamespaceResource(namespace, "1da3110f-aade-43e2-b0fb-2d125a5a5529");
+			NamespaceResource resource = getNamespaceResource(namespace, userId);
 			
 			if(resource == null) {
 				log.error("네임스페이스[{}] 의 가용 리소스 정보를 알 수 없습니다.", namespace);
@@ -203,8 +202,13 @@ public class ResourceChecker {
 			
 			for (NodeResource nodeResource : nodeResourceList) {
 				String nodeRole = nodeResource.getNodeRoles();
+				String status = nodeResource.getStatus();
 				
 				if(!"zdb".equals(nodeRole)) {
+					continue;
+				}
+				if(!"Ready".equals(status)) {
+					log.info("노드["+nodeResource.getNodeName()+"] 가용 상태 점검 - [Status : " + status +"]");
 					continue;
 				}
 				
