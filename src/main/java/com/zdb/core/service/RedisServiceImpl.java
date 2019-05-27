@@ -56,7 +56,7 @@ import com.zdb.core.repository.ZDBRedisConfigRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepositoryUtil;
 import com.zdb.core.util.K8SUtil;
-import com.zdb.core.util.NamespaceResourceChecker;
+import com.zdb.core.util.ResourceChecker;
 import com.zdb.core.util.PodManager;
 import com.zdb.redis.RedisConfiguration;
 import com.zdb.redis.RedisConnection;
@@ -435,7 +435,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 						reqCpu = K8SUtil.convertToCpu(currentCpu);
 						reqMem = K8SUtil.convertToMemory(currentMemory);
 
-						boolean availableResource = NamespaceResourceChecker.isAvailableResource(service.getNamespace(),
+						boolean availableResource = ResourceChecker.isAvailableResource(service.getNamespace(),
 								service.getRequestUserId(), reqCpu, reqMem);
 						if (!availableResource) {
 							result.setCode(IResult.ERROR);

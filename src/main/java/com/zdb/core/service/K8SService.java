@@ -61,7 +61,7 @@ import com.zdb.core.repository.ScheduleEntityRepository;
 import com.zdb.core.repository.SlaveStatusRepository;
 import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
-import com.zdb.core.util.HeapsterMetricUtil;
+import com.zdb.core.util.MetricUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.NumberUtils;
 import com.zdb.core.util.PodManager;
@@ -763,7 +763,7 @@ public class K8SService {
 					String podName = pod.getMetadata().getName();
 
 					try {
-						HeapsterMetricUtil metricUtil = new HeapsterMetricUtil();
+						MetricUtil metricUtil = new MetricUtil();
 						
 						// heapster 사용 
 						if("heapster".equals(kindOfMetricServer())) {
