@@ -53,5 +53,14 @@ public interface RestoreEntityRepository extends CrudRepository<RestoreEntity, S
             + " WHERE t.restoreId=:restoreId")
     int modify2Completed(@Param("completeDatetime") Date completeDatetime
             , @Param("restoreId") String restoreId);
- 
+    
+    @Modifying(clearAutomatically = true)
+    @Transactional
+    @Query("UPDATE RestoreEntity t SET"
+    		+ " t.status=:status"
+    		+ " WHERE t.restoreId=:restoreId")
+    int modify2Status(@Param("status") String status
+            , @Param("restoreId") String restoreId);
+    
+    
 }

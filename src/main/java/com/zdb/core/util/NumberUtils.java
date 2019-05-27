@@ -149,9 +149,9 @@ public class NumberUtils {
 		} else if (amountMem.endsWith("Mi")) {
 			amountMem = amountMem.substring(0, amountMem.length() - 2);
 		} else if (amountMem.endsWith("G")) {
-			amountMem = amountMem.substring(0, amountMem.length() - 1) + "000";
+			return Double.parseDouble(amountMem.substring(0, amountMem.length() - 1)) * 1000;
 		} else if (amountMem.endsWith("Gi")) {
-			amountMem = amountMem.substring(0, amountMem.length() - 2) + "000";
+			return Double.parseDouble(amountMem.substring(0, amountMem.length() - 2)) * 1000;
 		}
 
 		return Double.parseDouble(amountMem);
@@ -167,7 +167,7 @@ public class NumberUtils {
 			double c = Double.parseDouble(amountCpu)/1000/1000;
 			return (double) (Math.round(c));
 		} else {
-			amountCpu = amountCpu + "000";
+			return Double.parseDouble(amountCpu) * 1000;
 		}
 
 		return Double.parseDouble(amountCpu);

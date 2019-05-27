@@ -31,10 +31,16 @@ import javax.persistence.criteria.Root;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -57,6 +63,9 @@ import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.UserInfo;
 import com.zdb.core.domain.ZDBConfig;
 import com.zdb.core.domain.ZDBEntity;
+import com.zdb.core.domain.ZDBNode;
+import com.zdb.core.domain.ZDBNodeList;
+import com.zdb.core.domain.ZDBNodeList.ZdbNode;
 import com.zdb.core.domain.ZDBPersistenceEntity;
 import com.zdb.core.domain.ZDBStatus;
 import com.zdb.core.domain.ZDBType;
@@ -69,9 +78,9 @@ import com.zdb.core.repository.ZDBConfigRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.util.DateUtil;
-import com.zdb.core.util.HeapsterMetricUtil;
+import com.zdb.core.util.MetricUtil;
 import com.zdb.core.util.K8SUtil;
-import com.zdb.core.util.NamespaceResourceChecker;
+import com.zdb.core.util.ResourceChecker;
 import com.zdb.core.util.NumberUtils;
 import com.zdb.core.util.ZDBLogViewer;
 import com.zdb.core.vo.PodMetrics;
@@ -81,6 +90,7 @@ import com.zdb.redis.RedisConnection;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.DoneablePod;
 import io.fabric8.kubernetes.api.model.Namespace;
+import io.fabric8.kubernetes.api.model.Node;
 import io.fabric8.kubernetes.api.model.NodeList;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.fabric8.kubernetes.api.model.PersistentVolume;
@@ -145,6 +155,8 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	static final int WORKER_COUNT = 5;
 	
 	static BlockingQueue<Exchange> deploymentQueue = null;
+
+	@Value("${iam.baseUrl}") String iamBaseUrl;
 	
 	protected AbstractServiceImpl() {
 
@@ -193,7 +205,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	@Override
 	public Result getNamespaceResource(String namespace, String userId) throws Exception {
 		try {
-			NamespaceResource namespaceResource = NamespaceResourceChecker.getNamespaceResource(namespace, userId);
+			NamespaceResource namespaceResource = ResourceChecker.getNamespaceResource(namespace, userId);
 			if(namespaceResource != null) {
 				return new Result("", IResult.OK, "").putValue(IResult.NAMESPACE_RESOURCE, namespaceResource);
 			} else {
@@ -227,9 +239,23 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		log.warn("cpu : {}, memory : {}, requestCpu : {}, requestMem : {}, clusterEnabled : {}", cpu, memory, requestCpu, requestMem, clusterEnabled);
 		
 		try {
-			boolean availableResource = NamespaceResourceChecker.isAvailableResource(namespace, userId, requestMem, requestCpu);
+			boolean availableResource = ResourceChecker.isAvailableResource(namespace, userId, requestMem, requestCpu);
 			if(availableResource) {
-				return new Result("", IResult.OK, "");
+				int availableNodeCount = ResourceChecker.availableNodeCount(requestMem, requestCpu);
+				if(clusterEnabled) {
+					if(availableNodeCount > 1) {
+						return new Result("", IResult.OK, "");
+					} else {
+						return new Result("", IResult.ERROR, "노드의 가용 리소스 정보를 확인 후 생성하세요<br>클러스터DB 생성시 2개의 가용한 노드가 필요합니다");
+					}
+				} else {
+					if(availableNodeCount > 0) {
+						return new Result("", IResult.OK, "");
+					} else {
+						return new Result("", IResult.ERROR, "가용한 ZDB 노드가 없습니다<br>노드의 가용 리소스 정보를 확인 후 생성하세요.");
+					}
+				}
+				
 			} else {
 				return new Result("", IResult.ERROR, "가용 리소스가 부족가 부족합니다.");
 			}
@@ -331,8 +357,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			releaseMeta.setUserId(userInfo.getUserId());
 
 			log.info(">>> install request : "+new Gson().toJson(releaseMeta));
-
-			releaseRepository.save(releaseMeta);
 
 			// install request
 			deploymentRequest(exchange);
@@ -1361,7 +1385,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		Deployment deployment = K8SUtil.kubernetesClient().inNamespace("kube-system").extensions().deployments().withName("heapster").get();
 		
 		try {
-			HeapsterMetricUtil metricUtil = new HeapsterMetricUtil();
+			MetricUtil metricUtil = new MetricUtil();
 			
 			// heapster 사용 
 			if(deployment != null) {
@@ -1435,7 +1459,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	public Result getPodMetrics(String namespace, String podName) throws Exception {
 		Result result = new Result("", Result.OK);
 		
-		HeapsterMetricUtil metricUtil = new HeapsterMetricUtil();
+		MetricUtil metricUtil = new MetricUtil();
 		try {
 			Object cpuUsage = metricUtil.getCPUUsage(namespace, podName);
 			result.putValue(IResult.METRICS_CPU_USAGE, cpuUsage);
@@ -1901,7 +1925,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			gapMem = Integer.parseInt(masterMemory);
 		}
 		
-		boolean availableResource = NamespaceResourceChecker.isAvailableResource(service.getNamespace(), service.getRequestUserId(), gapMem, gapCpu);
+		boolean availableResource = ResourceChecker.isAvailableResource(service.getNamespace(), service.getRequestUserId(), gapMem, gapCpu);
 		return availableResource;
 	}
 	
@@ -2182,6 +2206,19 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			return new Result(null, Result.ERROR, "alert rule 조회 실패 - "+ e.getMessage(), e);
 		}		
 	}
+	@Override
+	public Result getAlertRulesInService(String txId,String serviceName){
+		Result result = Result.RESULT_OK(txId);
+		
+		try {
+			List<AlertingRuleEntity> list = alertService.getAlertRulesInService(serviceName);
+			result.putValue(IResult.ALERT_RULES, list);
+			return result;
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result(null, Result.ERROR, "alert rule 조회 실패 - "+ e.getMessage(), e);
+		}		
+	}
 
 	@Override
 	public Result getAlertRule(String txId,String namespace,String alert) {
@@ -2197,22 +2234,9 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	}
 
 	@Override
-	public Result createAlertRule(String txId, AlertingRuleEntity alertingRuleEntity) {
+	public Result updateDefaultAlertRule(String txId, String namespace,String serviceType,String serviceName) {
 		try {
-			if(alertService.getAlertRule(alertingRuleEntity.getNamespace(), alertingRuleEntity.getAlert())!=null) {
-				return new Result("", Result.ERROR, "이미 설정된 Rule입니다.");
-			}
-			alertService.createAlertRule(alertingRuleEntity);
-			return new Result("", Result.OK, "설정값이 저장되었습니다.");
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-			return new Result("", Result.ERROR, e.getMessage(), e);
-		}
-	}
-	@Override
-	public Result updateDefaultAlertRule(String txId, AlertingRuleEntity alertingRuleEntity) {
-		try {
-			alertService.updateDefaultAlertRule(alertingRuleEntity);
+			alertService.updateDefaultAlertRule(namespace,serviceType,serviceName);
 			return new Result("", Result.OK, "설정값이 저장되었습니다.");
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -2221,10 +2245,9 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	}
 
 	@Override
-	public Result updateAlertRule(String txId, AlertingRuleEntity alertingRuleEntity) {
+	public Result updateAlertRule(String txId, String namespace,String serviceType,String serviceName, List<AlertingRuleEntity> alertRules) {
 		try {
-			alertService.deleteAlertRule(alertingRuleEntity);
-			alertService.createAlertRule(alertingRuleEntity);
+			alertService.updateAlertRule(namespace,serviceType,serviceName,alertRules);
 			return new Result("", Result.OK, "설정값이 저장되었습니다.");
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -2232,16 +2255,6 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		}
 	}
 
-	@Override
-	public Result deleteAlertRule(String txId, AlertingRuleEntity alertingRuleEntity) {
-		try {
-			alertService.deleteAlertRule(alertingRuleEntity);
-			return new Result("", Result.OK, "설정값이 저장되었습니다.");
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-			return new Result("", Result.ERROR, e.getMessage(), e);
-		}
-	}
 	@Override
 	public Result getStorages(String namespace, String keyword,String app,String storageClassName, String billingType, String phase,String stDate,String edDate) throws Exception {
 		try {
@@ -2348,7 +2361,55 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			return new Result("", Result.ERROR, e.getMessage(), e);
 		}
 	}
-	
-	
-	
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public Result getNodesInfo() throws Exception {
+		String url = UriComponentsBuilder.fromUriString(iamBaseUrl)
+                .path("/iam/metrics/nodes")
+                .buildAndExpand()
+                .toString();
+        
+        HttpHeaders headers = new HttpHeaders();
+        HttpEntity<String> requestEntity = new HttpEntity<String>(headers); 
+
+        RestTemplate restTemplate = K8SUtil.getRestTemplate();
+        ResponseEntity<ZDBNodeList> responseEntity = restTemplate.exchange(url, HttpMethod.GET, requestEntity, ZDBNodeList.class);
+        
+        List<ZDBNode> nodes = Collections.emptyList();
+		ZdbNode data = responseEntity.getBody().getData();
+        if(data!= null && data.getItems() != null) {
+        	nodes = data.getItems();
+        	
+        	List<Node> nodeList = K8SUtil.getNodes().getItems();
+        	Iterator<Node> it = nodeList.iterator();
+        	Map<String,ZDBNode> nodeData = new HashMap<>();
+        	while(it.hasNext()) {
+        		Node n = it.next();
+        		ObjectMeta m = n.getMetadata();
+        		String name = m.getName();
+        		ZDBNode zn = new ZDBNode();
+        		zn.setWorkerPool(m.getLabels().get("worker-pool") == null ?  "-" :m.getLabels().get("worker-pool"));
+        		zn.setMemory(NumberUtils.formatMemory(NumberUtils.memoryByMi((n.getStatus().getAllocatable().get("memory").getAmount()))*1024*1024));
+        		zn.setCpu(n.getStatus().getAllocatable().get("cpu").getAmount());
+        		zn.setMachineType(m.getLabels().get("ibm-cloud.kubernetes.io/machine-type"));
+        		
+        		nodeData.put(name, zn);        		
+        	}
+        	for(int i=0;i < nodes.size();i++) {
+        		ZDBNode o = nodes.get(i);
+        		ZDBNode zn = nodeData.get(o.getNodeName());
+        		o.setWorkerPool(zn.getWorkerPool());
+        		o.setMemory(zn.getMemory());
+        		o.setCpu(zn.getCpu());
+        		o.setMachineType(zn.getMachineType());
+        	}
+        }
+		try {
+			return new Result("", Result.OK).putValue(IResult.NODE_LIST, nodes);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
 }

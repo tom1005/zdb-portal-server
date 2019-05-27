@@ -1,7 +1,7 @@
 info:
   app:
     name: zdb-portal-server
-    version: 1.1.0-SNAPSHOT
+    version: 1.1.1-SNAPSHOT
     description: zdb-portal-server
 
 spring:
@@ -29,7 +29,9 @@ security:
 
 endpoints:
   env:
-    enabled: false          
+    enabled: false     
+    
+ 
 ---
 spring:
   profiles: local
@@ -64,8 +66,11 @@ chart:
     url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/redis-3.6.6.tgz"
   
 iam:
-    baseUrl: https://pog-dev-internal-iam.cloudzcp.io:443
-      
+  baseUrl: https://pog-dev-internal-iam.cloudzcp.io:443
+
+prometheus:
+  baseUrl: https://pog-dev-prometheus.cloudzcp.io/
+          
 storage:
   storageType: AWS_S3
   accessKey: "6bf48d42eb304e1292f178bf69034f12"
@@ -123,8 +128,10 @@ chart:
     storageClass: ${storage.class:ibmc-block-silver}
           
 iam:
-    baseUrl: http://zcp-iam.zcp-system
-          
+  baseUrl: http://zcp-iam.zcp-system
+prometheus:
+  baseUrl: http://prometheus-service.zcp-system:9090/
+            
 storage:
   storageType: AWS_S3
   accessKey: "${storage.accessKey}"

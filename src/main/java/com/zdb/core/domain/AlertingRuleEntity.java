@@ -11,6 +11,7 @@ public class AlertingRuleEntity {
 	private String namespace;
 	private String channel;
 	private String serviceName;
+	private String serviceType;
 	private String duration;
 	private String severity;
 	private String priority;

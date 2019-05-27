@@ -2885,10 +2885,10 @@ public class ZDBRestController {
 	}	
 	
 	@RequestMapping(value="/{namespace}/alert/rules",method = RequestMethod.GET)
-	public ResponseEntity<String> getAlertRules(@PathVariable("namespace") String namespaces) throws Exception {
+	public ResponseEntity<String> getAlertRules(@PathVariable String namespace) throws Exception {
 		try {
 			String txId = txId();
-			Result result = commonService.getAlertRules(txId,namespaces);
+			Result result = commonService.getAlertRules(txId,namespace);
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -2896,6 +2896,19 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	} 
+	@RequestMapping(value="/{namespace}/{serviceName}/alert/rules",method = RequestMethod.GET)
+	public ResponseEntity<String> getAlertRulesInService(@PathVariable String namespace,@PathVariable String serviceName) throws Exception {
+		try {
+			String txId = txId();
+			Result result = commonService.getAlertRulesInService(txId,serviceName);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(null, IResult.ERROR, "alert rules 조회 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	} 
+
 	@RequestMapping(value="/{namespace}/alert/rule/{alert}",method = RequestMethod.GET)
 	public ResponseEntity<String> getAlertRule(@PathVariable("namespace") String namespace,@PathVariable String alert) throws Exception {
 		try {
@@ -2908,26 +2921,12 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	} 
-	@RequestMapping(value="/{namespace}/alert/rule/{alert}",method = RequestMethod.POST)
-	public ResponseEntity<String> createAlertRule(@PathVariable String namespace,@PathVariable String alert,@RequestBody final AlertingRuleEntity alertingRuleEntity) throws Exception {
+
+	@RequestMapping(value="/{namespace}/{serviceType}/{serviceName}/alert/defaultRule",method = RequestMethod.PUT)
+	public ResponseEntity<String> updateDefaultAlertRule(@PathVariable String namespace,@PathVariable String serviceType,@PathVariable String serviceName) throws Exception {
 		try {
 			String txId = txId();
-			Result result = commonService.createAlertRule(txId,alertingRuleEntity);
-			return new ResponseEntity<String>(result.toJson(), result.status());
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-			Result result = new Result(null, IResult.ERROR, RequestEvent.CREATE_ALERT_RULE + " 오류").putValue(IResult.EXCEPTION, e);
-			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
-		}
-	}
-	@RequestMapping(value="/{namespace}/alert/defaultRule/{serviceName}",method = RequestMethod.PUT)
-	public ResponseEntity<String> updateDefaultAlertRule(@PathVariable String namespace,@PathVariable String serviceName) throws Exception {
-		try {
-			String txId = txId();
-			AlertingRuleEntity alertingRuleEntity = new AlertingRuleEntity();
-			alertingRuleEntity.setNamespace(namespace);
-			alertingRuleEntity.setServiceName(serviceName);
-			Result result = commonService.updateDefaultAlertRule(txId,alertingRuleEntity);
+			Result result = commonService.updateDefaultAlertRule(txId,namespace,serviceType,serviceName);
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -2936,11 +2935,12 @@ public class ZDBRestController {
 		}
 	}
 	
-	@RequestMapping(value="/{namespace}/alert/rule/{alert}",method = RequestMethod.PUT)
-	public ResponseEntity<String> updateAlertRule(@PathVariable("namespace") String namespaces,@PathVariable String alert,@RequestBody final AlertingRuleEntity alertingRuleEntity) throws Exception {
+	@RequestMapping(value="/{namespace}/{serviceType}/{serviceName}/alert/rule",method = RequestMethod.PUT)
+	public ResponseEntity<String> updateAlertRule(@PathVariable String namespace,@PathVariable String serviceType,@PathVariable String serviceName
+												  ,@RequestBody List<AlertingRuleEntity> alertRules) throws Exception {
 		try {
 			String txId = txId();
-			Result result = commonService.updateAlertRule(txId,alertingRuleEntity);
+			Result result = commonService.updateAlertRule(txId,namespace,serviceType,serviceName,alertRules);
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -2948,18 +2948,18 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	} 
-	@RequestMapping(value="/{namespace}/alert/rule/{alert}",method = RequestMethod.DELETE)
-	public ResponseEntity<String> deleteAlertRule(@PathVariable("namespace") String namespace,@PathVariable String alert,@RequestBody final AlertingRuleEntity alertingRuleEntity) throws Exception {
-		try {
-			String txId = txId();
-			Result result = commonService.deleteAlertRule(txId,alertingRuleEntity);
-			return new ResponseEntity<String>(result.toJson(), result.status());
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-			Result result = new Result(null, IResult.ERROR, RequestEvent.DELETE_ALERT_RULE + " 오류").putValue(IResult.EXCEPTION, e);
-			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
-		}
-	}
+	//@RequestMapping(value="/{namespace}/alert/rule/{alert}",method = RequestMethod.DELETE)
+	//public ResponseEntity<String> deleteAlertRule(@PathVariable("namespace") String namespace,@PathVariable String alert,@RequestBody final AlertingRuleEntity alertingRuleEntity) throws Exception {
+	//	try {
+	//		String txId = txId();
+	//		Result result = commonService.deleteAlertRule(txId,alertingRuleEntity);
+	//		return new ResponseEntity<String>(result.toJson(), result.status());
+	//	} catch (Exception e) {
+	//		log.error(e.getMessage(), e);
+	//		Result result = new Result(null, IResult.ERROR, RequestEvent.DELETE_ALERT_RULE + " 오류").putValue(IResult.EXCEPTION, e);
+	//		return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+	//	}
+	//}
 	@RequestMapping(value="/{namespace}/{serviceType}/process/{podName}/{pid}",method = RequestMethod.DELETE)
 	public ResponseEntity<String> killProcess(@PathVariable String namespace, @PathVariable String serviceType 
 											 , @PathVariable String podName, @PathVariable String pid) throws Exception {
@@ -3048,5 +3048,18 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
+	@RequestMapping(value="/nodesInfo",method = RequestMethod.GET)
+	public ResponseEntity<String> getNodeInfo() {
+		try {
+			Result result = commonService.getNodesInfo();
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			
+			Result result = new Result(null, IResult.ERROR, "스토리지 데이터 조회 오류!").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+
 	
 }

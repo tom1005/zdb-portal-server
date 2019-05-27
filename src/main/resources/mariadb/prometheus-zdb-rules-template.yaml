@@ -1,6 +1,6 @@
-ZDB-MariaDB-PodHealthCheck:
+PodHealthCheck:
     alert: ZDB-MariaDB-PodHealthCheck-${serviceName}-mariadb-${role}
-    expr: absent(mysql_up{service="${serviceName}-mariadb${exprRole}"}) ${condition} ${value2}
+    expr: absent(mysql_up{service="${serviceName}-mariadb${exprRole}"}) == 1
     for: 1m          
     labels:
       channel: ${channel}
@@ -12,9 +12,9 @@ ZDB-MariaDB-PodHealthCheck:
     annotations:
       description: 'MariaDB의 Pod 동작하지 않습니다. (서비스: {{ $labels.service }})'
       summary: 'Pod 동작 중단'
-ZDB-MariaDB-ContainerHealthCheck:
+ContainerHealthCheck:
     alert: ZDB-MariaDB-ContainerHealthCheck-${serviceName}-mariadb-${role}
-    expr: kube_pod_container_status_ready{pod="${serviceName}-mariadb${exprRole}", container="mariadb"} ${condition} ${value2}
+    expr: kube_pod_container_status_ready{pod="${serviceName}-mariadb${exprRole}", container="mariadb"} == 0
     for: 1m
     labels:
       channel: ${channel}
@@ -26,9 +26,9 @@ ZDB-MariaDB-ContainerHealthCheck:
     annotations:
       description: 'MariaDB 컨테이너의 동작이 중단되었습니다. (서비스: {{ $labels.pod }})'
       summary: 'MariaDB 컨테이너 동작 중단'
-ZDB-MariaDB-DBHealthCheck:
+DBHealthCheck:
     alert: ZDB-MariaDB-DBHealthCheck-${serviceName}-mariadb-${role}
-    expr: mysql_up{service="${serviceName}-mariadb${exprRole}"} ${condition} ${value2}
+    expr: mysql_up{service="${serviceName}-mariadb${exprRole}"} == 0
     for: 1m
     labels:
       channel: ${channel}
@@ -40,9 +40,9 @@ ZDB-MariaDB-DBHealthCheck:
     annotations:
       description: 'MariaDB의 동작이 중단되었습니다. (서비스: {{ $labels.service }})'
       summary: 'MariaDB 동작 중단'
-ZDB-MariaDB-CPUUsage:
+CPUUsage:
     alert: ZDB-MariaDB-CPUUsage-${serviceName}-mariadb-${role}
-    expr: (sum(rate(container_cpu_usage_seconds_total{pod_name="${serviceName}-mariadb${exprRole}", container_name="mariadb"}[1m])) by (pod_name, container_name)) / ((sum(container_spec_cpu_quota{pod_name="${serviceName}-mariadb${exprRole}", container_name="mariadb"}) by (pod_name, container_name)) / 100000) * 100 ${condition} ${value2}
+    expr: (sum(rate(container_cpu_usage_seconds_total{pod_name="${serviceName}-mariadb${exprRole}", container_name="mariadb"}[1m])) by (pod_name, container_name)) / ((sum(container_spec_cpu_quota{pod_name="${serviceName}-mariadb${exprRole}", container_name="mariadb"}) by (pod_name, container_name)) / 100000) * 100 > ${value2}
     for: 1m
     labels:
       channel: ${channel}
@@ -54,9 +54,9 @@ ZDB-MariaDB-CPUUsage:
     annotations:
       description: 'CPU 사용량이 임계치를 초과하였습니다. (서비스: {{ $labels.pod_name }}, 임계값: 80%, 현재값: {{ $value }}%)'
       summary: 'CPU 사용량 임계치 초과'
-ZDB-MariaDB-MemoryUsage:
+MemoryUsage:
     alert: ZDB-MariaDB-MemoryUsage-${serviceName}-mariadb-${role}
-    expr: (sum(container_memory_working_set_bytes{pod_name="${serviceName}-mariadb${exprRole}", container_name="mariadb"}) by (pod_name, container_name)) / (sum (container_spec_memory_limit_bytes{pod_name="${serviceName}-mariadb${exprRole}", container_name="mariadb"}) by (pod_name, container_name)) * 100 ${condition} ${value2}
+    expr: (sum(container_memory_working_set_bytes{pod_name="${serviceName}-mariadb${exprRole}", container_name="mariadb"}) by (pod_name, container_name)) / (sum (container_spec_memory_limit_bytes{pod_name="${serviceName}-mariadb${exprRole}", container_name="mariadb"}) by (pod_name, container_name)) * 100 > ${value2}
     for: 1m
     labels:
       channel: ${channel}
@@ -68,9 +68,9 @@ ZDB-MariaDB-MemoryUsage:
     annotations:
       description: '메모리 사용량이 임계치를 초과하였습니다. (서비스: {{ $labels.pod_name }}, 임계값: 95%, 현재값: {{ $value }}%)'
       summary: '메모리 사용량 임계치 초과'
-ZDB-MariaDB-Connections:
+Connections:
     alert: ZDB-MariaDB-Connections-${serviceName}-mariadb-${role}
-    expr: (mysql_global_status_threads_connected{service="${serviceName}-mariadb${exprRole}"} / mysql_global_variables_max_connections{service="${serviceName}-mariadb${exprRole}"} * 100) ${condition} ${value2}
+    expr: (mysql_global_status_threads_connected{service="${serviceName}-mariadb${exprRole}"} / mysql_global_variables_max_connections{service="${serviceName}-mariadb${exprRole}"} * 100) > ${value2}
     for: 1m
     labels:
       channel: ${channel}
@@ -82,9 +82,9 @@ ZDB-MariaDB-Connections:
     annotations:
       description: 'MariaDB의 Connnections값이 임계치를 초과하였습니다. (서비스: {{ $labels.service }}, 임계값: 80%, 현재값: {{ $value }}%)'
       summary: 'Connections 임계치 초과'
-ZDB-MariaDB-SlowQueries:
+SlowQueries:
     alert: ZDB-MariaDB-SlowQueries-${serviceName}-mariadb-${role}
-    expr: rate(mysql_global_status_slow_queries{service="${serviceName}-mariadb${exprRole}"}[2m]) ${condition} ${value2}
+    expr: rate(mysql_global_status_slow_queries{service="${serviceName}-mariadb${exprRole}"}[2m]) > ${value2}
     for: 1m
     labels:
       channel: ${channel}
@@ -96,9 +96,9 @@ ZDB-MariaDB-SlowQueries:
     annotations:
       description: 'MariaDB의 Slow Query가 발생했습니다. (서비스: {{ $labels.service }})'
       summary: 'MariaDB Slow Queries'
-ZDB-MariaDB-ReplicationStatus:
+ReplicationStatus:
     alert: ZDB-MariaDB-ReplicationStatus-${serviceName}-mariadb-slave
-    expr: mysql_slave_status_slave_sql_running{service="${serviceName}-mariadb-slave"} ${condition} ${value2} OR mysql_slave_status_slave_io_running{service="${serviceName}-mariadb-slave"} ${condition} ${value2}
+    expr: mysql_slave_status_slave_sql_running{service="${serviceName}-mariadb-slave"} == 0 OR mysql_slave_status_slave_io_running{service="${serviceName}-mariadb-slave"} == 0
     for: 1m
     labels:
       channel: ${channel}
@@ -110,9 +110,9 @@ ZDB-MariaDB-ReplicationStatus:
     annotations:
       description: 'MariaDB의 Replication이 정상적으로 수행되지 않고 있습니다. (서비스: {{ $labels.service }})'
       summary: 'Replication 중단'
-ZDB-MariaDB-ReplicationDelay:
+ReplicationDelay:
     alert: ZDB-MariaDB-ReplicationDelay-${serviceName}-mariadb-slave
-    expr: mysql_slave_status_sql_delay{service="${serviceName}-mariadb-slave"} ${condition} ${value2}
+    expr: mysql_slave_status_sql_delay{service="${serviceName}-mariadb-slave"} > ${value2}
     for: 5m
     labels:
       channel: ${channel}

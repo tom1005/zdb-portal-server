@@ -4,3 +4,4 @@
 /.project
 /deploy/tmp/*.yaml
 /.factorypath
+**/.DS_Store

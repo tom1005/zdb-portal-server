@@ -71,8 +71,17 @@ public class MetaDataCollector {
 				return;
 			}
 			
-			Job job = K8SUtil.kubernetesClient().inNamespace("zdb-system").extensions().jobs().withName("zdb-portal-job").get();
-			if(job == null) {
+			boolean useCronJob = false;
+			List<Job> items = K8SUtil.kubernetesClient().inNamespace("zdb-system").extensions().jobs().list().getItems();
+			for (Job job : items) {
+				if(job.getMetadata().getName().startsWith("zdb-portal-job")) {
+					useCronJob = true;
+					break;
+				}
+				
+			}
+			
+			if(!useCronJob) {
 				long s = System.currentTimeMillis();
 				List<Namespace> namespaces = K8SUtil.getNamespaces();
 				DefaultKubernetesClient client = K8SUtil.kubernetesClient();

@@ -5,7 +5,7 @@
 
 	<groupId>com.skcc.cloudz.zdb</groupId>
 	<artifactId>${artifact.id}</artifactId>
-	<version>1.1.0</version>
+	<version>1.1.1</version>
 	<packaging>jar</packaging>
 
 	<name>zdb-portal-server</name>
@@ -236,9 +236,11 @@
 								<include>com/zdb/core/repository/BackupEntityRepository.*</include>
 								<include>com/zdb/core/repository/ScheduleEntityRepository.*</include>
 								<include>com/zdb/core/repository/RestoreEntityRepository.*</include>
+								<include>com/zdb/core/repository/FailbackEntityRepository.*</include>
 								<include>com/zdb/core/repository/ZDBRepository.*</include>
 								<include>com/zdb/core/repository/ZDBReleaseRepository.*</include>
 								<include>com/zdb/core/repository/ZDBRepositoryUtil.*</include>
+								<include>com/zdb/core/repository/BackupDiskEntityRepository.*</include>
 								<include>com/zdb/core/util/*.*</include>
 								<include>com/zdb/core/exception/*.*</include>
 								<include>com/zdb/mariadb/**/*.*</include>

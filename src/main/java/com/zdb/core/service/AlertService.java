@@ -1,19 +1,28 @@
 package com.zdb.core.service;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriComponentsBuilder;
 import org.yaml.snakeyaml.Yaml;
 
 import com.zdb.core.domain.AlertRule;
@@ -53,6 +62,7 @@ public class AlertService {
 			if(dt.get() !=null && dt.get().getData() != null) {
 				String d = dt.get().getData().get(dataTitle);
 				PrometheusEntity pn = yaml.loadAs(d,PrometheusEntity.class);
+				
 				if(pn.getGroups() !=null) {
 					PrometheusGroups pg = pn.getGroups().get(0);
 					for(int i = 0 ;i < pg.getRules().size(); i++) {
@@ -64,6 +74,32 @@ public class AlertService {
 							}
 							list.add(are);
 						}
+					}
+				}
+			}
+		}
+		return list;
+	}
+	
+	public List<AlertingRuleEntity> getAlertRulesInService(String serviceName) throws Exception {
+		List<AlertingRuleEntity> list = new ArrayList<>();
+		
+		Resource<ConfigMap, DoneableConfigMap> dt = getAlertRuleConfigMap();
+		
+		if(dt.get() !=null && dt.get().getData() != null) {
+			String d = dt.get().getData().get(dataTitle);
+			PrometheusEntity pn = yaml.loadAs(d,PrometheusEntity.class);
+			
+			if(pn.getGroups() !=null) {
+				PrometheusGroups pg = pn.getGroups().get(0);
+				for(int i = 0 ;i < pg.getRules().size(); i++) {
+					AlertRule ar = pg.getRules().get(i);
+					AlertingRuleEntity are = parseAlertRuleEntity(ar);
+					if(serviceName.equals(ar.getLabels().getServiceName())) {
+						if(are.getType().indexOf("Replication") == -1 && are.getAlert().endsWith("-slave")) {
+							continue;
+						}
+						list.add(are);
 					}
 				}
 			}
@@ -92,29 +128,8 @@ public class AlertService {
 		return alertingRuleEntity;	
 	}
 
-	public boolean createAlertRule(AlertingRuleEntity alertingRuleEntity){
-		boolean isSuccess = true;
-		try {
-			Resource<ConfigMap, DoneableConfigMap> dt = getAlertRuleConfigMap();
-			String d = dt.get().getData().get(dataTitle);
-			PrometheusEntity pn = yaml.loadAs(d,PrometheusEntity.class);
-			List<PrometheusGroups> pgl = pn.getGroups();
-			PrometheusGroups pg = pgl.get(0); 
-			List<AlertRule> rules = pg.getRules();
-			
-			addRulesTemplate(rules,alertingRuleEntity);
-			String data = parseWriteAlertRule(pn);
-			dt.edit().addToData(dataTitle, data).done();
-		}catch(Exception e) {
-			e.printStackTrace();
-			log.error(e.getMessage(), e);
-			isSuccess = false;
-		}
-		return isSuccess;
-	}
-
-	private void addRulesTemplate(List<AlertRule> rules, AlertingRuleEntity alertingRuleEntity) {
-		String template = getPrometheusTemplate(alertingRuleEntity.getType()); 
+	private void addRulesTemplate(List<AlertRule> rules, AlertingRuleEntity alertingRuleEntity,boolean hasSlave) {
+		String template = getPrometheusTemplate(alertingRuleEntity.getServiceType(), alertingRuleEntity.getType()); 
 		String severity = "";
 		if("P1".equals(alertingRuleEntity.getPriority())) {
 			severity = "critical";
@@ -123,16 +138,20 @@ public class AlertService {
 		}else if("P4".equals(alertingRuleEntity.getPriority())) {
 			severity = "low";
 		}
+		String value2 = "";
+		if(alertingRuleEntity.getValue2()!=null) value2 = alertingRuleEntity.getValue2();
 		alertingRuleEntity.setSeverity(severity);
 		alertingRuleEntity.setChannel("default");
+		
+		
 		template = template.replaceAll("\\$\\{serviceName\\}", alertingRuleEntity.getServiceName())
 				.replaceAll("\\$\\{namespace\\}", alertingRuleEntity.getNamespace())
 				.replaceAll("\\$\\{severity\\}", alertingRuleEntity.getSeverity())
-				.replaceAll("\\$\\{channel\\}", alertingRuleEntity.getChannel())
+				//.replaceAll("\\$\\{channel\\}", alertingRuleEntity.getChannel())
 				.replaceAll("\\$\\{priority\\}", alertingRuleEntity.getPriority())
-				.replaceAll("\\$\\{duration\\}", alertingRuleEntity.getDuration())
-				.replaceAll("\\$\\{condition\\}", alertingRuleEntity.getCondition())
-				.replaceAll("\\$\\{value2\\}", alertingRuleEntity.getValue2())
+				//.replaceAll("\\$\\{duration\\}", alertingRuleEntity.getDuration())
+				//.replaceAll("\\$\\{condition\\}", alertingRuleEntity.getCondition())
+				.replaceAll("\\$\\{value2\\}", value2)
 				.replaceAll("\\$\\{namespace\\}", alertingRuleEntity.getNamespace());
 		String re = template.replaceAll("\\$\\{role\\}", "master")
 							.replaceAll("\\$\\{exprRole\\}", "");
@@ -140,8 +159,6 @@ public class AlertService {
 		
 		//Replication 관련설정이 아니면 slave가 존재하는지 검사 후 추가
 		if(alertingRuleEntity.getType().indexOf("Replication")==-1) {
-			ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(alertingRuleEntity.getServiceName());
-			boolean hasSlave = releaseMeta!=null && releaseMeta.getClusterEnabled();
 			if(hasSlave) {
 				re = template.replaceAll("\\$\\{role\\}", "slave")
 							 .replaceAll("\\$\\{exprRole\\}", "-slave");
@@ -151,7 +168,7 @@ public class AlertService {
 		
 	}
 
-	public boolean deleteAlertRule(AlertingRuleEntity alertingRuleEntity) {
+	public boolean deleteAlertRule(String serviceName) {
 		boolean isSuccess = true;
 		try {
 			Resource<ConfigMap, DoneableConfigMap> dt = getAlertRuleConfigMap();
@@ -160,8 +177,7 @@ public class AlertService {
 			List<AlertRule> rules = pn.getGroups().get(0).getRules();
 			for(int i = rules.size()-1 ; i > -1 ;i--) {
 				AlertRule rule = rules.get(i);
-				String as = String.format("%s-%s",alertingRuleEntity.getType(),alertingRuleEntity.getServiceName());
-				if(rule.getAlert().startsWith(as)) {
+				if(rule.getLabels().getServiceName().equals(serviceName)) {
 					rules.remove(i);
 				}
 			}
@@ -175,7 +191,7 @@ public class AlertService {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public boolean updateDefaultAlertRule(AlertingRuleEntity alertingRuleEntity) {
+	public boolean updateDefaultAlertRule(String namespace,String serviceType,String serviceName) {
 		boolean isSuccess = true;
 		
 		try {
@@ -185,14 +201,20 @@ public class AlertService {
 			List<AlertRule> rules = pn.getGroups().get(0).getRules();
 			for(int i = rules.size()-1 ; i > -1 ;i--) {
 				AlertRule rule = rules.get(i);
-				String asn = alertingRuleEntity.getServiceName();
-				if(rule.getAlert().endsWith(asn+"-mariadb-master")||rule.getAlert().endsWith(asn+"-mariadb-slave")) {
+				if(rule.getLabels().getServiceName().equals(serviceName)) {
 					rules.remove(i);
 				}
 			}
-			ClassPathResource cp = new ClassPathResource("mariadb/prometheus-zdb-rules-default-value.yaml");
+			ClassPathResource cp = new ClassPathResource(serviceType+"/prometheus-zdb-rules-default-value.yaml");
 			Map<String, LinkedHashMap<String, Object>> re = (Map<String, LinkedHashMap<String, Object>>) yaml.load(cp.getInputStream());
 			Iterator<String> it = re.keySet().iterator();
+			AlertingRuleEntity alertingRuleEntity = new AlertingRuleEntity();
+			alertingRuleEntity.setNamespace(namespace);
+			alertingRuleEntity.setServiceType(serviceType);
+			alertingRuleEntity.setServiceName(serviceName);
+			
+			ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(serviceName);
+			boolean hasSlave = releaseMeta!=null && releaseMeta.getClusterEnabled();
 			while(it.hasNext()) {
 				String type = it.next();
 				LinkedHashMap<String, Object> defMap = re.get(type);
@@ -201,10 +223,44 @@ public class AlertService {
 				alertingRuleEntity.setValue2(String.valueOf(defMap.get("value")));
 				alertingRuleEntity.setPriority(String.valueOf(defMap.get("priority")));
 				alertingRuleEntity.setDuration(String.valueOf(defMap.get("for")));
-				addRulesTemplate(rules,alertingRuleEntity);
+				addRulesTemplate(rules,alertingRuleEntity,hasSlave);
 			}
 			String data = parseWriteAlertRule(pn);
 			dt.edit().addToData(dataTitle, data).done();
+			reloadAlertRule();
+		} catch (Exception e) {
+			isSuccess = false;
+			log.error(e.getMessage(), e);
+		}
+		return isSuccess;		
+	}
+	public boolean updateAlertRule(String namespace,String serviceType,String serviceName, List<AlertingRuleEntity> alertRules) {
+		boolean isSuccess = true;
+		
+		try {
+			Resource<ConfigMap, DoneableConfigMap> dt = getAlertRuleConfigMap();
+			String d = dt.get().getData().get(dataTitle);
+			PrometheusEntity pn = yaml.loadAs(d,PrometheusEntity.class);
+			List<AlertRule> rules = pn.getGroups().get(0).getRules();
+			for(int i = rules.size()-1 ; i > -1 ;i--) {
+				AlertRule rule = rules.get(i);
+				if(rule.getLabels().getServiceName().equals(serviceName)) {
+					rules.remove(i);
+				}
+			}
+			ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(serviceName);
+			boolean hasSlave = releaseMeta!=null && releaseMeta.getClusterEnabled();
+			
+			for(int i = 0 ;i < alertRules.size();i++) {
+				AlertingRuleEntity are = alertRules.get(i);
+				are.setNamespace(namespace);
+				are.setServiceType(serviceType);
+				are.setServiceName(serviceName);
+				addRulesTemplate(rules,are,hasSlave);
+			}
+			String data = parseWriteAlertRule(pn);
+			dt.edit().addToData(dataTitle, data).done();
+			reloadAlertRule();
 		} catch (Exception e) {
 			isSuccess = false;
 			log.error(e.getMessage(), e);
@@ -235,9 +291,9 @@ public class AlertService {
 	}
 	
 	@SuppressWarnings("unchecked")
-	private String getPrometheusTemplate(String type) {
+	private String getPrometheusTemplate(String serviceType,String type) {
 		String template = "";
-		ClassPathResource cp = new ClassPathResource("mariadb/prometheus-zdb-rules-template.yaml");
+		ClassPathResource cp = new ClassPathResource(serviceType+"/prometheus-zdb-rules-template.yaml");
 		
 		try {
 			Map<String, LinkedHashMap<String, Object>> re = (Map<String, LinkedHashMap<String, Object>>) yaml.load(cp.getInputStream());
@@ -278,5 +334,38 @@ public class AlertService {
 		are.setPriority(label.getPriority());
 		are.setSeverity(label.getSeverity());
 		return are;
+	}
+	
+	@Value("${prometheus.baseUrl}") private String promBaseUrl;
+	private void reloadAlertRule() {
+		Timer timer = new Timer();
+		TimerTask task = new TimerTask() {
+
+			@Override
+			public void run() {
+				StringBuffer response = new StringBuffer();
+
+				try {
+					String url = UriComponentsBuilder.fromUriString(promBaseUrl).path("/-/reload").build().toString();
+					URL obj = new URL(url);
+					URLConnection conn = obj.openConnection();
+
+					conn.setDoOutput(true);
+					OutputStreamWriter wr = new OutputStreamWriter(conn.getOutputStream());
+
+					wr.flush();
+
+					BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+					String inputLine;
+					while ((inputLine = in.readLine()) != null) {
+						response.append(inputLine);
+					}
+
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		};
+		timer.schedule(task, 120000);
 	}
 }

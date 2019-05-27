@@ -32,9 +32,12 @@ import org.springframework.web.client.RestTemplate;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.zdb.core.domain.BackupDiskEntity;
+import com.zdb.core.domain.BackupEntity;
 import com.zdb.core.domain.CommonConstants;
 import com.zdb.core.domain.DiskUsage;
 import com.zdb.core.domain.EventType;
+import com.zdb.core.domain.FailbackEntity;
 import com.zdb.core.domain.MetaData;
 import com.zdb.core.domain.PersistenceSpec;
 import com.zdb.core.domain.ReleaseMetaData;
@@ -49,13 +52,16 @@ import com.zdb.core.domain.ZDBStatus;
 import com.zdb.core.domain.ZDBType;
 import com.zdb.core.job.Job.JobResult;
 import com.zdb.core.job.JobHandler;
+import com.zdb.core.repository.BackupDiskEntityRepository;
+import com.zdb.core.repository.BackupEntityRepository;
 import com.zdb.core.repository.DiskUsageRepository;
+import com.zdb.core.repository.FailbackEntityRepository;
 import com.zdb.core.repository.MetadataRepository;
 import com.zdb.core.repository.ScheduleEntityRepository;
 import com.zdb.core.repository.SlaveStatusRepository;
 import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
-import com.zdb.core.util.HeapsterMetricUtil;
+import com.zdb.core.util.MetricUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.NumberUtils;
 import com.zdb.core.util.PodManager;
@@ -112,6 +118,15 @@ public class K8SService {
 	
 	@Autowired
 	private ScheduleEntityRepository scheduleEntity;
+	
+	@Autowired
+	private BackupDiskEntityRepository backupDiskEntityRepository;
+	
+	@Autowired
+	private BackupEntityRepository backupEntityRepository;
+	
+	@Autowired
+	private FailbackEntityRepository failbackEntityRepository;
 	
 	@Value("${iam.baseUrl}")
 	public String iamBaseUrl;
@@ -402,8 +417,14 @@ public class K8SService {
 		for (ZDBType type : values) {
 			apps.add(type.getName().toLowerCase());
 		}
-		
+		long s = System.currentTimeMillis();
 		List<ReleaseMetaData> releaseListWithNamespaces = new ArrayList<>();
+		
+		List<Namespace> namespaceList = getNamespaces();
+		List<String> nsNameList = new ArrayList<>();
+		for (Namespace ns : namespaceList) {
+			nsNameList.add(ns.getMetadata().getName());
+		}
 		
 		if (namespaces == null || namespaces.isEmpty()) {
 			Iterable<ReleaseMetaData> releaseList = releaseRepository.findAll();
@@ -417,8 +438,10 @@ public class K8SService {
 				set.add(ns.trim());
 			}
 			for (String ns : set) {
-				
 				String namespace = ns.trim();
+				if(!nsNameList.contains(namespace)) {
+					continue;
+				}
 				
 				Iterable<ReleaseMetaData> releaseList = releaseRepository.findByNamespace(namespace);
 				for (ReleaseMetaData release : releaseList) {
@@ -426,13 +449,6 @@ public class K8SService {
 				}
 			}
 		}
-		
-		List<Namespace> namespaceList = getNamespaces();
-		List<String> nsNameList = new ArrayList<>();
-		for (Namespace ns : namespaceList) {
-			nsNameList.add(ns.getMetadata().getName());
-		}
-		
 		List<ScheduleEntity> scheduleEntityList = scheduleEntity.findAll();
 		
 		for (ReleaseMetaData release : releaseListWithNamespaces) {
@@ -444,7 +460,6 @@ public class K8SService {
 			}
 			
 			ServiceOverview so = new ServiceOverview();
-
 			so.setServiceName(release.getReleaseName());
 			so.setNamespace(release.getNamespace());
 			so.setPurpose(release.getPurpose());
@@ -473,12 +488,12 @@ public class K8SService {
 			so.setDeploymentStatus(release.getStatus());
 			
 			setServiceOverview(so, detail);
+			
 			serviceList.add(so);
 		}
 		return serviceList;
 	}
 
-	
 	/**
 	 * @param namespace
 	 * @param serviceType
@@ -589,6 +604,29 @@ public class K8SService {
 		//   - failover 된 상태 : MasterToSlave
 		so.setServiceFailOverStatus(getServiceFailOverStatus(namespace, so.getServiceType(), serviceName));
 		
+		// Backup 전용 디스크 사용 여부 : ondiskFlag
+		so.setOndiskFlag(false);
+		BackupDiskEntity backupDiskEntity = backupDiskEntityRepository.findBackupByServiceName(so.getServiceType(), serviceName, namespace);
+		if (backupDiskEntity != null && backupDiskEntity.getDeleteYn().equals("N")
+				&& backupDiskEntity.getStatus().equals("")) {
+			so.setOndiskFlag(true);
+		}
+		
+		/*
+		private BackupEntityRepository backupEntityRepository;
+		*/
+		
+		// Bakcup 현재 수행 상태 : backupStatus , findBackupStatus
+		BackupEntity backupEntity = backupEntityRepository.findBackupStatus(namespace, so.getServiceType(), serviceName);
+		if(backupEntity != null)
+			so.setBackupStatus(backupEntity.getStatus());
+		
+		// Failback 수행 상태 : failbackStatus
+		FailbackEntity failbackEntity= failbackEntityRepository.findFailbackByName(namespace, so.getServiceType(), serviceName);
+		if(failbackEntity != null) {
+			so.setFailbackStatus(failbackEntity.getStatus());
+		}
+		
 		// 태그 정보 
 
 		List<Tag> tagList = tagRepository.findByNamespaceAndReleaseName(namespace, serviceName);
@@ -622,7 +660,9 @@ public class K8SService {
 					if ("master".equals(component)) {
 						isMaster = true;
 					} else {
-						so.setSlaveStatus(replicationStatus(pod.getMetadata().getName()));
+						if (so.getStatus() != ZDBStatus.RED && PodManager.isReady(pod)) {
+							so.setSlaveStatus(replicationStatus(pod.getMetadata().getName()));
+						}
 					}
 				}
 				if (!isMaster) {
@@ -716,22 +756,20 @@ public class K8SService {
 
 			for (Pod pod : so.getPods()) {
 				String podName = pod.getMetadata().getName();
-				DiskUsage disk = diskRepository.findOne(podName);
+				List<DiskUsage> disk = diskRepository.findByPodName(podName);
 				so.getDiskUsageOfPodMap().put(podName, disk);
 			}
 
-			Deployment deployment = K8SUtil.kubernetesClient().inNamespace("kube-system").extensions().deployments().withName("heapster").get();
-			
 			// metric 정보를 ui 에 담에서 전송...
 			for (Pod pod : so.getPods()) {
 				if (PodManager.isReady(pod)) {
 					String podName = pod.getMetadata().getName();
 
 					try {
-						HeapsterMetricUtil metricUtil = new HeapsterMetricUtil();
+						MetricUtil metricUtil = new MetricUtil();
 						
 						// heapster 사용 
-						if(deployment != null) {
+						if("heapster".equals(kindOfMetricServer())) {
 							PodMetrics metrics = metricUtil.getMetricFromHeapster(namespace, podName);
 							List<com.zdb.core.vo.Container> containers = metrics.getContainers();
 							
@@ -760,7 +798,7 @@ public class K8SService {
 							so.getMemoryUsageOfPodMap().put(podName, memoryUsage.get("metrics"));
 //							
 							
-						} else {
+						} else if("metrics-server".equals(kindOfMetricServer())) {
 							// metricserver 사용 
 //							[{"timestamp":"2019-03-19T11:26:00Z","value":2}]
 							
@@ -798,6 +836,32 @@ public class K8SService {
 				}
 			}
 		}
+	}
+	
+	static String availableMetricServer = null;
+	
+	private String kindOfMetricServer() {
+		
+		if (availableMetricServer == null) {
+			try {// metrics-server
+				Deployment heapster = K8SUtil.kubernetesClient().inNamespace("kube-system").extensions().deployments().withName("heapster").get();
+				if (heapster != null) {
+					availableMetricServer = "heapster";
+					return availableMetricServer;
+				}
+
+				Deployment metrics_server = K8SUtil.kubernetesClient().inNamespace("kube-system").extensions().deployments().withName("metrics-server").get();
+				if (metrics_server != null) {
+					availableMetricServer = "metrics-server";
+					return availableMetricServer;
+				}
+
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		
+		return availableMetricServer;
 	}
 	
 	/**
@@ -1234,7 +1298,7 @@ public class K8SService {
     		rs.setMessage(message);
         } else {
         	rs.setReplicationStatus("over");
-        	rs.setMessage("Resource Lookup - TimeOver");
+        	rs.setMessage("");
         }
 		
 		

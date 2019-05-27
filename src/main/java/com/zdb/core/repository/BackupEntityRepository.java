@@ -32,6 +32,15 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 	List<BackupEntity> findBackupByService(@Param("serviceType") String serviceType
 			, @Param("serviceName") String serviceName);
 	
+	@Query(value =  "select * from zdb.backup_entity "
+            + " where namespace=:namespace "
+            + " and service_type=:serviceType "
+            + " and service_name=:serviceName "
+            + " order by accepted_datetime desc limit 1" , nativeQuery = true)
+	BackupEntity findBackupStatus(@Param("namespace") String namespace
+			, @Param("serviceType") String serviceType
+			, @Param("serviceName") String serviceName);
+	
 	@Query("select t from BackupEntity t where namespace=:namespace"
 			+ " and serviceType=:serviceType"
 			+ " and serviceName=:serviceName"
@@ -169,4 +178,19 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 	BackupEntity findFromBackup(@Param("namespace") String namespace
 			, @Param("serviceType") String serviceType
 			, @Param("serviceName") String serviceName);
+	
+	
+	@Modifying(clearAutomatically = true)
+	@Transactional
+	@Query("UPDATE BackupEntity t SET "
+			+ "t.ondisk = 'N' "
+			+ "WHERE t.namespace=:namespace"
+			+ " and t.serviceType=:serviceType"
+			+ " and t.serviceName=:serviceName"
+			+ " and t.ondisk = 'Y'"
+			)
+	int modify2OndiskDelete( @Param("namespace") String namespace
+			, @Param("serviceType") String serviceType
+			, @Param("serviceName") String serviceName);
+	
 }
