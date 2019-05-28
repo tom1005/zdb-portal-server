@@ -1131,14 +1131,6 @@ public class ZDBRestController {
 	public ResponseEntity<String> getNamespaces() {
 		try {
 			UserInfo userInfo = getUserInfo();
-//			String namespaces = userInfo.getNamespaces();
-//			List<String> userNamespaces = new ArrayList<>();
-//			if (namespaces != null) {
-//				String[] split = namespaces.split(",");
-//				for (String ns : split) {
-//					userNamespaces.add(ns.trim());
-//				}
-//			}
 
 			if (userInfo == null || userInfo.getUserId() == null) {
 				new Result(null, IResult.ERROR, "네임스페이스 조회 오류");
@@ -1152,7 +1144,7 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
-			Result result = new Result(null, IResult.ERROR, "Namespace 조회 오류!").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(null, IResult.ERROR, "네임스페이스 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
@@ -1196,7 +1188,7 @@ public class ZDBRestController {
 			return new ResponseEntity<String>("", HttpStatus.OK);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			Result result = new Result(txId, IResult.ERROR, "사용자 Namespace 등록 오류!").putValue(IResult.EXCEPTION, e);
+			Result result = new Result(txId, IResult.ERROR, "사용자 네임스페이스 등록 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
