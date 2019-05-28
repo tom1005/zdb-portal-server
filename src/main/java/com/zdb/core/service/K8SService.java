@@ -608,7 +608,7 @@ public class K8SService {
 		so.setOndiskFlag(false);
 		BackupDiskEntity backupDiskEntity = backupDiskEntityRepository.findBackupByServiceName(so.getServiceType(), serviceName, namespace);
 		if (backupDiskEntity != null && backupDiskEntity.getDeleteYn().equals("N")
-				&& backupDiskEntity.getStatus().equals("")) {
+				&& backupDiskEntity.getStatus().equals("COMPLETE")) {
 			so.setOndiskFlag(true);
 		}
 		
