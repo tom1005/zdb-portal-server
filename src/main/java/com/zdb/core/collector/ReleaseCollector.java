@@ -170,7 +170,7 @@ public class ReleaseCollector {
 				}
 				
 			} else {
-				log.debug("{}", "zdb-portal-job 을 통해 Release 정도 동기화 됩니다.");
+				log.debug("{}", "zdb-portal-job 을 통해 Release 정보 동기화 됩니다.");
 			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
