@@ -193,4 +193,24 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			, @Param("serviceType") String serviceType
 			, @Param("serviceName") String serviceName);
 	
+	
+	@Query(value =  "select * from zdb.backup_entity "
+            + " where namespace=:namespace "
+            + " and service_type=:serviceType "
+            + " and service_name=:serviceName "
+            + " and ondisk='Y' "
+            + " and type = 'FULL'", nativeQuery = true)
+	List<BackupEntity> findOndiskFullBackupList(@Param("namespace") String namespace
+			, @Param("serviceType") String serviceType
+			, @Param("serviceName") String serviceName);
+	
+	
+	@Modifying(clearAutomatically = true)
+	@Transactional
+	@Query("UPDATE BackupEntity t SET "
+			+ "t.ondisk = :ondiskYn "
+			+ "WHERE t.backupId=:backupId")
+	int modify2OndiskYn( @Param("ondiskYn") String ondiskYn
+			, @Param("backupId") String backupId);
+	
 }
