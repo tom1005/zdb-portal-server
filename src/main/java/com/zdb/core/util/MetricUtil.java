@@ -11,9 +11,9 @@ import org.crsh.console.jline.internal.Log;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import com.google.gson.Gson;
@@ -136,6 +136,8 @@ public class MetricUtil {
 					return podMetrics;
 				}
 			}
+		} catch (HttpClientErrorException e) {
+			log.warn("{} : {} > {} 리소스 사용량 조회 실패", e.getMessage(), namespace, podname);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 		}
@@ -170,6 +172,8 @@ public class MetricUtil {
 					return podMetrics;
 				}
 			}
+		} catch (HttpClientErrorException e) {
+			log.warn("{} : {} > {} 리소스 사용량 조회 실패", e.getMessage(), namespace, podname);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 		}
