@@ -2271,7 +2271,9 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			if (StringUtils.hasText(keyword)) {
 				Predicate releaseName = builder.like(root.get("release"), "%" + keyword + "%");
 				Predicate name = builder.like(root.get("name"), "%" + keyword + "%");
-				predicates.add(builder.or(releaseName, name));
+				Predicate ns = builder.like(root.get("namespace"), "%" + keyword + "%");
+				Predicate volumeName = builder.like(root.get("volumeName"), "%" + keyword + "%");
+				predicates.add(builder.or(releaseName, name, volumeName, ns));
 			}
 			if (StringUtils.hasText(app)) {
 				if(app.equals("-")) {
@@ -2321,7 +2323,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			
 			// 옵션 목록을 where절에 추가
 			query.where(predicates.toArray(new Predicate[] {}));
-			query.orderBy(builder.desc(root.get("creationTimestamp")),builder.desc(root.get("name")));
+			query.orderBy(builder.asc(root.get("namespace")),builder.asc(root.get("name")));
 			
 			// 쿼리를 select문 추가
 			query.select(root);
@@ -2330,7 +2332,21 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			// 쿼리 실행 후 결과 확인
 			List<PersistentVolumeClaimEntity> resultList = typedQuery.getResultList();
 			
-			return new Result("", Result.OK).putValue(IResult.STORAGES, resultList);
+			List<Namespace> namespaces = K8SUtil.getNamespaces();
+			
+			List<String> namespaceList = new ArrayList<>();
+			for (Namespace n : namespaces) {
+				namespaceList.add(n.getMetadata().getName());
+			}
+			
+			List<PersistentVolumeClaimEntity> tempArray = new ArrayList<>();
+			for (PersistentVolumeClaimEntity pvce : resultList) {
+				if(namespaceList.contains(pvce.getNamespace()) || "zdb-system".equals(pvce.getNamespace())) {
+					tempArray.add(pvce);
+				}
+			}
+			
+			return new Result("", Result.OK).putValue(IResult.STORAGES, tempArray);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			return new Result("", Result.ERROR, e.getMessage(), e);
@@ -2339,21 +2355,26 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	@Override
 	public Result getStoragesData() throws Exception {
 		HashMap<String, List<String>> storageData = new HashMap<>();
-		List<String> cols = Arrays.asList("app","billingType");
-		List<Predicate> predicates = new ArrayList<>();
+//		List<String> cols = Arrays.asList("app","billingType");
+//		List<Predicate> predicates = new ArrayList<>();
 		try {
-			CriteriaBuilder builder = entityManager.getCriteriaBuilder();
-			CriteriaQuery<String> query = builder.createQuery(String.class);
-			Root<PersistentVolumeClaimEntity> root = query.from(PersistentVolumeClaimEntity.class);
-			for(String col:cols) {
-				query.select(root.get(col)).distinct(true);
-				predicates.add(builder.isNotNull(root.get(col)));
-				query.where(predicates.toArray(new Predicate[] {}));
-				
-				TypedQuery<String> q = entityManager.createQuery(query);	
-				List<String> li = q.getResultList();
-				storageData.put(col, li);
-			}
+//			CriteriaBuilder builder = entityManager.getCriteriaBuilder();
+//			CriteriaQuery<String> query = builder.createQuery(String.class);
+//			Root<PersistentVolumeClaimEntity> root = query.from(PersistentVolumeClaimEntity.class);
+//			for(String col:cols) {
+//				query.select(root.get(col)).distinct(true);
+//				predicates.add(builder.isNotNull(root.get(col)));
+//				query.where(predicates.toArray(new Predicate[] {}));
+//				
+//				TypedQuery<String> q = entityManager.createQuery(query);	
+//				List<String> li = q.getResultList();
+//				storageData.put(col, li);
+//			}
+			//{app=[elasticsearch, redis, mariadb, zcp-oidc-postgresql, zcp-registry, zcp-registry-postgresql, test-delete, maria, prometheus], 
+			// billingType=[hourly, ]}
+			
+			storageData.put("app", Arrays.asList(new String[] {"mariadb","redis"}));
+			storageData.put("billingType", Arrays.asList(new String[] {"hourly","monthly"}));
 			
 			return new Result("", Result.OK).putValue(IResult.STORAGES_DATA, storageData);
 		} catch (Exception e) {
