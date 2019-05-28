@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
 @Data
 public class MariaDBVariable {
 
-	private String group;
+	private String category;
 
 	@Id
 	private String name;
