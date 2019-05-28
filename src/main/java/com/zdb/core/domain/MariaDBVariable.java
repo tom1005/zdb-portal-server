@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
-public class MariadbVariable {
+public class MariaDBVariable {
 
 	private String group;
 
