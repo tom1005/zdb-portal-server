@@ -535,7 +535,13 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 		event.setStartTime(new Date(System.currentTimeMillis()));
 		event.setOperation(RequestEvent.DELETE);
 
-//		ReleaseManager releaseManager = null;
+		// 알람 룰 설정 삭제 
+		try {
+			// TODO : 알람 룰 삭제 로직 구현...
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
+		
 		try (DefaultKubernetesClient client = K8SUtil.kubernetesClient();
 				Tiller tiller = new Tiller(client);
 				ReleaseManager releaseManager = new ReleaseManager(tiller);) {
