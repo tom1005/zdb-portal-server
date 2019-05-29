@@ -11,6 +11,7 @@ import com.zdb.core.domain.DiskUsage;
 import com.zdb.core.repository.DiskUsageRepository;
 import com.zdb.core.util.DiskUsageChecker;
 import com.zdb.core.util.K8SUtil;
+import com.zdb.core.ws.MessageSender;
 
 import io.fabric8.kubernetes.api.model.Job;
 import lombok.extern.slf4j.Slf4j;
@@ -22,11 +23,17 @@ public class DiskUsageCollector {
 	
 	@Autowired
 	DiskUsageRepository repo;
+	
+	@Autowired
+	private MessageSender messageSender;
 
 	// @Scheduled(initialDelayString = "${collector.period.initial-delay}", fixedRateString = "${collector.period.fixed-rate}")
 	@Scheduled(initialDelayString = "30000", fixedRateString = "90000")
 	public void collect() {
 		try {
+			if(messageSender.getSessionCount() < 1) {
+				return;
+			}
 			
 			boolean useCronJob = false;
 			List<Job> items = K8SUtil.kubernetesClient().inNamespace("zdb-system").extensions().jobs().list().getItems();

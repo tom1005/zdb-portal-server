@@ -85,7 +85,7 @@ public class MessageSender {
 		} 
 	}
 	
-	Set<String> mySet = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
+	static Set<String> mySet = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
 	
 	public int getSessionCount() {
 		return mySet.size();
@@ -95,11 +95,15 @@ public class MessageSender {
 	private void onSessionConnectedEvent(SessionConnectedEvent event) {
 	    StompHeaderAccessor sha = StompHeaderAccessor.wrap(event.getMessage());
 	    mySet.add(sha.getSessionId());
+	    
+	    log.info("## Added Session Connected : "+mySet.size());
 	}
 
 	@EventListener
 	private void onSessionDisconnectEvent(SessionDisconnectEvent event) {
 	    StompHeaderAccessor sha = StompHeaderAccessor.wrap(event.getMessage());
 	    mySet.remove(sha.getSessionId());
+
+	    log.info("## Remove Session Connected : "+mySet.size());
 	}
 }
