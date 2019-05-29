@@ -766,7 +766,7 @@ public class K8SService {
 						MetricUtil metricUtil = new MetricUtil();
 						
 						// heapster 사용 
-						if("heapster".equals(kindOfMetricServer())) {
+						if("heapstere".equals(kindOfMetricServer())) {
 							PodMetrics metrics = metricUtil.getMetricFromHeapster(namespace, podName);
 							if(metrics != null) {
 								List<com.zdb.core.vo.Container> containers = metrics.getContainers();
@@ -795,7 +795,7 @@ public class K8SService {
 								so.getCpuUsageOfPodMap().put(podName, cpuUsage.get("metrics"));							
 								so.getMemoryUsageOfPodMap().put(podName, memoryUsage.get("metrics"));
 							}
-						} else if("metrics-server".equals(kindOfMetricServer())) {
+						} else if("heapster".equals(kindOfMetricServer())) {
 							// metricserver 사용 
 //							[{"timestamp":"2019-03-19T11:26:00Z","value":2}]
 							
@@ -818,8 +818,8 @@ public class K8SService {
 									memValue += memoryByMi.doubleValue();
 								}
 								
-								String cpuStringValue = String.format("[{\"timestamp\":\"%s\",\"value\":%d}]",timestamp, ((int)cupValue));
-								String memStringValue = String.format("[{\"timestamp\":\"%s\",\"value\":%d}]",timestamp, ((int)memValue));
+								String cpuStringValue = String.format("{\"timestamp\":\"%s\",\"value\":%d}",timestamp, ((int)cupValue));
+								String memStringValue = String.format("{\"timestamp\":\"%s\",\"value\":%d}",timestamp, ((int)memValue));
 								
 								Gson gson = new GsonBuilder().create();
 								java.util.Map<String, Object> cpuUsage = gson.fromJson(cpuStringValue, java.util.Map.class);
