@@ -561,6 +561,13 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 		event.setNamespace(namespace);
 		event.setStartTime(new Date(System.currentTimeMillis()));
 		event.setOperation(RequestEvent.DELETE);
+		
+		// 알람 룰 설정 삭제 
+		try {
+			// TODO : 알람 룰 삭제 로직 구현...
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
 
 		ReleaseManager releaseManager = null;
 		try {
