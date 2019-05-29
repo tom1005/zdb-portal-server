@@ -71,6 +71,10 @@ public class WatchEventListener {
 	
 	@Scheduled(initialDelayString = "20000", fixedRateString = "60000")
 	public void watcherChecker() {
+		if(messageSender.getSessionCount() < 1) {
+			return;
+		}
+		
 		for (Iterator<String> iterator = watcherTTL.keySet().iterator(); iterator.hasNext();) {
 			String key = iterator.next();
 			Long ttl = watcherTTL.get(key);

@@ -14,6 +14,7 @@ import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.service.K8SService;
 import com.zdb.core.util.K8SUtil;
+import com.zdb.core.ws.MessageSender;
 
 import hapi.release.ReleaseOuterClass.Release;
 import hapi.release.StatusOuterClass.Status.Code;
@@ -34,10 +35,16 @@ public class ReleaseCollector {
 
 	@Autowired
 	K8SService k8sService;
+	
+	@Autowired
+	private MessageSender messageSender;
 
 	// @Scheduled(initialDelayString = "${collector.period.initial-delay}", fixedRateString = "${collector.period.fixed-rate}")
 	@Scheduled(initialDelayString = "30000", fixedRateString = "120000")
 	public void collect() {
+		if(messageSender.getSessionCount() < 1) {
+			return;
+		}
 		try {
 			boolean useCronJob = false;
 			List<Job> jobs = K8SUtil.kubernetesClient().inNamespace("zdb-system").extensions().jobs().list().getItems();

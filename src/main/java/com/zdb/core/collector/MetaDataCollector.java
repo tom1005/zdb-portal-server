@@ -18,6 +18,7 @@ import com.zdb.core.repository.MetadataRepository;
 import com.zdb.core.repository.PersistentVolumeClaimRepository;
 import com.zdb.core.util.DateUtil;
 import com.zdb.core.util.K8SUtil;
+import com.zdb.core.ws.MessageSender;
 
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.Event;
@@ -44,6 +45,9 @@ public class MetaDataCollector {
 	@Autowired
 	PersistentVolumeClaimRepository pvcRepo;
 	
+	@Autowired
+	private MessageSender messageSender;
+	
 	/**
 	 * 마지막으로 전송한 메세지를 담는 공간...
 	 */
@@ -68,6 +72,10 @@ public class MetaDataCollector {
 	public void collect() {
 		try {
 			if (!"prod".equals(profile)) {
+				return;
+			}
+			
+			if(messageSender.getSessionCount() < 1) {
 				return;
 			}
 			
