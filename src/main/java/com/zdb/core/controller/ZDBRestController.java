@@ -3052,6 +3052,28 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
+	@RequestMapping(value="/{namespace}/{serviceType}/database/status/{podName}",method = RequestMethod.GET)
+	public ResponseEntity<String> getDatabaseStatus(@PathVariable String namespace, @PathVariable String serviceType , @PathVariable String podName) throws Exception {
+		String txId = txId();
+		Result result = new Result(txId,IResult.OK);
+		
+		try {
+			ZDBType dbType = ZDBType.getType(serviceType);
+			switch (dbType) {
+			case MariaDB:
+				result.putValue(IResult.DATABASE_STATUS,((MariaDBServiceImpl) mariadbService).getDatabaseStatus(txId, namespace, podName));
+				break;
+			default:
+				result = new Result(txId, IResult.ERROR, RequestEvent.SELECT_DATABASE_STATUS);
+				break;
+			}
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(null, IResult.ERROR, RequestEvent.SELECT_DATABASE_STATUS + " 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
 
 	
 }

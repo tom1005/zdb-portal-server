@@ -183,6 +183,7 @@ public class AlertService {
 			}
 			String data = parseWriteAlertRule(pn);
 			dt.edit().addToData(dataTitle, data).done();
+			reloadAlertRule();
 		} catch (Exception e) {
 			isSuccess = false;
 			log.error(e.getMessage(), e);
@@ -249,7 +250,7 @@ public class AlertService {
 				}
 			}
 			ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(serviceName);
-			boolean hasSlave = releaseMeta!=null && releaseMeta.getClusterEnabled();
+			boolean hasSlave = releaseMeta!=null && releaseMeta.getClusterEnabled()!=null && releaseMeta.getClusterEnabled();
 			
 			for(int i = 0 ;i < alertRules.size();i++) {
 				AlertingRuleEntity are = alertRules.get(i);

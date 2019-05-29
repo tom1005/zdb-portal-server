@@ -68,7 +68,8 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 	
 	@Autowired
 	PersistentVolumeClaimRepository pvcRepo;
-	
+
+	@Autowired AlertService alertService;
 	/**
 	 * @param exchange
 	 */
@@ -667,6 +668,8 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 				event.setStatus(IResult.OK);
 				event.setResultMessage("Successfully deleted.");
 				event.setEndTime(new Date(System.currentTimeMillis()));
+				
+				alertService.deleteAlertRule(serviceName);
 			} else {
 				String msg = "설치된 서비스가 존재하지 않습니다.";
 				event.setResultMessage(msg);

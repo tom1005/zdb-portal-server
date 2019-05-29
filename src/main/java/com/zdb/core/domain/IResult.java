@@ -131,6 +131,8 @@ public interface IResult {
 
 	public static final String PROCESSES = "processes";
 
+	public static final String DATABASE_STATUS = "databaseStatus";
+
 	public static final String STORAGES = "storages";
 
 	public static final String STORAGES_DATA = "storagesData";

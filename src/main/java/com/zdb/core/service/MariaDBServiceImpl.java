@@ -42,6 +42,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import com.google.gson.Gson;
@@ -3181,5 +3182,33 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			return Result.RESULT_FAIL(txId, e);
 		}		
 		return result;
+	}
+
+	public Map<String,String> getDatabaseStatus(String txId, String namespace, String podName) {
+		Map<String, String> map = new HashMap<>();
+		final String container = "mariadb";
+		final String loginCmd = "mysql -uroot -p$MARIADB_ROOT_PASSWORD -e";  
+		StringBuffer cmd = new StringBuffer(); 
+		List<String> variableCols = Arrays.asList("hostname","socket","version_compile_os","port","version","version_compile_machine","basedir","datadir","plugin_dir","tmpdir","log_error","general_log","slow_query_log","slow_query_log_file","timestamp");
+		String param = variableCols.stream().map(StringUtils::quote).collect(Collectors.joining(","));
+		cmd.append(loginCmd).append(String.format("\" show variables where variable_name in (%s) ; show status where variable_name = 'uptime'; \" ", param));
+		
+		try {
+			ExecUtil execUtil = new ExecUtil();
+			String result = execUtil.exec(K8SUtil.kubernetesClient(), namespace, podName, container, cmd.toString());
+			if(StringUtils.hasText(result)) {
+				String[] lineSplit = result.trim().split("\n");
+				for (String line : lineSplit) {
+					String[] lines = line.split("\\s");
+					String key = lines[0].trim();
+					String value = lines[1].trim();
+					if(key.equals("Variable_name"))continue;
+					map.put(key, value);
+				}
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}		
+		return map;
 	}
 }

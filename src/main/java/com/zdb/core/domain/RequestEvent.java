@@ -66,6 +66,7 @@ public class RequestEvent {
 	public static final String UPDATE_ALERT_RULE = "Alert Rule 수정";	
 	public static final String SELECT_PROCESS = "Pocess 조회";
 	public static final String KILL_PROCESS = "Process 종료";
+	public static final String SELECT_DATABASE_STATUS = "Database Status 조회";
 	
 	private String operation;
 

@@ -1,7 +1,6 @@
 package com.zdb.core.service;
 
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URL;
@@ -61,7 +60,6 @@ import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
-import io.fabric8.kubernetes.client.Watcher;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -85,6 +83,8 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 	
 	@Autowired
 	protected ZDBConfigRepository zdbConfigRepository;
+	
+	@Autowired AlertService alertService;
 		
 	private static final String DEFAULT_ROOT_PASSWORD = "zdb12#$";
 	private static final String DEFAULT_USER = "admin";
@@ -670,6 +670,8 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				event.setResultMessage("서비스 삭제 완료 ["+namespace +" > "+ serviceName +"]");
 				event.setStatus(IResult.OK);
 				event.setEndTime(new Date(System.currentTimeMillis()));
+				
+				alertService.deleteAlertRule(serviceName);
 			} else {
 				String msg = "설치된 서비스가 존재하지 않습니다. ["+namespace +" > "+ serviceName +"]";
 				event.setResultMessage(msg);
