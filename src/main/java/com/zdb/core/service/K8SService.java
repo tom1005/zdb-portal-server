@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -766,7 +767,7 @@ public class K8SService {
 						MetricUtil metricUtil = new MetricUtil();
 						
 						// heapster 사용 
-						if("heapstere".equals(kindOfMetricServer())) {
+						if("heapster".equals(kindOfMetricServer())) {
 							PodMetrics metrics = metricUtil.getMetricFromHeapster(namespace, podName);
 							if(metrics != null) {
 								List<com.zdb.core.vo.Container> containers = metrics.getContainers();
@@ -795,7 +796,7 @@ public class K8SService {
 								so.getCpuUsageOfPodMap().put(podName, cpuUsage.get("metrics"));							
 								so.getMemoryUsageOfPodMap().put(podName, memoryUsage.get("metrics"));
 							}
-						} else if("heapster".equals(kindOfMetricServer())) {
+						} else if("metrics-server".equals(kindOfMetricServer())) {
 							// metricserver 사용 
 //							[{"timestamp":"2019-03-19T11:26:00Z","value":2}]
 							
@@ -825,8 +826,8 @@ public class K8SService {
 								java.util.Map<String, Object> cpuUsage = gson.fromJson(cpuStringValue, java.util.Map.class);
 								java.util.Map<String, Object> memoryUsage = gson.fromJson(memStringValue, java.util.Map.class);
 								
-								so.getCpuUsageOfPodMap().put(podName, cpuUsage);
-								so.getMemoryUsageOfPodMap().put(podName, memoryUsage);
+								so.getCpuUsageOfPodMap().put(podName, Arrays.asList(cpuUsage));
+								so.getMemoryUsageOfPodMap().put(podName, Arrays.asList(memoryUsage));
 							}
 						}
 					} catch (Exception e) {
