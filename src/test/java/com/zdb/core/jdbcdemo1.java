@@ -22,7 +22,7 @@ public class jdbcdemo1 {
     
 //    props.put("retriesAllDown","5");
     props.put("user", "root");
-    props.put("password", "zdb12#$");
+    props.put("password", "");
 //    props.put("user", "admin");
 //    props.put("password", "unt40lyv3r");
  

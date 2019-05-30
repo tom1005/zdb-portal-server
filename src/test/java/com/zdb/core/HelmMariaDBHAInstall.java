@@ -96,9 +96,9 @@ public class HelmMariaDBHAInstall {
 				
 //				String inputJson = readFile("/home/nexcore/git2/zdb.rest.api/src/main/resources/values_template.json");
 //				
-//				inputJson = inputJson.replace("${rootUser.password}", "zdb12#$"); // configmap
+//				inputJson = inputJson.replace("${rootUser.password}", ""); // configmap
 //				inputJson = inputJson.replace("${db.user}", "zdbadmin");// configmap
-//				inputJson = inputJson.replace("${db.password}", "zdb12#$"); // configmap
+//				inputJson = inputJson.replace("${db.password}", ""); // configmap
 //				inputJson = inputJson.replace("${db.name}", "zdbdev");// input
 //				inputJson = inputJson.replace("${master.persistence.storageClass}", "ibmc-block-silver");// configmap
 //				inputJson = inputJson.replace("${master.persistence.size}", "10Gi");// input , configmap
@@ -133,9 +133,9 @@ public class HelmMariaDBHAInstall {
 	public static void main3(String[] a) throws Exception {
 		String inputJson = readFile("/home/nexcore/git2/zdb.rest.api/src/main/resources/values_template.json");
 		
-		inputJson = inputJson.replace("${rootUser.password}", "zdb12#$"); // configmap
+		inputJson = inputJson.replace("${rootUser.password}", ""); // configmap
 		inputJson = inputJson.replace("${db.user}", "zdbadmin");// configmap
-		inputJson = inputJson.replace("${db.password}", "zdb12#$"); // configmap
+		inputJson = inputJson.replace("${db.password}", ""); // configmap
 		inputJson = inputJson.replace("${db.name}", "zdbdev");// input
 		inputJson = inputJson.replace("${master.persistence.storageClass}", "ibmc-file-silver");// configmap
 		inputJson = inputJson.replace("${master.persistence.size}", "10Gi");// input , configmap

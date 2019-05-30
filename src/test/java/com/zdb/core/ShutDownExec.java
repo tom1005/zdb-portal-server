@@ -42,7 +42,7 @@ public class ShutDownExec {
 			BlockingInputStreamPumper pump = null;
 			
 //			String[] commands = new String[] { "/bin/sh", "-c", "df -P | grep bitnami | awk '{size = $2} {used = $3} {avail=$4} {use=$5} END { print size \" \"used \" \" avail \" \" use }'"};
-			String[] commands = new String[] { "/bin/sh", "-c", "/opt/bitnami/mariadb/bin/mysqladmin -u root -pzdb12#$ -h 127.0.0.1 shutdown"};
+			String[] commands = new String[] { "/bin/sh", "-c", "/opt/bitnami/mariadb/bin/mysqladmin -u root -p -h 127.0.0.1 shutdown"};
 			
 			for (int i = 0; i < commands.length; i++) {
 				commands[i] = URLEncoder.encode(commands[i], "UTF-8");

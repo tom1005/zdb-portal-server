@@ -86,10 +86,10 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 	
 	@Autowired AlertService alertService;
 		
-	private static final String DEFAULT_ROOT_PASSWORD = "zdb12#$";
+	private static final String DEFAULT_ROOT_PASSWORD = "";
 	private static final String DEFAULT_USER = "admin";
-	private static final String DEFAULT_USER_PASSWORD = "zdbadmin12#$";
-	private static final String DEFAULT_DATABASE_NAME = "mydb";
+	private static final String DEFAULT_USER_PASSWORD = "";
+	private static final String DEFAULT_DATABASE_NAME = "zdb";
 	private static final String DEFAULT_STORAGE_SIZE = "20Gi";
 	private static final String DEFAULT_VERSION = "10.2.14";
 	
@@ -115,8 +115,6 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				Tiller tiller = new Tiller(client);
 				ReleaseManager releaseManager = new ReleaseManager(tiller);
 				){ 
-//			chartUrl = "file:///Users/a06919/git/charts/stable/mariadb/mariadb-4.2.0.tgz";
-//			chartUrl = "file:///Users/a06919/mariadb-4.2.2.tgz";
 			/////////////////////////
 			// chart 정로 로딩
 			final URI uri = URI.create(chartUrl);
