@@ -37,13 +37,6 @@ public class MariaDBShutDownUtil {
 		return instance;
 	}
 
-	public static void main(String[] args) {
-		try {
-			MariaDBShutDownUtil.getInstance().doShutdownAndDeleteAllPods("zdb-maria","zdb-maria-pns");
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
 	public  void doShutdownAndDeleteAllPods(String namespace, String serviceName) throws Exception {
 		doShutdownAndDeletePod(namespace, serviceName, null);
 	}
