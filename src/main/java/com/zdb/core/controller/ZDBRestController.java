@@ -281,6 +281,18 @@ public class ZDBRestController {
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
+			
+			long s = System.currentTimeMillis();
+			
+			while((System.currentTimeMillis() - s) < 1000 * 10) {
+				Thread.sleep(1000);
+				ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(entity.getServiceName());
+				if(releaseMeta == null) {
+					continue;
+				} else {
+					break;
+				}
+			}
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
