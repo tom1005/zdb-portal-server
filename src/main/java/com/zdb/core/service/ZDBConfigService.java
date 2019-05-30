@@ -15,7 +15,7 @@ public class ZDBConfigService {
 	static String publicNetworkConfig = "public_network_enabled";
 	static String publicNetworkConfigName = "Public Network 사용 여부";
 	static String publicNetworkDBType = "common";
-	static String publicNetworkValue = "true";
+	static String publicNetworkValue = "false";
 	
 	/* 리소스 가용량 체크 */
 	static String freeResourceCheckConfig = "free_resource_check";
