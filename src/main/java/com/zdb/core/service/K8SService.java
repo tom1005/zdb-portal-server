@@ -687,10 +687,13 @@ public class K8SService {
 					}
 
 				}
+				
+				String podName = pod.getMetadata().getName();
+				List<DiskUsage> disk = diskRepository.findByPodName(podName);
+				so.getDiskUsageOfPodMap().put(podName, disk);
 			}
 		}
 		
-
 		if (detail) {
 			List<ConfigMap> configMaps = new ArrayList<>();
 			List<PersistentVolumeClaim> persistentVolumeClaims = new ArrayList<>();
@@ -752,11 +755,7 @@ public class K8SService {
 				so.getPersistenceSpecOfPodMap().put(podName, getPersistenceSpec(so, podName));
 			}
 
-			for (Pod pod : so.getPods()) {
-				String podName = pod.getMetadata().getName();
-				List<DiskUsage> disk = diskRepository.findByPodName(podName);
-				so.getDiskUsageOfPodMap().put(podName, disk);
-			}
+			
 
 			// metric 정보를 ui 에 담에서 전송...
 			for (Pod pod : so.getPods()) {
