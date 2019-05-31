@@ -688,10 +688,13 @@ public class K8SService {
 
 				}
 				
-				String podName = pod.getMetadata().getName();
-				List<DiskUsage> disk = diskRepository.findByPodName(podName);
-				so.getDiskUsageOfPodMap().put(podName, disk);
 			}
+		}
+		
+		for (Pod pod : pods) {
+			String podName = pod.getMetadata().getName();
+			List<DiskUsage> disk = diskRepository.findByPodName(podName);
+			so.getDiskUsageOfPodMap().put(podName, disk);
 		}
 		
 		if (detail) {
