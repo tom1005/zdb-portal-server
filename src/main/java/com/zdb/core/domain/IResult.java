@@ -131,11 +131,17 @@ public interface IResult {
 
 	public static final String PROCESSES = "processes";
 
-	public static final String DATABASE_STATUS = "databaseStatus";
-
 	public static final String STORAGES = "storages";
 
 	public static final String STORAGES_DATA = "storagesData";
+
+	public static final String DATABASE_CONNECTION = "databaseConnection";
+
+	public static final String DATABASE_STATUS = "databaseStatus";
+	
+	public static final String DATABASE_STATUS_VARIABLES = "databaseStatusVariables";
+
+	public static final String DATABASE_SYSTEM_VARIABLES = "databaseSystemVariables";
 	
 	public int getCode();
 	

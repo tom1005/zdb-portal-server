@@ -3185,7 +3185,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	}
 
 	public Map<String,String> getDatabaseStatus(String txId, String namespace, String podName) {
-		Map<String, String> map = new HashMap<>();
+		Map<String, String> re = new HashMap<>();
 		final String container = "mariadb";
 		final String loginCmd = "mysql -uroot -p$MARIADB_ROOT_PASSWORD -e";  
 		StringBuffer cmd = new StringBuffer(); 
@@ -3196,19 +3196,77 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		try {
 			ExecUtil execUtil = new ExecUtil();
 			String result = execUtil.exec(K8SUtil.kubernetesClient(), namespace, podName, container, cmd.toString());
-			if(StringUtils.hasText(result)) {
-				String[] lineSplit = result.trim().split("\n");
-				for (String line : lineSplit) {
-					String[] lines = line.split("\\s");
-					String key = lines[0].trim();
-					String value = lines[1].trim();
-					if(key.equals("Variable_name"))continue;
-					map.put(key, value);
-				}
-			}
+			re = getMapFromVariables(result);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 		}		
-		return map;
+		return re;
+	}
+
+	public Map<String,String> getDatabaseConnection(String txId, String namespace, String podName) {
+		Map<String, String> re = new HashMap<>();
+		final String container = "mariadb";
+		final String loginCmd = "mysql -uroot -p$MARIADB_ROOT_PASSWORD -e";  
+		StringBuffer cmd = new StringBuffer(); 
+		cmd.append(loginCmd).append("\" show status where variable_name in ('Threads_cached','Threads_connected','Threads_created'")
+						    .append(",'Threads_running','Connection_errors_max_connections','Connections','Aborted_clients','Aborted_connects') ;")
+				            .append(" show variables where variable_name in ('max_connections') ; \" ");
+		
+		try {
+			ExecUtil execUtil = new ExecUtil();
+			String result = execUtil.exec(K8SUtil.kubernetesClient(), namespace, podName, container, cmd.toString());
+			re = getMapFromVariables(result);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}		
+		return re;
+	}
+
+	public Map<String,String> getDatabaseStatusVariables(String txId, String namespace, String podName) {
+		Map<String, String> re = new HashMap<>();
+		final String container = "mariadb";
+		final String loginCmd = "mysql -uroot -p$MARIADB_ROOT_PASSWORD -e";  
+		StringBuffer cmd = new StringBuffer(); 
+		cmd.append(loginCmd).append("\" show status ; \" ");
+		
+		try {
+			ExecUtil execUtil = new ExecUtil();
+			String result = execUtil.exec(K8SUtil.kubernetesClient(), namespace, podName, container, cmd.toString());
+			re = getMapFromVariables(result);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}		
+		return re;
+	}
+	
+	public Map<String,String> getDatabaseSystemVariables(String txId, String namespace, String podName) {
+		Map<String, String> re = new HashMap<>();
+		final String container = "mariadb";
+		final String loginCmd = "mysql -uroot -p$MARIADB_ROOT_PASSWORD -e";  
+		StringBuffer cmd = new StringBuffer(); 
+		cmd.append(loginCmd).append("\" show variables ; \" ");
+		
+		try {
+			ExecUtil execUtil = new ExecUtil();
+			String result = execUtil.exec(K8SUtil.kubernetesClient(), namespace, podName, container, cmd.toString());
+			re = getMapFromVariables(result);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}		
+		return re;
+	}
+	private Map<String,String> getMapFromVariables(String result){
+		Map<String,String> re = new HashMap<>();
+		if(StringUtils.hasText(result)) {
+			String[] lineSplit = result.trim().split("\n");
+			for (String line : lineSplit) {
+				String[] lines = line.split("\\s");
+				String key = lines[0].trim();
+				String value = lines.length > 1 ? lines[1].trim():"";
+				if(key.equals("Variable_name"))continue;
+				re.put(key, value);
+			}
+		}
+		return re;
 	}
 }

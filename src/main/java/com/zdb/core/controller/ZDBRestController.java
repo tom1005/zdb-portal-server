@@ -3086,6 +3086,72 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
+	@RequestMapping(value="/{namespace}/{serviceType}/database/connection/{podName}",method = RequestMethod.GET)
+	public ResponseEntity<String> getDatabaseConnection(@PathVariable String namespace, @PathVariable String serviceType , @PathVariable String podName) throws Exception {
+		String txId = txId();
+		Result result = new Result(txId,IResult.OK);
+		
+		try {
+			ZDBType dbType = ZDBType.getType(serviceType);
+			switch (dbType) {
+			case MariaDB:
+				result.putValue(IResult.DATABASE_CONNECTION,((MariaDBServiceImpl) mariadbService).getDatabaseConnection(txId, namespace, podName));
+				break;
+			default:
+				result = new Result(txId, IResult.ERROR, RequestEvent.SELECT_DATABASE_CONNECTION);
+				break;
+			}
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(null, IResult.ERROR, RequestEvent.SELECT_DATABASE_CONNECTION + " 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	@RequestMapping(value="/{namespace}/{serviceType}/database/statusVariables/{podName}",method = RequestMethod.GET)
+	public ResponseEntity<String> getDatabaseStatusVariables(@PathVariable String namespace, @PathVariable String serviceType , @PathVariable String podName) throws Exception {
+		String txId = txId();
+		Result result = new Result(txId,IResult.OK);
+		
+		try {
+			ZDBType dbType = ZDBType.getType(serviceType);
+			switch (dbType) {
+			case MariaDB:
+				result.putValue(IResult.DATABASE_STATUS_VARIABLES,((MariaDBServiceImpl) mariadbService).getDatabaseStatusVariables(txId, namespace, podName));
+				break;
+			default:
+				result = new Result(txId, IResult.ERROR, RequestEvent.SELECT_DATABASE_STATUS_VARIABLES);
+				break;
+			}
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(null, IResult.ERROR, RequestEvent.SELECT_DATABASE_STATUS_VARIABLES + " 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	@RequestMapping(value="/{namespace}/{serviceType}/database/systemVariables/{podName}",method = RequestMethod.GET)
+	public ResponseEntity<String> getDatabaseSystemVariables(@PathVariable String namespace, @PathVariable String serviceType , @PathVariable String podName) throws Exception {
+		String txId = txId();
+		Result result = new Result(txId,IResult.OK);
+		
+		try {
+			ZDBType dbType = ZDBType.getType(serviceType);
+			switch (dbType) {
+			case MariaDB:
+				result.putValue(IResult.DATABASE_SYSTEM_VARIABLES,((MariaDBServiceImpl) mariadbService).getDatabaseSystemVariables(txId, namespace, podName));
+				break;
+			default:
+				result = new Result(txId, IResult.ERROR, RequestEvent.SELECT_DATABASE_SYSTEM_VARIABLES);
+				break;
+			}
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(null, IResult.ERROR, RequestEvent.SELECT_DATABASE_SYSTEM_VARIABLES + " 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
 
 	
 }
