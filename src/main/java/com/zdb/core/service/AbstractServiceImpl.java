@@ -241,7 +241,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		try {
 			boolean availableResource = ResourceChecker.isAvailableResource(namespace, userId, requestMem, requestCpu);
 			if(availableResource) {
-				int availableNodeCount = ResourceChecker.availableNodeCount(requestMem, requestCpu);
+				int availableNodeCount = ResourceChecker.availableNodeCount(Integer.parseInt(masterMemory), Integer.parseInt(masterCpu));
 				if(clusterEnabled) {
 					if(availableNodeCount > 1) {
 						return new Result("", IResult.OK, "");
