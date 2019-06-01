@@ -298,7 +298,7 @@ public class MariaDBAccount {
 			sb.append("FLUSH PRIVILEGES;");
 			sb.append("GRANT ALL PRIVILEGES ON *.* TO '" + userId + "'@'%' IDENTIFIED BY '"+password+"' WITH GRANT OPTION;");
 			sb.append("GRANT CREATE USER ON *.* TO '" + userId + "'@'%';");
-			sb.append("UPDATE mysql.user SET super_priv='N' WHERE user <> 'root' and user <> 'replicator';");
+			sb.append("UPDATE mysql.user SET super_priv='N' WHERE user <> 'root' and user <> 'replicator' and user <> 'admin';");
 			sb.append("FLUSH PRIVILEGES;\"");
 			
 			System.out.println(sb.toString());
