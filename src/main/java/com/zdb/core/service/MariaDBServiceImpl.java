@@ -89,6 +89,7 @@ import com.zdb.core.util.ExecCommandUtil;
 import com.zdb.core.util.ExecUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.PodManager;
+import com.zdb.core.util.StatusUtil;
 import com.zdb.core.util.ZDBLogViewer;
 import com.zdb.mariadb.MariaDBAccount;
 import com.zdb.mariadb.MariaDBShutDownUtil;
@@ -1833,33 +1834,58 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 //			        Value: OFF
 			StringBuffer history = new StringBuffer();
 			
-			StringBuffer sqlString = new StringBuffer();
-			sqlString.append("stop slave;");
-			sqlString.append("set global read_only=0;flush privileges;");
-			sqlString.append("show variables like 'read_only'\\G");
-			
-			String sql = " mysql -uroot -p$MARIADB_ROOT_PASSWORD -e \"" +sqlString.toString()+"\"";
-			
 			Pod pod = k8sService.getPod(namespace, serviceName, "slave");
 			
 			if( pod != null && PodManager.isReady(pod)) {
-				String execQuery = ExecCommandUtil.execCmd(namespace, pod.getMetadata().getName(), sql);
-				if(execQuery.indexOf("read_only") > -1) {
-					String[] split = execQuery.split("\n");
-					for (String str : split) {
-						if(str.indexOf("Value:") > -1) {
-							str = str.trim();
-							
-							if(str.endsWith("ON")) {
-								log.error(pod.getMetadata().getName() +"의 read_only 속성이 ON 으로 읽기 전용 상태입니다.");
-								return new Result(txId, Result.ERROR, pod.getMetadata().getName() +"의 read_only 속성이 ON 으로 읽기 전용 상태입니다.");
-							} else if(str.endsWith("OFF")) {
-								history.append(pod.getMetadata().getName() +"의 read_only 속성이 OFF 로 설정 되었습니다. 쓰기 가능한 상태로 설정 되었습니다.\n");
-								log.info(history.toString());
-								break;
-							} 
+				boolean replicationStatus = false;
+				StatusUtil statusUtil = new StatusUtil();
+				String replicationErrorMessage = "";
+				while(true) {
+					try {
+						replicationStatus = statusUtil.failoverReplicationStatus(K8SUtil.kubernetesClient(), namespace, pod.getMetadata().getName());
+						if(replicationStatus) {
+							break;
+						}
+					} catch (Exception e) {
+						String message = e.getMessage();
+						log.error(message, e);
+						
+						if(message.startsWith("Read_Master_Log_Pos != Exec_Master_Log_Pos")) {
+							Thread.sleep(5000);
+						} else {
+							replicationErrorMessage = message;
+							break;
 						}
 					}
+				}
+				
+				if(replicationStatus) {
+					StringBuffer sqlString = new StringBuffer();
+					sqlString.append("stop slave;");
+					sqlString.append("set global read_only=0;flush privileges;");
+					sqlString.append("show variables like 'read_only'\\G");
+					
+					String sql = " mysql -uroot -p$MARIADB_ROOT_PASSWORD -e \"" +sqlString.toString()+"\"";
+					String execQuery = ExecCommandUtil.execCmd(namespace, pod.getMetadata().getName(), sql);
+					if(execQuery.indexOf("read_only") > -1) {
+						String[] split = execQuery.split("\n");
+						for (String str : split) {
+							if(str.indexOf("Value:") > -1) {
+								str = str.trim();
+								
+								if(str.endsWith("ON")) {
+									log.error(pod.getMetadata().getName() +"의 read_only 속성이 ON 으로 읽기 전용 상태입니다.");
+									return new Result(txId, Result.ERROR, pod.getMetadata().getName() +"의 read_only 속성이 ON 으로 읽기 전용 상태입니다.");
+								} else if(str.endsWith("OFF")) {
+									history.append(pod.getMetadata().getName() +"의 read_only 속성이 OFF 로 설정 되었습니다. 쓰기 가능한 상태로 설정 되었습니다.\n");
+									log.info(history.toString());
+									break;
+								} 
+							}
+						}
+					}
+				} else {
+					return new Result(txId, Result.ERROR, serviceName + "의 슬레이브 상태 오류.").putValue("slave_status", replicationErrorMessage);
 				}
 			
 			} else {
