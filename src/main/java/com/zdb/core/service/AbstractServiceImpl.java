@@ -1957,13 +1957,27 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				_gapMem = Integer.parseInt(masterMemory);
 			}
 			
+			String role = "";
+			if("mariadb".equals(service.getServiceType())) {
+				role = "component";
+			} else if("redis".equals(service.getServiceType())) {
+				role = "role";
+			}
+			
+			// slave 노드 개수 조회
+			List<Pod> items = K8SUtil.kubernetesClient().inNamespace(service.getNamespace()).pods()
+			.withLabel("release", service.getServiceName())
+			.withLabelIn("app", service.getServiceType())
+			.withLabelIn(role, "slave")
+			.list().getItems();
+			
 			// 노드 가용 리소스 체크 
 			int availableNodeCount = ResourceChecker.availableNodeCount(_gapMem, _gapCpu);
 			if(currentPodSpecs.length > 1) {
-				if(availableNodeCount > 1) {
+				if(availableNodeCount > items.size()) {
 					log.info("가용노드가 존재합니다.[CPU :{}, Mem : {}]", masterCpu, masterMemory);
 				} else {
-					throw new ResourceException("노드의 가용 리소스 정보를 확인 후 생성하세요<br>클러스터DB 생성시 2개의 가용한 노드가 필요합니다");
+					throw new ResourceException("노드의 가용 리소스 정보를 확인 후 생성하세요<br>클러스터DB 생성시 "+(items.size()+1)+"개의 가용한 노드가 필요합니다");
 				}
 			} else {
 				if(availableNodeCount > 0) {
@@ -1974,7 +1988,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			}
 			
 		} else {
-			throw new Exception("네임스페이스 가용 리소스가 부족가 부족합니다.");
+			throw new Exception("네임스페이스 가용 리소스가 부족합니다.");
 		}
 		
 		return availableResource;
@@ -2070,7 +2084,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 					currentMemory = K8SUtil.convertToMemory(memory);
 					
 					if("master".equals(role)) {
-						sb.append(String.format("CPU : %sm → %sm | Mem : %sMi → %sMi", currentCpu, masterApplyCpu, currentMemory, masterApplyMem));
+						sb.append(String.format("Scale Up/Down<br>CPU : %sm → %sm<br>Mem : %sMi → %sMi", currentCpu, masterApplyCpu, currentMemory, masterApplyMem));
 					}
 					
 				} catch (Exception e) {
