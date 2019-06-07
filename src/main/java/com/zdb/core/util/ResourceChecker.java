@@ -168,13 +168,13 @@ public class ResourceChecker {
 			log.warn("availableCpu : {}, serviceRequestCpu : {}", availableCpu, serviceRequestCpu);
 			
 			if( availableCpu - serviceRequestCpu < 0) {
-				throw new ResourceException("네임스페이스["+namespace +"] - 가용 CPU 자원이 부족합니다. [가용CPU(네임스페이스) : " + availableCpu +"m]");
+				throw new ResourceException("네임스페이스["+namespace +"] - 가용 CPU 자원이 부족합니다.<br>[가용CPU(네임스페이스) : " + availableCpu +"m]");
 			} else {
 				availableNamespaceCpuFlag = true;
 			}
 			
 			if( availableMemory - serviceRequestMemory < 0) {
-				throw new ResourceException("네임스페이스["+namespace +"] - 가용 메모리가 부족합니다. [가용메모리(네임스페이스) : " + availableMemory +"Mi]");
+				throw new ResourceException("네임스페이스["+namespace +"] - 가용 메모리가 부족합니다.<br>[가용메모리(네임스페이스) : " + availableMemory +"Mi]");
 			} else {
 				availableNamespaceMemFlag = true;
 			}
@@ -192,8 +192,6 @@ public class ResourceChecker {
 	 * @throws Exception
 	 */
 	public static int availableNodeCount(int memory, int cpu) throws Exception {
-		boolean availableNodeCpuFlag = false;
-		boolean availableNodeMemFlag = false;
 		
 		int availableNodeCount = 0;
 		
@@ -201,6 +199,8 @@ public class ResourceChecker {
 			List<NodeResource> nodeResourceList = getNodeResource();
 			
 			for (NodeResource nodeResource : nodeResourceList) {
+				boolean availableNodeCpuFlag = false;
+				boolean availableNodeMemFlag = false;
 				String nodeRole = nodeResource.getNodeRoles();
 				String status = nodeResource.getStatus();
 				

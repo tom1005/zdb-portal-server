@@ -69,6 +69,7 @@ import com.zdb.core.domain.ZDBNodeList.ZdbNode;
 import com.zdb.core.domain.ZDBPersistenceEntity;
 import com.zdb.core.domain.ZDBStatus;
 import com.zdb.core.domain.ZDBType;
+import com.zdb.core.exception.ResourceException;
 import com.zdb.core.repository.DiskUsageRepository;
 import com.zdb.core.repository.EventRepository;
 import com.zdb.core.repository.MetadataRepository;
@@ -78,10 +79,10 @@ import com.zdb.core.repository.ZDBConfigRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.util.DateUtil;
-import com.zdb.core.util.MetricUtil;
 import com.zdb.core.util.K8SUtil;
-import com.zdb.core.util.ResourceChecker;
+import com.zdb.core.util.MetricUtil;
 import com.zdb.core.util.NumberUtils;
+import com.zdb.core.util.ResourceChecker;
 import com.zdb.core.util.ZDBLogViewer;
 import com.zdb.core.vo.PodMetrics;
 import com.zdb.redis.RedisConfiguration;
@@ -1924,8 +1925,58 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		if(gapMem == 0) {
 			gapMem = Integer.parseInt(masterMemory);
 		}
-		
+		// 네임스페이스 가용리소스 체크 
 		boolean availableResource = ResourceChecker.isAvailableResource(service.getNamespace(), service.getRequestUserId(), gapMem, gapCpu);
+		
+		if(availableResource) {
+			
+			int _gapCpu = 0;
+			int _gapMem = 0;
+			
+			ResourceSpec[] resourceSpec = currentPodSpecs[0].getResourceSpec();
+			String currentCpu = resourceSpec[0].getCpu();
+			String currentMemory = resourceSpec[0].getMemory();
+			
+			try {
+				int cCpu = K8SUtil.convertToCpu(currentCpu);
+				int cMem = K8SUtil.convertToMemory(currentMemory);
+				
+				int rCpu = Integer.parseInt(masterCpu);
+				int rMem = Integer.parseInt(masterMemory);
+			
+				_gapCpu = rCpu - cCpu;
+				_gapMem = rMem - cMem;
+			} catch (Exception e) {
+				log.error(e.getMessage(), e);
+			}
+			
+			if(_gapCpu == 0) {
+				_gapCpu = Integer.parseInt(masterCpu);
+			}
+			if(_gapMem == 0) {
+				_gapMem = Integer.parseInt(masterMemory);
+			}
+			
+			// 노드 가용 리소스 체크 
+			int availableNodeCount = ResourceChecker.availableNodeCount(_gapMem, _gapCpu);
+			if(currentPodSpecs.length > 1) {
+				if(availableNodeCount > 1) {
+					log.info("가용노드가 존재합니다.[CPU :{}, Mem : {}]", masterCpu, masterMemory);
+				} else {
+					throw new ResourceException("노드의 가용 리소스 정보를 확인 후 생성하세요<br>클러스터DB 생성시 2개의 가용한 노드가 필요합니다");
+				}
+			} else {
+				if(availableNodeCount > 0) {
+					log.info("가용노드가 존재합니다.[CPU :{}, Mem : {}]", masterCpu, masterMemory);
+				} else {
+					throw new ResourceException("가용한 ZDB 노드가 없습니다<br>노드의 가용 리소스 정보를 확인 후 생성하세요.");
+				}
+			}
+			
+		} else {
+			throw new Exception("네임스페이스 가용 리소스가 부족가 부족합니다.");
+		}
+		
 		return availableResource;
 	}
 	

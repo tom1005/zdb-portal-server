@@ -183,7 +183,14 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 			// 가용 리소스 체크
 			// 현재보다 작으면ok
 			// 현재보다 크면 커진 사이즈 만큼 가용량 체크 
-			boolean availableResource = isAvailableScaleUp(service);
+			// zdb 노드 가용 리소스 체크 로직 추가 (2019-06-07)
+			boolean availableResource = false;
+			
+			try {
+				availableResource = isAvailableScaleUp(service);
+			} catch (Exception e) {
+				return new Result(txId, IResult.ERROR, e.getMessage());
+			}
 			
 			if(!availableResource) {
 				return new Result(txId, IResult.ERROR, "가용 리소스가 부족합니다.");
