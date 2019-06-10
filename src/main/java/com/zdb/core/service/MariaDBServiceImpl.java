@@ -3120,7 +3120,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			for(int pi = 0;pi < pods.size();pi++) {
 				String podName = pods.get(pi).getMetadata().getName();
 				Path podFolder = Paths.get(logFolder.toString(), podName);
-				for(int i = 0;i < differntDay;i++) {
+				for(int i = 0;i <= differntDay;i++) {
 					Calendar td = Calendar.getInstance();
 					td.setTime(st);
 					td.add(Calendar.DAY_OF_YEAR, i);
