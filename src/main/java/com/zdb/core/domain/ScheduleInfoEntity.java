@@ -39,4 +39,9 @@ public class ScheduleInfoEntity {
 	private long incrFileSize;
 	private String incrExecutionTime;
 
+	private long icosDiskUsage;
+	
+	private String backupExecType;
+	
+	private String backupDiskYn;
 }	

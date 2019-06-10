@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.google.gson.Gson;
+import com.zdb.core.domain.BackupDiskEntity;
 import com.zdb.core.domain.BackupEntity;
 import com.zdb.core.domain.BackupStatus;
 import com.zdb.core.domain.IResult;
@@ -21,6 +22,7 @@ import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ScheduleEntity;
 import com.zdb.core.domain.ScheduleInfoEntity;
 import com.zdb.core.domain.Tag;
+import com.zdb.core.repository.BackupDiskEntityRepository;
 import com.zdb.core.repository.BackupEntityRepository;
 import com.zdb.core.repository.ScheduleEntityRepository;
 import com.zdb.core.repository.TagRepository;
@@ -46,6 +48,9 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 	
 	@Autowired
 	TagRepository tagRepository;
+	
+	@Autowired
+	BackupDiskEntityRepository backupDiskRepository;
 
 	@Override
 	public Result saveSchedule(String txid, ScheduleEntity entity) throws Exception {
@@ -361,6 +366,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 					String incrExecutionTime = "";
 					int fullBackupCnt = 0;
 					int incrtBackupCnt = 0;
+					long icosDiskUsage = 0l;
 					
 					ScheduleInfoEntity scheduleInfo = new ScheduleInfoEntity();
 					scheduleInfo.setNamespace(releaseMeta.getNamespace());
@@ -397,6 +403,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 								incrExecutionMilSec += backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime();
 								incrtBackupCnt++;
 							}
+							icosDiskUsage += backup.getArchiveFileSize();
 						}
 						
 						if(fullBackupCnt != 0) {
@@ -411,6 +418,21 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 						scheduleInfo.setFullExecutionTime(fullExecutionTime);
 						scheduleInfo.setIncrFileSize(incrFileSize);
 						scheduleInfo.setIncrExecutionTime(incrExecutionTime);
+						
+						scheduleInfo.setIcosDiskUsage(icosDiskUsage/1024);
+						
+						if(schedule.getScheduleType() == null || schedule.getScheduleType().equals("")) {
+							scheduleInfo.setBackupExecType("Daily");
+						}else {
+							scheduleInfo.setBackupExecType(schedule.getScheduleType());
+						}
+						
+						BackupDiskEntity backupDiskEntity = backupDiskRepository.findBackupByServiceName(releaseMeta.getApp(), releaseMeta.getReleaseName(), releaseMeta.getNamespace());
+						if(backupDiskEntity != null && backupDiskEntity.getStatus().equals("COMPLETE")) {
+							scheduleInfo.setBackupDiskYn("Y");
+						}else {
+							scheduleInfo.setBackupDiskYn("N");
+						}
 					}
 					scheduleInfolist.add(scheduleInfo);
 				}
