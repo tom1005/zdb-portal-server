@@ -1846,7 +1846,12 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				boolean replicationStatus = false;
 				StatusUtil statusUtil = new StatusUtil();
 				String replicationErrorMessage = "";
+				long s = System.currentTimeMillis();
 				while(true) {
+					// 30초 경과시 fail 
+					if((System.currentTimeMillis() - s) > 1000 * 30) {
+						break;
+					}
 					try {
 						replicationStatus = statusUtil.failoverReplicationStatus(K8SUtil.kubernetesClient(), namespace, pod.getMetadata().getName());
 						if(replicationStatus) {
@@ -1856,7 +1861,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 						String message = e.getMessage();
 						log.error(message, e);
 						
-						if(message.startsWith("Read_Master_Log_Pos != Exec_Master_Log_Pos")) {
+						if (message.startsWith("Read_Master_Log_Pos != Exec_Master_Log_Pos") || message.startsWith("Master_Log_File != Relay_Master_Log_File")) {
 							Thread.sleep(5000);
 						} else {
 							replicationErrorMessage = message;

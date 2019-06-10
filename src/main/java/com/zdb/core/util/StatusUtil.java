@@ -65,6 +65,8 @@ public class StatusUtil implements Callback<byte[]>{
 		sb.append("| grep -E \"");
 		sb.append("Read_Master_Log_Pos").append("|");
 		sb.append("Exec_Master_Log_Pos").append("|");
+		sb.append("Master_Log_File").append("|");
+		sb.append("Relay_Master_Log_File").append("|");
 		sb.append("Slave_IO_Running").append("|");
 		sb.append("Slave_SQL_Running").append("|");
 		sb.append("Last_Errno").append("|");
@@ -174,7 +176,11 @@ public class StatusUtil implements Callback<byte[]>{
 //		                   Last_Errno: 0
 //		                   Last_Error:
 //		        Seconds_Behind_Master: 0
-		
+//        Master_Log_File: mysql-bin.000028
+//    Read_Master_Log_Pos: 417
+//         Relay_Log_File: mysql-relay-bin.000088
+//          Relay_Log_Pos: 508
+//  Relay_Master_Log_File: mysql-bin.000028		
 		Map<String, String> statusValueMap = slaveStatus(client, namespace, podName);
 		
 		if(statusValueMap == null || statusValueMap.isEmpty()) {
@@ -183,6 +189,8 @@ public class StatusUtil implements Callback<byte[]>{
 		
 		String Read_Master_Log_Pos = statusValueMap.get("Read_Master_Log_Pos");
 		String Exec_Master_Log_Pos = statusValueMap.get("Exec_Master_Log_Pos");
+		String Master_Log_File = statusValueMap.get("Master_Log_File");
+		String Relay_Master_Log_File = statusValueMap.get("Relay_Master_Log_File");
 		String Slave_IO_Running = statusValueMap.get("Slave_IO_Running");
 		String Slave_SQL_Running = statusValueMap.get("Slave_SQL_Running");
 		String Last_Errno = statusValueMap.get("Last_Errno");
@@ -196,6 +204,13 @@ public class StatusUtil implements Callback<byte[]>{
 			String status = gson.toJson(statusValueMap);
 			System.out.println(status);
 			throw new Exception("Read_Master_Log_Pos != Exec_Master_Log_Pos\n" + status);
+		}
+		
+		if(!Master_Log_File.equals(Relay_Master_Log_File)) {
+			Gson gson = new Gson();
+			String status = gson.toJson(statusValueMap);
+			System.out.println(status);
+			throw new Exception("Master_Log_File != Relay_Master_Log_File\n" + status);
 		}
 		
 //		if(!"Yes".equals(Slave_IO_Running) || !"Yes".equals(Slave_SQL_Running) ) {
