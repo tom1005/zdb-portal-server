@@ -14,6 +14,7 @@ import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -53,6 +54,7 @@ import com.zdb.core.domain.DBUser;
 import com.zdb.core.domain.Database;
 import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.IResult;
+import com.zdb.core.domain.MariaDBVariable;
 import com.zdb.core.domain.Mycnf;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
@@ -79,6 +81,7 @@ import com.zdb.core.job.ServiceOnOffJob;
 import com.zdb.core.job.ShutdownServiceJob;
 import com.zdb.core.job.StartServiceJob;
 import com.zdb.core.repository.DiskUsageRepository;
+import com.zdb.core.repository.MariaDBVariableRepository;
 import com.zdb.core.repository.MycnfRepository;
 import com.zdb.core.repository.ZDBMariaDBAccountRepository;
 import com.zdb.core.repository.ZDBMariaDBConfigRepository;
@@ -157,6 +160,9 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	@Autowired
 	private SimpMessagingTemplate messageSender;
 
+	@Autowired 
+	private MariaDBVariableRepository mariadbVariableRepository;
+	
 	@Override
 	public Result getDeployment(String namespace, String serviceName) {
 
@@ -3095,19 +3101,31 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	}
 
 	@Override
-	public Result getFileLog(String namespace, String serviceName,String logType, String dates)throws Exception  {
+	public Result getFileLog(String namespace, String serviceName,String logType, String startDate,String endDate)throws Exception  {
 		try {
 			StringBuffer filelog = new StringBuffer();
 			List<Pod> pods = K8SUtil.getPods(namespace, serviceName);
-			List<String> dateList = Arrays.asList(dates.split(","));
+			
 			String[] paths = new String[]{"app","dblogs"};
 			Path logFolder = Paths.get(Paths.get("/").toAbsolutePath().toString(),String.join(File.separator,paths));
 			
+			SimpleDateFormat exf = new SimpleDateFormat("yyyyMMdd");
+			Date st = exf.parse(startDate);
+			Date ed = exf.parse(endDate);
+			int compareDate = ed.compareTo(st);
+			if(compareDate < 0) {
+				return new Result("", Result.ERROR, "검색 날짜가 올바르지 않습니다");
+			}
+			long differntDay = ((ed.getTime() - st.getTime()) / (24 * 60 * 60 * 1000));
 			for(int pi = 0;pi < pods.size();pi++) {
 				String podName = pods.get(pi).getMetadata().getName();
 				Path podFolder = Paths.get(logFolder.toString(), podName);
-				for(int i = 0;i < dateList.size();i++) {
-					String date = dateList.get(i);
+				for(int i = 0;i < differntDay;i++) {
+					Calendar td = Calendar.getInstance();
+					td.setTime(st);
+					td.add(Calendar.DAY_OF_YEAR, i);
+					String date = exf.format(td.getTime());
+					
 					Path path = Paths.get(podFolder.toString(),date);
 					if(!Files.exists(path)) {
 						continue;
@@ -3302,4 +3320,10 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		}
 		return re;
 	}
+
+	public List<MariaDBVariable> getDatabaseVariables(String txId) {
+		List<MariaDBVariable> list = mariadbVariableRepository.findAll();
+		
+		return list;
+	}	
 }
