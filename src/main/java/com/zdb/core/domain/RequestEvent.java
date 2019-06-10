@@ -70,6 +70,7 @@ public class RequestEvent {
 	public static final String SELECT_DATABASE_CONNECTION = "Database Connection 조회";
 	public static final String SELECT_DATABASE_STATUS_VARIABLES = "Database Status Variables 조회";
 	public static final String SELECT_DATABASE_SYSTEM_VARIABLES = "Database System Variables 조회";
+	public static final String SELECT_DATABASE_VARIABLES = "Database Variables 조회";
 	
 	private String operation;
 

@@ -2861,12 +2861,13 @@ public class ZDBRestController {
 	 * 
 	 * @return ResponseEntity<List<Service>>
 	 */
-	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/fileLogs/{logType}/{dates}", method = RequestMethod.GET)
-	public ResponseEntity<String> getFileLogs(@PathVariable("namespace") final String namespace, @PathVariable("serviceType") final String serviceType,
-											   @PathVariable("serviceName") final String serviceName,@PathVariable("logType") final String logType,
-											   @PathVariable("dates") final String dates) {
+	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/fileLogs/{logType}/{startDate}/{endDate}", method = RequestMethod.GET)
+	public ResponseEntity<String> getFileLogs(@PathVariable final String namespace, @PathVariable final String serviceType,
+											   @PathVariable final String serviceName,@PathVariable final String logType,
+											   @PathVariable final String startDate,
+											   @PathVariable final String endDate ) {
 		try {
-			Result result = mariadbService.getFileLog(namespace, serviceName,logType,dates);
+			Result result = mariadbService.getFileLog(namespace, serviceName,logType,startDate,endDate);
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -3149,6 +3150,28 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			result = new Result(null, IResult.ERROR, RequestEvent.SELECT_DATABASE_SYSTEM_VARIABLES + " 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	@RequestMapping(value="/{serviceType}/database/variables",method = RequestMethod.GET)
+	public ResponseEntity<String> getDatabaseVariables(@PathVariable String serviceType) throws Exception {
+		String txId = txId();
+		Result result = new Result(txId,IResult.OK);
+		
+		try {
+			ZDBType dbType = ZDBType.getType(serviceType);
+			switch (dbType) {
+			case MariaDB:
+				result.putValue(IResult.DATABASE_VARIABLES,((MariaDBServiceImpl) mariadbService).getDatabaseVariables(txId));
+				break;
+			default:
+				result = new Result(txId, IResult.ERROR, RequestEvent.SELECT_DATABASE_VARIABLES);
+				break;
+			}
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(null, IResult.ERROR, RequestEvent.SELECT_DATABASE_VARIABLES + " 오류").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}

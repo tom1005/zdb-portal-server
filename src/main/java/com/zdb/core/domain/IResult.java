@@ -142,6 +142,8 @@ public interface IResult {
 	public static final String DATABASE_STATUS_VARIABLES = "databaseStatusVariables";
 
 	public static final String DATABASE_SYSTEM_VARIABLES = "databaseSystemVariables";
+
+	public static final String DATABASE_VARIABLES = "databaseVariables";
 	
 	public int getCode();
 	

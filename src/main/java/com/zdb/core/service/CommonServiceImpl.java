@@ -105,7 +105,7 @@ public class CommonServiceImpl extends AbstractServiceImpl {
 	}
 
 	@Override
-	public Result getFileLog(String namespace, String serviceName,String logType, String dates) {
+	public Result getFileLog(String namespace, String serviceName,String logType, String startDate,String endDate) {
 		// TODO Auto-generated method stub
 		return null;
 	}
