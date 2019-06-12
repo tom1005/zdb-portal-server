@@ -1850,6 +1850,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				while(true) {
 					// 30초 경과시 fail 
 					if((System.currentTimeMillis() - s) > 1000 * 30) {
+						replicationErrorMessage = replicationErrorMessage + "\n30초 경과 failover timeout.";
 						break;
 					}
 					try {
