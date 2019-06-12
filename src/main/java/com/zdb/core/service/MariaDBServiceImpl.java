@@ -3122,15 +3122,15 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				return new Result("", Result.ERROR, "검색 날짜가 올바르지 않습니다");
 			}
 			long differntDay = ((ed.getTime() - st.getTime()) / (24 * 60 * 60 * 1000));
-			for(int pi = 0;pi < pods.size();pi++) {
-				String podName = pods.get(pi).getMetadata().getName();
-				Path podFolder = Paths.get(logFolder.toString(), podName);
-				for(int i = 0;i <= differntDay;i++) {
-					Calendar td = Calendar.getInstance();
-					td.setTime(st);
-					td.add(Calendar.DAY_OF_YEAR, i);
-					String date = exf.format(td.getTime());
-					
+			for(int i = 0;i <= differntDay;i++) {
+				Calendar td = Calendar.getInstance();
+				td.setTime(st);
+				td.add(Calendar.DAY_OF_YEAR, i);
+				String date = exf.format(td.getTime());
+				StringBuffer bf = new StringBuffer();
+				for(int pi = 0;pi < pods.size();pi++) {
+					String podName = pods.get(pi).getMetadata().getName();
+					Path podFolder = Paths.get(logFolder.toString(), podName);
 					Path path = Paths.get(podFolder.toString(),date);
 					if(!Files.exists(path)) {
 						continue;
@@ -3139,11 +3139,15 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 					List<Path> fl = getLogFilePath(path, logType);
 					if(fl.size() > 0) {
 						for(Path p : fl) {
-							filelog.append("=====================================================");
-							filelog.append(new SimpleDateFormat("yyyy-MM-dd").format(new SimpleDateFormat("yyyyMMdd").parse(date)) + " : " + p.getFileName()+"\n");
-							filelog.append(String.join("\n",new String(Files.readAllBytes(p))));
+							bf.append("==============================").append(podName + "(").append(p.getFileName()).append(")==============================\n");
+							bf.append(String.join("\n",new String(Files.readAllBytes(p))));
 						}
 					}
+				}
+				if(bf.length()>0) {
+					filelog.append("["+new SimpleDateFormat("yyyy-MM-dd").format(new SimpleDateFormat("yyyyMMdd").parse(date))+"]\n");
+					filelog.append(bf.toString());
+					filelog.append("\n");
 				}
 			}
 			return new Result("", Result.OK).putValue(IResult.FILE_LOG, filelog.toString());
@@ -3330,5 +3334,71 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		List<MariaDBVariable> list = mariadbVariableRepository.findAll();
 		
 		return list;
+	}
+
+	public List<MariaDBVariable> getUseDatabaseVariables(String txId,String namespace,String serviceName) {
+		List<MariaDBVariable> list = new ArrayList<>(); 
+		try {
+			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
+			//Resource<ConfigMap, DoneableConfigMap> dt = client.inNamespace(namespace)in .configMaps().withName(configMapName);
+			List<ConfigMap> configMaps = K8SUtil.getConfigMaps(namespace, serviceName);
+			if(configMaps != null && !configMaps.isEmpty()) {
+				ConfigMap map = configMaps.get(0);
+				Map<String, String> data = map.getData();
+				String myCnf = data.get("my.cnf");
+				String[] lines = myCnf.split("\\n");
+				
+				String category = null;
+				for (int i = 0 ; i < lines.length; i++) {
+					String line = lines[i];
+					if(line.startsWith("#") || StringUtils.isEmpty(line)) {
+						continue;
+					}
+					MariaDBVariable mv = new MariaDBVariable();
+					if(line.matches("^\\[.*\\]$")) { //category
+						category = line.replaceAll("^\\[", "").replaceAll("\\]$", "");
+						continue;
+					}else if(line.matches(".*=.*")) {
+						String [] kv = line.split("=");
+						mv.setCategory(category);
+						mv.setName(kv[0]);
+						mv.setValue(kv[1]);
+					}else {
+						mv.setCategory(category);
+						mv.setName(line);
+					}
+					list.add(mv);
+				}
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
+		return list;
+	}
+
+	public Result updateUseDatabaseVariables(String txId, String namespace, String serviceName, List<MariaDBVariable> alertRules) {
+		try {
+			//List<ConfigMap> configMaps = K8SUtil.getConfigMaps(namespace, serviceName);
+			//Resource<ConfigMap, DoneableConfigMap> dt = client.inNamespace(targetNamespace).configMaps().withName(configMapName)
+			//Resource<ConfigMap, DoneableConfigMap> dt = getAlertRuleConfigMap();
+			//String d = dt.get().getData().get(dataTitle);
+			//PrometheusEntity pn = yaml.loadAs(d,PrometheusEntity.class);
+			//List<AlertRule> rules = pn.getGroups().get(0).getRules();
+			//for(int i = rules.size()-1 ; i > -1 ;i--) {
+			//	AlertRule rule = rules.get(i);
+			//	if(rule.getLabels().getServiceName().equals(serviceName)) {
+			//		rules.remove(i);
+			//	}
+			//}
+			//ClassPathResource cp = new ClassPathResource(serviceType+"/prometheus-zdb-rules-default-value.yaml");
+            //
+			//String data = parseWriteAlertRule(pn);
+			//dt.edit().addToData(dataTitle, data).done();
+			//reloadAlertRule();			
+			return new Result("", Result.OK,"환경변수를 수정 하였습니다.");
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
 	}	
 }

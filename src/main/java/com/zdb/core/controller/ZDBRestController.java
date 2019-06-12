@@ -27,6 +27,7 @@ import com.zdb.core.domain.DBUser;
 import com.zdb.core.domain.Database;
 import com.zdb.core.domain.EventMetaData;
 import com.zdb.core.domain.IResult;
+import com.zdb.core.domain.MariaDBVariable;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.Result;
@@ -3176,5 +3177,49 @@ public class ZDBRestController {
 		}
 	}
 
-	
+	@RequestMapping(value="/{namespace}/{serviceType}/{serviceName}/database/useVariables",method=RequestMethod.GET)
+	public ResponseEntity<String> getUseDatabaseVariables(@PathVariable String namespace,@PathVariable String serviceType,@PathVariable String serviceName ) throws Exception {
+		String txId = txId();
+		Result result = new Result(txId,IResult.OK);
+		
+		try {
+			ZDBType dbType = ZDBType.getType(serviceType);
+			switch (dbType) {
+			case MariaDB:
+				result.putValue(IResult.DATABASE_VARIABLES,((MariaDBServiceImpl) mariadbService).getUseDatabaseVariables(txId,namespace,serviceName));
+				break;
+			default:
+				result = new Result(txId, IResult.ERROR, RequestEvent.SELECT_DATABASE_VARIABLES);
+				break;
+			}
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(null, IResult.ERROR, RequestEvent.SELECT_DATABASE_VARIABLES + " 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	@RequestMapping(value="/{namespace}/{serviceType}/{serviceName}/database/useVariables",method=RequestMethod.PUT)
+	public ResponseEntity<String> updateUseDatabaseVariables(@PathVariable String namespace,@PathVariable String serviceType,@PathVariable String serviceName 
+														     ,@RequestBody List<MariaDBVariable> alertRules) throws Exception {
+		String txId = txId();
+		Result result = Result.RESULT_OK(txId);
+		
+		try {
+			ZDBType dbType = ZDBType.getType(serviceType);
+			switch (dbType) {
+			case MariaDB:
+				result = ((MariaDBServiceImpl) mariadbService).updateUseDatabaseVariables(txId,namespace,serviceName,alertRules);
+				break;
+			default:
+				result = new Result(txId, IResult.ERROR, RequestEvent.UPDATE_DATABASE_VARIABLES);
+				break;
+			}
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(null, IResult.ERROR, RequestEvent.UPDATE_DATABASE_VARIABLES + " 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
 }
