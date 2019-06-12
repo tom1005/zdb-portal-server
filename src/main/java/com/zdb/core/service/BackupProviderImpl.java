@@ -191,7 +191,13 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 		try {
 			log.debug("namespace : "+namespace+", serviceName : "+serviceName+", serviceType : "+serviceType);
 			
-			List<BackupEntity> list = backupRepository.findBackupByService(serviceType, serviceName);
+			List<BackupEntity> backupList = backupRepository.findBackupByService(serviceType, serviceName);
+			List<BackupEntity> list = new ArrayList<BackupEntity>();
+			backupList.forEach(backup->{
+				if(!backup.getStatus().equals("DELETED")) {
+					list.add(backup);
+				}
+			});
 			
 			Calendar cal = Calendar.getInstance();
 			list.forEach( i -> {
@@ -383,6 +389,8 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 					scheduleInfo.setFullExecutionTime(fullExecutionTime);
 					scheduleInfo.setIncrFileSize(incrFileSize);
 					
+					scheduleInfo.setBackupExecType("Daily");
+					
 					ScheduleEntity schedule = scheduleRepository.findScheduleByName(releaseMeta.getNamespace(), releaseMeta.getApp(), releaseMeta.getReleaseName());
 					if(schedule != null) {
 						scheduleInfo.setUseYn(schedule.getUseYn());
@@ -421,19 +429,18 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 						
 						scheduleInfo.setIcosDiskUsage(icosDiskUsage/1024);
 						
-						if(schedule.getScheduleType() == null || schedule.getScheduleType().equals("")) {
-							scheduleInfo.setBackupExecType("Daily");
-						}else {
+						if(schedule.getScheduleType() != null && !schedule.getScheduleType().equals("")) {
 							scheduleInfo.setBackupExecType(schedule.getScheduleType());
 						}
-						
-						BackupDiskEntity backupDiskEntity = backupDiskRepository.findBackupByServiceName(releaseMeta.getApp(), releaseMeta.getReleaseName(), releaseMeta.getNamespace());
-						if(backupDiskEntity != null && backupDiskEntity.getStatus().equals("COMPLETE")) {
-							scheduleInfo.setBackupDiskYn("Y");
-						}else {
-							scheduleInfo.setBackupDiskYn("N");
-						}
 					}
+					
+					BackupDiskEntity backupDiskEntity = backupDiskRepository.findBackupByServiceName(releaseMeta.getApp(), releaseMeta.getReleaseName(), releaseMeta.getNamespace());
+					if(backupDiskEntity != null && backupDiskEntity.getStatus().equals("COMPLETE")) {
+						scheduleInfo.setBackupDiskYn("Y");
+					}else {
+						scheduleInfo.setBackupDiskYn("N");
+					}
+					
 					scheduleInfolist.add(scheduleInfo);
 				}
 			});
