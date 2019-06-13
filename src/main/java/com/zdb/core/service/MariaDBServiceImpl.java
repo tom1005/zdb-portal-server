@@ -3377,26 +3377,38 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		return list;
 	}
 
-	public Result updateUseDatabaseVariables(String txId, String namespace, String serviceName, List<MariaDBVariable> alertRules) {
-		try {
-			//List<ConfigMap> configMaps = K8SUtil.getConfigMaps(namespace, serviceName);
-			//Resource<ConfigMap, DoneableConfigMap> dt = client.inNamespace(targetNamespace).configMaps().withName(configMapName)
-			//Resource<ConfigMap, DoneableConfigMap> dt = getAlertRuleConfigMap();
-			//String d = dt.get().getData().get(dataTitle);
-			//PrometheusEntity pn = yaml.loadAs(d,PrometheusEntity.class);
-			//List<AlertRule> rules = pn.getGroups().get(0).getRules();
-			//for(int i = rules.size()-1 ; i > -1 ;i--) {
-			//	AlertRule rule = rules.get(i);
-			//	if(rule.getLabels().getServiceName().equals(serviceName)) {
-			//		rules.remove(i);
-			//	}
-			//}
-			//ClassPathResource cp = new ClassPathResource(serviceType+"/prometheus-zdb-rules-default-value.yaml");
-            //
-			//String data = parseWriteAlertRule(pn);
-			//dt.edit().addToData(dataTitle, data).done();
-			//reloadAlertRule();			
-			return new Result("", Result.OK,"환경변수를 수정 하였습니다.");
+	public Result updateUseDatabaseVariables(String txId, String namespace, String serviceName, List<MariaDBVariable> databaseVariables) {
+		try(DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
+			List<ConfigMap> configMaps = client.inNamespace(namespace).configMaps().withLabel("release", serviceName).list().getItems();
+			StringBuffer myCnfBuffer = new StringBuffer();
+			Map<String, List<MariaDBVariable>> databaseVariableMap = databaseVariables.stream().collect(Collectors.groupingBy(MariaDBVariable::getCategory));
+			List<String> categoryList = Arrays.asList("mysqld","mysql","mysqld_safe","mysqldump","client");
+			final String separator = "\n";
+			
+			for(int ci = 0; ci < categoryList.size(); ci++) {
+				String category = categoryList.get(ci);
+				if(databaseVariableMap.get(category) == null)continue;
+				
+				myCnfBuffer.append(String.format("[%s]",category)).append(separator);
+				List<MariaDBVariable> variables = databaseVariableMap.get(category);
+				for(int i = 0 ; i < variables.size();i++) {
+					MariaDBVariable variable = variables.get(i);
+					myCnfBuffer.append(variable.getName());
+					if(StringUtils.hasText(variable.getValue())){
+						myCnfBuffer.append("=").append(variable.getValue());
+					}
+					myCnfBuffer.append(separator);
+					if(i == variables.size()-1) {
+						myCnfBuffer.append(separator);
+					}
+				}
+			}
+			
+			for (ConfigMap configMap : configMaps) {
+				String configMapName = configMap.getMetadata().getName();
+				client.configMaps().inNamespace(namespace).withName(configMapName).edit().addToData("my.cnf", myCnfBuffer.toString()).done();
+			}
+			return new Result("", Result.OK,"정상정으로 수정 되었습니다.");
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			return new Result("", Result.ERROR, e.getMessage(), e);
