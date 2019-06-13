@@ -452,7 +452,11 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 							scheduleInfo.setBackupStatus("GREEN-DOING");
 						}else if(backup.getStatus().equals("FAILED")) {
 							scheduleInfo.setBackupStatus("RED");
+						}else {
+							scheduleInfo.setBackupStatus("GREY");
 						}
+					}else {
+						scheduleInfo.setBackupStatus("GREY");
 					}
 					
 					BackupDiskEntity backupDiskEntity = backupDiskRepository.findBackupByServiceName(releaseMeta.getApp(), releaseMeta.getReleaseName(), releaseMeta.getNamespace());
