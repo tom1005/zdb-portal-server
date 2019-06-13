@@ -1,5 +1,6 @@
 package com.zdb.core.controller;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -22,6 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.reflect.TypeToken;
 import com.zdb.core.domain.AlertingRuleEntity;
 import com.zdb.core.domain.DBUser;
 import com.zdb.core.domain.Database;
@@ -3201,7 +3204,7 @@ public class ZDBRestController {
 	}
 	@RequestMapping(value="/{namespace}/{serviceType}/{serviceName}/database/useVariables",method=RequestMethod.PUT)
 	public ResponseEntity<String> updateUseDatabaseVariables(@PathVariable String namespace,@PathVariable String serviceType,@PathVariable String serviceName 
-														     ,@RequestBody List<MariaDBVariable> alertRules) throws Exception {
+														     ,@RequestBody String data) throws Exception {
 		String txId = txId();
 		Result result = Result.RESULT_OK(txId);
 		
@@ -3209,7 +3212,9 @@ public class ZDBRestController {
 			ZDBType dbType = ZDBType.getType(serviceType);
 			switch (dbType) {
 			case MariaDB:
-				result = ((MariaDBServiceImpl) mariadbService).updateUseDatabaseVariables(txId,namespace,serviceName,alertRules);
+				Type resultType = new TypeToken<List<MariaDBVariable>>(){}.getType();
+				List<MariaDBVariable> variables = new Gson().fromJson(data, resultType); 
+				result = ((MariaDBServiceImpl) mariadbService).updateUseDatabaseVariables(txId,namespace,serviceName,variables);
 				break;
 			default:
 				result = new Result(txId, IResult.ERROR, RequestEvent.UPDATE_DATABASE_VARIABLES);
