@@ -22,18 +22,20 @@ import com.zdb.core.domain.BackupEntity;
 @Repository
 public interface BackupEntityRepository extends CrudRepository<BackupEntity, String> {
 	
-	@Query("select t from BackupEntity t where backupId=:backupId" )
+	@Query("SELECT t FROM BackupEntity t "
+			+ " WHERE backupId=:backupId" )
 	BackupEntity findBackup(@Param("backupId") String backupId);
 
-	@Query("select t from BackupEntity t where serviceType=:serviceType"
+	@Query("SELECT t FROM BackupEntity t "
+			+ " WHERE serviceType=:serviceType"
 			+ " and serviceName=:serviceName"
 			+ " and startDatetime is not null"
 			+ " order by startDatetime desc" )
 	List<BackupEntity> findBackupByService(@Param("serviceType") String serviceType
 			, @Param("serviceName") String serviceName);
 	
-	@Query(value =  "select * from zdb.backup_entity "
-            + " where namespace=:namespace "
+	@Query(value =  "SELECT * FROM zdb.backup_entity "
+            + " WHERE namespace=:namespace "
             + " and service_type=:serviceType "
             + " and service_name=:serviceName "
             + " order by accepted_datetime desc limit 1" , nativeQuery = true)
@@ -41,7 +43,8 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			, @Param("serviceType") String serviceType
 			, @Param("serviceName") String serviceName);
 	
-	@Query("select t from BackupEntity t where namespace=:namespace"
+	@Query("SELECT t FROM BackupEntity t "
+			+ " WHERE namespace=:namespace"
 			+ " and serviceType=:serviceType"
 			+ " and serviceName=:serviceName"
 			+ " and status='OK'"
@@ -67,7 +70,8 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 	@Transactional
 	@Query("UPDATE BackupEntity t SET "
 			+ "t.startDatetime=:startDatetime"
-			+ ", t.status=:status WHERE t.backupId=:backupId")
+			+ ", t.status=:status "
+			+ "WHERE t.backupId=:backupId")
 	int modify2Started(@Param("startDatetime") Date startDatetime
 			, @Param("status") String status
 			, @Param("backupId") String backupId);
@@ -171,10 +175,16 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 	@Query("DELETE FROM BackupEntity t WHERE t.backupId=:backupId")
 	int deleteBackup(@Param("backupId") String backupId);
 	
-	@Query("select t from BackupEntity t where t.scheduleId=:scheduleId and t.status='OK'" )
+	@Query("SELECT t from BackupEntity t WHERE t.scheduleId=:scheduleId and t.status='OK'" )
 	List<BackupEntity> findBackupListByScheduleId(@Param("scheduleId") String scheduleId);
 
-	@Query(value = "select * from zdb.backup_entity where namespace = :namespace and service_type = :serviceType and service_name = :serviceName and type = 'FULL' and status = 'OK' order by complete_datetime desc limit 1", nativeQuery = true)
+	@Query(value = "SELECT * from zdb.backup_entity "
+			+ "WHERE namespace = :namespace "
+			+ "and service_type = :serviceType "
+			+ "and service_name = :serviceName "
+			+ "and type = 'FULL' "
+			+ "and status = 'OK' "
+			+ "order by complete_datetime desc limit 1", nativeQuery = true)
 	BackupEntity findFromBackup(@Param("namespace") String namespace
 			, @Param("serviceType") String serviceType
 			, @Param("serviceName") String serviceName);
@@ -194,8 +204,8 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			, @Param("serviceName") String serviceName);
 	
 	
-	@Query(value =  "select * from zdb.backup_entity "
-            + " where namespace=:namespace "
+	@Query(value =  "SELECT * from zdb.backup_entity "
+            + " WHERE namespace=:namespace "
             + " and service_type=:serviceType "
             + " and service_name=:serviceName "
             + " and ondisk='Y' "

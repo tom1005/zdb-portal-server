@@ -412,7 +412,10 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 								incrtBackupCnt++;
 							}
 							icosDiskUsage += backup.getArchiveFileSize();
+							
 						}
+						
+						//GREEN, YELLOW, RED, GREY
 						
 						if(fullBackupCnt != 0) {
 							fullFileSize = fullFileSize/fullBackupCnt/1024/1024;
@@ -434,12 +437,32 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 						}
 					}
 					
+					BackupEntity backup = backupRepository.findBackupStatus(releaseMeta.getNamespace(), releaseMeta.getApp(), releaseMeta.getReleaseName());
+					if(backup != null) {
+						if(backup.getStatus().equals("OK")) {
+							Calendar calendar = Calendar.getInstance();
+							calendar.add(Calendar.DAY_OF_MONTH, -7);
+							Date targteDate = calendar.getTime();
+							if(backup.getAcceptedDatetime().after(targteDate)) {
+								scheduleInfo.setBackupStatus("GREEN");
+							}else {
+								scheduleInfo.setBackupStatus("YELLOW");
+							}
+						}else if(backup.getStatus().equals("ACCEPTED") || backup.getStatus().equals("DOING")) {
+							scheduleInfo.setBackupStatus("GREEN-DOING");
+						}else if(backup.getStatus().equals("FAILED")) {
+							scheduleInfo.setBackupStatus("RED");
+						}
+					}
+					
 					BackupDiskEntity backupDiskEntity = backupDiskRepository.findBackupByServiceName(releaseMeta.getApp(), releaseMeta.getReleaseName(), releaseMeta.getNamespace());
 					if(backupDiskEntity != null && backupDiskEntity.getStatus().equals("COMPLETE")) {
 						scheduleInfo.setBackupDiskYn("Y");
 					}else {
 						scheduleInfo.setBackupDiskYn("N");
 					}
+					
+					
 					
 					scheduleInfolist.add(scheduleInfo);
 				}
