@@ -48,7 +48,7 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			+ " and serviceType=:serviceType"
 			+ " and serviceName=:serviceName"
 			+ " and status='OK'"
-			+ " and DATE_FORMAT(start_datetime,'%Y%m%d') <= :expiredDate order by start_datetime desc" )
+			+ " and DATE_FORMAT(start_datetime,'%Y%m%d%H') <= :expiredDate order by start_datetime desc" )
 	List<BackupEntity> findExpiredBackup(@Param("namespace") String namespace
 			, @Param("serviceType") String serviceType
 			, @Param("serviceName") String serviceName
