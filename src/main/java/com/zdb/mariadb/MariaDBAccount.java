@@ -680,7 +680,8 @@ public class MariaDBAccount {
 	}
 	private static List<String> getPrivilegeList(DBUser account) {
 		List<String> privilegeList = new ArrayList<>();
-		String [] grantCols = {"select","insert","update","delete","execute","create","alter","drop","createView","trigger","grant","createUser"};
+		String [] grantCols = {"select","insert","update","delete","execute","showView","create","alter","references","index","createView"
+				,"createRoutine","alterRoutine","event","drop","trigger","grant","createTmpTable","lockTables"};
 		
 		Class cls = account.getClass();
 		for(String col : grantCols) {
@@ -690,7 +691,9 @@ public class MariaDBAccount {
 				if(yn.equals("Y")) {
 					if(col.equals("grant")) {
 						privilegeList.add("GRANT OPTION");	
-					}else {
+					}else if(col.equals("createTmpTable")) {
+						privilegeList.add("CREATE TEMPORARY TABLES");
+					} else {
 						privilegeList.add(col.replaceAll("([A-Z]+)", " $1").toUpperCase());
 					}
 				}
@@ -734,12 +737,20 @@ public class MariaDBAccount {
 			q.append("	Update_priv as 'UPDATE', ");
 			q.append("	Delete_priv as 'DELETE', ");
 			q.append("	Execute_priv as 'EXECUTE', ");
+			q.append("	Show_view_priv as 'SHOW_VIEW', ");
 			q.append("	Create_priv as 'CREATE', ");
 			q.append("	Alter_priv as 'ALTER', ");
-			q.append("	Drop_priv as 'DROP', ");
+			q.append("	References_priv as 'REFERENCES', ");
+			q.append("	Index_priv as 'INDEX', ");
 			q.append("	Create_view_priv as 'CREATE_VIEW', ");
+			q.append("	Create_routine_priv as 'CREATE_ROUTINE', ");
+			q.append("	Alter_routine_priv as 'ALTER_ROUTINE', ");
+			q.append("	Event_priv as 'EVENT', ");
+			q.append("	Drop_priv as 'DROP', ");
 			q.append("	Trigger_priv as 'TRIGGER', ");
 			q.append("	Grant_priv as 'GRANT', ");
+			q.append("	Create_tmp_table_priv as 'CREATE_TMP_TABLE', ");
+			q.append("	Lock_tables_priv as 'LOCK_TABLES', ");
 			q.append("	Create_user_priv as 'CREATE_USER' ");
 			q.append("from  ");
 			q.append("	mysql.user ");
@@ -747,42 +758,34 @@ public class MariaDBAccount {
 			q.append("  1 = 1");
 			q.append("	and user <> 'root' ");
 			q.append("	and user <> 'replicator' ");
-			
+		
 			logger.debug("query: {}", q.toString());
 
 			ResultSet rs = statement.executeQuery(q.toString());
 			while (rs.next()) {
-				String user = rs.getString("USER");
-				String host = rs.getString("HOST");
-				String select = rs.getString("SELECT");
-				String insert = rs.getString("INSERT");
-				String update = rs.getString("UPDATE");
-				String delete = rs.getString("DELETE");
-				String execute = rs.getString("EXECUTE");
-				String create = rs.getString("CREATE");
-				String alter = rs.getString("ALTER");
-				String drop = rs.getString("DROP");
-				String createView = rs.getString("CREATE_VIEW");
-				String trigger = rs.getString("TRIGGER");
-				String grant = rs.getString("GRANT");
-				String createUser = rs.getString("CREATE_USER");
-				
 				DBUser dbUser = new DBUser();
-				dbUser.setUser(user);
-				dbUser.setHost(host);
-				dbUser.setSelect(select);
-				dbUser.setInsert(insert);
-				dbUser.setUpdate(update);
-				dbUser.setDelete(delete);
-				dbUser.setExecute(execute);
-				dbUser.setCreate(create);
-				dbUser.setAlter(alter);
-				dbUser.setDrop(drop);
-				dbUser.setCreateView(createView);
-				dbUser.setTrigger(trigger);
-				dbUser.setGrant(grant);
-				dbUser.setCreateUser(createUser);
-				
+				dbUser.setUser(rs.getString("USER"));
+				dbUser.setHost(rs.getString("HOST"));
+				dbUser.setSelect(rs.getString("SELECT"));
+				dbUser.setInsert(rs.getString("INSERT"));
+				dbUser.setUpdate(rs.getString("UPDATE"));
+				dbUser.setDelete(rs.getString("DELETE"));
+				dbUser.setExecute(rs.getString("EXECUTE"));
+				dbUser.setShowView(rs.getString("SHOW_VIEW"));
+				dbUser.setCreate(rs.getString("CREATE"));
+				dbUser.setAlter(rs.getString("ALTER"));
+				dbUser.setReferences(rs.getString("REFERENCES"));
+				dbUser.setIndex(rs.getString("INDEX"));
+				dbUser.setCreateView(rs.getString("CREATE_VIEW"));
+				dbUser.setCreateRoutine(rs.getString("CREATE_ROUTINE"));
+				dbUser.setAlterRoutine(rs.getString("ALTER_ROUTINE"));
+				dbUser.setEvent(rs.getString("EVENT"));
+				dbUser.setDrop(rs.getString("DROP"));
+				dbUser.setTrigger(rs.getString("TRIGGER"));
+				dbUser.setGrant(rs.getString("GRANT"));
+				dbUser.setCreateTmpTable(rs.getString("CREATE_TMP_TABLE"));
+				dbUser.setLockTables(rs.getString("LOCK_TABLES"));
+				dbUser.setCreateUser(rs.getString("CREATE_USER"));
 				userList.add(dbUser);
 			}
 		} catch (Exception e) {
