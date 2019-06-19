@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
@@ -79,14 +80,17 @@ import com.zdb.core.repository.ZDBConfigRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
 import com.zdb.core.repository.ZDBRepository;
 import com.zdb.core.util.DateUtil;
+import com.zdb.core.util.ExecUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.MetricUtil;
 import com.zdb.core.util.NumberUtils;
+import com.zdb.core.util.PodManager;
 import com.zdb.core.util.ResourceChecker;
 import com.zdb.core.util.ZDBLogViewer;
 import com.zdb.core.vo.PodMetrics;
 import com.zdb.redis.RedisConfiguration;
 import com.zdb.redis.RedisConnection;
+import com.zdb.redis.RedisSecret;
 
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.DoneablePod;
@@ -108,6 +112,7 @@ import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.dsl.PodResource;
 import lombok.extern.slf4j.Slf4j;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.exceptions.JedisConnectionException;
 
 /**
  * ZDBRestService Implementation
@@ -1686,14 +1691,28 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				changedPassword = K8SUtil.updateSecrets(namespace, secretName, "mariadb-password", newPassword);
 				break;
 			case Redis:
-				Jedis redisConnection = null;
-
-				redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "master");
-				RedisConfiguration.setConfig(redisConnection, "requirepass", newPassword);
+				// 2019-06-19 비밀번호 변경 로직 수정
+				// jedis 로 접속하여 수정하는 방식에서 pod container 에 접속하여 변경하는 로직으로 개선 
 				
-				if ("true".equals(clusterEnabled)) {
-					redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "slave");
-					RedisConfiguration.setConfig(redisConnection, "requirepass", newPassword);
+				// /opt/bitnami/redis/bin/redis-cli -a <<current_password>>  CONFIG SET requirepass <<new_password>>
+				
+				List<Pod> items = K8SUtil.kubernetesClient().inNamespace(namespace).pods().withLabel("release", serviceName).list().getItems();
+				String password = RedisSecret.getSecret(namespace, serviceName);
+				if (password != null && !password.isEmpty()) {
+					password = new String(Base64.getDecoder().decode(password));
+				}
+				for (Pod pod : items) {
+					if(PodManager.isReady(pod)) {
+						String podName = pod.getMetadata().getName();
+						String container= pod.getSpec().getContainers().get(0).getName();
+						String cmd = String.format("/opt/bitnami/redis/bin/redis-cli -a %s CONFIG SET requirepass %s", password, newPassword);
+						log.info("change password cmd : " + cmd);
+						String result = new ExecUtil().exec(K8SUtil.kubernetesClient(), namespace, podName, container, cmd);
+						log.info(result);
+						if(result != null && !"OK".equals(result.trim())) {
+							return new Result(txId, IResult.ERROR, "비밀번호 변경에 실패했습니다");
+						} 
+					}
 				}
 				
 				secretName = k8sService.getSecrets(namespace, serviceName).get(0).getMetadata().getName();
@@ -1721,6 +1740,9 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			} else {
 				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
 			}
+		} catch (JedisConnectionException e) {
+			log.error(e.getMessage(), e);
+			return new Result(txId, Result.ERROR, "비밀번호 변경에 실패했습니다.", null);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			return Result.RESULT_FAIL(txId, e);

@@ -33,4 +33,5 @@ public class RestoreEntity {
     private String serviceType;
     private String status;
     private String reason;
+    private String restoreType;
 }
