@@ -756,6 +756,29 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		info.setConnectionList(connectionList);
 		
 		List<io.fabric8.kubernetes.api.model.Service> services = K8SUtil.getServices(namespace, serviceName);
+
+		ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(serviceName);
+		if( releaseMetaData != null && (releaseMetaData.getDbname() == null || releaseMetaData.getDbname().isEmpty())) {
+			try {
+				List<Pod> items = K8SUtil.kubernetesClient().inNamespace(namespace).pods().withLabel("release", serviceName).withLabel("component", "master").list().getItems();
+				if(items != null && items.size() > 0) {
+					String podName = items.get(0).getMetadata().getName();
+					String cmd = "mysql -uroot -p$MARIADB_ROOT_PASSWORD -e \"SELECT SCHEMA_NAME FROM information_schema.schemata WHERE SCHEMA_NAME NOT IN ('mysql', 'performance_schema', 'information_schema');\"";
+					String exec = new ExecUtil().exec(K8SUtil.kubernetesClient(), namespace, podName, "mariadb", cmd);
+					
+					if(exec != null) {
+						String[] schema_names = exec.split("\n");
+						if(schema_names!= null && schema_names.length > 0) {
+							releaseMetaData.setDbname(schema_names[1]);
+							releaseRepository.save(releaseMetaData);
+						}
+					}
+				}
+			} catch (Exception e) {
+				log.error(e.getMessage(), e);
+			}
+		}
+		
 		for (io.fabric8.kubernetes.api.model.Service service : services) {
 			Connection connection = new Connection();
 			
@@ -768,7 +791,8 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				
 				connection.setRole(role);
 				connection.setServiceName(service.getMetadata().getName());
-				connection.setConnectionType(service.getMetadata().getAnnotations().get("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type"));
+				String connectionType = service.getMetadata().getAnnotations().get("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type");
+				connection.setConnectionType(connectionType);
 				
 				String ip = new String();
 				
@@ -777,7 +801,11 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 					if(ingress != null && ingress.size() > 0) {
 						ip = ingress.get(0).getIp();
 					} else {
-						ip = service.getMetadata().getName()+"."+service.getMetadata().getNamespace();
+						if("private".equals(connectionType)) {
+							ip = service.getMetadata().getName()+"."+service.getMetadata().getNamespace();
+						} else {
+							ip = "unknown";
+						}
 					}
 				} else if ("ClusterIP".equals(service.getSpec().getType())) {
 					ip = service.getSpec().getClusterIP();
@@ -785,10 +813,11 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				
 				connection.setIpAddress(ip);
 
-				ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(serviceName);
 				if( releaseMetaData != null) {
 					info.setDbName(releaseMetaData.getDbname());
-				} 
+				} else {
+					info.setDbName("");
+				}
 				
 				if(info.getDbName() == null || info.getDbName().length() == 0) {
 					String mariaDBDatabase = MariaDBAccount.getMariaDBDatabase(namespace, serviceName);
