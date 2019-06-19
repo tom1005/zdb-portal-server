@@ -1691,7 +1691,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "master");
 				RedisConfiguration.setConfig(redisConnection, "requirepass", newPassword);
 				
-				if (clusterEnabled.equals("true")) {
+				if ("true".equals(clusterEnabled)) {
 					redisConnection = RedisConnection.getRedisConnection(namespace, serviceName, "slave");
 					RedisConfiguration.setConfig(redisConnection, "requirepass", newPassword);
 				}
