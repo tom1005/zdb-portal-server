@@ -35,7 +35,7 @@ public class ScheduleEntity {
 	private int incrementPeriod = 12;
 	private long currentLsn = 0l;
 	private String currentBackupId;
-	private String scheduleType = "Daily";
+	private String scheduleType = "DAILY";
 	private int scheduleDay = 0;
 	
 }

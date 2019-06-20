@@ -50,12 +50,16 @@ public interface ScheduleEntityRepository extends CrudRepository<ScheduleEntity,
                         + ", t.useYn=:useYn "
                         + ", t.incrementYn=:incrementYn "
                         + ", t.incrementPeriod=:incrementPeriod "
+                        + ", t.scheduleType=:scheduleType "
+                        + ", t.scheduleDay=:scheduleDay "
                         + "WHERE t.scheduleId=:scheduleId")
         int modify(@Param("startTime") String startTime
                         , @Param("storePeriod") int storePeriod
                         , @Param("useYn") String useYn
                         , @Param("incrementYn") String incrementYn
                         , @Param("incrementPeriod") int incrementPeriod
+                        , @Param("scheduleType") String scheduleType
+                        , @Param("scheduleDay") int scheduleDay
                         , @Param("scheduleId") String scheduleId);
 
         @Modifying(clearAutomatically = true)

@@ -68,7 +68,14 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 								, entity.getServiceName());
 			if (oldSche != null) {
 				log.debug("update : "+entity);
-				scheduleRepository.modify(entity.getStartTime(), entity.getStorePeriod(), entity.getUseYn(), entity.getIncrementYn(), entity.getIncrementPeriod() ,oldSche.getScheduleId());
+				String scheduleType = "DAILY";
+				if(entity.getScheduleDay() != 0) {
+					scheduleType = "WEEKLY";
+				}
+				
+				scheduleRepository.modify(entity.getStartTime(), entity.getStorePeriod(), entity.getUseYn(), 
+						entity.getIncrementYn(), entity.getIncrementPeriod(), scheduleType, entity.getScheduleDay(),oldSche.getScheduleId()
+						);
 				entity.setScheduleId(oldSche.getScheduleId());
 			} else {
 				entity.setRegisterDate(new Date(System.currentTimeMillis()));
@@ -415,8 +422,6 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 							
 						}
 						
-						//GREEN, YELLOW, RED, GREY
-						
 						if(fullBackupCnt != 0) {
 							fullFileSize = fullFileSize/fullBackupCnt/1024/1024;
 							fullExecutionTime = getExecutionTimeConvertion(fullExecutionMilSec/fullBackupCnt);
@@ -465,8 +470,6 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 					}else {
 						scheduleInfo.setBackupDiskYn("N");
 					}
-					
-					
 					
 					scheduleInfolist.add(scheduleInfo);
 				}
