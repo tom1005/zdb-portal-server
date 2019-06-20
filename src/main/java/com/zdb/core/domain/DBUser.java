@@ -16,11 +16,19 @@ public class DBUser {
 	String update;
 	String delete;
 	String execute;
+	String showView;
 	String create;
 	String alter;
-	String drop;
+	String references;
+	String index;
 	String createView;
+	String createRoutine;
+	String alterRoutine;
+	String event;
+	String drop;
 	String trigger;
 	String grant;
+	String createTmpTable;
+	String lockTables;
 	String createUser;
 }

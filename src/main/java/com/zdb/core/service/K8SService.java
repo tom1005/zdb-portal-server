@@ -659,7 +659,11 @@ public class K8SService {
 						isMaster = true;
 					} else {
 						if (so.getStatus() != ZDBStatus.RED && PodManager.isReady(pod)) {
-							so.setSlaveStatus(replicationStatus(pod.getMetadata().getName()));
+							try {
+								so.setSlaveStatus(replicationStatus(pod.getMetadata().getName()));
+							} catch (Exception e) {
+								log.error(e.getMessage(), e);
+							}
 						}
 					}
 				}
