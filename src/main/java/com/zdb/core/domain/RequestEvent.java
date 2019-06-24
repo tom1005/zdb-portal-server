@@ -73,6 +73,8 @@ public class RequestEvent {
 	public static final String SELECT_DATABASE_STATUS_VARIABLES = "Database Status Variables 조회";
 	public static final String SELECT_DATABASE_SYSTEM_VARIABLES = "Database System Variables 조회";
 	public static final String SELECT_DATABASE_VARIABLES = "Database Variables 조회";
+	public static final String SELECT_DATABASE_SCHEMAS = "Database Schema 조회";
+	public static final String SELECT_USER_PRIVILEGES = "Database Privileges 조회";
 	public static final String UPDATE_DATABASE_VARIABLES = "Database Variables 수정";
 	
 	private String operation;
