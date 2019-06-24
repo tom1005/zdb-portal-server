@@ -3229,4 +3229,28 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
+	
+
+	@RequestMapping(value="/{namespace}/{serviceType}/{serviceName}/database/userPrivileges",method=RequestMethod.GET)
+	public ResponseEntity<String> getUserPrivileges(@PathVariable String namespace,@PathVariable String serviceType,@PathVariable String serviceName ) throws Exception {
+		String txId = txId();
+		Result result = new Result(txId,IResult.OK);
+		
+		try {
+			ZDBType dbType = ZDBType.getType(serviceType);
+			switch (dbType) {
+			case MariaDB:
+				result = ((MariaDBServiceImpl) mariadbService).getUserPrivileges(txId,namespace,serviceName);
+				break;
+			default:
+				result = new Result(txId, IResult.ERROR, RequestEvent.SELECT_USER_PRIVILEGES);
+				break;
+			}
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(null, IResult.ERROR, RequestEvent.SELECT_USER_PRIVILEGES + " 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}	
 }

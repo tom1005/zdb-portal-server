@@ -62,6 +62,7 @@ import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ServiceOverview;
+import com.zdb.core.domain.UserPrivileges;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBMariaDBConfig;
@@ -3442,5 +3443,18 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			log.error(e.getMessage(), e);
 			return new Result("", Result.ERROR, e.getMessage(), e);
 		}
+	}
+
+	public Result getUserPrivileges(String txId, String namespace, String serviceName) {
+		Result result = Result.RESULT_OK(txId);
+		
+		try {
+			List<UserPrivileges> list = MariaDBAccount.getUserPrivileges(namespace, serviceName);
+			result.putValue(IResult.USER_PRIVILEGES, list);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return Result.RESULT_FAIL(txId, e);
+		}
+		return result;
 	}	
 }

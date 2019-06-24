@@ -18,6 +18,7 @@ import org.springframework.util.StringUtils;
 import com.zdb.core.domain.DBUser;
 import com.zdb.core.domain.Database;
 import com.zdb.core.domain.RequestEvent;
+import com.zdb.core.domain.UserPrivileges;
 import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBType;
 import com.zdb.core.repository.ZDBMariaDBAccountRepository;
@@ -921,4 +922,40 @@ public class MariaDBAccount {
 		return resultMessage.toString();	
 	}
 
+	public static List<UserPrivileges> getUserPrivileges(String namespace, String serviceName) throws Exception {
+		MariaDBConnection connection = null;
+		Statement statement = null;
+		List<UserPrivileges> userPrivilegesList = new ArrayList<>();
+
+		try {
+			connection = MariaDBConnection.getRootMariaDBConnection(namespace, serviceName);
+			statement = connection.getStatement();
+			StringBuffer q = new StringBuffer();
+			q.append("SELECT GRANTEE, TABLE_CATALOG, TABLE_SCHEMA, PRIVILEGE_TYPE, IS_GRANTABLE FROM INFORMATION_SCHEMA.SCHEMA_PRIVILEGES");
+			q.append(" UNION ALL ");
+			q.append("SELECT GRANTEE, TABLE_CATALOG, '',PRIVILEGE_TYPE, IS_GRANTABLE FROM INFORMATION_SCHEMA.USER_PRIVILEGES");
+			
+			ResultSet rs = statement.executeQuery(q.toString());
+			while (rs.next()) {
+				UserPrivileges u = new UserPrivileges();
+				u.setGrantee(rs.getString("GRANTEE"));
+				u.setTableCatalog(rs.getString("TABLE_CATALOG"));
+				u.setTableSchema(rs.getString("TABLE_SCHEMA"));
+				u.setPrivilegeType(rs.getString("PRIVILEGE_TYPE"));
+				u.setIsGrantable(rs.getString("IS_GRANTABLE"));
+				userPrivilegesList.add(u);
+			}
+		} catch (Exception e) {
+			logger.error("Exception.", e);
+			throw e;
+		} finally {
+			if(statement!=null) {
+				statement.close();
+			}
+			if (connection != null) {
+				connection.close();
+			}
+		}
+		return userPrivilegesList;
+	}
 }
