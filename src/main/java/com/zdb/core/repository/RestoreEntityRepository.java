@@ -31,10 +31,11 @@ public interface RestoreEntityRepository extends CrudRepository<RestoreEntity, S
     @Query(value = "select * from restore_entity "
     		+ " where service_name = :serviceName"
     		+ " and status = 'ACCEPTED'"
-    		+ " and type = 'SLAVE-RESTORE'"
+    		+ " and type = :type"
     		+ " order by accepted_datetime desc limit 1", nativeQuery = true)
-    RestoreEntity findRestoreSlave(@Param("serviceName") String serviceName);
-    
+    RestoreEntity findAcceptedRestoreByType(@Param("serviceName") String serviceName
+    		, @Param("type") String type);
+ 
     @Query("select t from RestoreEntity t where serviceType=:serviceType and serviceName=:serviceName")
     List<RestoreEntity> findRestoreByService(@Param("serviceType") String serviceType
             , @Param("serviceName") String serviceName);
