@@ -227,7 +227,6 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 	List<BackupEntity> findOndiskIncrBackup(@Param("namespace") String namespace
 			, @Param("serviceType") String serviceType
 			, @Param("serviceName") String serviceName
-			, @Param("type") String type
 			, @Param("targetDate") String targetDate);
 	
 	
