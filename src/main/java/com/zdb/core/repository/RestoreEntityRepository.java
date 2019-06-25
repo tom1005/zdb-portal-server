@@ -23,7 +23,7 @@ public interface RestoreEntityRepository extends CrudRepository<RestoreEntity, S
     		+ " where target_backup_id = :targetBackupId"
     		+ " and service_name = :serviceName"
     		+ " and status = 'ACCEPTED'"
-    		+ " and type = 'BACKUP-RESTORE'"
+    		+ " and restore_type = 'BACKUP-RESTORE'"
     		+ " order by accepted_datetime desc limit 1", nativeQuery = true)
     RestoreEntity findRestoreByBackupId(@Param("targetBackupId") String targetBackupId
     		, @Param("serviceName") String serviceName);
