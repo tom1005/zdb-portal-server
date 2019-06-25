@@ -55,6 +55,7 @@ import com.zdb.core.domain.Database;
 import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.MariaDBVariable;
+import com.zdb.core.domain.MariadbUserPrivileges;
 import com.zdb.core.domain.Mycnf;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
@@ -3455,6 +3456,33 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			log.error(e.getMessage(), e);
 			return Result.RESULT_FAIL(txId, e);
 		}
+		return result;
+	}
+
+	public Result createUserPrivileges(String txId, String namespace, String serviceName, MariadbUserPrivileges userPrivileges) {
+		Result result = Result.RESULT_OK(txId);
+		
+		try {
+			String resultMessage = MariaDBAccount.createUserPrivileges(namespace, serviceName, userPrivileges);
+			result.setMessage(resultMessage);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return Result.RESULT_FAIL(txId, e);
+		}
+		
+		return result;
+	}	
+	public Result updateUserPrivileges(String txId, String namespace, String serviceName, MariadbUserPrivileges userPrivileges) {
+		Result result = Result.RESULT_OK(txId);
+		
+		try {
+			String resultMessage = MariaDBAccount.updateUserPrivileges(namespace, serviceName, userPrivileges);
+			result.setMessage(resultMessage);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return Result.RESULT_FAIL(txId, e);
+		}
+
 		return result;
 	}	
 }
