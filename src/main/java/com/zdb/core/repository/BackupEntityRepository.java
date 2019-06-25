@@ -216,6 +216,20 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			, @Param("serviceName") String serviceName
 			, @Param("type") String type);
 	
+	@Query(value =  "SELECT * from zdb.backup_entity "
+            + " WHERE namespace=:namespace "
+            + " and service_type=:serviceType "
+            + " and service_name=:serviceName "
+            + " and DATE_FORMAT(accepted_datetime,'%Y%m%d%H') = :targetDate "
+            + " and ondisk='Y' "
+            + " and status = 'OK' "
+            + " and type = 'INCR'", nativeQuery = true)
+	List<BackupEntity> findOndiskIncrBackup(@Param("namespace") String namespace
+			, @Param("serviceType") String serviceType
+			, @Param("serviceName") String serviceName
+			, @Param("type") String type
+			, @Param("targetDate") String targetDate);
+	
 	
 	@Modifying(clearAutomatically = true)
 	@Transactional
