@@ -1095,4 +1095,56 @@ public class MariaDBAccount {
 
 		return resultMessage.toString();
 	}
+
+	public static String deleteUserPrivileges(String namespace, String serviceName, MariadbUserPrivileges userPrivilege)throws Exception  {
+		MariaDBConnection connection = null;
+		Statement statement = null;
+		String query = null;
+		StringBuffer resultMessage = new StringBuffer();
+		int re = 1;//createUser,1:성공 0:실패
+		String grantee = userPrivilege.getGrantee();
+		String schema = "";
+		try {
+			connection = MariaDBConnection.getRootMariaDBConnection(namespace, serviceName);
+			statement = connection.getStatement();
+			try {
+				List<MariadbPrivileges> privilegesList = userPrivilege.getPrivileges();
+				for(int i = 0 ; i < privilegesList.size();i++) {
+					MariadbPrivileges priviliege = privilegesList.get(i);
+					schema = priviliege.getSchema();
+					try {
+						query = String.format("REVOKE ALL PRIVILEGES ON %s.* FROM %s",schema, grantee);
+						statement.executeUpdate(query);
+					
+						query = String.format("REVOKE GRANT OPTION ON %s.* FROM %s",schema, grantee);
+						statement.executeUpdate(query);
+					} catch (Exception e) {
+					}
+					List<String> privilegeTypes = getPrivilegeList(priviliege);
+					
+					if (!privilegeTypes.isEmpty()) {
+						query = String.format("GRANT %s ON %s.* TO %s ", String.join(",",privilegeTypes),schema,grantee);
+						logger.info("query: {}", query);
+						statement.executeUpdate(query);
+					}
+					resultMessage.append(String.format("[%s][%s] 유저 권한 변경: [%s]",grantee,schema,String.join(",",privilegeTypes)));
+				}
+			} catch (Exception e) {
+				resultMessage.append(String.format(" [%s][%s] 유저 권한 변경 실패: %s",grantee,schema,e.getMessage()));
+				re = 0;
+			}
+		} catch (Exception e) {
+			logger.error("Exception.", e);
+			resultMessage.append(String.format(" [%s] 유저 수정 오류 :%s ",grantee,e.getMessage()));
+		} finally {
+			if (statement != null) {
+				statement.close();
+			}
+			if (connection != null) {
+				connection.close();
+			}
+		}
+
+		return resultMessage.toString();
+	}
 }
