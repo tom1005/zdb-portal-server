@@ -11,6 +11,7 @@ public class DBUser {
 	String user;
 	String password;
 	String host;
+	String schema;
 	String select;
 	String insert;
 	String update;

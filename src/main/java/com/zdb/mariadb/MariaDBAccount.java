@@ -17,7 +17,10 @@ import org.springframework.util.StringUtils;
 
 import com.zdb.core.domain.DBUser;
 import com.zdb.core.domain.Database;
+import com.zdb.core.domain.MariadbUserPrivileges;
+import com.zdb.core.domain.MariadbUserPrivileges.MariadbPrivileges;
 import com.zdb.core.domain.RequestEvent;
+import com.zdb.core.domain.UserPrivileges;
 import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBType;
 import com.zdb.core.repository.ZDBMariaDBAccountRepository;
@@ -702,6 +705,24 @@ public class MariaDBAccount {
 		}
 		return privilegeList;
 	}
+	private static List<String> getPrivilegeList(MariadbPrivileges privilege) {
+		List<String> privilegeList = new ArrayList<>();
+		String [] grantCols = {"select","insert","update","delete","execute","showView","create","alter","references","index","createView"
+				,"createRoutine","alterRoutine","event","drop","trigger","grantOption","createTemporaryTables","lockTables"};
+		
+		Class cls = privilege.getClass();
+		for(String col : grantCols) {
+			try {
+				Method m = cls.getMethod("get"+col.substring(0,1).toUpperCase()+col.substring(1));
+				String yn = (String)m.invoke(privilege);
+				if(yn.equals("Y")) {
+					privilegeList.add(col.replaceAll("([A-Z]+)", " $1").toUpperCase());
+				}
+			} catch (Exception e) {
+			}
+		}
+		return privilegeList;
+	}
 	public static ZDBMariaDBAccount createAdminAccount(final ZDBMariaDBAccountRepository repo, final String namespace, final String releaseName, final String id, final String password) {
 		ZDBMariaDBAccount account = new ZDBMariaDBAccount(null, releaseName, id, password, "%", true, true, true, true, true);
 		repo.save(account);
@@ -921,4 +942,209 @@ public class MariaDBAccount {
 		return resultMessage.toString();	
 	}
 
+	public static List<UserPrivileges> getUserPrivileges(String namespace, String serviceName) throws Exception {
+		MariaDBConnection connection = null;
+		Statement statement = null;
+		List<UserPrivileges> userPrivilegesList = new ArrayList<>();
+		String [] privileges = {"SELECT","INSERT","UPDATE","DELETE","EXECUTE","SHOW VIEW","CREATE","ALTER","REFERENCES","INDEX","CREATE VIEW"
+				,"CREATE ROUTINE","ALTER ROUTINE","EVENT","DROP","TRIGGER","GRANT","CREATE TMP TABLE","LOCK TABLES"};
+		
+		try {
+			connection = MariaDBConnection.getRootMariaDBConnection(namespace, serviceName);
+			statement = connection.getStatement();
+			StringBuffer q = new StringBuffer();
+			q.append("SELECT GRANTEE, TABLE_CATALOG, TABLE_SCHEMA, PRIVILEGE_TYPE, IS_GRANTABLE FROM INFORMATION_SCHEMA.SCHEMA_PRIVILEGES");
+			q.append(" UNION ALL ");
+			q.append("SELECT GRANTEE, TABLE_CATALOG, '*',PRIVILEGE_TYPE, IS_GRANTABLE FROM INFORMATION_SCHEMA.USER_PRIVILEGES");
+			
+			ResultSet rs = statement.executeQuery(q.toString());
+			while (rs.next()) {
+				UserPrivileges u = new UserPrivileges();
+				u.setGrantee(rs.getString("GRANTEE"));
+				u.setTableCatalog(rs.getString("TABLE_CATALOG"));
+				u.setTableSchema(rs.getString("TABLE_SCHEMA"));
+				u.setPrivilegeType(rs.getString("PRIVILEGE_TYPE"));
+				u.setIsGrantable(rs.getString("IS_GRANTABLE"));
+				userPrivilegesList.add(u);
+			}
+		} catch (Exception e) {
+			logger.error("Exception.", e);
+			throw e;
+		} finally {
+			if(statement!=null) {
+				statement.close();
+			}
+			if (connection != null) {
+				connection.close();
+			}
+		}
+		return userPrivilegesList;
+	}
+	public static String createUserPrivileges(final String namespace, final String serviceName,MariadbUserPrivileges userPrivilege) throws Exception  {
+		MariaDBConnection connection = null;
+		Statement statement = null;
+		String query = null;
+		StringBuffer resultMessage = new StringBuffer();
+		int re = 1;//createUser,1:성공 0:실패
+		String grantee = userPrivilege.getGrantee();
+		List<MariadbPrivileges> privilegesList = userPrivilege.getPrivileges();
+		String schema = "";
+		try {
+			connection = MariaDBConnection.getRootMariaDBConnection(namespace, serviceName);
+			statement = connection.getStatement();
+			
+			try {
+				query = String.format("CREATE USER %s identified by '%s'",grantee,userPrivilege.getPassword());
+				logger.info("query: {}", query);
+				statement.executeUpdate(query);
+				resultMessage.append(String.format("[%s] 유저 생성 ", grantee));
+			}catch (Exception e) {
+				resultMessage.append(String.format("[%s] 유저 생성 실패 : %s",grantee,e.getMessage()));
+				re = 0;
+			}
+			if(re == 1) {
+				for(int i = 0 ; i < privilegesList.size();i++) {
+					MariadbPrivileges priviliege = privilegesList.get(i);
+					schema = priviliege.getSchema();
+					List<String> privilegeTypes = getPrivilegeList(priviliege);
+					
+					if (!privilegeTypes.isEmpty()) {
+						query = String.format("GRANT %s ON %s.* TO %s ", String.join(",",privilegeTypes),schema,grantee);
+						logger.info("query: {}", query);
+						statement.executeUpdate(query);
+					}
+					resultMessage.append(String.format("[%s][%s] 유저 권한 생성: [%s]",grantee,schema,String.join(",",privilegeTypes)));
+				}				
+			}
+			
+		} catch (Exception e) {
+			logger.error("Exception.", e);
+			resultMessage.append(String.format(" [%s] 유저 생성 오류 :%s ",grantee,e.getMessage()));
+		} finally {
+			if (statement != null) {
+				statement.close();
+			}
+			if (connection != null) {
+				connection.close();
+			}
+		}
+
+		return resultMessage.toString();		
+	}
+	public static String updateUserPrivileges(final String namespace, final String serviceName,MariadbUserPrivileges userPrivilege) throws Exception  {
+		MariaDBConnection connection = null;
+		Statement statement = null;
+		String query = null;
+		StringBuffer resultMessage = new StringBuffer();
+		int re = 1;//createUser,1:성공 0:실패
+		String grantee = userPrivilege.getGrantee();
+		List<MariadbPrivileges> privilegesList = userPrivilege.getPrivileges();
+		String schema = "";
+		try {
+			connection = MariaDBConnection.getRootMariaDBConnection(namespace, serviceName);
+			statement = connection.getStatement();
+			
+			try {
+				for(int i = 0 ; i < privilegesList.size();i++) {
+					MariadbPrivileges priviliege = privilegesList.get(i);
+					schema = priviliege.getSchema();
+					try {
+						query = String.format("REVOKE ALL PRIVILEGES ON %s.* FROM %s",schema, grantee);
+						statement.executeUpdate(query);
+					
+						query = String.format("REVOKE GRANT OPTION ON %s.* FROM %s",schema, grantee);
+						statement.executeUpdate(query);
+					} catch (Exception e) {
+					}
+					List<String> privilegeTypes = getPrivilegeList(priviliege);
+					
+					if (!privilegeTypes.isEmpty()) {
+						query = String.format("GRANT %s ON %s.* TO %s ", String.join(",",privilegeTypes),schema,grantee);
+						logger.info("query: {}", query);
+						statement.executeUpdate(query);
+					}
+					resultMessage.append(String.format("[%s][%s] 유저 권한 변경: [%s]",grantee,schema,String.join(",",privilegeTypes)));
+				}
+			} catch (Exception e) {
+				resultMessage.append(String.format(" [%s][%s] 유저 권한 변경 실패: %s",grantee,schema,e.getMessage()));
+				re = 0;
+			}
+			
+			if (!StringUtils.isEmpty(userPrivilege.getPassword()) && re ==1) {
+				try {
+					query = String.format(" SET PASSWORD FOR %s = PASSWORD('%s');",grantee,userPrivilege.getPassword());
+					logger.debug("query: {}", query);
+					statement.executeUpdate(query);
+					resultMessage.append(String.format(" [%s] 유저 비밀번호 변경",grantee));
+				} catch (Exception e) {
+					resultMessage.append(String.format(" [%s] 유저 비밀번호 변경 실패 :%s ",grantee,e.getMessage()));
+				}
+			}
+			
+		} catch (Exception e) {
+			logger.error("Exception.", e);
+			resultMessage.append(String.format(" [%s] 유저 수정 오류 :%s ",grantee,e.getMessage()));
+		} finally {
+			if (statement != null) {
+				statement.close();
+			}
+			if (connection != null) {
+				connection.close();
+			}
+		}
+
+		return resultMessage.toString();
+	}
+
+	public static String deleteUserPrivileges(String namespace, String serviceName, MariadbUserPrivileges userPrivilege)throws Exception  {
+		MariaDBConnection connection = null;
+		Statement statement = null;
+		String query = null;
+		StringBuffer resultMessage = new StringBuffer();
+		int re = 1;//createUser,1:성공 0:실패
+		String grantee = userPrivilege.getGrantee();
+		String schema = "";
+		try {
+			connection = MariaDBConnection.getRootMariaDBConnection(namespace, serviceName);
+			statement = connection.getStatement();
+			try {
+				List<MariadbPrivileges> privilegesList = userPrivilege.getPrivileges();
+				for(int i = 0 ; i < privilegesList.size();i++) {
+					MariadbPrivileges priviliege = privilegesList.get(i);
+					schema = priviliege.getSchema();
+					try {
+						query = String.format("REVOKE ALL PRIVILEGES ON %s.* FROM %s",schema, grantee);
+						statement.executeUpdate(query);
+					
+						query = String.format("REVOKE GRANT OPTION ON %s.* FROM %s",schema, grantee);
+						statement.executeUpdate(query);
+					} catch (Exception e) {
+					}
+					List<String> privilegeTypes = getPrivilegeList(priviliege);
+					
+					if (!privilegeTypes.isEmpty()) {
+						query = String.format("GRANT %s ON %s.* TO %s ", String.join(",",privilegeTypes),schema,grantee);
+						logger.info("query: {}", query);
+						statement.executeUpdate(query);
+					}
+					resultMessage.append(String.format("[%s][%s] 유저 권한 변경: [%s]",grantee,schema,String.join(",",privilegeTypes)));
+				}
+			} catch (Exception e) {
+				resultMessage.append(String.format(" [%s][%s] 유저 권한 변경 실패: %s",grantee,schema,e.getMessage()));
+				re = 0;
+			}
+		} catch (Exception e) {
+			logger.error("Exception.", e);
+			resultMessage.append(String.format(" [%s] 유저 수정 오류 :%s ",grantee,e.getMessage()));
+		} finally {
+			if (statement != null) {
+				statement.close();
+			}
+			if (connection != null) {
+				connection.close();
+			}
+		}
+
+		return resultMessage.toString();
+	}
 }

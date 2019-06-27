@@ -31,6 +31,7 @@ import com.zdb.core.domain.Database;
 import com.zdb.core.domain.EventMetaData;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.MariaDBVariable;
+import com.zdb.core.domain.MariadbUserPrivileges;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.Result;
@@ -3227,6 +3228,168 @@ public class ZDBRestController {
 			log.error(e.getMessage(), e);
 			result = new Result(null, IResult.ERROR, RequestEvent.UPDATE_DATABASE_VARIABLES + " 오류").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
+
+	@RequestMapping(value="/{namespace}/{serviceType}/{serviceName}/database/userPrivileges",method=RequestMethod.GET)
+	public ResponseEntity<String> getUserPrivileges(@PathVariable String namespace,@PathVariable String serviceType,@PathVariable String serviceName ) throws Exception {
+		String txId = txId();
+		Result result = new Result(txId,IResult.OK);
+		
+		try {
+			ZDBType dbType = ZDBType.getType(serviceType);
+			switch (dbType) {
+			case MariaDB:
+				result = ((MariaDBServiceImpl) mariadbService).getUserPrivileges(txId,namespace,serviceName);
+				break;
+			default:
+				result = new Result(txId, IResult.ERROR, RequestEvent.SELECT_USER_PRIVILEGES);
+				break;
+			}
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(null, IResult.ERROR, RequestEvent.SELECT_USER_PRIVILEGES + " 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+
+	@RequestMapping(value = "/{namespace}/{serviceType}/{serviceName}/database/userPrivileges", method = RequestMethod.POST)
+	public ResponseEntity<String> createUserPrivileges(
+			@PathVariable("serviceType") final String serviceType, 
+			@PathVariable("namespace") final String namespace, 
+			@PathVariable("serviceName") final String serviceName,
+			@RequestBody String data
+			) {
+		String txId = txId();
+		Result result = null;
+		RequestEvent event = new RequestEvent();
+		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.CREATE_DB_USER);
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());			
+			ZDBType dbType = ZDBType.getType(serviceType);
+			switch (dbType) {
+			case MariaDB:
+				Type resultType = new TypeToken<MariadbUserPrivileges>(){}.getType();
+				MariadbUserPrivileges userPrivileges = new Gson().fromJson(data, resultType);
+				result = ((MariaDBServiceImpl) mariadbService).createUserPrivileges(txId,namespace,serviceName,userPrivileges);
+				break;
+			default:
+				result = new Result(txId, IResult.ERROR, RequestEvent.CREATE_DB_USER);
+				break;
+			}
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());		
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(txId, IResult.ERROR, RequestEvent.CREATE_DB_USER + " 오류!").putValue(IResult.EXCEPTION, e);
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}
+	}
+	@RequestMapping(value = "/{namespace}/{serviceType}/{serviceName}/database/userPrivileges", method = RequestMethod.PUT)
+	public ResponseEntity<String> updateUserPrivileges(
+			@PathVariable("serviceType") final String serviceType, 
+			@PathVariable("namespace") final String namespace, 
+			@PathVariable("serviceName") final String serviceName,
+			@RequestBody String data
+			) {
+		String txId = txId();
+		
+		Result result = null;
+		RequestEvent event = new RequestEvent();
+		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.UPDATE_DB_USER);
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());			
+			ZDBType dbType = ZDBType.getType(serviceType);
+			switch (dbType) {
+			case MariaDB:
+				Type resultType = new TypeToken<MariadbUserPrivileges>(){}.getType();
+				MariadbUserPrivileges userPrivileges = new Gson().fromJson(data, resultType);
+				log.debug("accountId: {}, accountPassword: {}", userPrivileges.getGrantee(), userPrivileges.getPassword());
+				result = ((MariaDBServiceImpl) mariadbService).updateUserPrivileges(txId,namespace,serviceName,userPrivileges);
+				break;
+			default:
+				result = new Result(txId, IResult.ERROR, RequestEvent.UPDATE_DB_USER);
+				break;
+			}
+
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());				
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(txId, IResult.ERROR, RequestEvent.UPDATE_DB_USER + " 오류!").putValue(IResult.EXCEPTION, e);
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}
+	}
+
+	@RequestMapping(value = "/{namespace}/{serviceType}/{serviceName}/database/userPrivileges", method = RequestMethod.DELETE)
+	public ResponseEntity<String> deleteUserPrivileges(
+			@PathVariable("serviceType") final String serviceType, 
+			@PathVariable("namespace") final String namespace, 
+			@PathVariable("serviceName") final String serviceName,
+			@RequestBody String data ) {
+		String txId = txId();
+		Result result = null;
+		RequestEvent event = new RequestEvent();
+		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.DELETE_USER_PRIVILEGES);
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());			
+			ZDBType dbType = ZDBType.getType(serviceType);
+			switch (dbType) {
+			case MariaDB:
+				Type resultType = new TypeToken<MariadbUserPrivileges>(){}.getType();
+				MariadbUserPrivileges userPrivileges = new Gson().fromJson(data, resultType);
+				log.debug("accountId: {}, accountPassword: {}", userPrivileges.getGrantee(), userPrivileges.getPassword());
+				result = ((MariaDBServiceImpl) mariadbService).deleteUserPrivileges(txId,namespace,serviceName,userPrivileges);
+				break;
+			default:
+				result = new Result(txId, IResult.ERROR, RequestEvent.DELETE_USER_PRIVILEGES);
+				break;
+			}
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());		
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(txId, IResult.ERROR, RequestEvent.DELETE_USER_PRIVILEGES + " 오류!").putValue(IResult.EXCEPTION, e);
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}
 	}
 }

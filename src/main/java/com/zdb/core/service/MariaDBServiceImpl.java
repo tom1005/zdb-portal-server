@@ -55,6 +55,7 @@ import com.zdb.core.domain.Database;
 import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.MariaDBVariable;
+import com.zdb.core.domain.MariadbUserPrivileges;
 import com.zdb.core.domain.Mycnf;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
@@ -62,6 +63,7 @@ import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ServiceOverview;
+import com.zdb.core.domain.UserPrivileges;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBMariaDBConfig;
@@ -3442,5 +3444,59 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			log.error(e.getMessage(), e);
 			return new Result("", Result.ERROR, e.getMessage(), e);
 		}
+	}
+
+	public Result getUserPrivileges(String txId, String namespace, String serviceName) {
+		Result result = Result.RESULT_OK(txId);
+		
+		try {
+			List<UserPrivileges> list = MariaDBAccount.getUserPrivileges(namespace, serviceName);
+			result.putValue(IResult.USER_PRIVILEGES, list);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return Result.RESULT_FAIL(txId, e);
+		}
+		return result;
+	}
+
+	public Result createUserPrivileges(String txId, String namespace, String serviceName, MariadbUserPrivileges userPrivileges) {
+		Result result = Result.RESULT_OK(txId);
+		
+		try {
+			String resultMessage = MariaDBAccount.createUserPrivileges(namespace, serviceName, userPrivileges);
+			result.setMessage(resultMessage);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return Result.RESULT_FAIL(txId, e);
+		}
+		
+		return result;
+	}	
+	public Result updateUserPrivileges(String txId, String namespace, String serviceName, MariadbUserPrivileges userPrivileges) {
+		Result result = Result.RESULT_OK(txId);
+		
+		try {
+			String resultMessage = MariaDBAccount.updateUserPrivileges(namespace, serviceName, userPrivileges);
+			result.setMessage(resultMessage);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return Result.RESULT_FAIL(txId, e);
+		}
+
+		return result;
+	}
+
+	public Result deleteUserPrivileges(String txId, String namespace, String serviceName, MariadbUserPrivileges userPrivileges) {
+		Result result = Result.RESULT_OK(txId);
+		
+		try {
+			String resultMessage = MariaDBAccount.deleteUserPrivileges(namespace, serviceName, userPrivileges);
+			result.setMessage(resultMessage);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return Result.RESULT_FAIL(txId, e);
+		}
+
+		return result;
 	}	
 }

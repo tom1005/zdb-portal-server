@@ -28,6 +28,7 @@ public class RequestEvent {
 	public static final String CREATE_DB_USER = "사용자 생성";
 	public static final String UPDATE_DB_USER = "사용자 업데이트";
 	public static final String DELETE_DB_USER = "사용자 삭제";
+	public static final String DELETE_USER_PRIVILEGES = "사용자 권한 삭제";
 	public static final String CREATE_DATABASE = "데이터베이스 생성";
 	public static final String DELETE_DATABASE = "데이터베이스 삭제";
 	public static final String CREATE_TAG = "태그 추가";
@@ -50,6 +51,7 @@ public class RequestEvent {
 	public static final String REQ_INCR_BACKUP = "증분 백업 요청";
 	public static final String DELETE_BACKUP_DATA = "백업 데이터 삭제";
 	public static final String RESTORE_BACKUP = "백업 데이터 복원";
+	public static final String MIGRATION_BACKUP = "백업 데이터 기반 마이그레이션";
 	public static final String RESTORE_SLAVE = "Slave DB 복원";
 	public static final String CREATE_PUBLIC_SVC = "Public Network 생성";
 	public static final String DELETE_PUBLIC_SVC = "Public Network 삭제";
@@ -72,6 +74,8 @@ public class RequestEvent {
 	public static final String SELECT_DATABASE_STATUS_VARIABLES = "Database Status Variables 조회";
 	public static final String SELECT_DATABASE_SYSTEM_VARIABLES = "Database System Variables 조회";
 	public static final String SELECT_DATABASE_VARIABLES = "Database Variables 조회";
+	public static final String SELECT_DATABASE_SCHEMAS = "Database Schema 조회";
+	public static final String SELECT_USER_PRIVILEGES = "Database Privileges 조회";
 	public static final String UPDATE_DATABASE_VARIABLES = "Database Variables 수정";
 	
 	private String operation;
