@@ -655,6 +655,9 @@ public class K8SService {
 					}
 				} else if ("mariadb".equals(app)) {
 					String component = labels.get("component");
+					
+					// TODO
+					// Slave - ReplicationStatus: so.setReplicationStatus(slaveSrtatus)
 					if ("master".equals(component)) {
 						isMaster = true;
 					} else {
