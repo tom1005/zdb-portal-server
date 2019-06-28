@@ -4,5 +4,4 @@
 /.project
 /deploy/tmp/*.yaml
 /.factorypath
-**/.DS_Store
-/k8s/
+/k8s/*.yaml

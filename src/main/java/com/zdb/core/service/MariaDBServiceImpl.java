@@ -3484,5 +3484,19 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		}
 
 		return result;
+	}
+
+	public Result deleteUserPrivileges(String txId, String namespace, String serviceName, MariadbUserPrivileges userPrivileges) {
+		Result result = Result.RESULT_OK(txId);
+		
+		try {
+			String resultMessage = MariaDBAccount.deleteUserPrivileges(namespace, serviceName, userPrivileges);
+			result.setMessage(resultMessage);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return Result.RESULT_FAIL(txId, e);
+		}
+
+		return result;
 	}	
 }

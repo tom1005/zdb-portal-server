@@ -3347,4 +3347,49 @@ public class ZDBRestController {
 			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
 		}
 	}
+
+	@RequestMapping(value = "/{namespace}/{serviceType}/{serviceName}/database/userPrivileges", method = RequestMethod.DELETE)
+	public ResponseEntity<String> deleteUserPrivileges(
+			@PathVariable("serviceType") final String serviceType, 
+			@PathVariable("namespace") final String namespace, 
+			@PathVariable("serviceName") final String serviceName,
+			@RequestBody String data ) {
+		String txId = txId();
+		Result result = null;
+		RequestEvent event = new RequestEvent();
+		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType(serviceType);
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.DELETE_USER_PRIVILEGES);
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());			
+			ZDBType dbType = ZDBType.getType(serviceType);
+			switch (dbType) {
+			case MariaDB:
+				Type resultType = new TypeToken<MariadbUserPrivileges>(){}.getType();
+				MariadbUserPrivileges userPrivileges = new Gson().fromJson(data, resultType);
+				log.debug("accountId: {}, accountPassword: {}", userPrivileges.getGrantee(), userPrivileges.getPassword());
+				result = ((MariaDBServiceImpl) mariadbService).deleteUserPrivileges(txId,namespace,serviceName,userPrivileges);
+				break;
+			default:
+				result = new Result(txId, IResult.ERROR, RequestEvent.DELETE_USER_PRIVILEGES);
+				break;
+			}
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());		
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(txId, IResult.ERROR, RequestEvent.DELETE_USER_PRIVILEGES + " 오류!").putValue(IResult.EXCEPTION, e);
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}
+	}
 }
