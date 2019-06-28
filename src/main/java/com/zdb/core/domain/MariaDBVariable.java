@@ -46,6 +46,8 @@ public class MariaDBVariable {
 	@Lob
 	private String enumValueList;
 	
+	private boolean editable;
+	
 	private String value;
 	
 }
