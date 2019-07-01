@@ -23,7 +23,10 @@ kubectl apply -f ./deploy/zdb-system-deployment.yml
 
 ===============================
 # v1.1.2
+```
 
+
+```
 
 # v1.1.1
 ## 추가 기능
