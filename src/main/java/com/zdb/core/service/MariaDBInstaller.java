@@ -117,6 +117,9 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				){ 
 			/////////////////////////
 			// chart 정로 로딩
+			
+//			chartUrl = "file:///Users/a06919/tmp/mariadb-6.5.2.tgz";
+			
 			final URI uri = URI.create(chartUrl);
 			final URL url = uri.toURL();
 			Chart.Builder chart = null;
@@ -135,6 +138,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				hapi.chart.ConfigOuterClass.Config.Builder valuesBuilder = requestBuilder.getValuesBuilder();
 
 				InputStream is = new ClassPathResource("mariadb/create_values.template").getInputStream();
+//				InputStream is = new ClassPathResource("mariadb/create_values.10.3.x").getInputStream();
 				
 				String inputJson = IOUtils.toString(is, StandardCharsets.UTF_8.name());
 				
