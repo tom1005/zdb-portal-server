@@ -36,6 +36,7 @@ import com.google.gson.Gson;
 import com.zdb.core.collector.MetaDataCollector;
 import com.zdb.core.domain.Connection;
 import com.zdb.core.domain.ConnectionInfo;
+import com.zdb.core.domain.CredentialConfirm;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
@@ -1392,5 +1393,31 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 		return null;
 	}
 	
+	/**
+	 * @param namespace
+	 * @param serviceType
+	 * @param serviceName
+	 * @return
+	 * @throws Exception
+	 */
+	public Result getCredentialConfirm(String namespace, String serviceType, String serviceName ,String credetial ) throws Exception {
+		CredentialConfirm info = new CredentialConfirm("redis");  
+
+		List<Secret> secrets = K8SUtil.getSecrets(namespace, serviceName);
+		if( secrets == null || secrets.isEmpty()) {
+			return new Result("", Result.ERROR).putValue(IResult.CREDENTIAL_CONFIRM, info);
+		}
+		
+		for(Secret secret : secrets) {
+			Map<String, String> secretData = secret.getData();
+			String confirm = "FAILED" ;
+			if( credetial.equals(secretData.get("redis-password")) ){
+				confirm = "ACCEPTED" ;
+			}
+			
+			info.setConfirm(confirm);
+		}		
+		return new Result("", Result.OK).putValue(IResult.CREDENTIAL_CONFIRM, info);
+	}
 }
   

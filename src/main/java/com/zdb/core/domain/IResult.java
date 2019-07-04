@@ -149,6 +149,8 @@ public interface IResult {
 
 	public static final String USER_PRIVILEGES = "userPrivileges";
 	
+	public static final String CREDENTIAL_CONFIRM = "credentialConfirm";
+	
 	public int getCode();
 	
 	public Throwable getException();

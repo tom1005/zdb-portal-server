@@ -6,3 +6,4 @@
 /.factorypath
 **/.DS_Store
 /k8s/*.yaml
+/.externalToolBuilders/*.*
