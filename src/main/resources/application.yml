@@ -8,6 +8,18 @@ spring:
   profiles:
     active: local
 
+server:
+  port: 8080
+  tomcat:
+    uri-encoding: UTF-8
+    protocol_header: x-forwarded-proto  
+  servlet:
+    session:
+      timeout: 3600
+  error:
+    whitelabel:
+      enabled: false
+      
 management:
  security:
   enabled: false
@@ -36,7 +48,6 @@ endpoints:
 spring:
   profiles: local
   datasource:
-#cbt    url: jdbc:mariadb://169.56.174.21:3306/zdb
     url: jdbc:mariadb://169.56.87.74:3306/zdb
     username: zdb
     password: 24cmdshvek!
@@ -59,7 +70,7 @@ k8s:
   daemonUrl: "http://localhost:8090" 
   
 chart:
-  antiAffinity: hard
+  antiAffinity: soft
   mariadb:
     url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/mariadb-4.2.5.tgz"
   redis:
@@ -70,6 +81,65 @@ iam:
 
 prometheus:
   baseUrl: https://pog-dev-prometheus.cloudzcp.io/
+          
+storage:
+  storageType: AWS_S3
+  accessKey: "6bf48d42eb304e1292f178bf69034f12"
+  secretKey: "0c61052e1bd30002a96cc57c8589d7521efef440f0471873"
+  endpointUrl: "s3-api.us-geo.objectstorage.softlayer.net"
+  apiKey: "na"
+  serviceInstanceId: "na"
+  location: "us"
+
+backup:
+  backupShell: "/zdb/shell/backup_mariadb.sh"
+  restoreShell: "/zdb/shell/restore_mariadb.sh"
+  prepareShell: "/zdb/shell/dump_master.sh"
+  masterInfo: "/zdb/shell/master_info.sh"
+  filemeta: "/zdb/shell/parse_filemeta.sh"
+  cleanShell: "/zdb/shell/clean.sh"
+  workingDir: "C:\\zdb\\work"
+  target: "slave"
+  type: "public"
+  redisDumpPath: "bitnami/redis/data"
+  redisDumpFile: "dump.rdb"
+---
+spring:
+  profiles: cbt
+  datasource:
+    url: jdbc:mariadb://169.56.174.28:3306/zdb
+    username: zdb
+    password: 24cmdshvek!
+    driverClassName: org.mariadb.jdbc.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        show_sql: false
+        use_sql_comments: true
+        format_sql: true
+
+logging:
+  config: classpath:logback-local.xml
+
+k8s:
+  masterUrl: "https://c4.seo01.containers.cloud.ibm.com:20292"    
+  daemonUrl: "http://localhost:8090" 
+  
+chart:
+  antiAffinity: soft
+  mariadb:
+    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/mariadb-4.2.5.tgz"
+  redis:
+    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/redis-3.6.6.tgz"
+  
+iam:
+  baseUrl: https://cbt-internal-iam.cloudzcp.io:443
+
+prometheus:
+  baseUrl: https://cbt-prometheus.cloudzcp.io/
           
 storage:
   storageType: AWS_S3
