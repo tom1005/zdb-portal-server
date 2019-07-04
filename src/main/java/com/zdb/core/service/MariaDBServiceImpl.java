@@ -50,6 +50,7 @@ import com.google.gson.Gson;
 import com.zdb.core.collector.MetaDataCollector;
 import com.zdb.core.domain.Connection;
 import com.zdb.core.domain.ConnectionInfo;
+import com.zdb.core.domain.CredentialConfirm;
 import com.zdb.core.domain.DBUser;
 import com.zdb.core.domain.Database;
 import com.zdb.core.domain.EventType;
@@ -3498,5 +3499,33 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		}
 
 		return result;
+	}	
+	
+	/**
+	 * @param namespace
+	 * @param serviceType
+	 * @param serviceName
+	 * @return
+	 * @throws Exception
+	 */
+	public Result getCredentialConfirm(String namespace, String serviceType, String serviceName ,String credential ) throws Exception {
+		CredentialConfirm info = new CredentialConfirm("mariadb");  
+
+		List<Secret> secrets = K8SUtil.getSecrets(namespace, serviceName);
+		if( secrets == null || secrets.isEmpty()) {
+			return new Result("", Result.ERROR).putValue(IResult.CREDENTIAL_CONFIRM, info);
+		}
+
+		for(Secret secret : secrets) {
+			Map<String, String> secretData = secret.getData();
+			String confirm = "FAILED" ;
+			
+			if( credential.equals(secretData.get("mariadb-password")) ){
+				confirm = "ACCEPTED" ;
+				info.setCredential(secretData.get("mariadb-password"));
+			}
+			info.setConfirm(confirm);
+		}
+		return new Result("", Result.OK).putValue(IResult.CREDENTIAL_CONFIRM, info);
 	}	
 }

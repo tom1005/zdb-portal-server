@@ -109,4 +109,9 @@ public class CommonServiceImpl extends AbstractServiceImpl {
 		// TODO Auto-generated method stub
 		return null;
 	}
+	
+	@Override
+	public Result getCredentialConfirm(String namespace, String serviceType, String serviceName ,String credetial ) throws Exception {
+		return null;
+	}
 }

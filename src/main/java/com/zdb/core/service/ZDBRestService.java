@@ -337,5 +337,7 @@ public interface ZDBRestService {
 	Result getUserNamespaces(String userId) throws Exception;
 
 	Result getNodesInfo() throws Exception;
+	
+	Result getCredentialConfirm(String namespace, String serviceType, String serviceName ,String credetial) throws Exception;
 
 }

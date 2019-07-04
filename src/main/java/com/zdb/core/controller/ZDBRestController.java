@@ -26,6 +26,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 import com.zdb.core.domain.AlertingRuleEntity;
+import com.zdb.core.domain.CredentialConfirm;
 import com.zdb.core.domain.DBUser;
 import com.zdb.core.domain.Database;
 import com.zdb.core.domain.EventMetaData;
@@ -3390,6 +3391,47 @@ public class ZDBRestController {
 		} finally {
 			event.setEndTime(new Date(System.currentTimeMillis()));
 			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}
+	}
+	
+	/**
+	 * Confirm Credential 
+	 * 
+	 * @return ResponseEntity<List<Service>>
+	 */
+	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/credentialConfirm", method = RequestMethod.POST)
+	public ResponseEntity<String> getCredentialConfirm(@PathVariable("namespace") final String namespace, 
+			        				     @PathVariable("serviceType") final String serviceType, 
+			        				     @PathVariable("serviceName") final String serviceName,
+			        					 @RequestBody final String data) {
+
+		try {
+		    // mariadb , redis, postgresql, rabbitmq, mongodb		    
+			ZDBType dbType = ZDBType.getType(serviceType);
+			Result result = null;
+			
+		    switch (dbType) {
+		    case MariaDB: 
+
+				Type resultType = new TypeToken<CredentialConfirm>(){}.getType();
+				CredentialConfirm credentialConfirm = new Gson().fromJson(data, resultType);
+		    	result = mariadbService.getCredentialConfirm(namespace, serviceType, serviceName ,credentialConfirm.getCredential());
+		    	break;
+		    case Redis:
+		    	//result = redisService.getConnectionInfo(namespace, serviceType, serviceName);
+		    	break;
+		    default:
+		    	log.error("Credential 확인 - Not support.");
+		    	result = new Result(null, IResult.ERROR, "Credential 확인- Not support.");
+		    	break;
+		    }
+			
+		    return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+
+			Result result = new Result(null, IResult.ERROR, "Credential 확인 오류!").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
 }

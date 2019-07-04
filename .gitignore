@@ -5,3 +5,4 @@
 /deploy/tmp/*.yaml
 /.factorypath
 /k8s/*.yaml
+/.externalToolBuilders/*.*
