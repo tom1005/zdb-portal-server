@@ -3383,7 +3383,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				
 				String category = null;
 				for (int i = 0 ; i < lines.length; i++) {
-					String line = lines[i];
+					String line = lines[i].trim();
 					if(line.startsWith("#") || StringUtils.isEmpty(line)) {
 						continue;
 					}
@@ -3394,12 +3394,13 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 					}else if(line.matches(".*=.*")) {
 						String [] kv = line.split("=");
 						mv.setCategory(category);
-						mv.setName(kv[0]);
-						mv.setValue(kv[1]);
+						mv.setName(kv[0].trim());
+						mv.setValue(kv[1].trim());
 					}else {
 						mv.setCategory(category);
-						mv.setName(line);
+						mv.setName(line.trim());
 					}
+					System.out.println(">>>>"+line+"<<<<");
 					list.add(mv);
 				}
 			}
