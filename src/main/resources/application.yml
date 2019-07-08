@@ -71,10 +71,13 @@ k8s:
   
 chart:
   antiAffinity: soft
+
+zdb:
   mariadb:
-    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/mariadb-4.2.5.tgz"
+    v10_2: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/mariadb-4.2.5.tgz"
+    v10_3: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/mariadb-6.5.2.tgz"
   redis:
-    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/redis-3.6.6.tgz"
+    v4_0: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/redis-3.6.6.tgz"
   
 iam:
   baseUrl: https://pog-dev-internal-iam.cloudzcp.io:443
@@ -130,10 +133,13 @@ k8s:
   
 chart:
   antiAffinity: soft
+
+zdb:
   mariadb:
-    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/mariadb-4.2.5.tgz"
+    v10_2: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/mariadb-4.2.5.tgz"
+    v10_3: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/mariadb-6.5.2.tgz"
   redis:
-    url: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/redis-3.6.6.tgz"
+    v4_0: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/redis-3.6.6.tgz"
   
 iam:
   baseUrl: https://cbt-internal-iam.cloudzcp.io:443
@@ -191,12 +197,17 @@ k8s:
 chart:
   antiAffinity: ${chart.antiAffinity}
   mariadb:
-    url: ${chart.mariadb.url}
     storageClass: ${storage.class:ibmc-block-silver}
   redis:
-    url: ${chart.redis.url}
     storageClass: ${storage.class:ibmc-block-silver}
-          
+
+zdb:
+  mariadb:
+    v10_2: ${chart.mariadb.v10_2}
+    v10_3: ${chart.mariadb.v10_3}
+  redis:
+    v4_0: ${chart.redis.v4_0}
+
 iam:
   baseUrl: http://zcp-iam.zcp-system
 prometheus:

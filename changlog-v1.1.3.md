@@ -1,4 +1,22 @@
 
+=============================================================================================================
+# chart 버전 관리를 위한 환경변수명 변경.
+=============================================================================================================
+As-Is 
+  chart.mariadb.url: https://s3-api.us-geo.objectstorage.service.networklayer.com/zdb-chart-repo/mariadb-4.2.4.tgz
+  chart.redis.url: https://s3-api.us-geo.objectstorage.service.networklayer.com/zdb-chart-repo/redis-3.6.5.tgz
+To-Be
+  zdb.mariadb.v10_2: https://s3-api.us-geo.objectstorage.service.networklayer.com/zdb-chart-repo/mariadb-4.2.4.tgz
+  zdb.mariadb.v10_3: https://s3-api.us-geo.objectstorage.service.networklayer.com/zdb-chart-repo/mariadb-6.5.2.tgz
+  zdb.redis.v4_0: https://s3-api.us-geo.objectstorage.service.networklayer.com/zdb-chart-repo/redis-3.6.5.tgz
+  
+=============================================================================================================
+
+
+
+=============================================================================================================
+# mariadb my.cnf 관리용 데이터 초기값 입력
+=============================================================================================================
 use zdb;
 INSERT INTO zdb.mariadbvariable(category,name,alias,dynamic,default_value,variable_type,variable_comment,numeric_min_value,numeric_max_value,numeric_block_size,enum_value_list, editable)
 SELECT 'mysqld', lower(variable_name),lower(variable_name),1,default_value,variable_type,variable_comment,numeric_min_value,numeric_max_value,numeric_block_size,enum_value_list, 1 as editable from INFORMATION_SCHEMA.SYSTEM_VARIABLES;
@@ -47,3 +65,4 @@ insert into  zdb.mariadbvariable (name, alias, category, data_type,description,d
 SELECT name, alias, 'mysqld_safe' as category, data_type,description, 0 as dynamic,label,'/bitnami/mariadb/logs/mysql_error.log' as value,value_range, '/bitnami/mariadb/logs/mysql_error.log' as default_value,enum_value_list,numeric_block_size,numeric_max_value,numeric_min_value,variable_comment,variable_type, 1 as editable FROM zdb.mariadbvariable a where category='mysqld' and name='log_error' ;
 
 commit;
+=============================================================================================================

@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 
 import com.google.gson.Gson;
 import com.zdb.core.collector.MetaDataCollector;
+import com.zdb.core.domain.CommonConstants;
 import com.zdb.core.domain.Exchange;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.KubernetesConstants;
@@ -116,10 +117,9 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				ReleaseManager releaseManager = new ReleaseManager(tiller);
 				){ 
 			/////////////////////////
-			// chart 정로 로딩
-			
-//			chartUrl = "file:///Users/a06919/tmp/mariadb-6.5.2.tgz";
-			
+			// chart 로딩
+			String mariadbVersion = service.getVersion() == null ? DEFAULT_VERSION : service.getVersion();
+						
 			final URI uri = URI.create(chartUrl);
 			final URL url = uri.toURL();
 			Chart.Builder chart = null;
@@ -137,8 +137,16 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 
 				hapi.chart.ConfigOuterClass.Config.Builder valuesBuilder = requestBuilder.getValuesBuilder();
 
-				InputStream is = new ClassPathResource("mariadb/create_values.template").getInputStream();
-//				InputStream is = new ClassPathResource("mariadb/create_values.10.3.x").getInputStream();
+				InputStream is = null;
+				switch(mariadbVersion) {
+				case "10.2.14":
+				case "10.2.21":
+					is = new ClassPathResource(CommonConstants.ZDB_MARIADB_Values_V10_2).getInputStream();
+					break;
+				case "10.3.16":
+					is = new ClassPathResource(CommonConstants.ZDB_MARIADB_Values_V10_3).getInputStream();
+					break;
+				}
 				
 				String inputJson = IOUtils.toString(is, StandardCharsets.UTF_8.name());
 				
@@ -159,7 +167,6 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 					isPublicEnabled = false;
 				}
 				
-				String mariadbVersion = service.getVersion() == null ? DEFAULT_VERSION : service.getVersion();
 				
 				String mariadbDatabase = mariaDBConfig.getMariadbDatabase() == null ? DEFAULT_DATABASE_NAME : mariaDBConfig.getMariadbDatabase();
 				String mariadbUser = mariaDBConfig.getMariadbUser() == null ? DEFAULT_USER : mariaDBConfig.getMariadbUser();
