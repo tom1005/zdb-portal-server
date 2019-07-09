@@ -241,6 +241,7 @@
 								<include>com/zdb/core/repository/ZDBReleaseRepository.*</include>
 								<include>com/zdb/core/repository/ZDBRepositoryUtil.*</include>
 								<include>com/zdb/core/repository/BackupDiskEntityRepository.*</include>
+								<include>com/zdb/core/repository/DiskUsageRepository.*</include>
 								<include>com/zdb/core/util/*.*</include>
 								<include>com/zdb/core/exception/*.*</include>
 								<include>com/zdb/mariadb/**/*.*</include>
