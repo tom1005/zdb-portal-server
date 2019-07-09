@@ -1,6 +1,9 @@
 package com.zdb.core;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -8,9 +11,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.junit.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.util.StringUtils;
 import org.yaml.snakeyaml.Yaml;
@@ -19,10 +22,12 @@ import org.yaml.snakeyaml.constructor.Constructor;
 import com.zdb.core.domain.AlertRule;
 import com.zdb.core.domain.AlertRuleLabels;
 import com.zdb.core.domain.AlertingRuleEntity;
+import com.zdb.core.domain.MariadbUserPrivileges;
 import com.zdb.core.domain.PrometheusEntity;
 import com.zdb.core.domain.PrometheusGroups;
-import com.zdb.core.service.AlertService;
+import com.zdb.core.domain.UserPrivileges;
 import com.zdb.core.util.K8SUtil;
+import com.zdb.mariadb.MariaDBConnection;
 
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
@@ -81,18 +86,90 @@ public class PrometheusConfigMapTest {
 		dt.createOrReplace(c);
 	}
 	private void testClient(AlertingRuleEntity alertingRuleEntity)throws Exception {
-		Yaml yaml = new Yaml();
-		DefaultKubernetesClient client = K8SUtil.kubernetesClient();
-		Resource<ConfigMap, DoneableConfigMap> dt = client.inNamespace(targetNamespace).configMaps().withName(configMapName);
+		MariaDBConnection connection = null;
+		Statement statement = null;
+		List<MariadbUserPrivileges> userPrivilegesList = new ArrayList<>();
+		String [] privileges = {"SELECT","INSERT","UPDATE","DELETE","EXECUTE","SHOW VIEW","CREATE","ALTER","REFERENCES","INDEX","CREATE VIEW"
+				,"CREATE ROUTINE","ALTER ROUTINE","EVENT","DROP","TRIGGER","GRANT","CREATE TMP TABLE","LOCK TABLES"};
 		
-		//dt.delete();
-		//ConfigMap c = new ConfigMapBuilder().withNewMetadata().withName(configMapName).endMetadata().build();
-		//dt.createOrReplace(c);
-		//CoreV1Api api = new CoreV1Api();
-		//V1ConfigMap configMap = new V1ConfigMap();
+		try {
+			connection = MariaDBConnection.getRootMariaDBConnection("zdb-test", "zdb-test-mat");
+			statement = connection.getStatement();
+			StringBuffer q = new StringBuffer();
+			q.append(" SELECT GRANTEE grantee, TABLE_SCHEMA \"schema\" ");
+			for(String privilege : privileges) {
+				q.append(String.format(" ,SUM(IF(PRIVILEGE_TYPE = '%s',1,0)) AS \"%s\" ",privilege
+							,privilege.toLowerCase().replaceAll("( [a-z]{1})", ("$1").trim().toUpperCase())));
+			}
+			q.append(" FROM (SELECT GRANTEE, TABLE_SCHEMA, PRIVILEGE_TYPE FROM INFORMATION_SCHEMA.SCHEMA_PRIVILEGES");
+			q.append(" UNION ALL ");
+			q.append(" SELECT GRANTEE, '*',PRIVILEGE_TYPE FROM INFORMATION_SCHEMA.USER_PRIVILEGES");
+			q.append(" )A GROUP BY GRANTEE,TABLE_SCHEMA ");
+			
+			ResultSet rs = statement.executeQuery(q.toString());
+			
+			while (rs.next()) {
+				MariadbUserPrivileges mp = new MariadbUserPrivileges();
+				Class cls = mp.getClass();
+				for(String privilege : privileges) {
+					String c = privilege.toLowerCase().replaceAll("( [a-z]{1})", ("$1").trim().toUpperCase());
+					Method m = cls.getMethod("set"+c.substring(0,1).toUpperCase()+c.substring(1),String.class);
+					m.invoke(mp,rs.getString(c)); 
+				}
+				userPrivilegesList.add(mp);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			if(statement!=null) {
+				statement.close();
+			}
+			if (connection != null) {
+				connection.close();
+			}
+		}
+		System.out.println(userPrivilegesList);
+	}
+	private void testClient2(AlertingRuleEntity alertingRuleEntity)throws Exception {
+		MariaDBConnection connection = null;
+		Statement statement = null;
+		String namespace = "zdb-test";
+		String serviceName = "zdb-test-mat";
+		List<UserPrivileges> userPrivilegesList = new ArrayList<>();
 
-		String fir = dt.get().getData().get(dataTitle);
-		System.out.println(fir);
+		try {
+			connection = MariaDBConnection.getRootMariaDBConnection(namespace, serviceName);
+			statement = connection.getStatement();
+			StringBuffer q = new StringBuffer();
+			q.append("SELECT GRANTEE, TABLE_CATALOG, TABLE_SCHEMA, PRIVILEGE_TYPE, IS_GRANTABLE FROM INFORMATION_SCHEMA.SCHEMA_PRIVILEGES");
+			q.append(" UNION ALL ");
+			q.append("SELECT GRANTEE, TABLE_CATALOG, '*',PRIVILEGE_TYPE, IS_GRANTABLE FROM INFORMATION_SCHEMA.USER_PRIVILEGES");
+			
+			ResultSet rs = statement.executeQuery(q.toString());
+			//String 
+			while (rs.next()) {
+				UserPrivileges u = new UserPrivileges();
+				u.setGrantee(rs.getString("GRANTEE"));
+				u.setTableCatalog(rs.getString("TABLE_CATALOG"));
+				u.setTableSchema(rs.getString("TABLE_SCHEMA"));
+				u.setPrivilegeType(rs.getString("PRIVILEGE_TYPE"));
+				u.setIsGrantable(rs.getString("IS_GRANTABLE"));
+				userPrivilegesList.add(u);
+			}
+			 Map<Object, Map<Object, List<UserPrivileges>>> g = userPrivilegesList.stream().collect(Collectors.groupingBy(ob -> ob.getGrantee(),Collectors.groupingBy(ob->ob.getTableSchema())));
+			System.out.println(g);
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw e;
+		} finally {
+			if(statement!=null) {
+				statement.close();
+			}
+			if (connection != null) {
+				connection.close();
+			}
+		}
+ 		
 	}
 
 	public List<AlertingRuleEntity> getAlertRules(String namespaces) throws Exception {
@@ -273,6 +350,7 @@ public class PrometheusConfigMapTest {
 			are.setValue(m.group(1) + m.group(2));
 		}
 		are.setExpr(expr);
+		
 		String alert = String.valueOf(ar.getAlert());
 		are.setAlert(alert);
 		are.setNamespace(label.getNamespace());

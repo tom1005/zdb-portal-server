@@ -366,7 +366,16 @@ public class K8SService {
 				String version = release.getAppVersion();
 				
 				so.setServiceType(serviceType);
-				so.setVersion(version);
+				if(version != null) {
+					if(version.indexOf("-") > -1) {
+						int idx = version.indexOf("-");
+						so.setVersion(version.substring(0, idx));
+					} else {
+						so.setVersion(version);
+					}
+				} else {
+					so.setVersion("-");
+				}
 				
 				for (ScheduleEntity scheduleEntity : scheduleEntityList) {
 					String sn = scheduleEntity.getServiceName();
@@ -469,7 +478,16 @@ public class K8SService {
 			String version = release.getAppVersion();
 			
 			so.setServiceType(serviceType);
-			so.setVersion(version);
+			if(version != null) {
+				if(version.indexOf("-") > -1) {
+					int idx = version.indexOf("-");
+					so.setVersion(version.substring(0, idx));
+				} else {
+					so.setVersion(version);
+				}
+			} else {
+				so.setVersion("-");
+			}
 			
 			for (ScheduleEntity scheduleEntity : scheduleEntityList) {
 				String serviceName = scheduleEntity.getServiceName();
@@ -536,7 +554,16 @@ public class K8SService {
 				String version = release.getAppVersion();
 				
 				so.setServiceType(serviceType);
-				so.setVersion(version);
+				if(version != null) {
+					if(version.indexOf("-") > -1) {
+						int idx = version.indexOf("-");
+						so.setVersion(version.substring(0, idx));
+					} else {
+						so.setVersion(version);
+					}
+				} else {
+					so.setVersion("-");
+				}
 				
 				for (ScheduleEntity scheduleEntity : scheduleEntityList) {
 					String serviceName = scheduleEntity.getServiceName();

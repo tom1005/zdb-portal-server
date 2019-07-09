@@ -31,4 +31,7 @@ public interface DiskUsageRepository extends CrudRepository<DiskUsage, String> {
 	@Transactional
 	@Query(value = "delete from zdb.disk_usage where namespace =:namespace and release_name =:release_name", nativeQuery = true)
 	Integer deleteByNamespaceAndReleaseName(@Param("namespace") String namespace, @Param("release_name") String release_name);
+	
+	@Query(value = "select pod_name, namespace, release_name, size, avail, used, use_rate, path, update_time from zdb.disk_usage where release_name=:release_name", nativeQuery = true)
+	List<DiskUsage>  findByReleaseName(@Param("release_name") String release_name);
 }
