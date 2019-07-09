@@ -11,7 +11,7 @@ public class DownloadMycnf {
 
 	public static void main(String[] args) throws Exception {
 		DefaultKubernetesClient client = K8SUtil.kubernetesClient();
-		ConfigMap configMap = client.inNamespace("zdb-ha").configMaps().withName("zdb-ha-zdb-mariadb").get();
+		ConfigMap configMap = client.inNamespace("fsk-db").configMaps().withName("fsk-db-316-mariadb-master").get();
 		
 		Map<String, String> data = configMap.getData();
 		
