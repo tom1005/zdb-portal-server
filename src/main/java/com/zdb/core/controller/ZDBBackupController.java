@@ -549,6 +549,29 @@ public class ZDBBackupController {
 		}
 	}
 	
+	@RequestMapping(value = "/migrationBackupList", method = RequestMethod.GET)
+	public ResponseEntity<String> getMigrationBackupList(
+			@RequestParam("namespace") final String namespace
+			, @RequestParam("serviceType") final String serviceType
+			, @RequestParam("serviceName") final String serviceName) {
+		if (log.isInfoEnabled()) {
+			log.info(">>>> getMigrationBackupList Interface :GET /migrationBackupList {" 
+					+"namespace:"+namespace
+					+"serviceType:"+serviceType
+					+"serviceName:"+serviceName +"}");
+		}
+
+		try {
+			Result result = mariadbService.getMigrationBackupList(namespace, serviceType, serviceName);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+
+			Result result = new Result(null, IResult.ERROR, "서비스 LB 조회 오류!").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
 	private void verifyService(String namespace, String serviceType, String serviceName) throws BackupException {
 		StringBuilder sb = new StringBuilder();
 		try {

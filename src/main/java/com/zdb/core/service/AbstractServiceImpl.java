@@ -925,6 +925,29 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		return new Result("", Result.OK).putValue(IResult.SERVICELIST, "");
 	}
 	
+	@Override
+	public Result getMigrationBackupList(String namespace, String serviceType, String serviceName) throws Exception {
+		// @getService
+		try {
+			List<BackupEntity> backupList  = backuRepository.findValidBackup(namespace, serviceType, serviceName);
+			if(backupList != null) {
+				return new Result("", Result.OK).putValue(IResult.BACKUP_LIST, backupList);
+			}
+		} catch (KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result("", Result.UNAUTHORIZED, "클러스터에 접근이 불가하거나 인증에 실패 했습니다.", null);
+			} else {
+				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+
+		return new Result("", Result.OK).putValue(IResult.BACKUP_LIST, "");
+	}
+	
 	
 
 	@Override
