@@ -17,9 +17,36 @@ To-Be
 =============================================================================================================
 # mariadb my.cnf 관리용 데이터 초기값 입력
 =============================================================================================================
+
+use zdb;
+CREATE TABLE `mariadbvariable` (
+  `category` varchar(64) NOT NULL,
+  `name` varchar(64) NOT NULL,
+  `alias` varchar(64) DEFAULT NULL,
+  `default_value` longtext DEFAULT NULL,
+  `dynamic` bit(1) NOT NULL,
+  `enum_value_list` longtext DEFAULT NULL,
+  `numeric_block_size` varchar(21) DEFAULT NULL,
+  `numeric_max_value` varchar(21) DEFAULT NULL,
+  `numeric_min_value` varchar(21) DEFAULT NULL,
+  `variable_comment` longtext DEFAULT NULL,
+  `variable_type` varchar(64) DEFAULT NULL,
+  `data_type` varchar(255) DEFAULT NULL,
+  `description` longtext DEFAULT NULL,
+  `label` varchar(255) DEFAULT NULL,
+  `value` varchar(255) DEFAULT NULL,
+  `value_range` varchar(255) DEFAULT NULL,
+  `editable` bit(1) NOT NULL default 1,
+  PRIMARY KEY (`category`,`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
 use zdb;
 INSERT INTO zdb.mariadbvariable(category,name,alias,dynamic,default_value,variable_type,variable_comment,numeric_min_value,numeric_max_value,numeric_block_size,enum_value_list, editable)
 SELECT 'mysqld', lower(variable_name),lower(variable_name),1,default_value,variable_type,variable_comment,numeric_min_value,numeric_max_value,numeric_block_size,enum_value_list, 1 as editable from INFORMATION_SCHEMA.SYSTEM_VARIABLES;
+
+select * from zdb.mariadbvariable where name like '%char%';
+
+select * from zdb.mariadbvariable where enum_value_list is not null;
 
 # tx_isolation alias update 
 update zdb.mariadbvariable set alias='transaction-isolation' where category='mysqld' and name = 'tx_isolation';
@@ -32,8 +59,29 @@ update zdb.mariadbvariable set default_value='/opt/bitnami/mariadb/plugin' where
 # pid_file
 update zdb.mariadbvariable set alias='pid-file' where category='mysqld' and name = 'pid_file';
 
-#[mysqld]
+# character-set-client-handshake
+update zdb.mariadbvariable set alias='character_set_client' where category='mysqld' and name = 'character_set_client';
 
+update zdb.mariadbvariable set enum_value_list='utf8,euckr,utf8mb4,utf16' where category='mysqld' and name = 'character_set_client';
+
+update zdb.mariadbvariable set enum_value_list='utf8,euckr,utf8mb4,utf16' where category='mysql' and name = 'default-character-set';
+update zdb.mariadbvariable set enum_value_list='utf8,euckr,utf8mb4,utf16' where category='client' and name = 'default-character-set';
+
+update zdb.mariadbvariable set enum_value_list='utf8,euckr,utf8mb4,utf16' where category='mysqld' and name = 'character_set_connection';
+update zdb.mariadbvariable set enum_value_list='utf8,euckr,utf8mb4,utf16' where category='mysqld' and name = 'character_set_database';
+update zdb.mariadbvariable set enum_value_list='utf8,euckr,utf8mb4,utf16' where category='mysqld' and name = 'character_set_server';
+update zdb.mariadbvariable set enum_value_list='utf8,euckr,utf8mb4,utf16' where category='mysqld' and name = 'character_set_results';
+
+update zdb.mariadbvariable set enum_value_list='utf8_general_ci,euckr_korean_ci,utf8mb4_general_ci,utf16_general_ci' where category='mysqld' and name = 'collation_connection';
+update zdb.mariadbvariable set enum_value_list='utf8_general_ci,euckr_korean_ci,utf8mb4_general_ci,utf16_general_ci' where category='mysqld' and name = 'collation_database';
+update zdb.mariadbvariable set enum_value_list='utf8_general_ci,euckr_korean_ci,utf8mb4_general_ci,utf16_general_ci' where category='mysqld' and name = 'collation_server';
+
+commit;
+select * from zdb.mariadbvariable where name like '%char%';
+select * from zdb.mariadbvariable where name like '%collation%';
+
+#[mysqld]
+insert into  zdb.mariadbvariable (name, alias, category, dynamic , default_value, enum_value_list, variable_type, editable) values ('character-set-client-handshake', 'character-set-client-handshake','mysqld',0,'OFF','OFF,ON','BOOLEAN',1 );
 
 #[client]
 #default-character-set
@@ -65,4 +113,5 @@ insert into  zdb.mariadbvariable (name, alias, category, data_type,description,d
 SELECT name, alias, 'mysqld_safe' as category, data_type,description, 0 as dynamic,label,'/bitnami/mariadb/logs/mysql_error.log' as value,value_range, '/bitnami/mariadb/logs/mysql_error.log' as default_value,enum_value_list,numeric_block_size,numeric_max_value,numeric_min_value,variable_comment,variable_type, 1 as editable FROM zdb.mariadbvariable a where category='mysqld' and name='log_error' ;
 
 commit;
+
 =============================================================================================================
