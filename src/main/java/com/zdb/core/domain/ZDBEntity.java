@@ -68,6 +68,8 @@ public class ZDBEntity {
 	private String deployType;
 	
 	private String characterSet;
+	
+	private String kindOfStorage;
 
 	
 	/**
