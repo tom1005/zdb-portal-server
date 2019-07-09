@@ -54,6 +54,15 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			, @Param("serviceName") String serviceName
 			, @Param("expiredDate") String expiredDate);
 
+	@Query("SELECT t FROM BackupEntity t "
+			+ " WHERE namespace=:namespace"
+			+ " and serviceType=:serviceType"
+			+ " and serviceName=:serviceName"
+			+ " and status='OK'" )
+	List<BackupEntity> findValidBackup(@Param("namespace") String namespace
+			, @Param("serviceType") String serviceType
+			, @Param("serviceName") String serviceName);
+	
 	@Modifying(clearAutomatically = true)
 	@Transactional
 	@Query("UPDATE BackupEntity t SET"

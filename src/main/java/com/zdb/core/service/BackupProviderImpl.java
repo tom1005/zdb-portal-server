@@ -427,7 +427,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 							fullExecutionTime = getExecutionTimeConvertion(fullExecutionMilSec/fullBackupCnt);
 						}
 						if(incrtBackupCnt != 0) {
-							incrFileSize = incrFileSize/fullBackupCnt/1024/1024;
+							incrFileSize = incrFileSize/incrtBackupCnt/1024/1024;
 							incrExecutionTime = getExecutionTimeConvertion(incrExecutionMilSec/incrtBackupCnt);
 						}
 						scheduleInfo.setFullFileSize(fullFileSize);
