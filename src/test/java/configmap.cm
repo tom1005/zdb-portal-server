@@ -47,6 +47,7 @@ myisam_sort_buffer_size=16M
 open_files_limit=8192
 performance_schema
 pid-file=/opt/bitnami/mariadb/tmp/mysqld.pid
+plugin-dir=/opt/bitnami/mariadb/plugin
 port=3306
 query_cache_limit=0
 query_cache_size=0
@@ -67,11 +68,12 @@ thread_pool_stall_limit=60
 tmp_table_size=64M
 tmpdir=/opt/bitnami/mariadb/tmp
 transaction-isolation=READ-COMMITTED
-wait_timeout=3700
+wait_timeout=3600
 
 [mysql]
 max_allowed_packet=16M
 no-auto-rehash
+default-character-set=utf8mb4
 
 [mysqld_safe]
 log_error=/bitnami/mariadb/logs/mysqld_safe.log
