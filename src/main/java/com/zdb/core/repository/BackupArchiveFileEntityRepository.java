@@ -38,7 +38,6 @@ public interface BackupArchiveFileEntityRepository extends CrudRepository<Backup
 			+ "WHERE backupArchiveFileId=:backupArchiveFileId")
 	int modify2FileDelete(@Param("backupFileId") String backupFileId
 			, @Param("deleteDatetime") Date deleteDatetime
-			, @Param("deleteDesc") Date deleteDesc
+			, @Param("deleteDesc") String deleteDesc
 			);
-	
 }

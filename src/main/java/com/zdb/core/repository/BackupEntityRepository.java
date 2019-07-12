@@ -93,7 +93,6 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			+ ", t.filePath=:filePath"
 			+ ", t.fileName=:fileName"
 			+ ", t.fileSize=:fileSize"
-			+ ", t.archiveName=:archiveName"
 			+ ", t.archiveFileSize=:archiveFileSize"
 			+ ", t.checkSum=:checkSum"
 			+ ", t.status=:status "
@@ -107,7 +106,6 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			, @Param("fileName") String fileName
 			, @Param("fileSize") long fileSize
 			, @Param("archivedDatetime") Date archivedDatetime
-			, @Param("archiveName") String archiveName
 			, @Param("archiveFileSize") long archiveFileSize
 			, @Param("checkSum") String checkSum
 			, @Param("status") String status

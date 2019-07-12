@@ -24,9 +24,6 @@ public class BackupArchiveFileEntity {
 	private String backupArchiveFileId;
 	
 	private String backupId;
-	private String namespace;
-	private String serviceName;
-	private String serviceType;
 	private Date createdDatetime = new Date(System.currentTimeMillis());
 	private Date deleteDatetime;
 	private String fileName;
