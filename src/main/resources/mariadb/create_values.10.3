@@ -1,0 +1,511 @@
+image:
+  registry: registry.au-syd.bluemix.net
+  repository: cloudzdb/mariadb
+  tag: ${image.tag} # 10.3.16-debian-9-r0
+  pullPolicy: IfNotPresent
+  pullSecrets:
+    - zdb-system-secret
+
+  debug: false
+
+service:
+  ## Kubernetes service type, ClusterIP and NodePort are supported at present
+  type: LoadBalancer
+  port: 3306
+  master: 
+    enabled: ${service.master.publicip.enabled}
+  slave:
+    enabled: ${service.slave.publicip.enabled}
+
+## Pods Service Account
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
+serviceAccount:
+  ## Specifies whether a ServiceAccount should be created
+  ##
+  create: false
+  ## The name of the ServiceAccount to use.
+  ## If not set and create is true, a name is generated using the mariadb.fullname template
+  # name:
+
+## Role Based Access
+## Ref: https://kubernetes.io/docs/admin/authorization/rbac/
+##
+
+rbac:
+  create: false
+
+## Pod Security Context
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+##
+securityContext:
+  enabled: true
+  fsGroup: 1001
+  runAsUser: 1001
+
+# # Use existing secret (ignores root, db and replication passwords)
+# existingSecret:
+
+rootUser:
+  ## MariaDB admin password
+  ## ref: https://github.com/bitnami/bitnami-docker-mariadb#setting-the-root-password-on-first-run
+  ##
+  password:
+  ##
+  ## Option to force users to specify a password. That is required for 'helm upgrade' to work properly.
+  ## If it is not force, a random password will be generated.
+  forcePassword: false
+
+db:
+  ## MariaDB username and password
+  ## ref: https://github.com/bitnami/bitnami-docker-mariadb#creating-a-database-user-on-first-run
+  ##
+  user: ${db.user}
+  password:
+  ## Password is ignored if existingSecret is specified.
+  ## Database to create
+  ## ref: https://github.com/bitnami/bitnami-docker-mariadb#creating-a-database-on-first-run
+  ##
+  name: ${db.name}
+  ## Option to force users to specify a password. That is required for 'helm upgrade' to work properly.
+  ## If it is not force, a random password will be generated.
+  forcePassword: false
+
+replication:
+  ## Enable replication. This enables the creation of replicas of MariaDB. If false, only a
+  ## master deployment would be created
+  enabled: ${replication.enabled}
+  ##
+  ## MariaDB replication user
+  ## ref: https://github.com/bitnami/bitnami-docker-mariadb#setting-up-a-replication-cluster
+  ##
+  user: replicator
+  ## MariaDB replication user password
+  ## ref: https://github.com/bitnami/bitnami-docker-mariadb#setting-up-a-replication-cluster
+  ##
+  password: ${db.password}
+  ## Password is ignored if existingSecret is specified.
+  ##
+  ## Option to force users to specify a password. That is required for 'helm upgrade' to work properly.
+  ## If it is not force, a random password will be generated.
+  forcePassword: false
+
+## initdb scripts
+## Specify dictionary of scripts to be run at first boot
+## Alternatively, you can put your scripts under the files/docker-entrypoint-initdb.d directory
+##
+# initdbScripts:
+#   my_init_script.sh: |
+#      #!/bin/sh
+#      echo "Do something."
+#
+## ConfigMap with scripts to be run at first boot
+## Note: This will override initdbScripts
+# initdbScriptsConfigMap:
+
+master:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: worker-pool
+            operator: In
+            values:
+            - "${master.affinity.nodeAffinity.values}"
+  antiAffinity: "soft" #soft
+  nodeSelector: {}
+
+  tolerations:
+  - key: "zdb"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+
+  updateStrategy:
+    type: RollingUpdate
+
+  persistence:
+    enabled: true
+    mountPath: /bitnami/mariadb
+    storageClass: "${master.persistence.storageClass}"    
+    annotations: {}
+    accessModes:
+    - ReadWriteOnce
+    size: ${master.persistence.size}Gi
+
+  extraInitContainers: |
+    - name: "init-volume"
+      image: registry.au-syd.bluemix.net/cloudzdb/mariadb:10.3.16
+      imagePullPolicy: IfNotPresent     
+      command: ["sh", "-c", "mkdir -p /bitnami/mariadb/logs && chown -R 1001:1001 /bitnami/mariadb/logs"]
+      volumeMounts:
+      - name: data
+        mountPath: /bitnami/mariadb
+      securityContext:
+        runAsUser: 0
+        allowPrivilegeEscalation: false        
+  config: |-
+    [mysqld]
+    port=3306
+    socket=/opt/bitnami/mariadb/tmp/mysql.sock
+    basedir=/opt/bitnami/mariadb
+    datadir=/opt/bitnami/mariadb/data
+    tmpdir=/opt/bitnami/mariadb/tmp
+    plugin_dir=/opt/bitnami/mariadb/plugin
+    pid-file=/opt/bitnami/mariadb/tmp/mysqld.pid
+
+    local_infile=0
+    wait_timeout=3600
+    interactive_timeout=3600
+    
+    query_cache_size=0
+    query_cache_type=0
+    query_cache_limit=0
+    
+    character-set-client-handshake=FALSE
+    character_set_server=${character.set.server}
+    collation-server=${collation.server}
+    
+    event_scheduler=OFF
+    
+    thread_cache_size=0
+    innodb_io_capacity=200
+    
+    # Common Config
+    back_log=200
+    join_buffer_size=64k
+    max_allowed_packet=16M
+    max_heap_table_size=16M
+    max_connections=300
+    performance_schema
+    read_buffer_size=1M
+    read_rnd_buffer_size=1M
+    skip-external-locking
+    skip-name-resolve=1
+    sort_buffer_size=64k
+    max_length_for_sort_data=1024
+    tmp_table_size=64M
+    
+    binlog_cache_size=1M
+    table_open_cache=4000
+    open_files_limit=8192
+    transaction-isolation=READ-COMMITTED
+    autocommit=0
+    lower_case_table_names=0
+    
+    # Log Config
+    log_error=/bitnami/mariadb/logs/mysql_error.log
+    slow_query_log_file=/bitnami/mariadb/logs/maria_slow.log
+    slow_query_log=1
+    long_query_time=3
+    
+    # Innodb Config
+    innodb_buffer_pool_size=${buffer.pool.size}
+    innodb_file_per_table=1
+    innodb_flush_method=O_DIRECT
+    innodb_lock_wait_timeout=15
+    innodb_log_buffer_size=10M
+    innodb_log_file_size=100M 
+    innodb_log_files_in_group=4
+    innodb_thread_sleep_delay=0
+    innodb_fast_shutdown
+    innodb_thread_concurrency=0
+    innodb_read_io_threads=4
+    innodb_write_io_threads=8
+    innodb_autoinc_lock_mode=1
+    innodb_open_files=8192
+    innodb_buffer_pool_instances=4
+    innodb_lru_scan_depth=512
+    innodb_sort_buffer_size=4M
+    innodb_undo_directory=/bitnami/mariadb/data
+    innodb_undo_logs=128
+    innodb_undo_tablespaces=0
+    
+    # MyISAM Config
+    bulk_insert_buffer_size=16M
+    key_buffer_size=16M
+    myisam_max_sort_file_size=1G
+    myisam_repair_threads=1
+    myisam_sort_buffer_size=16M
+    myisam_recover_options=BACKUP,QUICK
+    
+    # Replication related settings
+    expire_logs_days=1
+    max_binlog_size=200M
+    sync_binlog=1
+    binlog_format=ROW
+    log_bin_trust_function_creators=1
+    
+    # Thread Pool
+    thread_handling=pool-of-threads
+    thread_pool_stall_limit=60
+    thread_pool_idle_timeout=120
+   
+    default-time-zone=+09:00
+
+    [mysql]
+    no-auto-rehash
+    max_allowed_packet=16M
+    default-character-set=${character.set.server}
+    
+    [mysqld_safe]
+    log_error=/bitnami/mariadb/logs/mysql_error.log
+    
+    [mysqldump]
+    quick
+    max_allowed_packet=16M
+    
+    [client]
+    port=3306
+    socket=/opt/bitnami/mariadb/tmp/mysql.sock
+    default-character-set=${character.set.server}
+
+  resources:
+    requests:
+      cpu: ${master.resources.requests.cpu}m
+      memory: ${master.resources.requests.memory}Mi
+    limits:
+      cpu: ${master.resources.limits.cpu}m
+      memory: ${master.resources.limits.memory}Mi
+  livenessProbe:
+    enabled: false
+    ##
+    ## Initializing the database could take some time
+    initialDelaySeconds: 120
+    ##
+    ## Default Kubernetes values
+    periodSeconds: 10
+    timeoutSeconds: 1
+    successThreshold: 1
+    failureThreshold: 3
+  readinessProbe:
+    enabled: false
+    initialDelaySeconds: 30
+    ##
+    ## Default Kubernetes values
+    periodSeconds: 10
+    timeoutSeconds: 1
+    successThreshold: 1
+    failureThreshold: 3
+
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: 1
+    # maxUnavailable: 1
+
+slave:
+  replicas: 1
+
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: worker-pool
+            operator: In
+            values:
+            - "${master.affinity.nodeAffinity.values}"   
+
+  antiAffinity: soft #soft
+
+  nodeSelector: {}
+
+  tolerations:
+  - key: "zdb"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+    
+  updateStrategy:
+    type: RollingUpdate
+
+  persistence:
+    enabled: true
+    storageClass: "${slave.persistence.storageClass}"
+    annotations:
+    accessModes:
+    - ReadWriteOnce
+    size: ${master.persistence.size}Gi
+  extraInitContainers: |
+    - name: "init-volume"
+      image: docker.io/bitnami/mariadb:10.3.16-debian-9-r0
+      imagePullPolicy: IfNotPresent     
+      command: ["sh", "-c", "mkdir -p /bitnami/mariadb/logs && chown -R 1001:1001 /bitnami/mariadb/logs"]
+      volumeMounts:
+      - name: data
+        mountPath: /bitnami/mariadb
+      securityContext:
+        runAsUser: 0
+        allowPrivilegeEscalation: false
+  config: |-
+    [mysqld]
+    port=3306
+    socket=/opt/bitnami/mariadb/tmp/mysql.sock
+    basedir=/opt/bitnami/mariadb
+    datadir=/opt/bitnami/mariadb/data
+    tmpdir=/opt/bitnami/mariadb/tmp
+    plugin_dir=/opt/bitnami/mariadb/plugin
+    pid-file=/opt/bitnami/mariadb/tmp/mysqld.pid
+
+    local_infile=0
+    wait_timeout=3600
+    interactive_timeout=3600
+    
+    query_cache_size=0
+    query_cache_type=0
+    query_cache_limit=0
+    
+    character-set-client-handshake=FALSE
+    character_set_server=${character.set.server}
+    collation-server=${collation.server}
+    
+    event_scheduler=OFF
+    
+    thread_cache_size=0
+    innodb_io_capacity=200
+    
+    # Common Config
+    back_log=200
+    join_buffer_size=64k
+    max_allowed_packet=16M
+    max_heap_table_size=16M
+    max_connections=300
+    performance_schema
+    read_buffer_size=1M
+    read_rnd_buffer_size=1M
+    skip-external-locking
+    skip-name-resolve=1
+    sort_buffer_size=64k
+    max_length_for_sort_data=1024
+    tmp_table_size=64M
+    
+    binlog_cache_size=1M
+    table_open_cache=4000
+    open_files_limit=8192
+    transaction-isolation=READ-COMMITTED
+    autocommit=0
+    lower_case_table_names=0
+    
+    # Log Config
+    log_error=/bitnami/mariadb/logs/mysql_error.log
+    slow_query_log_file=/bitnami/mariadb/logs/maria_slow.log
+    slow_query_log=1
+    long_query_time=3
+    
+    # Innodb Config
+    innodb_buffer_pool_size=${buffer.pool.size}
+    innodb_file_per_table=1
+    innodb_flush_method=O_DIRECT
+    innodb_lock_wait_timeout=15
+    innodb_log_buffer_size=10M
+    innodb_log_file_size=100M 
+    innodb_log_files_in_group=4
+    innodb_thread_sleep_delay=0
+    innodb_fast_shutdown
+    innodb_thread_concurrency=0
+    innodb_read_io_threads=4
+    innodb_write_io_threads=8
+    innodb_autoinc_lock_mode=1
+    innodb_open_files=8192
+    innodb_buffer_pool_instances=4
+    innodb_lru_scan_depth=512
+    innodb_sort_buffer_size=4M
+    innodb_undo_directory=/bitnami/mariadb/data
+    innodb_undo_logs=128
+    innodb_undo_tablespaces=0
+    
+    # MyISAM Config
+    bulk_insert_buffer_size=16M
+    key_buffer_size=16M
+    myisam_max_sort_file_size=1G
+    myisam_repair_threads=1
+    myisam_sort_buffer_size=16M
+    myisam_recover_options=BACKUP,QUICK
+    
+    # Replication related settings
+    expire_logs_days=1
+    max_binlog_size=200M
+    sync_binlog=1
+    binlog_format=ROW
+    log_bin_trust_function_creators=1
+    
+    # Thread Pool
+    thread_handling=pool-of-threads
+    thread_pool_stall_limit=60
+    thread_pool_idle_timeout=120
+   
+    default-time-zone=+09:00
+
+    [mysql]
+    no-auto-rehash
+    max_allowed_packet=16M
+    default-character-set=${character.set.server}
+    
+    [mysqld_safe]
+    log_error=/bitnami/mariadb/logs/mysql_error.log
+    
+    [mysqldump]
+    quick
+    max_allowed_packet=16M
+    
+    [client]
+    port=3306
+    socket=/opt/bitnami/mariadb/tmp/mysql.sock
+    default-character-set=${character.set.server}
+
+  resources:
+    requests:
+      cpu: ${slave.resources.requests.cpu}m
+      memory: ${slave.resources.requests.memory}Mi
+    limits:
+      cpu: ${slave.resources.limits.cpu}m
+      memory: ${slave.resources.limits.memory}Mi
+  livenessProbe:
+    enabled: false
+    ##
+    ## Initializing the database could take some time
+    initialDelaySeconds: 120
+    ##
+    ## Default Kubernetes values
+    periodSeconds: 10
+    timeoutSeconds: 1
+    successThreshold: 1
+    failureThreshold: 3
+  readinessProbe:
+    enabled: false
+    initialDelaySeconds: 45
+    ##
+    ## Default Kubernetes values
+    periodSeconds: 10
+    timeoutSeconds: 1
+    successThreshold: 1
+    failureThreshold: 3
+
+  podDisruptionBudget:
+    enabled: false
+    minAvailable: 1
+    # maxUnavailable: 1
+
+metrics:
+  enabled: true
+  image:
+    registry: registry.au-syd.bluemix.net    
+    repository: cloudzdb/mysqld-exporter
+    tag: v0.10.0
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "64Mi"
+    limits:
+      cpu: "300m"
+      memory: "128Mi"  
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9104"
+
+  # Enable this if you're using https://github.com/coreos/prometheus-operator
+  serviceMonitor:
+    enabled: false
+    selector:
+      prometheus: kube-prometheus

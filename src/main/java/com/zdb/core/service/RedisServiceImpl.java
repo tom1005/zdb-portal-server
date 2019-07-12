@@ -34,6 +34,7 @@ import org.springframework.web.client.RestTemplate;
 
 import com.google.gson.Gson;
 import com.zdb.core.collector.MetaDataCollector;
+import com.zdb.core.domain.CommonConstants;
 import com.zdb.core.domain.Connection;
 import com.zdb.core.domain.ConnectionInfo;
 import com.zdb.core.domain.CredentialConfirm;
@@ -93,10 +94,6 @@ import redis.clients.jedis.exceptions.JedisException;
 @Slf4j
 @Configuration
 public class RedisServiceImpl extends AbstractServiceImpl {
-	@Value("${chart.redis.url}")
-	public void setChartUrl(String url) {
-		chartUrl = url;
-	}
 
 	@Autowired
 	private ZDBReleaseRepository releaseRepository;
@@ -116,14 +113,7 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 		try {
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
 			if (client != null) {
-				final URI uri = URI.create(chartUrl);
-				final URL url = uri.toURL();
-				Chart.Builder chart = null;
-				try (final URLChartLoader chartLoader = new URLChartLoader()) {
-					chart = chartLoader.load(url);
-				}
-
-				String chartName = chart.getMetadata().getName();
+				String chartName = "redis";
 				String deploymentName = serviceName + "-" + chartName;
 
 				log.debug("deploymentName: {}", deploymentName);
@@ -166,12 +156,6 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 		ReleaseManager releaseManager = null;
 		String historyValue = "";
 		try {
-			final URI uri = URI.create(chartUrl);
-			final URL url = uri.toURL();
-			Chart.Builder chart = null;
-			try (final URLChartLoader chartLoader = new URLChartLoader()) {
-				chart = chartLoader.load(url);
-			}
 
 			ReleaseMetaData releaseName = releaseRepository.findByReleaseName(service.getServiceName());
 
@@ -180,7 +164,22 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 				String msg = "서비스가 존재하지 않습니다. [" + service.getServiceName() + "]";
 				return new Result(txId, IResult.ERROR, msg);
 			}
+			
+			String chartUrl = null;
 
+			String appVersion = releaseName.getAppVersion();
+			switch(appVersion) {
+			case "4.0.9":
+				chartUrl = environment.getProperty(CommonConstants.ZDB_REDIS_V4_0);
+				break;
+			}
+			
+			final URI uri = URI.create(chartUrl);
+			final URL url = uri.toURL();
+			Chart.Builder chart = null;
+			try (final URLChartLoader chartLoader = new URLChartLoader()) {
+				chart = chartLoader.load(url);
+			}
 			// 가용 리소스 체크
 			// 현재보다 작으면ok
 			// 현재보다 크면 커진 사이즈 만큼 가용량 체크 

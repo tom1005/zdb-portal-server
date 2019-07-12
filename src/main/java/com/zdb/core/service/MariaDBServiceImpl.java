@@ -5,8 +5,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,15 +22,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.IOUtils;
-import org.microbean.helm.ReleaseManager;
-import org.microbean.helm.Tiller;
-import org.microbean.helm.chart.URLChartLoader;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpEntity;
@@ -46,7 +39,6 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
-import com.google.gson.Gson;
 import com.zdb.core.collector.MetaDataCollector;
 import com.zdb.core.domain.Connection;
 import com.zdb.core.domain.ConnectionInfo;
@@ -100,10 +92,6 @@ import com.zdb.core.util.ZDBLogViewer;
 import com.zdb.mariadb.MariaDBAccount;
 import com.zdb.mariadb.MariaDBShutDownUtil;
 
-import hapi.chart.ChartOuterClass.Chart;
-import hapi.release.ReleaseOuterClass.Release;
-import hapi.services.tiller.Tiller.UpdateReleaseRequest;
-import hapi.services.tiller.Tiller.UpdateReleaseResponse;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.DoneablePod;
 import io.fabric8.kubernetes.api.model.DoneableService;
@@ -140,11 +128,11 @@ import lombok.extern.slf4j.Slf4j;
 @Configuration
 public class MariaDBServiceImpl extends AbstractServiceImpl {
 
-	@Value("${chart.mariadb.url}")
-	public void setChartUrl(String url) {
-		chartUrl = url;
-	}
-	
+//	@Value("${chart.mariadb.url}")
+//	public void setChartUrl(String url) {
+//		chartUrl = url;
+//	}
+
 	@Autowired
 	private ZDBMariaDBAccountRepository zdbMariaDBAccountRepository;
 	
@@ -172,14 +160,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		try {
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
 			if (client != null) {
-				final URI uri = URI.create(chartUrl);
-				final URL url = uri.toURL();
-				Chart.Builder chart = null;
-				try (final URLChartLoader chartLoader = new URLChartLoader()) {
-					chart = chartLoader.load(url);
-				}
-
-				String chartName = chart.getMetadata().getName();
+				String chartName = "mariadb";
 				String deploymentName = serviceName + "-" + chartName;
 
 				log.debug("deploymentName: {}", deploymentName);
@@ -337,135 +318,6 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			log.error(e.getMessage(), e);
 			return Result.RESULT_FAIL(txId, e);
 		} finally {
-		}
-		
-		return result;
-	}
-	
-	public Result updateScale_bak(String txId, final ZDBEntity service) throws Exception {
-		Result result = new Result(txId);
-		
-		ReleaseManager releaseManager = null;
-		String historyValue = "";
-		
-		try {
-			final URI uri = URI.create(chartUrl);
-			final URL url = uri.toURL();
-			Chart.Builder chart = null;
-			try (final URLChartLoader chartLoader = new URLChartLoader()) {
-				chart = chartLoader.load(url);
-			}
-			
-			// 서비스 명 체크
-			ReleaseMetaData releaseMetaData = releaseRepository.findByReleaseName(service.getServiceName());
-			if( releaseMetaData == null) {
-				String msg = "서비스가 존재하지 않습니다.";
-				return new Result(txId, IResult.ERROR, msg);
-			}
-			
-			PodSpec[] podSpec = service.getPodSpec();
-			
-			ResourceSpec masterSpec = podSpec[0].getResourceSpec()[0];
-			String masterCpu = masterSpec.getCpu();
-			String masterMemory = masterSpec.getMemory();
-			
-			ResourceSpec slaveSpec = podSpec[1].getResourceSpec()[0];
-			String slaveCpu = slaveSpec.getCpu();
-			String slaveMemory = slaveSpec.getMemory();
-			
-			// 가용 리소스 체크
-			// 현재보다 작으면ok
-			// 현재보다 크면 커진 사이즈 만큼 가용량 체크 
-			boolean availableResource = isAvailableScaleUp(service);
-			
-			if(!availableResource) {
-				return new Result(txId, IResult.ERROR, "가용 리소스가 부족합니다.");
-			}
-			
-			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
-			
-			final Tiller tiller = new Tiller(client);
-			releaseManager = new ReleaseManager(tiller);
-			
-			final UpdateReleaseRequest.Builder requestBuilder = UpdateReleaseRequest.newBuilder();
-			requestBuilder.setTimeout(300L);
-			requestBuilder.setName(service.getServiceName());
-			requestBuilder.setWait(false);
-			
-			requestBuilder.setReuseValues(true);
-			
-			hapi.chart.ConfigOuterClass.Config.Builder valuesBuilder = requestBuilder.getValuesBuilder();
-			
-			InputStream is = new ClassPathResource("mariadb/update_values.template").getInputStream();
-			
-			String inputJson = IOUtils.toString(is, StandardCharsets.UTF_8.name());
-			
-			// 2018-10-04 추가
-			// 환경설정 변경 이력 
-			historyValue = compareResources(service.getNamespace(), service.getServiceName(), service);
-			
-			inputJson = inputJson.replace("${master.resources.requests.cpu}", masterCpu);// input , *******   필수값  
-			inputJson = inputJson.replace("${master.resources.requests.memory}", masterMemory);// input *******   필수값 
-			inputJson = inputJson.replace("${slave.resources.requests.cpu}", slaveCpu);// input*******   필수값 
-			inputJson = inputJson.replace("${slave.resources.requests.memory}", slaveMemory);// input *******   필수값 
-			inputJson = inputJson.replace("${master.resources.limits.cpu}", masterCpu);// input , *******   필수값  
-			inputJson = inputJson.replace("${master.resources.limits.memory}", masterMemory);// input *******   필수값 
-			inputJson = inputJson.replace("${slave.resources.limits.cpu}", slaveCpu);// input*******   필수값 
-			inputJson = inputJson.replace("${slave.resources.limits.memory}", slaveMemory);// input *******   필수값 
-			
-			valuesBuilder.setRaw(inputJson);
-			
-			log.info(service.getServiceName() + " update start.");
-			
-			final Future<UpdateReleaseResponse> releaseFuture = releaseManager.update(requestBuilder, chart);
-			final Release release = releaseFuture.get().getRelease();
-			
-			if (release != null) {
-				ReleaseMetaData releaseMeta = releaseRepository.findByReleaseName(service.getServiceName());
-				if(releaseMeta == null) {
-					releaseMeta = new ReleaseMetaData();
-				}
-				releaseMeta.setAction("UPDATE");
-				releaseMeta.setApp(release.getChart().getMetadata().getName());
-				releaseMeta.setAppVersion(release.getChart().getMetadata().getAppVersion());
-				releaseMeta.setChartVersion(release.getChart().getMetadata().getVersion());
-				releaseMeta.setChartName(release.getChart().getMetadata().getName());
-				releaseMeta.setCreateTime(new Date(release.getInfo().getFirstDeployed().getSeconds() * 1000L));
-				releaseMeta.setNamespace(service.getNamespace());
-				releaseMeta.setReleaseName(service.getServiceName());
-				releaseMeta.setStatus(release.getInfo().getStatus().getCode().name());
-				releaseMeta.setDescription(release.getInfo().getDescription());
-				releaseMeta.setInputValues(valuesBuilder.getRaw());
-				releaseMeta.setNotes(release.getInfo().getStatus().getNotes());
-				releaseMeta.setManifest(release.getManifest());
-				releaseMeta.setUpdateTime(new Date(System.currentTimeMillis()));
-				
-				log.info(new Gson().toJson(releaseMeta));
-				
-				releaseRepository.save(releaseMeta);
-			}
-			
-			log.info(service.getServiceName() + " update success!");
-			result = new Result(txId, IResult.RUNNING, historyValue).putValue(IResult.UPDATE, release);
-		} catch (FileNotFoundException | KubernetesClientException e) {
-			log.error(e.getMessage(), e);
-			
-			if (e.getMessage().indexOf("Unauthorized") > -1) {
-				return new Result(txId, Result.UNAUTHORIZED, "클러스터에 접근이 불가하거나 인증에 실패 했습니다.", null);
-			} else {
-				return new Result(txId, Result.UNAUTHORIZED, e.getMessage(), e);
-			}
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-			return Result.RESULT_FAIL(txId, e);
-		} finally {
-			if (releaseManager != null) {
-				try {
-					releaseManager.close();
-				} catch (IOException e) {
-					log.error(e.getMessage(), e);
-				}
-			}
 		}
 		
 		return result;
@@ -3383,7 +3235,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				
 				String category = null;
 				for (int i = 0 ; i < lines.length; i++) {
-					String line = lines[i];
+					String line = lines[i].trim();
 					if(line.startsWith("#") || StringUtils.isEmpty(line)) {
 						continue;
 					}
@@ -3394,12 +3246,13 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 					}else if(line.matches(".*=.*")) {
 						String [] kv = line.split("=");
 						mv.setCategory(category);
-						mv.setName(kv[0]);
-						mv.setValue(kv[1]);
+						mv.setName(kv[0].trim());
+						mv.setValue(kv[1].trim());
 					}else {
 						mv.setCategory(category);
-						mv.setName(line);
+						mv.setName(line.trim());
 					}
+					System.out.println(">>>>"+line+"<<<<");
 					list.add(mv);
 				}
 			}

@@ -90,10 +90,7 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 			log.error(e.getMessage(), e);
 		}
 		
-		try{ 
-			
-//			chartUrl = "file:///Users/a06919/redis-3.6.5.tgz";
-			
+		try { 
 			// chart 정보 로딩
 			final URI uri = URI.create(chartUrl);
 			final URL url = uri.toURL();
@@ -103,7 +100,7 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 			}
 
 			DefaultKubernetesClient client = K8SUtil.kubernetesClient();
-			final Tiller tiller = new Tiller(client, "kube-system");
+			Tiller tiller = new Tiller(client);
 			releaseManager = new ReleaseManager(tiller);
 
 			final InstallReleaseRequest.Builder requestBuilder = InstallReleaseRequest.newBuilder();

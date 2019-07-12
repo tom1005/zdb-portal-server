@@ -342,5 +342,4 @@ public interface ZDBRestService {
 	Result getMigrationBackupServiceList(String namespace, String serviceType, String type) throws Exception;
 
 	Result getMigrationBackupList(String namespace, String serviceType, String serviceName) throws Exception;
-
 }

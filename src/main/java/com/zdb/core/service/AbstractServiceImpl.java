@@ -34,6 +34,7 @@ import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -90,8 +91,6 @@ import com.zdb.core.util.PodManager;
 import com.zdb.core.util.ResourceChecker;
 import com.zdb.core.util.ZDBLogViewer;
 import com.zdb.core.vo.PodMetrics;
-import com.zdb.redis.RedisConfiguration;
-import com.zdb.redis.RedisConnection;
 import com.zdb.redis.RedisSecret;
 
 import io.fabric8.kubernetes.api.model.ConfigMap;
@@ -113,7 +112,6 @@ import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.dsl.PodResource;
 import lombok.extern.slf4j.Slf4j;
-import redis.clients.jedis.Jedis;
 import redis.clients.jedis.exceptions.JedisConnectionException;
 
 /**
@@ -160,8 +158,9 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	
 	@Autowired
 	protected BackupEntityRepository backuRepository;
-	
-	protected String chartUrl;
+
+	@Autowired
+	protected Environment environment;
 	
 	static final int WORKER_COUNT = 5;
 	
@@ -292,7 +291,29 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			exchange.setProperty(Exchange.NAMESPACE, service.getNamespace());
 			exchange.setProperty(Exchange.SERVICE_NAME, service.getServiceName());
 			exchange.setProperty(Exchange.SERVICE_TYPE, service.getServiceType());
-			exchange.setProperty(Exchange.CHART_URL, chartUrl);
+			
+			String version = service.getVersion();
+			if("mariadb".equals(service.getServiceType())) {
+				switch(version) {
+				case "10.2.14":
+				case "10.2.21":
+					exchange.setProperty(Exchange.CHART_URL, environment.getProperty(CommonConstants.ZDB_MARIADB_V10_2));
+					break;
+				case "10.3.16":
+					exchange.setProperty(Exchange.CHART_URL, environment.getProperty(CommonConstants.ZDB_MARIADB_V10_3));
+					break;
+				}
+			} else if("redis".equals(service.getServiceType())) {
+				switch(version) {
+				case "4.0.9":
+					exchange.setProperty(Exchange.CHART_URL, environment.getProperty(CommonConstants.ZDB_REDIS_V4_0));
+					break;
+				}
+			} else {
+				log.error("not support!");
+				return new Result(txId, IResult.ERROR, "지원되지 않는 서비스입니다.");
+			}
+			
 			exchange.setProperty(Exchange.META_REPOSITORY, zdbRepository);
 			exchange.setProperty(Exchange.OPERTAION, EventType.Install);
 			
@@ -390,7 +411,9 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		exchange.setProperty(Exchange.NAMESPACE, namespace);
 		exchange.setProperty(Exchange.SERVICE_NAME, serviceName);
 		exchange.setProperty(Exchange.SERVICE_TYPE, serviceType);
-		exchange.setProperty(Exchange.CHART_URL, chartUrl);
+		// 2019-07-08 nspark 
+		// 사용하지 않는 값 주석처리.
+//		exchange.setProperty(Exchange.CHART_URL, chartUrl);
 		exchange.setProperty(Exchange.OPERTAION, EventType.Delete);
 		exchange.setProperty(Exchange.META_REPOSITORY, zdbRepository);
 
