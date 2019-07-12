@@ -1,15 +1,79 @@
 
 =============================================================================================================
-# chart 버전 관리를 위한 환경변수명 변경.
+# chart 버전 관리를 위한 환경변수명 변경. configmap 수정
 =============================================================================================================
 As-Is 
-  chart.mariadb.url: https://s3-api.us-geo.objectstorage.service.networklayer.com/zdb-chart-repo/mariadb-4.2.4.tgz
+  chart.mariadb.url: https://s3-api.us-geo.objectstorage.service.networklayer.com/zdb-chart-repo/mariadb-4.2.5.tgz
   chart.redis.url: https://s3-api.us-geo.objectstorage.service.networklayer.com/zdb-chart-repo/redis-3.6.5.tgz
 To-Be
   zdb.mariadb.v10_2: https://s3-api.us-geo.objectstorage.service.networklayer.com/zdb-chart-repo/mariadb-4.2.4.tgz
-  zdb.mariadb.v10_3: https://s3-api.us-geo.objectstorage.service.networklayer.com/zdb-chart-repo/mariadb-6.5.2.tgz
+  zdb.mariadb.v10_3: https://s3.private.us.cloud-object-storage.appdomain.cloud/zdb-chart-repo/mariadb-6.5.2.tgz
   zdb.redis.v4_0: https://s3-api.us-geo.objectstorage.service.networklayer.com/zdb-chart-repo/redis-3.6.5.tgz
+
+=============================================================================================================
+## configmap 
+$ k -n zdb-system edit cm zdb-portal-server-config
+
+  zdb.mariadb.v10_2: https://s3-api.us-geo.objectstorage.service.networklayer.com/zdb-chart-repo/mariadb-4.2.5.tgz
+  zdb.mariadb.v10_3: https://s3.private.us.cloud-object-storage.appdomain.cloud/zdb-chart-repo/mariadb-6.5.2.tgz
+  zdb.redis.v4_0: https://s3-api.us-geo.objectstorage.service.networklayer.com/zdb-chart-repo/redis-3.6.5.tgz
+  zdb.mariadb.version: 10.3.16, 10.2.21, 10.2.14
+  zdb.redis.version: 4.0.9  
   
+## zdb-server-portal-deployment  
+$ k -n zdb-system edit deploy zdb-portal-server-deployment
+
+## 추가 ##
+---------------------------------------------
+        - name: zdb.mariadb.v10_2
+          valueFrom:
+            configMapKeyRef:
+              key: zdb.mariadb.v10_2
+              name: zdb-portal-server-config  
+        - name: zdb.mariadb.v10_3
+          valueFrom:
+            configMapKeyRef:
+              key: zdb.mariadb.v10_3
+              name: zdb-portal-server-config  
+        - name: zdb.redis.v4_0
+          valueFrom:
+            configMapKeyRef:
+              key: zdb.redis.v4_0
+              name: zdb-portal-server-config  
+---------------------------------------------
+## 삭제 ##
+---------------------------------------------
+        - name: chart.redis.url
+          valueFrom:
+            configMapKeyRef:
+              key: chart.redis.url
+              name: zdb-portal-server-config
+        - name: chart.mariadb.url
+          valueFrom:
+            configMapKeyRef:
+              key: chart.mariadb.url
+              name: zdb-portal-server-config
+---------------------------------------------              
+
+## zdb-ui-portal-deployment              
+$ k -n zdb-system edit deploy zdb-portal-ui-deployment
+        - name: zdb.mariadb.version
+          valueFrom:
+            configMapKeyRef:
+              key: zdb.mariadb.version
+              name: zdb-portal-server-config  
+        - name: zdb.redis.version
+          valueFrom:
+            configMapKeyRef:
+              key: zdb.redis.version
+              name: zdb-portal-server-config  
+              
+
+k -n zdb-system scale deploy zdb-portal-server-deployment --replicas 0
+k -n zdb-system scale deploy zdb-portal-ui-deployment  --replicas 0
+              
+k -n zdb-system scale deploy zdb-portal-server-deployment --replicas 1
+k -n zdb-system scale deploy zdb-portal-ui-deployment  --replicas 1              
 =============================================================================================================
 
 
