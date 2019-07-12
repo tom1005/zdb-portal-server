@@ -25,10 +25,12 @@ public class BackupArchiveFileEntity {
 	
 	private String backupId;
 	private Date createdDatetime = new Date(System.currentTimeMillis());
+	private Date uploadDatetime;
 	private Date deleteDatetime;
 	private String fileName;
 	private long fileSize = 0l;
 	private String deleteYn = "N";
+	private String uploadYn = "N";
 	private String deleteDesc;
 	
 }

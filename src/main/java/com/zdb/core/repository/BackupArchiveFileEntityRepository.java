@@ -36,8 +36,16 @@ public interface BackupArchiveFileEntityRepository extends CrudRepository<Backup
 			+ " ,t.deleteDatetime = :deleteDatetime "
 			+ " ,t.deleteDesc = :deleteDesc "
 			+ "WHERE backupArchiveFileId=:backupArchiveFileId")
-	int modify2FileDelete(@Param("backupFileId") String backupFileId
+	int modify2FileDelete(@Param("backupArchiveFileId") String backupArchiveFileId
 			, @Param("deleteDatetime") Date deleteDatetime
-			, @Param("deleteDesc") String deleteDesc
-			);
+			, @Param("deleteDesc") String deleteDesc);
+	
+	@Modifying(clearAutomatically = true)
+	@Transactional
+	@Query("UPDATE BackupFileEntity t SET "
+			+ " t.uploadYn = 'Y' "
+			+ " ,t.uploadDatetime = :uploadDatetime "
+			+ "WHERE backupArchiveFileId=:backupArchiveFileId")
+	int modify2FileUpload(@Param("backupArchiveFileId") String backupArchiveFileId
+			, @Param("uploadDatetime") Date uploadDatetime);
 }
