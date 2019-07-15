@@ -1035,7 +1035,7 @@ public class ZDBRestController {
 	public ResponseEntity<String> getSlowLog(@PathVariable("namespace") final String namespace, @PathVariable("podname") final String podName) {
 		Result result = null;
 		try {
-			ZDBType dbType = ZDBType.getType("maraidb");
+			ZDBType dbType = ZDBType.getType("mariadb");
 
 			switch (dbType) {
 			case MariaDB:
