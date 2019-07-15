@@ -142,7 +142,7 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			, @Param("reason") String reason
 			, @Param("backupId") String backupId);
 	
-	@Modifying(clearAutomatically = true)
+/*	@Modifying(clearAutomatically = true)
 	@Transactional
 	@Query("UPDATE BackupEntity t SET"
 			+ " t.deleteDatetime=:deleteDatetime"
@@ -155,7 +155,7 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			, @Param("namespace") String namespace
 			, @Param("serviceType") String serviceType
 			, @Param("serviceName") String serviceName
-			, @Param("archiveName") String archiveName);
+			, @Param("archiveName") String archiveName);*/
 	
 	@Modifying(clearAutomatically = true)
 	@Transactional
