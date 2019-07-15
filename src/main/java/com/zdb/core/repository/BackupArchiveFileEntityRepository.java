@@ -31,7 +31,7 @@ public interface BackupArchiveFileEntityRepository extends CrudRepository<Backup
 	
 	@Modifying(clearAutomatically = true)
 	@Transactional
-	@Query("UPDATE BackupFileEntity t SET "
+	@Query("UPDATE BackupArchiveFileEntity t SET "
 			+ " t.deleteYn = 'Y' "
 			+ " ,t.deleteDatetime = :deleteDatetime "
 			+ " ,t.deleteDesc = :deleteDesc "
@@ -42,7 +42,7 @@ public interface BackupArchiveFileEntityRepository extends CrudRepository<Backup
 	
 	@Modifying(clearAutomatically = true)
 	@Transactional
-	@Query("UPDATE BackupFileEntity t SET "
+	@Query("UPDATE BackupArchiveFileEntity t SET "
 			+ " t.uploadYn = 'Y' "
 			+ " ,t.uploadDatetime = :uploadDatetime "
 			+ "WHERE backupArchiveFileId=:backupArchiveFileId")

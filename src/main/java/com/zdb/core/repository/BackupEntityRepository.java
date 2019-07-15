@@ -147,15 +147,9 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 	@Query("UPDATE BackupEntity t SET"
 			+ " t.deleteDatetime=:deleteDatetime"
 			+ ", t.status='DELETED' "
-			+ "WHERE t.namespace=:namespace"
-			+ " and t.serviceType=:serviceType"
-			+ " and t.serviceName=:serviceName"
-			+ " and t.archiveName=:archiveName")
-	int modify2Deleted(@Param("deleteDatetime") Date deleteDatetime
-			, @Param("namespace") String namespace
-			, @Param("serviceType") String serviceType
-			, @Param("serviceName") String serviceName
-			, @Param("archiveName") String archiveName);
+			+ "WHERE t.backupId=:backupId"
+			+ " and t.serviceType=:serviceType")
+	int modify2Deleted(@Param("backupId") String backupId);
 	
 	@Modifying(clearAutomatically = true)
 	@Transactional
