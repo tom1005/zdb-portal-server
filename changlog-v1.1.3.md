@@ -180,6 +180,9 @@ SELECT name, alias, 'mysqld_safe' as category, data_type,description, 0 as dynam
 DELETE FROM `zdb`.`mariadbvariable` WHERE (`category` = 'mysqld') and (`name` = 'innodb_undo_tablespaces');
 DELETE FROM `zdb`.`mariadbvariable` WHERE (`category` = 'client') and (`name` = 'port');
 DELETE FROM `zdb`.`mariadbvariable` WHERE (`category` = 'mysqld') and (`name` = 'port');
+UPDATE `zdb`.`mariadbvariable` SET `enum_value_list` = 'binary' WHERE (`category` = 'mysqld') and (`name` = 'character_set_filesystem');
+UPDATE `zdb`.`mariadbvariable` SET `default_value` = 'autocommit,character_set_client,character_set_connection,character_set_results,time_zone' WHERE (`category` = 'mysqld') and (`name` = 'session_track_system_variables');
+UPDATE `zdb`.`mariadbvariable` SET `numeric_max_value` = '65535' WHERE (`category` = 'mysqld') and (`name` = 'report_port');
 
 commit;
 
