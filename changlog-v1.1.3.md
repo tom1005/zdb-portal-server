@@ -184,3 +184,17 @@ DELETE FROM `zdb`.`mariadbvariable` WHERE (`category` = 'mysqld') and (`name` = 
 commit;
 
 =============================================================================================================
+=============================================================================================================
+# Performace Storage를 위한 변수 추가 및 Chart 변경
+=============================================================================================================
+
+1. com.zdb.core.domain.ZDBEntity
+private String kindOfStorage; 추가
+
+2. com.zdb.core.domain.PersistenceSpec
+private String storageIops; 추가
+
+3. com.zdb.core.service.MariaDBInstaller
+String masterIops 추가
+
+=============================================================================================================
