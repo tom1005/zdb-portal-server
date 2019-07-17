@@ -132,6 +132,7 @@ master:
     accessModes:
     - ReadWriteOnce
     size: ${master.persistence.size}Gi
+    iops: ${master.persistence.iops}
 
   extraInitContainers: |
     - name: "init-volume"
@@ -324,6 +325,8 @@ slave:
     accessModes:
     - ReadWriteOnce
     size: ${master.persistence.size}Gi
+    iops: ${master.persistence.iops}
+    
   extraInitContainers: |
     - name: "init-volume"
       image: docker.io/bitnami/mariadb:10.3.16-debian-9-r0

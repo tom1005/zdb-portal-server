@@ -47,6 +47,7 @@ master:
     accessModes:
     - ReadWriteOnce
     size: ${master.persistence.size}Gi
+    iops: ${master.persistence.iops}
 
   ## Configure MySQL with a custom my.cnf file
   ## ref: https://mysql.com/kb/en/mysql/configuring-mysql-with-mycnf/#example-of-configuration-file
@@ -195,6 +196,7 @@ slave:
     accessModes:
     - ReadWriteOnce
     size: ${master.persistence.size}Gi
+    iops: ${master.persistence.iops}
 
   ## Configure MySQL slave with a custom my.cnf file
   ## ref: https://mysql.com/kb/en/mysql/configuring-mysql-with-mycnf/#example-of-configuration-file
