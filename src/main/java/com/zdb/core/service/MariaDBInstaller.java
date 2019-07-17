@@ -177,6 +177,11 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				String m = persistenceSpec[0].getPodType();
 				String masterStorageClass = persistenceSpec[0].getStorageClass() == null ? storageClass : persistenceSpec[0].getStorageClass();
 				String masterSize = persistenceSpec[0].getSize() == null ? DEFAULT_STORAGE_SIZE : persistenceSpec[0].getSize();
+				String masterIops = "";
+				String kindOfStorage = service.getKindOfStorage() == null ? "" : service.getKindOfStorage();
+				if(kindOfStorage.equalsIgnoreCase("Performance")) {
+					masterIops = persistenceSpec[0].getStorageIops() == null ? "" : persistenceSpec[0].getStorageIops();
+				} 
 				
 				
 				PodSpec[] podSpec = service.getPodSpec();
@@ -198,6 +203,7 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				inputJson = inputJson.replace("${db.name}", mariadbDatabase);// input        *******   필수값 
 				inputJson = inputJson.replace("${master.persistence.storageClass}", masterStorageClass);// configmap
 				inputJson = inputJson.replace("${master.persistence.size}", masterSize);// input , *******   필수값 
+				inputJson = inputJson.replace("${master.persistence.iops}", masterIops);// input , *******   필수값 
 				inputJson = inputJson.replace("${master.resources.requests.cpu}", masterCpu);// input , *******   필수값  
 				inputJson = inputJson.replace("${master.resources.requests.memory}", masterMemory);// input *******   필수값 
 				inputJson = inputJson.replace("${master.resources.limits.cpu}", masterCpu);// input , *******   필수값  

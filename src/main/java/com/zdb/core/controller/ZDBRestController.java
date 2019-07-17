@@ -268,6 +268,9 @@ public class ZDBRestController {
 			case MariaDB:
 				history.append("StorageClass").append(":").append(entity.getPersistenceSpec()[0].getStorageClass()).append("\n");
 				history.append("Storage Size").append(":").append(entity.getPersistenceSpec()[0].getSize()).append("\n");
+				if(entity.getKindOfStorage() == "Performance") {
+					history.append("Storage Iops").append(":").append(entity.getPersistenceSpec()[0].getStorageIops()).append("\n");
+				}
 				history.append("Database").append(":").append(entity.getMariaDBConfig().getMariadbDatabase()).append("\n");
 				history.append("CharacterSet").append(":").append(entity.getCharacterSet()).append("");
 				event.setHistory(history.toString());
@@ -1035,7 +1038,7 @@ public class ZDBRestController {
 	public ResponseEntity<String> getSlowLog(@PathVariable("namespace") final String namespace, @PathVariable("podname") final String podName) {
 		Result result = null;
 		try {
-			ZDBType dbType = ZDBType.getType("maraidb");
+			ZDBType dbType = ZDBType.getType("mariadb");
 
 			switch (dbType) {
 			case MariaDB:

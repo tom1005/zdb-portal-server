@@ -1,15 +1,79 @@
 
 =============================================================================================================
-# chart 버전 관리를 위한 환경변수명 변경.
+# chart 버전 관리를 위한 환경변수명 변경. configmap 수정
 =============================================================================================================
 As-Is 
-  chart.mariadb.url: https://s3-api.us-geo.objectstorage.service.networklayer.com/zdb-chart-repo/mariadb-4.2.4.tgz
+  chart.mariadb.url: https://s3-api.us-geo.objectstorage.service.networklayer.com/zdb-chart-repo/mariadb-4.2.5.tgz
   chart.redis.url: https://s3-api.us-geo.objectstorage.service.networklayer.com/zdb-chart-repo/redis-3.6.5.tgz
 To-Be
   zdb.mariadb.v10_2: https://s3-api.us-geo.objectstorage.service.networklayer.com/zdb-chart-repo/mariadb-4.2.4.tgz
-  zdb.mariadb.v10_3: https://s3-api.us-geo.objectstorage.service.networklayer.com/zdb-chart-repo/mariadb-6.5.2.tgz
+  zdb.mariadb.v10_3: https://s3.private.us.cloud-object-storage.appdomain.cloud/zdb-chart-repo/mariadb-6.5.2.tgz
   zdb.redis.v4_0: https://s3-api.us-geo.objectstorage.service.networklayer.com/zdb-chart-repo/redis-3.6.5.tgz
+
+=============================================================================================================
+## configmap 
+$ k -n zdb-system edit cm zdb-portal-server-config
+
+  zdb.mariadb.v10_2: https://s3-api.us-geo.objectstorage.service.networklayer.com/zdb-chart-repo/mariadb-4.2.5.tgz
+  zdb.mariadb.v10_3: https://s3.private.us.cloud-object-storage.appdomain.cloud/zdb-chart-repo/mariadb-6.5.2.tgz
+  zdb.redis.v4_0: https://s3-api.us-geo.objectstorage.service.networklayer.com/zdb-chart-repo/redis-3.6.5.tgz
+  zdb.mariadb.version: 10.3.16, 10.2.21, 10.2.14
+  zdb.redis.version: 4.0.9  
   
+## zdb-server-portal-deployment  
+$ k -n zdb-system edit deploy zdb-portal-server-deployment
+
+## 추가 ##
+---------------------------------------------
+        - name: zdb.mariadb.v10_2
+          valueFrom:
+            configMapKeyRef:
+              key: zdb.mariadb.v10_2
+              name: zdb-portal-server-config  
+        - name: zdb.mariadb.v10_3
+          valueFrom:
+            configMapKeyRef:
+              key: zdb.mariadb.v10_3
+              name: zdb-portal-server-config  
+        - name: zdb.redis.v4_0
+          valueFrom:
+            configMapKeyRef:
+              key: zdb.redis.v4_0
+              name: zdb-portal-server-config  
+---------------------------------------------
+## 삭제 ##
+---------------------------------------------
+        - name: chart.redis.url
+          valueFrom:
+            configMapKeyRef:
+              key: chart.redis.url
+              name: zdb-portal-server-config
+        - name: chart.mariadb.url
+          valueFrom:
+            configMapKeyRef:
+              key: chart.mariadb.url
+              name: zdb-portal-server-config
+---------------------------------------------              
+
+## zdb-ui-portal-deployment              
+$ k -n zdb-system edit deploy zdb-portal-ui-deployment
+        - name: zdb.mariadb.version
+          valueFrom:
+            configMapKeyRef:
+              key: zdb.mariadb.version
+              name: zdb-portal-server-config  
+        - name: zdb.redis.version
+          valueFrom:
+            configMapKeyRef:
+              key: zdb.redis.version
+              name: zdb-portal-server-config  
+              
+
+k -n zdb-system scale deploy zdb-portal-server-deployment --replicas 0
+k -n zdb-system scale deploy zdb-portal-ui-deployment  --replicas 0
+              
+k -n zdb-system scale deploy zdb-portal-server-deployment --replicas 1
+k -n zdb-system scale deploy zdb-portal-ui-deployment  --replicas 1              
 =============================================================================================================
 
 
@@ -112,6 +176,25 @@ SELECT name, alias, 'mysqldump' as category, data_type,description, dynamic,labe
 insert into  zdb.mariadbvariable (name, alias, category, data_type,description,dynamic,label,value,value_range,default_value,enum_value_list,numeric_block_size,numeric_max_value,numeric_min_value,variable_comment,variable_type, editable) 
 SELECT name, alias, 'mysqld_safe' as category, data_type,description, 0 as dynamic,label,'/bitnami/mariadb/logs/mysql_error.log' as value,value_range, '/bitnami/mariadb/logs/mysql_error.log' as default_value,enum_value_list,numeric_block_size,numeric_max_value,numeric_min_value,variable_comment,variable_type, 1 as editable FROM zdb.mariadbvariable a where category='mysqld' and name='log_error' ;
 
+
+DELETE FROM `zdb`.`mariadbvariable` WHERE (`category` = 'mysqld') and (`name` = 'innodb_undo_tablespaces');
+DELETE FROM `zdb`.`mariadbvariable` WHERE (`category` = 'client') and (`name` = 'port');
+DELETE FROM `zdb`.`mariadbvariable` WHERE (`category` = 'mysqld') and (`name` = 'port');
+
 commit;
+
+=============================================================================================================
+=============================================================================================================
+# Performace Storage를 위한 변수 추가 및 Chart 변경
+=============================================================================================================
+
+1. com.zdb.core.domain.ZDBEntity
+private String kindOfStorage; 추가
+
+2. com.zdb.core.domain.PersistenceSpec
+private String storageIops; 추가
+
+3. com.zdb.core.service.MariaDBInstaller
+String masterIops 추가
 
 =============================================================================================================

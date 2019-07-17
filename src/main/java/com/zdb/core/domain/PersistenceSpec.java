@@ -28,4 +28,6 @@ public class PersistenceSpec {
 	private String billingType;
 	
 	private String annotations;
+	
+	private String storageIops;
 }
