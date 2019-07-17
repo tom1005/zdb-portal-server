@@ -37,5 +37,7 @@ public class ScheduleEntity {
 	private String currentBackupId;
 	private String scheduleType = "DAILY";
 	private int scheduleDay = 0;
+	private String notiYn = "N";
+	private String throttleYn = "N";
 	
 }

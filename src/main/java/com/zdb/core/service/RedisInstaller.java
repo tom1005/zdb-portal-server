@@ -454,18 +454,19 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 					lacth.await(600, TimeUnit.SECONDS);
 					
 					if (lacth.getCount() == 0) {
+						ScheduleEntity schedule = new ScheduleEntity();
+						schedule.setNamespace(service.getNamespace());
+						schedule.setServiceType(service.getServiceType());
+						schedule.setServiceName(service.getServiceName());
+						schedule.setStartTime("01:00");
+						schedule.setStorePeriod(2);
+						schedule.setUseYn("N");
+						schedule.setDeleteYn("N");
+						schedule.setNotiYn("N");
 						if (service.isBackupEnabled()) {
-							// 스케줄 등록...
-							ScheduleEntity schedule = new ScheduleEntity();
-							schedule.setNamespace(service.getNamespace());
-							schedule.setServiceType(service.getServiceType());
-							schedule.setServiceName(service.getServiceName());
-							schedule.setStartTime("01:00");
-							schedule.setStorePeriod(2);
 							schedule.setUseYn("Y");
-							schedule.setDeleteYn("N");
-							backupProvider.saveSchedule(exchange.getProperty(Exchange.TXID, String.class), schedule);
 						}
+						backupProvider.saveSchedule(exchange.getProperty(Exchange.TXID, String.class), schedule);
 						event.setStatus(IResult.OK);
 						event.setResultMessage("서비스 생성 완료");
 						event.setEndTime(new Date(System.currentTimeMillis()));
