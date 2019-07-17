@@ -39,8 +39,9 @@ public class BackupEntity {
 	private String filePath;
 	private String fileName;
 	private long fileSize;
-	private String archiveName;
+//	private String archiveName;
 	private long archiveFileSize;
+	private String archiveFileInfo;
 	private String checkSum;
 	private String endpointUrl;
 	private String bucketName;

@@ -591,6 +591,39 @@ public class K8SService {
 		return serviceList;
 	
 	}
+	
+	
+	public List<String> getMigrationBackupServiceList(String namespace, String serviceType) throws Exception {
+		// @getService
+		ArrayList <String> serviceList = new ArrayList<>();
+
+		List<String> apps = new ArrayList<>();
+		ZDBType[] values = ZDBType.values();
+		for (ZDBType type : values) {
+			apps.add(type.getName().toLowerCase());
+		}
+
+		Iterable<ReleaseMetaData> releaseList = null;
+		
+		if (namespace == null || namespace.isEmpty()) {
+			releaseList = releaseRepository.findAll();
+		} else {
+			releaseList = releaseRepository.findByNamespace(namespace);
+		}
+
+		for (ReleaseMetaData release : releaseList) {
+			if("DELETED".equals(release.getStatus()) || "DELETING".equals(release.getStatus())) {
+				continue;
+			}
+			String svcType = release.getApp();
+			if (apps.contains(serviceType) && serviceType.equals(svcType)) {
+				serviceList.add(release.getReleaseName());
+			}
+		}
+
+		return serviceList;
+	
+	}
 
 	/**
 	 * 

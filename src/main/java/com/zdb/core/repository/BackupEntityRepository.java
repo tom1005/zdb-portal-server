@@ -54,6 +54,15 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			, @Param("serviceName") String serviceName
 			, @Param("expiredDate") String expiredDate);
 
+	@Query("SELECT t FROM BackupEntity t "
+			+ " WHERE namespace=:namespace"
+			+ " and serviceType=:serviceType"
+			+ " and serviceName=:serviceName"
+			+ " and status='OK'" )
+	List<BackupEntity> findValidBackup(@Param("namespace") String namespace
+			, @Param("serviceType") String serviceType
+			, @Param("serviceName") String serviceName);
+	
 	@Modifying(clearAutomatically = true)
 	@Transactional
 	@Query("UPDATE BackupEntity t SET"
@@ -84,7 +93,6 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			+ ", t.filePath=:filePath"
 			+ ", t.fileName=:fileName"
 			+ ", t.fileSize=:fileSize"
-			+ ", t.archiveName=:archiveName"
 			+ ", t.archiveFileSize=:archiveFileSize"
 			+ ", t.checkSum=:checkSum"
 			+ ", t.status=:status "
@@ -98,7 +106,6 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			, @Param("fileName") String fileName
 			, @Param("fileSize") long fileSize
 			, @Param("archivedDatetime") Date archivedDatetime
-			, @Param("archiveName") String archiveName
 			, @Param("archiveFileSize") long archiveFileSize
 			, @Param("checkSum") String checkSum
 			, @Param("status") String status
@@ -135,7 +142,7 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			, @Param("reason") String reason
 			, @Param("backupId") String backupId);
 	
-	@Modifying(clearAutomatically = true)
+/*	@Modifying(clearAutomatically = true)
 	@Transactional
 	@Query("UPDATE BackupEntity t SET"
 			+ " t.deleteDatetime=:deleteDatetime"
@@ -148,7 +155,7 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			, @Param("namespace") String namespace
 			, @Param("serviceType") String serviceType
 			, @Param("serviceName") String serviceName
-			, @Param("archiveName") String archiveName);
+			, @Param("archiveName") String archiveName);*/
 	
 	@Modifying(clearAutomatically = true)
 	@Transactional

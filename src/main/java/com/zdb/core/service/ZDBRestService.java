@@ -5,7 +5,6 @@ import java.util.Map;
 
 import com.zdb.core.domain.AlertingRuleEntity;
 import com.zdb.core.domain.Result;
-import com.zdb.core.domain.ServiceOverview;
 import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.UserInfo;
 import com.zdb.core.domain.ZDBConfig;
@@ -340,4 +339,7 @@ public interface ZDBRestService {
 	
 	Result getCredentialConfirm(String namespace, String serviceType, String serviceName ,String credetial) throws Exception;
 
+	Result getMigrationBackupServiceList(String namespace, String serviceType, String type) throws Exception;
+
+	Result getMigrationBackupList(String namespace, String serviceType, String serviceName) throws Exception;
 }

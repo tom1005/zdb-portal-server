@@ -47,6 +47,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.zdb.core.domain.AlertingRuleEntity;
+import com.zdb.core.domain.BackupEntity;
 import com.zdb.core.domain.CommonConstants;
 import com.zdb.core.domain.DefaultExchange;
 import com.zdb.core.domain.EventMetaData;
@@ -72,6 +73,7 @@ import com.zdb.core.domain.ZDBPersistenceEntity;
 import com.zdb.core.domain.ZDBStatus;
 import com.zdb.core.domain.ZDBType;
 import com.zdb.core.exception.ResourceException;
+import com.zdb.core.repository.BackupEntityRepository;
 import com.zdb.core.repository.DiskUsageRepository;
 import com.zdb.core.repository.EventRepository;
 import com.zdb.core.repository.MetadataRepository;
@@ -155,9 +157,10 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	@Autowired PersistentVolumeClaimRepository persistentVolumeClaimRepository;
 	
 	@Autowired
+	protected BackupEntityRepository backuRepository;
+
+	@Autowired
 	protected Environment environment;
-	
-//	protected String chartUrl;
 	
 	static final int WORKER_COUNT = 5;
 	
@@ -908,6 +911,67 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 
 		return new Result("", Result.OK).putValue(IResult.SERVICEOVERVIEWS, "");
 	}
+	
+	@Override
+	public Result getMigrationBackupServiceList(String namespace, String serviceType, String type) throws Exception {
+		// @getService
+		try {
+			List<String> serviceList = k8sService.getMigrationBackupServiceList(namespace, serviceType);
+			
+			if (serviceList != null) {
+				if(type.equals("source")) {
+					List<String> resultList = new ArrayList<String>();
+					serviceList.forEach(service->{
+						List<BackupEntity> backupList  = backuRepository.findValidBackup(namespace, serviceType, service);
+						if(backupList != null && backupList.size() != 0) {
+							resultList.add(service);
+						}
+					});
+					return new Result("", Result.OK).putValue(IResult.SERVICELIST, resultList);
+				}else {
+					return new Result("", Result.OK).putValue(IResult.SERVICELIST, serviceList);
+				}
+				
+			}
+		} catch (KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result("", Result.UNAUTHORIZED, "클러스터에 접근이 불가하거나 인증에 실패 했습니다.", null);
+			} else {
+				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+
+		return new Result("", Result.OK).putValue(IResult.SERVICELIST, "");
+	}
+	
+	@Override
+	public Result getMigrationBackupList(String namespace, String serviceType, String serviceName) throws Exception {
+		// @getService
+		try {
+			List<BackupEntity> backupList  = backuRepository.findValidBackup(namespace, serviceType, serviceName);
+			if(backupList != null) {
+				return new Result("", Result.OK).putValue(IResult.BACKUP_LIST, backupList);
+			}
+		} catch (KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result("", Result.UNAUTHORIZED, "클러스터에 접근이 불가하거나 인증에 실패 했습니다.", null);
+			} else {
+				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+
+		return new Result("", Result.OK).putValue(IResult.BACKUP_LIST, "");
+	}
+	
+	
 
 	@Override
 	public Result getService(String namespace, String serviceType, String serviceName) throws Exception {

@@ -28,6 +28,8 @@ public interface IResult {
 	
 	public static final String SERVICEOVERVIEWS = "serviceoverviews";
 	
+	public static final String SERVICELIST = "serviceLists";
+	
 	public static final String NAMESPACE = "namespace";
 	
 	public static final String NAMESPACES = "namespaces";

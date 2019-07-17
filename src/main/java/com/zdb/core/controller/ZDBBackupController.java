@@ -500,7 +500,78 @@ public class ZDBBackupController {
 		} 
 		return new ResponseEntity<String>(result.toJson(), result.status());
 	}	
+	
+	@RequestMapping(value = "/migrationBackup", method = RequestMethod.GET)
+	public ResponseEntity<String> getMigrationBackup() {
+		if (log.isInfoEnabled()) {
+			log.info(">>>> getMigrationBackup Interface :GET /migrationBackup");
+		}
 
+		try {
+			UserInfo userInfo = getUserInfo();
+
+			if (userInfo == null || userInfo.getUserId() == null) {
+				new Result(null, IResult.ERROR, "네임스페이스 조회 오류");
+				return new ResponseEntity<String>("네임스페이스 조회 오류.[사용자 정보를 알 수 없습니다.]", HttpStatus.EXPECTATION_FAILED);
+			}
+
+			Result result = mariadbService.getUserNamespaces(userInfo.getUserId());
+			return new ResponseEntity<String>(result.toJson(), result.status());
+
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+
+			Result result = new Result(null, IResult.ERROR, "네임스페이스 조회 오류!").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
+	@RequestMapping(value = "/migrationBackupServiceList", method = RequestMethod.GET)
+	public ResponseEntity<String> getMigrationBackupServiceList(
+			@RequestParam("namespace") final String namespace
+			, @RequestParam("serviceType") final String serviceType
+			, @RequestParam("type") final String type) {
+		if (log.isInfoEnabled()) {
+			log.info(">>>> getMigrationBackupServiceList Interface :GET /migrationBackupServiceList {" 
+					+"namespace:"+namespace
+					+"serviceType:"+serviceType
+					+"type:"+type +"}");
+		}
+
+		try {
+			Result result = mariadbService.getMigrationBackupServiceList(namespace, serviceType, type);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+
+			Result result = new Result(null, IResult.ERROR, "서비스 LB 조회 오류!").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
+	@RequestMapping(value = "/migrationBackupList", method = RequestMethod.GET)
+	public ResponseEntity<String> getMigrationBackupList(
+			@RequestParam("namespace") final String namespace
+			, @RequestParam("serviceType") final String serviceType
+			, @RequestParam("serviceName") final String serviceName) {
+		if (log.isInfoEnabled()) {
+			log.info(">>>> getMigrationBackupList Interface :GET /migrationBackupList {" 
+					+"namespace:"+namespace
+					+"serviceType:"+serviceType
+					+"serviceName:"+serviceName +"}");
+		}
+
+		try {
+			Result result = mariadbService.getMigrationBackupList(namespace, serviceType, serviceName);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+
+			Result result = new Result(null, IResult.ERROR, "서비스 LB 조회 오류!").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
 	private void verifyService(String namespace, String serviceType, String serviceName) throws BackupException {
 		StringBuilder sb = new StringBuilder();
 		try {
