@@ -23,7 +23,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 import com.zdb.core.domain.AlertingRuleEntity;
 import com.zdb.core.domain.CredentialConfirm;
@@ -53,9 +52,7 @@ import com.zdb.core.service.MariaDBServiceImpl;
 import com.zdb.core.service.RedisServiceImpl;
 import com.zdb.core.service.ZDBRestService;
 import com.zdb.core.util.DateUtil;
-import com.zdb.core.util.K8SUtil;
 
-import io.fabric8.kubernetes.api.model.Pod;
 import lombok.extern.slf4j.Slf4j;
 
 /**
