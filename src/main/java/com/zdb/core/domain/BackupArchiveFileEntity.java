@@ -32,5 +32,5 @@ public class BackupArchiveFileEntity {
 	private String deleteYn = "N";
 	private String uploadYn = "N";
 	private String deleteDesc;
-	
+	private String uploadErrorMsg;
 }

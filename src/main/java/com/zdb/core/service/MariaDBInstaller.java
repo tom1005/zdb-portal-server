@@ -177,11 +177,6 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				String m = persistenceSpec[0].getPodType();
 				String masterStorageClass = persistenceSpec[0].getStorageClass() == null ? storageClass : persistenceSpec[0].getStorageClass();
 				String masterSize = persistenceSpec[0].getSize() == null ? DEFAULT_STORAGE_SIZE : persistenceSpec[0].getSize();
-				String masterIops = "";
-				String kindOfStorage = service.getKindOfStorage() == null ? "" : service.getKindOfStorage();
-				if(kindOfStorage.equalsIgnoreCase("Performance")) {
-					masterIops = persistenceSpec[0].getStorageIops() == null ? "" : persistenceSpec[0].getStorageIops();
-				} 
 				
 				
 				PodSpec[] podSpec = service.getPodSpec();
@@ -203,7 +198,6 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 				inputJson = inputJson.replace("${db.name}", mariadbDatabase);// input        *******   필수값 
 				inputJson = inputJson.replace("${master.persistence.storageClass}", masterStorageClass);// configmap
 				inputJson = inputJson.replace("${master.persistence.size}", masterSize);// input , *******   필수값 
-				inputJson = inputJson.replace("${master.persistence.iops}", masterIops);// input , *******   필수값 
 				inputJson = inputJson.replace("${master.resources.requests.cpu}", masterCpu);// input , *******   필수값  
 				inputJson = inputJson.replace("${master.resources.requests.memory}", masterMemory);// input *******   필수값 
 				inputJson = inputJson.replace("${master.resources.limits.cpu}", masterCpu);// input , *******   필수값  
@@ -437,27 +431,20 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 					} catch (Exception e) {
 						log.error("권한 적용 오류 ["+service.getNamespace() +" > "+ service.getServiceName() +"]", e.getMessage()); 
 					}
+					ScheduleEntity schedule = new ScheduleEntity();
+					schedule.setNamespace(service.getNamespace());
+					schedule.setServiceType(service.getServiceType());
+					schedule.setServiceName(service.getServiceName());
+					schedule.setUseYn("N");
+					schedule.setDeleteYn("N");
+					schedule.setNotiYn("N");
 					
-					if(service.isBackupEnabled()) {
-						ScheduleEntity schedule = new ScheduleEntity();
-						schedule.setNamespace(service.getNamespace());
-						schedule.setServiceType(service.getServiceType());
-						schedule.setServiceName(service.getServiceName());
-						
-						List<ZDBConfig> zdbConfigList = zdbConfigRepository.findByNamespace(service.getNamespace());
+					List<ZDBConfig> zdbConfigList = zdbConfigRepository.findByNamespace(service.getNamespace());
+					if(zdbConfigList.isEmpty()) {
+						zdbConfigList = zdbConfigRepository.findByNamespace("global");
 						if(zdbConfigList.isEmpty()) {
-							zdbConfigList = zdbConfigRepository.findByNamespace("global");
-							if(zdbConfigList.isEmpty()) {
-								schedule.setStartTime(ZDBConfigService.backupTimeValue);
-								schedule.setStorePeriod(Integer.parseInt(ZDBConfigService.backupDuratioValue));
-							} else {
-								zdbConfigList.forEach(zdbConfig -> {
-									if (zdbConfig.getConfig().equals(ZDBConfigService.backupTimeConfig))
-										schedule.setStartTime(zdbConfig.getValue());
-									else if (zdbConfig.getConfig().equals(ZDBConfigService.backupDurationConfig))
-										schedule.setStorePeriod(Integer.parseInt(zdbConfig.getValue()));
-								});
-							}
+							schedule.setStartTime(ZDBConfigService.backupTimeValue);
+							schedule.setStorePeriod(Integer.parseInt(ZDBConfigService.backupDuratioValue));
 						} else {
 							zdbConfigList.forEach(zdbConfig -> {
 								if (zdbConfig.getConfig().equals(ZDBConfigService.backupTimeConfig))
@@ -466,11 +453,18 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 									schedule.setStorePeriod(Integer.parseInt(zdbConfig.getValue()));
 							});
 						}
-						
-						schedule.setUseYn("Y");
-						schedule.setDeleteYn("N");
-						backupProvider.saveSchedule(exchange.getProperty(Exchange.TXID, String.class), schedule);
+					} else {
+						zdbConfigList.forEach(zdbConfig -> {
+							if (zdbConfig.getConfig().equals(ZDBConfigService.backupTimeConfig))
+								schedule.setStartTime(zdbConfig.getValue());
+							else if (zdbConfig.getConfig().equals(ZDBConfigService.backupDurationConfig))
+								schedule.setStorePeriod(Integer.parseInt(zdbConfig.getValue()));
+						});
 					}
+					if(service.isBackupEnabled()) {
+						schedule.setUseYn("Y");
+					}
+					backupProvider.saveSchedule(exchange.getProperty(Exchange.TXID, String.class), schedule);
 					
 					event.setStatus(IResult.OK);
 					event.setResultMessage("서비스 생성 완료 ["+service.getNamespace() +" > "+ service.getServiceName() +"]");

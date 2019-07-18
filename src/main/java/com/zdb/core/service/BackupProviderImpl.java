@@ -21,7 +21,6 @@ import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ScheduleEntity;
 import com.zdb.core.domain.ScheduleInfoEntity;
-import com.zdb.core.domain.Tag;
 import com.zdb.core.repository.BackupDiskEntityRepository;
 import com.zdb.core.repository.BackupEntityRepository;
 import com.zdb.core.repository.ScheduleEntityRepository;
@@ -73,8 +72,9 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 					scheduleType = "WEEKLY";
 				}
 				
-				scheduleRepository.modify(entity.getStartTime(), entity.getStorePeriod(), entity.getUseYn(), 
-						entity.getIncrementYn(), entity.getIncrementPeriod(), scheduleType, entity.getScheduleDay(),oldSche.getScheduleId()
+				scheduleRepository.modify(entity.getStartTime(), entity.getStorePeriod()
+						, entity.getUseYn(), entity.getIncrementYn(), entity.getIncrementPeriod()
+						, scheduleType, entity.getScheduleDay(), entity.getNotiYn(), entity.getThrottleYn(), oldSche.getScheduleId()
 						);
 				entity.setScheduleId(oldSche.getScheduleId());
 			} else {

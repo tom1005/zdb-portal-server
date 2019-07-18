@@ -142,20 +142,14 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			, @Param("reason") String reason
 			, @Param("backupId") String backupId);
 	
-/*	@Modifying(clearAutomatically = true)
+	@Modifying(clearAutomatically = true)
 	@Transactional
 	@Query("UPDATE BackupEntity t SET"
 			+ " t.deleteDatetime=:deleteDatetime"
 			+ ", t.status='DELETED' "
-			+ "WHERE t.namespace=:namespace"
-			+ " and t.serviceType=:serviceType"
-			+ " and t.serviceName=:serviceName"
-			+ " and t.archiveName=:archiveName")
-	int modify2Deleted(@Param("deleteDatetime") Date deleteDatetime
-			, @Param("namespace") String namespace
-			, @Param("serviceType") String serviceType
-			, @Param("serviceName") String serviceName
-			, @Param("archiveName") String archiveName);*/
+			+ "WHERE t.backupId=:backupId"
+			+ " and t.serviceType=:serviceType")
+	int modify2Deleted(@Param("backupId") String backupId);
 	
 	@Modifying(clearAutomatically = true)
 	@Transactional
@@ -218,10 +212,20 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
             + " and ondisk='Y' "
             + " and status = 'OK' "
             + " and type = :type", nativeQuery = true)
-	List<BackupEntity> findOndiskBackupList(@Param("namespace") String namespace
+	List<BackupEntity> findOndiskBackupListByType(@Param("namespace") String namespace
 			, @Param("serviceType") String serviceType
 			, @Param("serviceName") String serviceName
 			, @Param("type") String type);
+	
+	@Query(value =  "SELECT * from zdb.backup_entity "
+            + " WHERE namespace=:namespace "
+            + " and service_type=:serviceType "
+            + " and service_name=:serviceName "
+            + " and ondisk='Y' "
+            + " and status = 'OK'", nativeQuery = true)
+	List<BackupEntity> findOndiskBackupAllList(@Param("namespace") String namespace
+			, @Param("serviceType") String serviceType
+			, @Param("serviceName") String serviceName);
 	
 	@Query(value =  "SELECT * from zdb.backup_entity "
             + " WHERE namespace=:namespace "
@@ -235,6 +239,7 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			, @Param("serviceType") String serviceType
 			, @Param("serviceName") String serviceName
 			, @Param("targetDate") String targetDate);
+	
 	
 	
 	@Modifying(clearAutomatically = true)
