@@ -45,16 +45,16 @@ public interface ScheduleEntityRepository extends CrudRepository<ScheduleEntity,
         @Transactional
         @Query("UPDATE ScheduleEntity t SET"
                         + " t.startTime=:startTime"
-                        + ", t.storePeriod=:storePeriod"
-                        + ", t.deleteYn='N'"
-                        + ", t.useYn=:useYn "
-                        + ", t.incrementYn=:incrementYn "
-                        + ", t.incrementPeriod=:incrementPeriod "
-                        + ", t.scheduleType=:scheduleType "
-                        + ", t.scheduleDay=:scheduleDay "
-                        + ", t.notiYn=:notiYn"
-                        + ", t.throttleYn=:throttleYn"
-                        + "WHERE t.scheduleId=:scheduleId")
+                        + " , t.storePeriod=:storePeriod"
+                        + " , t.deleteYn='N'"
+                        + " , t.useYn=:useYn "
+                        + " , t.incrementYn=:incrementYn "
+                        + " , t.incrementPeriod=:incrementPeriod "
+                        + " , t.scheduleType=:scheduleType "
+                        + " , t.scheduleDay=:scheduleDay "
+                        + " , t.notiYn=:notiYn "
+                        + " , t.throttleYn=:throttleYn "
+                        + " WHERE t.scheduleId=:scheduleId")
         int modify(@Param("startTime") String startTime
                         , @Param("storePeriod") int storePeriod
                         , @Param("useYn") String useYn

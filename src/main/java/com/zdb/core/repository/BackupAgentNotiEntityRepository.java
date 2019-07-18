@@ -43,7 +43,7 @@ public interface BackupAgentNotiEntityRepository extends CrudRepository<BackupAg
 			+ " t.notiFlag='Y' "
 			+ " , t.notiDatetime=:notiDatetime "
 			+ " WHERE t.backupAgentNotiId=:backupAgentNotiId")
-	int modify2Accepted(@Param("backupNotiId") String backupNotiId
-			,@Param("backupAgentNotiId") Date backupAgentNotiId);
+	int modify2Accepted(@Param("backupAgentNotiId") String backupAgentNotiId
+			,@Param("notiDatetime") Date notiDatetime);
 	
 }
