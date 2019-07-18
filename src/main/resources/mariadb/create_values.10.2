@@ -47,13 +47,13 @@ master:
     accessModes:
     - ReadWriteOnce
     size: ${master.persistence.size}Gi
+    iops: ${master.persistence.iops}
 
   ## Configure MySQL with a custom my.cnf file
   ## ref: https://mysql.com/kb/en/mysql/configuring-mysql-with-mycnf/#example-of-configuration-file
   ##
   config: |-
     [mysqld]
-    port=3306
     socket=/opt/bitnami/mariadb/tmp/mysql.sock
     basedir=/opt/bitnami/mariadb
     datadir=/opt/bitnami/mariadb/data
@@ -66,7 +66,7 @@ master:
     interactive_timeout=3600
     
     query_cache_size=0
-    query_cache_type=0
+    query_cache_type=OFF
     query_cache_limit=0
     
     character-set-client-handshake=FALSE
@@ -84,10 +84,10 @@ master:
     max_allowed_packet=16M
     max_heap_table_size=16M
     max_connections=300
-    performance_schema
+    performance_schema=ON
     read_buffer_size=1M
     read_rnd_buffer_size=1M
-    skip-external-locking
+    skip-external-locking=ON
     skip-name-resolve=1
     sort_buffer_size=64k
     max_length_for_sort_data=1024
@@ -97,7 +97,7 @@ master:
     table_open_cache=4000
     open_files_limit=8192
     transaction-isolation=READ-COMMITTED
-    autocommit=0
+    autocommit=ON
     lower_case_table_names=0
     
     # Log Config
@@ -163,7 +163,6 @@ master:
     max_allowed_packet=16M
     
     [client]
-    port=3306
     socket=/opt/bitnami/mariadb/tmp/mysql.sock
     default-character-set=${character.set.server}
 
@@ -197,13 +196,13 @@ slave:
     accessModes:
     - ReadWriteOnce
     size: ${master.persistence.size}Gi
+    iops: ${master.persistence.iops}
 
   ## Configure MySQL slave with a custom my.cnf file
   ## ref: https://mysql.com/kb/en/mysql/configuring-mysql-with-mycnf/#example-of-configuration-file
   ##
   config: |-
     [mysqld]
-    port=3306
     socket=/opt/bitnami/mariadb/tmp/mysql.sock
     basedir=/opt/bitnami/mariadb
     datadir=/opt/bitnami/mariadb/data
@@ -216,7 +215,7 @@ slave:
     interactive_timeout=3600
     
     query_cache_size=0
-    query_cache_type=0
+    query_cache_type=OFF
     query_cache_limit=0
     
     character-set-client-handshake=FALSE
@@ -234,10 +233,10 @@ slave:
     max_allowed_packet=16M
     max_heap_table_size=16M
     max_connections=300
-    performance_schema
+    performance_schema=ON
     read_buffer_size=1M
     read_rnd_buffer_size=1M
-    skip-external-locking
+    skip-external-locking=ON
     skip-name-resolve=1
     sort_buffer_size=64k
     max_length_for_sort_data=1024
@@ -247,7 +246,7 @@ slave:
     table_open_cache=4000
     open_files_limit=8192
     transaction-isolation=READ-COMMITTED
-    autocommit=0
+    autocommit=ON
     lower_case_table_names=0
     
     # Log Config
@@ -313,7 +312,6 @@ slave:
     max_allowed_packet=16M
     
     [client]
-    port=3306
     socket=/opt/bitnami/mariadb/tmp/mysql.sock
     default-character-set=${character.set.server}
 

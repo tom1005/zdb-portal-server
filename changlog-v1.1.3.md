@@ -176,6 +176,44 @@ SELECT name, alias, 'mysqldump' as category, data_type,description, dynamic,labe
 insert into  zdb.mariadbvariable (name, alias, category, data_type,description,dynamic,label,value,value_range,default_value,enum_value_list,numeric_block_size,numeric_max_value,numeric_min_value,variable_comment,variable_type, editable) 
 SELECT name, alias, 'mysqld_safe' as category, data_type,description, 0 as dynamic,label,'/bitnami/mariadb/logs/mysql_error.log' as value,value_range, '/bitnami/mariadb/logs/mysql_error.log' as default_value,enum_value_list,numeric_block_size,numeric_max_value,numeric_min_value,variable_comment,variable_type, 1 as editable FROM zdb.mariadbvariable a where category='mysqld' and name='log_error' ;
 
+
+DELETE FROM `zdb`.`mariadbvariable` WHERE (`category` = 'mysqld') and (`name` = 'innodb_undo_tablespaces');
+DELETE FROM `zdb`.`mariadbvariable` WHERE (`category` = 'client') and (`name` = 'port');
+DELETE FROM `zdb`.`mariadbvariable` WHERE (`category` = 'mysqld') and (`name` = 'port');
+UPDATE `zdb`.`mariadbvariable` SET `enum_value_list` = 'binary' WHERE (`category` = 'mysqld') and (`name` = 'character_set_filesystem');
+UPDATE `zdb`.`mariadbvariable` SET `default_value` = 'autocommit,character_set_client,character_set_connection,character_set_results,time_zone' WHERE (`category` = 'mysqld') and (`name` = 'session_track_system_variables');
+UPDATE `zdb`.`mariadbvariable` SET `numeric_max_value` = '65535' WHERE (`category` = 'mysqld') and (`name` = 'report_port');
+
 commit;
+
+=============================================================================================================
+
+
+
+=============================================================================================================
+# Performace Storage를 위한 변수 추가 및 Chart 변경
+=============================================================================================================
+
+# com.zdb.core.domain.ZDBEntity
+private String kindOfStorage; 추가
+
+# com.zdb.core.domain.PersistenceSpec
+private String storageIops; 추가
+
+# com.zdb.core.service.MariaDBInstaller
+String masterIops 추가
+
+# create_values.10.2 / create_values.10.3
+master:
+  persistence:
+    iops: ${master.persistence.iops}
+
+slave:
+  persistence:
+    iops: ${master.persistence.iops}
+
+# zdb-chart-repo: mariadb-10.2 / mariadb-10.3
+# master-statefulset.yaml & slave-statefulset.yaml
+iops: {{ .Values.master.persistence.iops | quote }}
 
 =============================================================================================================

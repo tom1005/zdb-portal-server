@@ -23,7 +23,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 import com.zdb.core.domain.AlertingRuleEntity;
 import com.zdb.core.domain.CredentialConfirm;
@@ -53,9 +52,7 @@ import com.zdb.core.service.MariaDBServiceImpl;
 import com.zdb.core.service.RedisServiceImpl;
 import com.zdb.core.service.ZDBRestService;
 import com.zdb.core.util.DateUtil;
-import com.zdb.core.util.K8SUtil;
 
-import io.fabric8.kubernetes.api.model.Pod;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -268,6 +265,9 @@ public class ZDBRestController {
 			case MariaDB:
 				history.append("StorageClass").append(":").append(entity.getPersistenceSpec()[0].getStorageClass()).append("\n");
 				history.append("Storage Size").append(":").append(entity.getPersistenceSpec()[0].getSize()).append("\n");
+				if("Performance".equals(entity.getKindOfStorage())) {
+					history.append("Storage Iops").append(":").append(entity.getPersistenceSpec()[0].getStorageIops()).append("\n");
+				}
 				history.append("Database").append(":").append(entity.getMariaDBConfig().getMariadbDatabase()).append("\n");
 				history.append("CharacterSet").append(":").append(entity.getCharacterSet()).append("");
 				event.setHistory(history.toString());
@@ -1035,7 +1035,7 @@ public class ZDBRestController {
 	public ResponseEntity<String> getSlowLog(@PathVariable("namespace") final String namespace, @PathVariable("podname") final String podName) {
 		Result result = null;
 		try {
-			ZDBType dbType = ZDBType.getType("maraidb");
+			ZDBType dbType = ZDBType.getType("mariadb");
 
 			switch (dbType) {
 			case MariaDB:
