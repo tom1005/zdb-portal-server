@@ -947,7 +947,8 @@ public class MariaDBAccount {
 		Statement statement = null;
 		List<UserPrivileges> userPrivilegesList = new ArrayList<>();
 		String [] privileges = {"SELECT","INSERT","UPDATE","DELETE","EXECUTE","SHOW VIEW","CREATE","ALTER","REFERENCES","INDEX","CREATE VIEW"
-				,"CREATE ROUTINE","ALTER ROUTINE","EVENT","DROP","TRIGGER","GRANT","CREATE TMP TABLE","LOCK TABLES"};
+				,"CREATE ROUTINE","ALTER ROUTINE","EVENT","DROP","TRIGGER","GRANT OPTION","CREATE TEMPORARY TABLES","LOCK TABLES"};
+				//,"CREATE ROUTINE","ALTER ROUTINE","EVENT","DROP","TRIGGER","GRANT","CREATE TMP TABLE","LOCK TABLES"};
 		
 		try {
 			connection = MariaDBConnection.getRootMariaDBConnection(namespace, serviceName);
