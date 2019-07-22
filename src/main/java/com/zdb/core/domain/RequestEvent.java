@@ -61,22 +61,23 @@ public class RequestEvent {
 	public static final String ADD_AUTO_FAILOVER = "Auto Failover 환경 등록";
 	public static final String CHANGE_PORT = "포트 변경";
 	public static final String WORKER_POOLS_READ = "Worker Pools 조회";
+	public static final String PUT_WORKER_POOL = "Worker Pool 변경";
 	public static final String FAILBACK = "서비스 전환(Fail-Back : Slave To Master)";
 	public static final String ADDBACKUPDIK = "백업 디스크 추가";
 	public static final String REMOVEBACKUPDIK = "백업 디스크 제거";
-	public static final String CREATE_ALERT_RULE = "Alert Rule 생성";
-	public static final String DELETE_ALERT_RULE = "Alert Rule 삭제";
-	public static final String UPDATE_ALERT_RULE = "Alert Rule 수정";	
+	public static final String CREATE_ALERT_RULE = "알람 규칙 생성";
+	public static final String DELETE_ALERT_RULE = "알람 규칙 삭제";
+	public static final String UPDATE_ALERT_RULE = "알람 규칙 수정";	
 	public static final String SELECT_PROCESS = "Pocess 조회";
 	public static final String KILL_PROCESS = "Process 종료";
-	public static final String SELECT_DATABASE_STATUS = "Database Status 조회";
-	public static final String SELECT_DATABASE_CONNECTION = "Database Connection 조회";
-	public static final String SELECT_DATABASE_STATUS_VARIABLES = "Database Status Variables 조회";
-	public static final String SELECT_DATABASE_SYSTEM_VARIABLES = "Database System Variables 조회";
-	public static final String SELECT_DATABASE_VARIABLES = "Database Variables 조회";
-	public static final String SELECT_DATABASE_SCHEMAS = "Database Schema 조회";
-	public static final String SELECT_USER_PRIVILEGES = "Database Privileges 조회";
-	public static final String UPDATE_DATABASE_VARIABLES = "Database Variables 수정";
+	public static final String SELECT_DATABASE_STATUS = "DB Status 조회";
+	public static final String SELECT_DATABASE_CONNECTION = "DB Connection 조회";
+	public static final String SELECT_DATABASE_STATUS_VARIABLES = "DB Status Variables 조회";
+	public static final String SELECT_DATABASE_SYSTEM_VARIABLES = "DB System Variables 조회";
+	public static final String SELECT_DATABASE_VARIABLES = "DB Variables 조회";
+	public static final String SELECT_DATABASE_SCHEMAS = "DB Schema 조회";
+	public static final String SELECT_USER_PRIVILEGES = "DB Privileges 조회";
+	public static final String UPDATE_DATABASE_VARIABLES = "DB Variables 수정";
 	
 	private String operation;
 

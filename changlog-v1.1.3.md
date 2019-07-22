@@ -202,6 +202,7 @@ UPDATE `zdb`.`mariadbvariable` SET `enum_value_list` = 'inserts, none, deletes, 
 UPDATE `zdb`.`mariadbvariable` SET `numeric_min_value` = '11' WHERE (`category` = 'mysqld') and (`name` = 'innodb_open_files');
 
 UPDATE `zdb`.`mariadbvariable` SET `numeric_max_value` = '63' WHERE (`category` = 'mysqld') and (`name` = 'optimizer_search_depth');
+UPDATE `zdb`.`mariadbvariable` SET `numeric_max_value` = '4294967295' WHERE (`category` = 'mysqld') and (`name` = 'innodb_sync_spin_loops');
 
 commit;
 

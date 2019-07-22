@@ -2347,6 +2347,46 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		}
 	}
 
+	/* (non-Javadoc)
+	 * @see com.zdb.core.service.ZDBRestService#getWorkerPool(java.lang.String)
+	 */
+	public Result getWorkerPool(String node) throws Exception {
+		try {
+			String workerPool = k8sService.getWorkerPool(node);
+			if(workerPool != null && !workerPool.isEmpty()) {
+				return new Result("", Result.OK).putValue(IResult.WORKER_POOL, workerPool);
+			} else {
+				return new Result("", Result.ERROR).putValue(IResult.WORKER_POOL, "");
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
+	
+	/* (non-Javadoc)
+	 * @see com.zdb.core.service.ZDBRestService#putWorkerPool(java.lang.String, java.lang.String)
+	 */
+	public Result putWorkerPool(String txId, String node, String workerPool) throws Exception {
+		try {
+			String oldWorkerPool = k8sService.getWorkerPool(node);
+			
+			boolean isSuccess = k8sService.putWorkerPool(node, workerPool);
+			if(isSuccess) {
+				Result result = new Result(txId, Result.OK).putValue(IResult.WORKER_POOL, workerPool);
+				result.putValue(Result.HISTORY, oldWorkerPool +" > "+workerPool);
+				return result;
+			} else {
+				Result r = new Result("", Result.ERROR).putValue(IResult.WORKER_POOL, "");
+				r.setMessage("ZDB Node worker-pool 변경중 오류가 발생했습니다.");
+				return r;
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
+
 	public Result getDatabases(String namespace, String serviceType, String serviceName) {
 		return null;
 	}

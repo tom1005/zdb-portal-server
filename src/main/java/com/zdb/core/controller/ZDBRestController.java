@@ -2728,6 +2728,57 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
+
+	@RequestMapping(value = "/nodes/{node}/workerpool", method = RequestMethod.GET)
+	public ResponseEntity<String> getWorkerPool(@PathVariable("node") final String node) throws Exception {
+		try {
+			Result result = commonService.getWorkerPool(node);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(null, IResult.ERROR, RequestEvent.WORKER_POOLS_READ + " 오류").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+	
+	@RequestMapping(value="/nodes/{node}/workerpool/{workerpool}",method = RequestMethod.PUT)
+	public ResponseEntity<String> putWorkerPool(@PathVariable String node,@PathVariable String workerpool) throws Exception {
+		String txId = txId();
+		
+		RequestEvent event = new RequestEvent();
+		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceName(node);
+			event.setOperation(RequestEvent.PUT_WORKER_POOL);
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
+			
+			Result result = commonService.putWorkerPool(txId, node, workerpool);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			Object history = result.getResult().get(Result.HISTORY);
+			if (history != null) {
+				event.setHistory("" + history);
+			}
+			
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+
+			Result result = new Result(null, IResult.ERROR, "worker-pool 변경 오류!").putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}	
+	}
 	
 	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/databases", method = RequestMethod.GET)
 	public ResponseEntity<String> getDatabases(
