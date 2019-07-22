@@ -183,6 +183,25 @@ DELETE FROM `zdb`.`mariadbvariable` WHERE (`category` = 'mysqld') and (`name` = 
 UPDATE `zdb`.`mariadbvariable` SET `enum_value_list` = 'binary' WHERE (`category` = 'mysqld') and (`name` = 'character_set_filesystem');
 UPDATE `zdb`.`mariadbvariable` SET `default_value` = 'autocommit,character_set_client,character_set_connection,character_set_results,time_zone' WHERE (`category` = 'mysqld') and (`name` = 'session_track_system_variables');
 UPDATE `zdb`.`mariadbvariable` SET `numeric_max_value` = '65535' WHERE (`category` = 'mysqld') and (`name` = 'report_port');
+UPDATE `zdb`.`mariadbvariable` SET `default_value` = '1', `numeric_max_value` = '64' WHERE (`category` = 'mysqld') and (`name` = 'innodb_adaptive_hash_index_partitions');
+UPDATE `zdb`.`mariadbvariable` SET `enum_value_list` = 'O_DSYNC,fsync,O_DIRECT,O_DIRECT_NO_FSYNC,ALL_O_DIRECT' WHERE (`category` = 'mysqld') and (`name` = 'innodb_flush_method');
+UPDATE `zdb`.`mariadbvariable` SET `numeric_max_value` = '252' WHERE (`category` = 'mysqld') and (`name` = 'innodb_ft_max_token_size');
+UPDATE `zdb`.`mariadbvariable` SET `numeric_max_value` = '32' WHERE (`category` = 'mysqld') and (`name` = 'innodb_ft_sort_pll_degree');
+UPDATE `zdb`.`mariadbvariable` SET `numeric_max_value` = '4294967295' WHERE (`category` = 'mysqld') and (`name` = 'innodb_open_files');
+UPDATE `zdb`.`mariadbvariable` SET `numeric_max_value` = '4294967295' WHERE (`category` = 'mysqld') and (`name` = 'innodb_replication_delay');
+UPDATE `zdb`.`mariadbvariable` SET `numeric_max_value` = '4294967295' WHERE (`category` = 'mysqld') and (`name` = 'innodb_spin_wait_delay');
+
+UPDATE `zdb`.`mariadbvariable` SET `numeric_min_value` = '256' WHERE (`category` = 'mysqld') and (`name` = 'stored_program_cache');
+UPDATE `zdb`.`mariadbvariable` SET `numeric_max_value` = '65536' WHERE (`category` = 'mysqld') and (`name` = 'thread_pool_oversubscribe');
+UPDATE `zdb`.`mariadbvariable` SET `enum_value_list` = 'rsync, mysqldump, xtrabackup, xtrabackup-v2, mariabackup' WHERE (`category` = 'mysqld') and (`name` = 'wsrep_sst_method');
+UPDATE `zdb`.`mariadbvariable` SET `numeric_max_value` = '4' WHERE (`category` = 'mysqld') and (`name` = 'ft_min_word_len');
+UPDATE `zdb`.`mariadbvariable` SET `default_value` = '0' WHERE (`category` = 'mysqld') and (`name` = 'in_transaction');
+
+UPDATE `zdb`.`mariadbvariable` SET `numeric_max_value` = '64' WHERE (`category` = 'mysqld') and (`name` = 'innodb_adaptive_hash_index_partitions');
+UPDATE `zdb`.`mariadbvariable` SET `enum_value_list` = 'inserts, none, deletes, purges, changes, all' WHERE (`category` = 'mysqld') and (`name` = 'innodb_change_buffering');
+UPDATE `zdb`.`mariadbvariable` SET `numeric_min_value` = '11' WHERE (`category` = 'mysqld') and (`name` = 'innodb_open_files');
+
+UPDATE `zdb`.`mariadbvariable` SET `numeric_max_value` = '63' WHERE (`category` = 'mysqld') and (`name` = 'optimizer_search_depth');
 
 commit;
 
