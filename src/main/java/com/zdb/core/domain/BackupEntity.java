@@ -50,5 +50,6 @@ public class BackupEntity {
 	private long fromLsn = 0l;
 	private String fromBackupId = "";
 	private String ondisk;
+	private String throttleYn;
 	
 }
