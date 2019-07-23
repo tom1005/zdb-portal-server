@@ -76,6 +76,7 @@ import io.fabric8.kubernetes.api.model.LoadBalancerIngress;
 import io.fabric8.kubernetes.api.model.LoadBalancerStatus;
 import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.Node;
+import io.fabric8.kubernetes.api.model.NodeBuilder;
 import io.fabric8.kubernetes.api.model.NodeList;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaimSpec;
@@ -2514,6 +2515,51 @@ public class K8SService {
 			workerPools = new ArrayList<String>(distinctData);
 		}
 		return workerPools;
+	}
+
+	/**
+	 * @param nodeName
+	 * @return
+	 * @throws Exception
+	 */
+	public String getWorkerPool(String nodeName) throws Exception {
+		NodeList nodeList = K8SUtil.kubernetesClient().nodes().list();
+		List<Node> nodes = nodeList.getItems();
+		for (Node node : nodes) {
+			String name = node.getMetadata().getName();
+			if(!name.equals(nodeName)) {
+				continue;
+			}
+			String role = node.getMetadata().getLabels().get("role");
+			String wp = node.getMetadata().getLabels().get("worker-pool");
+			if ("zdb".equals(role) && wp != null) {
+				return wp;
+			}
+		}
+		return null;
+	}
+	
+	public boolean putWorkerPool(String nodeName, String workerPool) throws Exception {
+		try (final DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
+
+			Node node = client.nodes().withName(nodeName).get();
+			
+			NodeBuilder nodeBuilder = new NodeBuilder(node);
+			Node build = nodeBuilder.editMetadata().addToLabels("worker-pool", workerPool).endMetadata().build();
+			
+			Node createOrReplaceNode = client.nodes().createOrReplace(build);
+			
+			String changedWorkerPool = createOrReplaceNode.getMetadata().getLabels().get("worker-pool");
+			if(changedWorkerPool.equals(workerPool)) {
+				return true;
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			throw e;
+		} finally {
+		}
+		
+		return false;
 	}
 	
 	public String getServicePort(String namespace, String name) throws Exception {

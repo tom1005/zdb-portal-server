@@ -34,7 +34,11 @@ public class MariadbUserPrivileges {
 		private String trigger;
 		private String grant;
 	    private String createTmpTable;
-		private String lockTables;		
+		private String lockTables;	
+		
+		// 2019-07-19 추가부분
+		private String grantOption;
+	    private String createTemporaryTables;		
 	}
 }
 

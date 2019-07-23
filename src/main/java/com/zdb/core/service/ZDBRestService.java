@@ -313,6 +313,8 @@ public interface ZDBRestService {
 	
 	Result getWorkerPools() throws Exception;
 
+	Result getWorkerPool(String node) throws Exception;
+
 	Result getDatabases(String namespace, String serviceType, String serviceName);
 
 	Result getFileLog(String namespace, String serviceName, String logType, String startDate, String endDate) throws Exception;
@@ -342,4 +344,6 @@ public interface ZDBRestService {
 	Result getMigrationBackupServiceList(String namespace, String serviceType, String type) throws Exception;
 
 	Result getMigrationBackupList(String namespace, String serviceType, String serviceName) throws Exception;
+	
+	Result putWorkerPool(String txId, String node, String workerPool) throws Exception;
 }

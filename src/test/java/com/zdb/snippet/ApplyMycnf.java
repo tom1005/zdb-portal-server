@@ -21,14 +21,15 @@ public class ApplyMycnf {
 		
 		ConfigMap cm = new ConfigMap();
 		ObjectMeta metadata = new ObjectMeta();
-		metadata.setName("fsk-db-316-mariadb-master");
-		metadata.setNamespace("fsk-db");
+		metadata.setName("zdb-ha-pns-mariadb");
+		String namespace = "zdb-ha";
+		metadata.setNamespace(namespace);
 		
 		Map<String, String> map = new HashMap<>();
 		map.put("app", "mariadb");
 		map.put("chart", "mariadb-4.2.4");
 		map.put("component", "master");
-		map.put("release", "fsk-db-316");
+		map.put("release", "zdb-ha-pns");
 		metadata.setLabels(map);
 		cm.setMetadata(metadata);
 		
@@ -44,7 +45,7 @@ public class ApplyMycnf {
 		cm.setData(data);
 		
 
-		client.inNamespace("fsk-db").configMaps().createOrReplace(cm);
+		client.inNamespace(namespace).configMaps().createOrReplace(cm);
 	}
 	
 	private static String readFile(File file) throws IOException {
