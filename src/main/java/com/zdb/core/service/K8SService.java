@@ -823,6 +823,64 @@ public class K8SService {
 							}
 						}
 					}
+					
+					List<PersistentVolumeClaim> volumeClaimTemplates = sts.getSpec().getVolumeClaimTemplates();
+					if (volumeClaimTemplates != null) {
+						for (PersistentVolumeClaim vct : volumeClaimTemplates) {
+							String name = vct.getMetadata().getName();
+							Map<String, String> labels = vct.getMetadata().getLabels();
+							String component = "";
+							String release = "";
+							String app = "";
+
+							for (Iterator<String> iterator = labels.keySet().iterator(); iterator.hasNext();) {
+								String labelKey = iterator.next();
+								String value = labels.get(labelKey);
+								
+								switch(labelKey) {
+								case "component" :
+								case "role" :
+									component = value;
+									break;
+								case "release" :
+									release = value;
+									break;
+								case "app":
+									app = value;
+									break;
+								}
+							}
+							
+//							data-fsk-db-endtest-mariadb-master-0 
+//							data-fsk-db-endtest-mariadb-slave-0
+//							data-fsk-db-pertest-mariadb-0
+//							redis-data-fsk-db-data2-redis-master-0
+							String pvcTemplateName = null;
+							
+							switch(app) {
+							case "mariadb" :
+								// name-releae-app-component-0
+								pvcTemplateName = String.format("%s-%s-%s", name, release, app);
+								break;
+							case "redis" :
+								// app-name-releae-app-component-0
+								pvcTemplateName = String.format("%s-%s-%s-%s", app, name, release, app);
+								break;
+							}
+							
+							for (PersistentVolumeClaim p : persistentVolumeClaims) {
+								String pname = p.getMetadata().getName();
+								if(pname.startsWith(pvcTemplateName)) {
+									if(!so.getPersistentVolumeClaims().contains(p)) {
+										so.getPersistentVolumeClaims().add(p);
+									}
+								}
+							}
+							
+							
+						}
+					}
+					
 				} catch (Exception e) {
 					log.error(e.getMessage(), e);
 				}
