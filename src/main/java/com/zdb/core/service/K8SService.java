@@ -80,6 +80,7 @@ import io.fabric8.kubernetes.api.model.NodeBuilder;
 import io.fabric8.kubernetes.api.model.NodeList;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaimSpec;
+import io.fabric8.kubernetes.api.model.PersistentVolumeClaimVolumeSource;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodCondition;
 import io.fabric8.kubernetes.api.model.PodStatus;
@@ -793,7 +794,7 @@ public class K8SService {
 			}
 
 			so.getServices().addAll(services);
-			so.getPersistentVolumeClaims().addAll(persistentVolumeClaims);
+//			so.getPersistentVolumeClaims().addAll(persistentVolumeClaims);
 			so.getConfigMaps().addAll(configMaps);
 			so.getSecrets().addAll(secrets);
 			so.getDeployments().addAll(deployments);
@@ -806,6 +807,26 @@ public class K8SService {
 				String stsName = sts.getMetadata().getName();
 				so.getResourceSpecOfPodMap().put(stsName, getResourceSpec(so, stsName));
 				so.getPersistenceSpecOfPodMap().put(stsName, getPersistenceSpec(so, stsName));
+				
+				// StatefulSet 에 마운트된 pvc 만 결과 값에 담는다. 
+				try {
+					List<Volume> volumes = sts.getSpec().getTemplate().getSpec().getVolumes();
+					for (Volume volume : volumes) {
+						PersistentVolumeClaimVolumeSource persistentVolumeClaim = volume.getPersistentVolumeClaim();
+						if(persistentVolumeClaim != null) {
+							String claimName = persistentVolumeClaim.getClaimName();
+							for (PersistentVolumeClaim pvc : persistentVolumeClaims) {
+								String name = pvc.getMetadata().getName();
+								if(claimName.equals(name)) {
+									so.getPersistentVolumeClaims().add(pvc);
+								}
+							}
+						}
+					}
+				} catch (Exception e) {
+					log.error(e.getMessage(), e);
+				}
+				
 			}
 			
 			for (Deployment sts : so.getDeployments()) {
