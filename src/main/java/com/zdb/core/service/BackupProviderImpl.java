@@ -396,7 +396,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 					scheduleInfo.setFullExecutionTime(fullExecutionTime);
 					scheduleInfo.setIncrFileSize(incrFileSize);
 					
-					scheduleInfo.setBackupExecType("Daily");
+					scheduleInfo.setBackupExecType("DAILY");
 					
 					ScheduleEntity schedule = scheduleRepository.findScheduleByName(releaseMeta.getNamespace(), releaseMeta.getApp(), releaseMeta.getReleaseName());
 					if(schedule != null) {
