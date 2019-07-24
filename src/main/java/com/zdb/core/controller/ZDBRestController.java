@@ -3485,4 +3485,42 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
+	
+
+	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/userPrivileges/{user}/{host}/{schema}", method = RequestMethod.GET)
+	public ResponseEntity<String> getUserPrivilegesForSchema(@PathVariable("namespace") final String namespace, 
+			@PathVariable("serviceType") final String serviceType,
+			@PathVariable("serviceName") final String serviceName,
+			@PathVariable("user") final String user,
+			@PathVariable("host") final String host,
+			@PathVariable("schema") final String schema ) {
+		
+		Result result = null;
+		
+		try {
+			// mariadb , redis, postgresql, rabbitmq, mongodb
+			ZDBType dbType = ZDBType.getType(serviceType);
+
+			switch (dbType) {
+			case MariaDB:
+				result = ((MariaDBServiceImpl) mariadbService).getUserPrivilegesForSchema(namespace, serviceType, serviceName ,user , host , schema);
+				break;
+			case Redis:
+			case PostgreSQL:
+			case RabbitMQ:
+			case MongoDB:
+			default:
+				log.error("Not support.");
+				result = new Result(null, IResult.ERROR, "사용자 권한 목록 조회 오류!");
+				break;
+			}
+
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			
+			result = new Result(null, IResult.ERROR, "사용자 권한 목록 조회 오류!").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}	
 }

@@ -57,6 +57,7 @@ import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ServiceOverview;
 import com.zdb.core.domain.UserPrivileges;
+import com.zdb.core.domain.UserPrivilegesForSchema;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBMariaDBConfig;
@@ -3380,5 +3381,24 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			info.setConfirm(confirm);
 		}
 		return new Result("", Result.OK).putValue(IResult.CREDENTIAL_CONFIRM, info);
-	}	
+	}
+	
+	public Result getUserPrivilegesForSchema(String namespace, String serviceType, String releaseName ,String user ,String host , String schema) {
+		try {
+			
+			List<UserPrivilegesForSchema> userPrivilegesForSchema = MariaDBAccount.getUserPrivilegesForSchema(namespace, releaseName,user,host, schema);
+			
+			return new Result("", Result.OK).putValue(IResult.USER_PRIVILEGES_FOR_SCHEMA, userPrivilegesForSchema);
+		} catch (KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result("", Result.UNAUTHORIZED, "클러스터에 접근이 불가하거나 인증에 실패 했습니다.", null);
+			} else {
+				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
 }

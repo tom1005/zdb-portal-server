@@ -21,6 +21,7 @@ import com.zdb.core.domain.MariadbUserPrivileges;
 import com.zdb.core.domain.MariadbUserPrivileges.MariadbPrivileges;
 import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.UserPrivileges;
+import com.zdb.core.domain.UserPrivilegesForSchema;
 import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBType;
 import com.zdb.core.repository.ZDBMariaDBAccountRepository;
@@ -1147,5 +1148,118 @@ public class MariaDBAccount {
 		}
 
 		return resultMessage.toString();
+	}
+	
+	public static List<UserPrivilegesForSchema> getUserPrivilegesForSchema(String namespace, String releaseName ,String user ,String host , String schema) throws Exception {
+		MariaDBConnection connection = null;
+		List<UserPrivilegesForSchema> userList = new ArrayList<UserPrivilegesForSchema>();
+
+		try {
+			connection = MariaDBConnection.getRootMariaDBConnection(namespace, releaseName);
+			Statement statement = connection.getStatement();
+
+			StringBuffer q = new StringBuffer();
+			q.append("select pri.* from( ");
+			q.append("select ");
+			q.append("	concat(\"'\",user,\"'\",\"@\",\"'\",host,\"'\") as GRANTEE , ");			
+			q.append("	user as 'USER', ");
+			q.append("	host as 'HOST', ");
+			q.append("	'' as 'TABLE_CATALOG', ");
+			q.append("	'*' as 'TABLE_SCHEMA', ");			
+			q.append("	Select_priv as 'SELECT', ");
+			q.append("	Insert_priv as 'INSERT', ");
+			q.append("	Update_priv as 'UPDATE', ");
+			q.append("	Delete_priv as 'DELETE', ");
+			q.append("	Execute_priv as 'EXECUTE', ");
+			q.append("	Show_view_priv as 'SHOW_VIEW', ");
+			q.append("	Create_priv as 'CREATE', ");
+			q.append("	Alter_priv as 'ALTER', ");
+			q.append("	References_priv as 'REFERENCES', ");
+			q.append("	Index_priv as 'INDEX', ");
+			q.append("	Create_view_priv as 'CREATE_VIEW', ");
+			q.append("	Create_routine_priv as 'CREATE_ROUTINE', ");
+			q.append("	Alter_routine_priv as 'ALTER_ROUTINE', ");
+			q.append("	Event_priv as 'EVENT', ");
+			q.append("	Drop_priv as 'DROP', ");
+			q.append("	Trigger_priv as 'TRIGGER', ");
+			q.append("	Grant_priv as 'GRANT_OPTION', ");
+			q.append("	Create_tmp_table_priv as 'CREATE_TEMPORARY_TABLES', ");
+			q.append("	Lock_tables_priv as 'LOCK_TABLES' ");
+			q.append("from  ");
+			q.append("	mysql.user ");
+			q.append("UNION ALL ");
+			q.append("select ");
+			q.append("	concat(\"'\",user,\"'\",\"@\",\"'\",host,\"'\") as GRANTEE , ");				
+			q.append("	user as 'USER', ");
+			q.append("	host as 'HOST', ");
+			q.append("	'' as 'TABLE_CATALOG', ");
+			q.append("	db as 'TABLE_SCHEMA', ");			
+			q.append("	Select_priv as 'SELECT', ");
+			q.append("	Insert_priv as 'INSERT', ");
+			q.append("	Update_priv as 'UPDATE', ");
+			q.append("	Delete_priv as 'DELETE', ");
+			q.append("	Execute_priv as 'EXECUTE', ");
+			q.append("	Show_view_priv as 'SHOW_VIEW', ");
+			q.append("	Create_priv as 'CREATE', ");
+			q.append("	Alter_priv as 'ALTER', ");
+			q.append("	References_priv as 'REFERENCES', ");
+			q.append("	Index_priv as 'INDEX', ");
+			q.append("	Create_view_priv as 'CREATE_VIEW', ");
+			q.append("	Create_routine_priv as 'CREATE_ROUTINE', ");
+			q.append("	Alter_routine_priv as 'ALTER_ROUTINE', ");
+			q.append("	Event_priv as 'EVENT', ");
+			q.append("	Drop_priv as 'DROP', ");
+			q.append("	Trigger_priv as 'TRIGGER', ");
+			q.append("	Grant_priv as 'GRANT_OPTION', ");
+			q.append("	Create_tmp_table_priv as 'CREATE_TEMPORARY_TABLES', ");
+			q.append("	Lock_tables_priv as 'LOCK_TABLES' ");
+			q.append("from  ");
+			q.append("	mysql.db ");
+			q.append(") pri ");
+			q.append(" where pri.USER = '"+user+"' ");
+			q.append("and pri.HOST = '"+host+"' ");
+			q.append("and pri.TABLE_SCHEMA = '"+schema+"'");			
+		
+			logger.debug("query: {}", q.toString());
+
+			ResultSet rs = statement.executeQuery(q.toString());
+			while (rs.next()) {
+				UserPrivilegesForSchema userPrivilegesForSchema = new UserPrivilegesForSchema();
+				userPrivilegesForSchema.setGrantee(rs.getString("GRANTEE"));
+				userPrivilegesForSchema.setTableCatalog(rs.getString("TABLE_CATALOG"));
+				userPrivilegesForSchema.setTableSchema(rs.getString("TABLE_SCHEMA"));
+				userPrivilegesForSchema.setUser(rs.getString("USER"));
+				userPrivilegesForSchema.setHost(rs.getString("HOST"));
+				userPrivilegesForSchema.setSelect(rs.getString("SELECT"));
+				userPrivilegesForSchema.setInsert(rs.getString("INSERT"));
+				userPrivilegesForSchema.setUpdate(rs.getString("UPDATE"));
+				userPrivilegesForSchema.setDelete(rs.getString("DELETE"));
+				userPrivilegesForSchema.setExecute(rs.getString("EXECUTE"));
+				userPrivilegesForSchema.setShowView(rs.getString("SHOW_VIEW"));
+				userPrivilegesForSchema.setCreate(rs.getString("CREATE"));
+				userPrivilegesForSchema.setAlter(rs.getString("ALTER"));
+				userPrivilegesForSchema.setReferences(rs.getString("REFERENCES"));
+				userPrivilegesForSchema.setIndex(rs.getString("INDEX"));
+				userPrivilegesForSchema.setCreateView(rs.getString("CREATE_VIEW"));
+				userPrivilegesForSchema.setCreateRoutine(rs.getString("CREATE_ROUTINE"));
+				userPrivilegesForSchema.setAlterRoutine(rs.getString("ALTER_ROUTINE"));
+				userPrivilegesForSchema.setEvent(rs.getString("EVENT"));
+				userPrivilegesForSchema.setDrop(rs.getString("DROP"));
+				userPrivilegesForSchema.setTrigger(rs.getString("TRIGGER"));
+				userPrivilegesForSchema.setGrantOption(rs.getString("GRANT_OPTION"));
+				userPrivilegesForSchema.setCreateTemporaryTables(rs.getString("CREATE_TEMPORARY_TABLES"));
+				userPrivilegesForSchema.setLockTables(rs.getString("LOCK_TABLES"));
+				userList.add(userPrivilegesForSchema);
+			}
+		} catch (Exception e) {
+			logger.error("Exception.", e);
+			throw e;
+		} finally {
+			if (connection != null) {
+				connection.close();
+			}
+		}
+		
+		return userList;
 	}
 }
