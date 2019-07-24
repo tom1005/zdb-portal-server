@@ -123,11 +123,15 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			+ ", t.endpointUrl=:endpointUrl"
 			+ ", t.bucketName=:bucketName"
 			+ ", t.status=:status "
+			+ ", t.archiveFileSize=:archiveFileSize "
+			+ ", t.archiveFileInfo=:archiveFileInfo "
 			+ "WHERE t.backupId=:backupId")
 	int modify2UploadDONE(@Param("completeDatetime") Date completeDatetime
 			, @Param("endpointUrl") String endpointUrl
 			, @Param("bucketName") String bucketName
 			, @Param("status") String status
+			, @Param("archiveFileSize") long archiveFileSize
+			, @Param("archiveFileInfo") String archiveFileInfo
 			, @Param("backupId") String backupId);
 	
 	@Modifying(clearAutomatically = true)
