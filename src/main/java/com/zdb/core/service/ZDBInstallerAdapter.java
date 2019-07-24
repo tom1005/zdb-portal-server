@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
 import com.zdb.core.domain.ReleaseMetaData;
-import com.zdb.core.repository.DiskUsageRepository;
+import com.zdb.core.repository.StorageUsageRepository;
 import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBMariaDBAccountRepository;
 import com.zdb.core.repository.ZDBMariaDBConfigRepository;
@@ -40,7 +40,7 @@ public abstract class ZDBInstallerAdapter implements ZDBInstaller {
 	protected K8SService k8sService;
 
 	@Autowired
-	protected DiskUsageRepository diskUsageRepository;
+	protected StorageUsageRepository diskUsageRepository;
 	
 	@Autowired
 	protected MessageSender messageSender;

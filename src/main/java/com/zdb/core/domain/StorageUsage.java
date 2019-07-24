@@ -16,8 +16,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
-@IdClass(value=DiskUsagPK.class)
-public class DiskUsage implements Serializable {
+@IdClass(value=StorageUsagPK.class)
+public class StorageUsage implements Serializable {
 
 	private static final long serialVersionUID = 8114984462565484772L;
 
@@ -54,6 +54,10 @@ public class DiskUsage implements Serializable {
 	 * 사용률(%)
 	 */
 	private String useRate;
+
+	private String storageClass;
+	
+	private String storageIops;
 
 	@Column(name = "updateTime")
 	Date updateTime;

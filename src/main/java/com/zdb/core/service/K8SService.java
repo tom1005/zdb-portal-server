@@ -36,7 +36,6 @@ import com.google.gson.GsonBuilder;
 import com.zdb.core.domain.BackupDiskEntity;
 import com.zdb.core.domain.BackupEntity;
 import com.zdb.core.domain.CommonConstants;
-import com.zdb.core.domain.DiskUsage;
 import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.FailbackEntity;
 import com.zdb.core.domain.MetaData;
@@ -47,6 +46,7 @@ import com.zdb.core.domain.ScheduleEntity;
 import com.zdb.core.domain.ServiceOverview;
 import com.zdb.core.domain.SlaveReplicationStatus;
 import com.zdb.core.domain.SlaveStatus;
+import com.zdb.core.domain.StorageUsage;
 import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.ZDBPersistenceEntity;
 import com.zdb.core.domain.ZDBStatus;
@@ -55,15 +55,15 @@ import com.zdb.core.job.Job.JobResult;
 import com.zdb.core.job.JobHandler;
 import com.zdb.core.repository.BackupDiskEntityRepository;
 import com.zdb.core.repository.BackupEntityRepository;
-import com.zdb.core.repository.DiskUsageRepository;
 import com.zdb.core.repository.FailbackEntityRepository;
 import com.zdb.core.repository.MetadataRepository;
 import com.zdb.core.repository.ScheduleEntityRepository;
 import com.zdb.core.repository.SlaveStatusRepository;
+import com.zdb.core.repository.StorageUsageRepository;
 import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
-import com.zdb.core.util.MetricUtil;
 import com.zdb.core.util.K8SUtil;
+import com.zdb.core.util.MetricUtil;
 import com.zdb.core.util.NumberUtils;
 import com.zdb.core.util.PodManager;
 import com.zdb.core.util.StatusUtil;
@@ -117,7 +117,7 @@ public class K8SService {
 	protected TagRepository tagRepository;
 	
 	@Autowired
-	protected DiskUsageRepository diskRepository;
+	protected StorageUsageRepository diskRepository;
 	
 	@Autowired
 	private ScheduleEntityRepository scheduleEntity;
@@ -759,7 +759,7 @@ public class K8SService {
 		
 		for (Pod pod : pods) {
 			String podName = pod.getMetadata().getName();
-			List<DiskUsage> disk = diskRepository.findByPodName(podName);
+			List<StorageUsage> disk = diskRepository.findByPodName(podName);
 			so.getDiskUsageOfPodMap().put(podName, disk);
 		}
 		
@@ -977,7 +977,7 @@ public class K8SService {
 							}
 						}
 					} catch (Exception e) {
-						log.error(e.getMessage(), e);
+						log.error(podName + " > " +e.getMessage(), e);
 					}
 				}
 			}
