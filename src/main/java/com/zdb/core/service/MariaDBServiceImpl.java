@@ -57,6 +57,7 @@ import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ServiceOverview;
 import com.zdb.core.domain.UserPrivileges;
+import com.zdb.core.domain.UserPrivilegesForSchema;
 import com.zdb.core.domain.ZDBEntity;
 import com.zdb.core.domain.ZDBMariaDBAccount;
 import com.zdb.core.domain.ZDBMariaDBConfig;
