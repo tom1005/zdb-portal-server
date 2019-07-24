@@ -104,6 +104,27 @@ CREATE TABLE `mariadbvariable` (
   PRIMARY KEY (`category`,`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+use zdb;
+CREATE TABLE `storage_usage` (
+  `pod_name` varchar(255) NOT NULL,
+  `path` varchar(255) NOT NULL,
+  `avail` bigint(20) NOT NULL,
+  `namespace` varchar(255) DEFAULT NULL,
+  `release_name` varchar(255) DEFAULT NULL,
+  `size` bigint(20) NOT NULL,
+  `update_time` datetime DEFAULT NULL,
+  `use_rate` varchar(255) DEFAULT NULL,
+  `storage_iops` varchar(255) DEFAULT NULL,
+  `storage_class` varchar(255) DEFAULT NULL,
+  `used` bigint(20) NOT NULL,
+  PRIMARY KEY (`pod_name`,`path`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE `zdb`.`persistent_volume_claim_entity` 
+ADD COLUMN `iops` VARCHAR(45) NULL DEFAULT NULL AFTER `zone`;
+
+drop table disk_usage;
+
 데이터 입력 
 k -n zdb-system cp <<zdb-portal-server>>/src/main/resources/mariadb/mariadbvariable.sql zdb-portal-db-mariadb-0:bitnami/mariadb/logs/mv.sql
 k -n zdb-system exec -it zdb-portal-db-mariadb-0 bash
