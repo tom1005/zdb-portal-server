@@ -74,10 +74,10 @@ import com.zdb.core.domain.ZDBStatus;
 import com.zdb.core.domain.ZDBType;
 import com.zdb.core.exception.ResourceException;
 import com.zdb.core.repository.BackupEntityRepository;
-import com.zdb.core.repository.DiskUsageRepository;
 import com.zdb.core.repository.EventRepository;
 import com.zdb.core.repository.MetadataRepository;
 import com.zdb.core.repository.PersistentVolumeClaimRepository;
+import com.zdb.core.repository.StorageUsageRepository;
 import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBConfigRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
@@ -137,7 +137,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	protected ZDBReleaseRepository releaseRepository;
 	
 	@Autowired
-	protected DiskUsageRepository diskRepository;
+	protected StorageUsageRepository diskRepository;
 	
 	@Autowired
 	protected TagRepository tagRepository;

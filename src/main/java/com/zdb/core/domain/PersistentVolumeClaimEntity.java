@@ -57,6 +57,9 @@ public class PersistentVolumeClaimEntity {
 	@Column(name = "storagSize")
 	String storagSize;
 
+	@Column(name = "iops")
+	String iops;
+
 	@Column(name = "resourceVersion")
 	String resourceVersion;
 	

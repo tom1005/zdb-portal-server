@@ -7,8 +7,8 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import com.zdb.core.domain.DiskUsage;
-import com.zdb.core.repository.DiskUsageRepository;
+import com.zdb.core.domain.StorageUsage;
+import com.zdb.core.repository.StorageUsageRepository;
 import com.zdb.core.util.DiskUsageChecker;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.ws.MessageSender;
@@ -19,10 +19,10 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 @Slf4j
 @Profile({"prod"})
-public class DiskUsageCollector {
+public class StorageUsageCollector {
 	
 	@Autowired
-	DiskUsageRepository repo;
+	StorageUsageRepository repo;
 	
 	@Autowired
 	private MessageSender messageSender;
@@ -45,8 +45,8 @@ public class DiskUsageCollector {
 			}
 			
 			if(!useCronJob) {
-				List<DiskUsage> diskUsage = new DiskUsageChecker().getAllDiskUsage();
-				for (DiskUsage usage : diskUsage) {
+				List<StorageUsage> diskUsage = new DiskUsageChecker().getAllStorageUsage();
+				for (StorageUsage usage : diskUsage) {
 					try {
 						log.info("{} {} {} {}", usage.getPodName(), usage.getSize(), usage.getUsed(), usage.getUpdateTime());
 						repo.save(usage);
@@ -57,7 +57,7 @@ public class DiskUsageCollector {
 				
 				diskUsage.clear();
 			} else {
-				log.debug("{}", "zdb-portal-job 을 통해 DiskUsage 정보 조회 됩니다.");
+				log.debug("{}", "zdb-portal-job 을 통해 StorageUsage 정보 조회 됩니다.");
 			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
