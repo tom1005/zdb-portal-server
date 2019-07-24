@@ -78,6 +78,9 @@ import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.Node;
 import io.fabric8.kubernetes.api.model.NodeBuilder;
 import io.fabric8.kubernetes.api.model.NodeList;
+import io.fabric8.kubernetes.api.model.NodeSelector;
+import io.fabric8.kubernetes.api.model.NodeSelectorRequirement;
+import io.fabric8.kubernetes.api.model.NodeSelectorTerm;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaimSpec;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaimVolumeSource;
@@ -2639,6 +2642,95 @@ public class K8SService {
 		}
 		
 		return false;
+	}
+	
+	public String getWorkerPoolOfService(String namespace, String serviceName) throws Exception {
+		try (final DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
+			List<StatefulSet> items = client.inNamespace(namespace).apps().statefulSets().withLabel("release", serviceName).list().getItems();
+			
+			if(!items.isEmpty()) {
+				StatefulSet statefulSet = items.get(0);
+				NodeSelector requiredDuringSchedulingIgnoredDuringExecution = statefulSet.getSpec().getTemplate().getSpec().getAffinity().getNodeAffinity().getRequiredDuringSchedulingIgnoredDuringExecution();
+				List<NodeSelectorTerm> nodeSelectorTerms = requiredDuringSchedulingIgnoredDuringExecution.getNodeSelectorTerms();
+				for(NodeSelectorTerm nst : nodeSelectorTerms) {
+					List<NodeSelectorRequirement> matchExpressions = nst.getMatchExpressions();
+					
+					for(NodeSelectorRequirement nsr : matchExpressions) {
+						String key = nsr.getKey();
+						List<String> values = nsr.getValues();
+						
+						for(String value : values) {
+							log.debug("{} : {}", key, value);
+							return value;
+						}
+					}
+				}
+				
+			}
+			
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			throw e;
+		}
+		return null;
+	}
+	
+	/**
+	 * @param namespace
+	 * @param serviceName
+	 * @param wp
+	 * @return
+	 */
+	public boolean putWorkerPoolOfService(String namespace, String serviceName, String wp) {
+		try {
+			RestTemplate rest = K8SUtil.getRestTemplate();
+			String idToken = K8SUtil.getToken();
+			String masterUrl = K8SUtil.getMasterURL();
+			
+			// 실패시 원복을 위한 현재 설정 값 
+//			String currentWorkerPool = getWorkerPoolOfService(namespace, serviceName);
+			
+			HttpHeaders headers = new HttpHeaders();
+			List<MediaType> mediaTypeList = new ArrayList<MediaType>();
+			mediaTypeList.add(MediaType.APPLICATION_JSON);
+			headers.setAccept(mediaTypeList);
+			headers.add("Authorization", "Bearer " + idToken);
+			headers.set("Content-Type", "application/merge-patch+json");
+			
+			String data = "{\"spec\":{\"template\":{\"spec\":{\"affinity\":{\"nodeAffinity\":{\"requiredDuringSchedulingIgnoredDuringExecution\":{\"nodeSelectorTerms\":[{\"matchExpressions\":[{\"key\":\"worker-pool\",\"operator\":\"In\",\"values\":[\""+wp+"\"]}]}]}}}}}}}";
+			
+			HttpEntity<String> requestEntity = new HttpEntity<>(data, headers);
+			List<StatefulSet> items = Collections.emptyList();
+			try (final DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
+				items = client.inNamespace(namespace).apps().statefulSets().withLabel("release", serviceName).list().getItems();
+			} catch (Exception e) {
+				log.error(e.getMessage(), e);
+				throw new Exception("StatefulSet 조회 오류 [" + namespace +" > "+ serviceName +"]", e);
+			}
+			
+			if(!items.isEmpty()) {
+				for(StatefulSet sts : items) {
+					String stsName = sts.getMetadata().getName();
+					String endpoint = masterUrl + "/apis/apps/v1/namespaces/{namespace}/statefulsets/{name}";
+					ResponseEntity<String> response = rest.exchange(endpoint, HttpMethod.PATCH, requestEntity, String.class, namespace, stsName);
+					
+					if (response.getStatusCode() == HttpStatus.OK) {
+						System.err.println(response.getBody());
+						log.info("{} > {} > {} patch success.", namespace, stsName, wp);
+					} else {
+						log.error("{} > {} > {} patch faile.", namespace, stsName, wp);
+						log.error("result : {}", response.getBody());
+						
+						throw new Exception("StatefulSet patch 오류 [" + namespace +" > "+ stsName +"]");
+					}
+				}
+			}
+		} catch (Exception e) {
+			log.error("{} > {} > {} patch faile.", namespace, serviceName, wp);
+			return false;
+		}
+		
+		return true;
 	}
 	
 	public String getServicePort(String namespace, String name) throws Exception {

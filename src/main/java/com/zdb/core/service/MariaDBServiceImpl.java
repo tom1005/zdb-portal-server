@@ -3380,5 +3380,45 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 			info.setConfirm(confirm);
 		}
 		return new Result("", Result.OK).putValue(IResult.CREDENTIAL_CONFIRM, info);
-	}	
+	}
+	
+	public Result getUserPrivilegesForSchema(String namespace, String serviceType, String releaseName ,String user ,String host , String schema) {
+		try {
+			
+			List<UserPrivilegesForSchema> userPrivilegesForSchema = MariaDBAccount.getUserPrivilegesForSchema(namespace, releaseName,user,host, schema);
+			
+			return new Result("", Result.OK).putValue(IResult.USER_PRIVILEGES_FOR_SCHEMA, userPrivilegesForSchema);
+		} catch (KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result("", Result.UNAUTHORIZED, "클러스터에 접근이 불가하거나 인증에 실패 했습니다.", null);
+			} else {
+				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
+	}
+	
+	@Override
+	public Result putWorkerPoolOfService(String txId, String namespace, String serviceType, String serviceName, String workerPool) throws Exception {
+		try {
+			String oldWorkerPool = k8sService.getWorkerPoolOfService(namespace, serviceName);
+			
+			boolean isSuccess = k8sService.putWorkerPoolOfService(namespace, serviceName, workerPool);
+			if(isSuccess) {
+				Result result = new Result(txId, Result.OK).putValue(IResult.WORKER_POOL, workerPool);
+				result.putValue(Result.HISTORY, oldWorkerPool +" > "+workerPool);
+				return result;
+			} else {
+				Result r = new Result(txId, Result.ERROR).putValue(IResult.WORKER_POOL, "");
+				r.setMessage("ZDB Node worker-pool 변경중 오류가 발생했습니다.");
+				return r;
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result(txId, Result.ERROR, e.getMessage(), e);
+		}
+	}
 }

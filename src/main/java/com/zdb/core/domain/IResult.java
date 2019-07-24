@@ -127,6 +127,8 @@ public interface IResult {
 
 	public static final String WORKER_POOL = "workerPool";
 
+	public static final String NODE_AFFINITY = "nodeAffinity";
+
 	public static final String FILE_LOG = "fileLog";
 
 	public static final String ALERT_RULES = "alertRules";
@@ -152,6 +154,8 @@ public interface IResult {
 	public static final String DATABASE_SCHEMAS = "databaseSchemas";
 
 	public static final String USER_PRIVILEGES = "userPrivileges";
+	
+	public static final String USER_PRIVILEGES_FOR_SCHEMA = "userPrivilegesForSchema";
 	
 	public static final String CREDENTIAL_CONFIRM = "credentialConfirm";
 	

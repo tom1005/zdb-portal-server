@@ -2367,7 +2367,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	/* (non-Javadoc)
 	 * @see com.zdb.core.service.ZDBRestService#putWorkerPool(java.lang.String, java.lang.String)
 	 */
-	public Result putWorkerPool(String txId, String node, String workerPool) throws Exception {
+	public Result putWorkerPoolOfNode(String txId, String node, String workerPool) throws Exception {
 		try {
 			String oldWorkerPool = k8sService.getWorkerPool(node);
 			
@@ -2377,13 +2377,11 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				result.putValue(Result.HISTORY, oldWorkerPool +" > "+workerPool);
 				return result;
 			} else {
-				Result r = new Result("", Result.ERROR).putValue(IResult.WORKER_POOL, "");
-				r.setMessage("ZDB Node worker-pool 변경중 오류가 발생했습니다.");
-				return r;
+				return new Result(txId, Result.ERROR, "ZDB Node worker-pool 변경중 오류가 발생했습니다.");
 			}
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			return new Result("", Result.ERROR, e.getMessage(), e);
+			return new Result(txId, Result.ERROR, e.getMessage(), e);
 		}
 	}
 
@@ -2652,5 +2650,10 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			log.error(e.getMessage(), e);
 			return new Result("", Result.ERROR, e.getMessage(), e);
 		}
+	}
+	
+	@Override
+	public Result putWorkerPoolOfService(String txId, String namespace, String serviceType, String serviceName, String workerPool) throws Exception {
+		return null;
 	}
 }

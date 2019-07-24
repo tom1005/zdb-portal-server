@@ -345,5 +345,25 @@ public interface ZDBRestService {
 
 	Result getMigrationBackupList(String namespace, String serviceType, String serviceName) throws Exception;
 	
-	Result putWorkerPool(String txId, String node, String workerPool) throws Exception;
+	/**
+	 * K8S 노드 중 role : zdb 의 worker-pool 라벨을 설정한다. 
+	 * @param txId
+	 * @param node
+	 * @param workerPool
+	 * @return
+	 * @throws Exception
+	 */
+	Result putWorkerPoolOfNode(String txId, String node, String workerPool) throws Exception;
+	
+	/**
+	 * StatefulSet 의 nodeAffinity 에 worker-pool 을 변경한다. 
+	 * @param txId
+	 * @param namespace
+	 * @param serviceType
+	 * @param serviceName
+	 * @param workerPool
+	 * @return
+	 * @throws Exception
+	 */
+	Result putWorkerPoolOfService(String txId, String namespace, String serviceType, String serviceName, String workerPool) throws Exception;
 }
