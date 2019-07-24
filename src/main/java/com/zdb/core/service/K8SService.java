@@ -36,7 +36,6 @@ import com.google.gson.GsonBuilder;
 import com.zdb.core.domain.BackupDiskEntity;
 import com.zdb.core.domain.BackupEntity;
 import com.zdb.core.domain.CommonConstants;
-import com.zdb.core.domain.DiskUsage;
 import com.zdb.core.domain.EventType;
 import com.zdb.core.domain.FailbackEntity;
 import com.zdb.core.domain.MetaData;
@@ -47,6 +46,7 @@ import com.zdb.core.domain.ScheduleEntity;
 import com.zdb.core.domain.ServiceOverview;
 import com.zdb.core.domain.SlaveReplicationStatus;
 import com.zdb.core.domain.SlaveStatus;
+import com.zdb.core.domain.StorageUsage;
 import com.zdb.core.domain.Tag;
 import com.zdb.core.domain.ZDBPersistenceEntity;
 import com.zdb.core.domain.ZDBStatus;
@@ -55,15 +55,15 @@ import com.zdb.core.job.Job.JobResult;
 import com.zdb.core.job.JobHandler;
 import com.zdb.core.repository.BackupDiskEntityRepository;
 import com.zdb.core.repository.BackupEntityRepository;
-import com.zdb.core.repository.DiskUsageRepository;
 import com.zdb.core.repository.FailbackEntityRepository;
 import com.zdb.core.repository.MetadataRepository;
 import com.zdb.core.repository.ScheduleEntityRepository;
 import com.zdb.core.repository.SlaveStatusRepository;
+import com.zdb.core.repository.StorageUsageRepository;
 import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
-import com.zdb.core.util.MetricUtil;
 import com.zdb.core.util.K8SUtil;
+import com.zdb.core.util.MetricUtil;
 import com.zdb.core.util.NumberUtils;
 import com.zdb.core.util.PodManager;
 import com.zdb.core.util.StatusUtil;
@@ -80,6 +80,7 @@ import io.fabric8.kubernetes.api.model.NodeBuilder;
 import io.fabric8.kubernetes.api.model.NodeList;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaimSpec;
+import io.fabric8.kubernetes.api.model.PersistentVolumeClaimVolumeSource;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodCondition;
 import io.fabric8.kubernetes.api.model.PodStatus;
@@ -116,7 +117,7 @@ public class K8SService {
 	protected TagRepository tagRepository;
 	
 	@Autowired
-	protected DiskUsageRepository diskRepository;
+	protected StorageUsageRepository diskRepository;
 	
 	@Autowired
 	private ScheduleEntityRepository scheduleEntity;
@@ -758,7 +759,7 @@ public class K8SService {
 		
 		for (Pod pod : pods) {
 			String podName = pod.getMetadata().getName();
-			List<DiskUsage> disk = diskRepository.findByPodName(podName);
+			List<StorageUsage> disk = diskRepository.findByPodName(podName);
 			so.getDiskUsageOfPodMap().put(podName, disk);
 		}
 		
@@ -793,7 +794,7 @@ public class K8SService {
 			}
 
 			so.getServices().addAll(services);
-			so.getPersistentVolumeClaims().addAll(persistentVolumeClaims);
+//			so.getPersistentVolumeClaims().addAll(persistentVolumeClaims);
 			so.getConfigMaps().addAll(configMaps);
 			so.getSecrets().addAll(secrets);
 			so.getDeployments().addAll(deployments);
@@ -806,6 +807,84 @@ public class K8SService {
 				String stsName = sts.getMetadata().getName();
 				so.getResourceSpecOfPodMap().put(stsName, getResourceSpec(so, stsName));
 				so.getPersistenceSpecOfPodMap().put(stsName, getPersistenceSpec(so, stsName));
+				
+				// StatefulSet 에 마운트된 pvc 만 결과 값에 담는다. 
+				try {
+					List<Volume> volumes = sts.getSpec().getTemplate().getSpec().getVolumes();
+					for (Volume volume : volumes) {
+						PersistentVolumeClaimVolumeSource persistentVolumeClaim = volume.getPersistentVolumeClaim();
+						if(persistentVolumeClaim != null) {
+							String claimName = persistentVolumeClaim.getClaimName();
+							for (PersistentVolumeClaim pvc : persistentVolumeClaims) {
+								String name = pvc.getMetadata().getName();
+								if(claimName.equals(name)) {
+									so.getPersistentVolumeClaims().add(pvc);
+								}
+							}
+						}
+					}
+					
+					List<PersistentVolumeClaim> volumeClaimTemplates = sts.getSpec().getVolumeClaimTemplates();
+					if (volumeClaimTemplates != null) {
+						for (PersistentVolumeClaim vct : volumeClaimTemplates) {
+							String name = vct.getMetadata().getName();
+							Map<String, String> labels = vct.getMetadata().getLabels();
+							String component = "";
+							String release = "";
+							String app = "";
+
+							for (Iterator<String> iterator = labels.keySet().iterator(); iterator.hasNext();) {
+								String labelKey = iterator.next();
+								String value = labels.get(labelKey);
+								
+								switch(labelKey) {
+								case "component" :
+								case "role" :
+									component = value;
+									break;
+								case "release" :
+									release = value;
+									break;
+								case "app":
+									app = value;
+									break;
+								}
+							}
+							
+//							data-fsk-db-endtest-mariadb-master-0 
+//							data-fsk-db-endtest-mariadb-slave-0
+//							data-fsk-db-pertest-mariadb-0
+//							redis-data-fsk-db-data2-redis-master-0
+							String pvcTemplateName = null;
+							
+							switch(app) {
+							case "mariadb" :
+								// name-releae-app-component-0
+								pvcTemplateName = String.format("%s-%s-%s", name, release, app);
+								break;
+							case "redis" :
+								// app-name-releae-app-component-0
+								pvcTemplateName = String.format("%s-%s-%s-%s", app, name, release, app);
+								break;
+							}
+							
+							for (PersistentVolumeClaim p : persistentVolumeClaims) {
+								String pname = p.getMetadata().getName();
+								if(pname.startsWith(pvcTemplateName)) {
+									if(!so.getPersistentVolumeClaims().contains(p)) {
+										so.getPersistentVolumeClaims().add(p);
+									}
+								}
+							}
+							
+							
+						}
+					}
+					
+				} catch (Exception e) {
+					log.error(e.getMessage(), e);
+				}
+				
 			}
 			
 			for (Deployment sts : so.getDeployments()) {
@@ -898,7 +977,7 @@ public class K8SService {
 							}
 						}
 					} catch (Exception e) {
-						log.error(e.getMessage(), e);
+						log.error(podName + " > " +e.getMessage(), e);
 					}
 				}
 			}

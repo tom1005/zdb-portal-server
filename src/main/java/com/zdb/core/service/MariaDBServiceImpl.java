@@ -75,9 +75,9 @@ import com.zdb.core.job.ResourceScaleJob;
 import com.zdb.core.job.ServiceOnOffJob;
 import com.zdb.core.job.ShutdownServiceJob;
 import com.zdb.core.job.StartServiceJob;
-import com.zdb.core.repository.DiskUsageRepository;
 import com.zdb.core.repository.MariaDBVariableRepository;
 import com.zdb.core.repository.MycnfRepository;
+import com.zdb.core.repository.StorageUsageRepository;
 import com.zdb.core.repository.ZDBMariaDBAccountRepository;
 import com.zdb.core.repository.ZDBMariaDBConfigRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
@@ -143,7 +143,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	private ZDBReleaseRepository releaseRepository;
 
 	@Autowired
-	private DiskUsageRepository diskUsageRepository;
+	private StorageUsageRepository diskUsageRepository;
 	
 	@Autowired
 	private MycnfRepository configRepository;

@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
-public class DiskUsagPK implements Serializable {
+public class StorageUsagPK implements Serializable {
 
 	private static final long serialVersionUID = 8114984462565484772L;
 
@@ -32,13 +32,13 @@ public class DiskUsagPK implements Serializable {
 
 		}
 
-		if (!(o instanceof DiskUsagPK)) {
+		if (!(o instanceof StorageUsagPK)) {
 
 			return false;
 
 		}
 
-		DiskUsagPK other = (DiskUsagPK) o;
+		StorageUsagPK other = (StorageUsagPK) o;
 
 		return this.podName.equals(other.podName)
 

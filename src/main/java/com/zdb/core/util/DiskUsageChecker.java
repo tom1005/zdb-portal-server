@@ -7,7 +7,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import com.zdb.core.domain.CommonConstants;
-import com.zdb.core.domain.DiskUsage;
+import com.zdb.core.domain.StorageUsage;
 
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.Namespace;
@@ -18,12 +18,12 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class DiskUsageChecker {
 	
-	public List<DiskUsage> getAllDiskUsage() throws Exception {
+	public List<StorageUsage> getAllStorageUsage() throws Exception {
 //		String[] commands = new String[] { "/bin/sh", "-c", "df -P | grep bitnami | awk '{size = $2} {used = $3} {avail=$4} {use=$5} END { print size \" \"used \" \" avail \" \" use }'" };
 		//String cmd = "/bin/df -P | grep bitnami | awk '{size = $2} {used = $3} {avail=$4} {use=$5} END { print size \" \"used \" \" avail \" \" use }'";
 		long s = System.currentTimeMillis();
 
-		List<DiskUsage> list = new ArrayList<>();
+		List<StorageUsage> list = new ArrayList<>();
 		ExecutorService executorService = Executors.newCachedThreadPool();
 //		ScheduledExecutorService executorService = Executors.newScheduledThreadPool(100);
 
@@ -104,7 +104,7 @@ public class DiskUsageChecker {
 							// Size Used Avail Use%
 							// 20971520 257088 20714432 2%
 							if (split.length == 5) {
-								DiskUsage diskUsage = new DiskUsage();
+								StorageUsage diskUsage = new StorageUsage();
 								diskUsage.setNamespace(namespace);
 								diskUsage.setReleaseName(releaseName);
 								diskUsage.setPodName(podName);
