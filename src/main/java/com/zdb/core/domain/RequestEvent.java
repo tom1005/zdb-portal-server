@@ -60,8 +60,9 @@ public class RequestEvent {
 	public static final String SET_AUTO_FAILOVER_USABLE = "Auto Failover 설정";
 	public static final String ADD_AUTO_FAILOVER = "Auto Failover 환경 등록";
 	public static final String CHANGE_PORT = "포트 변경";
-	public static final String WORKER_POOLS_READ = "Worker Pools 조회";
-	public static final String PUT_WORKER_POOL = "Worker Pool 변경";
+	public static final String WORKER_POOLS_READ = "Node Worker Pools 조회";
+	public static final String PUT_NODE_WORKER_POOL = "Node Worker Pool 변경";
+	public static final String PUT_ZDB_WORKER_POOL = "ZDB Worker Pool 변경";
 	public static final String FAILBACK = "서비스 전환(Fail-Back : Slave To Master)";
 	public static final String ADDBACKUPDIK = "백업 디스크 추가";
 	public static final String REMOVEBACKUPDIK = "백업 디스크 제거";

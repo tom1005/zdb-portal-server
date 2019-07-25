@@ -2742,7 +2742,7 @@ public class ZDBRestController {
 	}
 	
 	@RequestMapping(value="/nodes/{node}/workerpool/{workerpool}",method = RequestMethod.PUT)
-	public ResponseEntity<String> putWorkerPool(@PathVariable String node,@PathVariable String workerpool) throws Exception {
+	public ResponseEntity<String> putWorkerPoolNode(@PathVariable String node,@PathVariable String workerpool) throws Exception {
 		String txId = txId();
 		
 		RequestEvent event = new RequestEvent();
@@ -2751,10 +2751,10 @@ public class ZDBRestController {
 			event.setTxId(txId);
 			event.setStartTime(new Date(System.currentTimeMillis()));
 			event.setServiceName(node);
-			event.setOperation(RequestEvent.PUT_WORKER_POOL);
+			event.setOperation(RequestEvent.PUT_NODE_WORKER_POOL);
 			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
-			Result result = commonService.putWorkerPool(txId, node, workerpool);
+			Result result = commonService.putWorkerPoolOfNode(txId, node, workerpool);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
@@ -2768,6 +2768,45 @@ public class ZDBRestController {
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 
+			Result result = new Result(null, IResult.ERROR, "worker-pool 변경 오류!").putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}	
+	}
+
+	@RequestMapping(value="/{namespace}/{serviceType}/service/{serviceName}/workerpool/{workerpool}",method = RequestMethod.PUT)
+	public ResponseEntity<String> putWorkerPoolOfService(@PathVariable String namespace, @PathVariable String serviceType, @PathVariable String serviceName, @PathVariable String workerpool) throws Exception {
+		String txId = txId();
+		
+		RequestEvent event = new RequestEvent();
+		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.PUT_ZDB_WORKER_POOL);
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
+			
+			Result result = mariadbService.putWorkerPoolOfService(txId, namespace, serviceType, serviceName, workerpool);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			Object history = result.getResult().get(Result.HISTORY);
+			if (history != null) {
+				event.setHistory("" + history);
+			}
+			
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			
 			Result result = new Result(null, IResult.ERROR, "worker-pool 변경 오류!").putValue(IResult.EXCEPTION, e);
 			
 			event.setStatus(result.getCode());
@@ -3485,4 +3524,42 @@ public class ZDBRestController {
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
 	}
+	
+
+	@RequestMapping(value = "/{namespace}/{serviceType}/service/{serviceName}/userPrivileges/{user}/{host}/{schema}", method = RequestMethod.GET)
+	public ResponseEntity<String> getUserPrivilegesForSchema(@PathVariable("namespace") final String namespace, 
+			@PathVariable("serviceType") final String serviceType,
+			@PathVariable("serviceName") final String serviceName,
+			@PathVariable("user") final String user,
+			@PathVariable("host") final String host,
+			@PathVariable("schema") final String schema ) {
+		
+		Result result = null;
+		
+		try {
+			// mariadb , redis, postgresql, rabbitmq, mongodb
+			ZDBType dbType = ZDBType.getType(serviceType);
+
+			switch (dbType) {
+			case MariaDB:
+				result = ((MariaDBServiceImpl) mariadbService).getUserPrivilegesForSchema(namespace, serviceType, serviceName ,user , host , schema);
+				break;
+			case Redis:
+			case PostgreSQL:
+			case RabbitMQ:
+			case MongoDB:
+			default:
+				log.error("Not support.");
+				result = new Result(null, IResult.ERROR, "사용자 권한 목록 조회 오류!");
+				break;
+			}
+
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			
+			result = new Result(null, IResult.ERROR, "사용자 권한 목록 조회 오류!").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}	
 }
