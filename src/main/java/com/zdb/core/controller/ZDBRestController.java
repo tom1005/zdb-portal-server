@@ -3,6 +3,7 @@ package com.zdb.core.controller;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -3561,5 +3562,34 @@ public class ZDBRestController {
 			result = new Result(null, IResult.ERROR, "사용자 권한 목록 조회 오류!").putValue(IResult.EXCEPTION, e);
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 		}
+	}	
+	
+	@RequestMapping(value = "/failover/{namespace}/{serviceName}/info", method = RequestMethod.GET)
+	public ResponseEntity<String> getLastFailoverInfo(
+			@PathVariable("namespace") final String namespace,
+			@PathVariable("serviceName") final String serviceName,
+			final UriComponentsBuilder ucBuilder) {
+		RequestEvent event = new RequestEvent();
+		String txId = txId();
+		
+		try {
+			String lastFailoverTime = k8sService.getLastFailoverTime(namespace, serviceName);
+			Result result = null;
+			if(lastFailoverTime != null) {
+				result = new Result(txId, IResult.OK).putValue(IResult.LAST_FAILOVER, lastFailoverTime);
+			} else {
+				result = new Result(txId, IResult.OK).putValue(IResult.LAST_FAILOVER, "-");
+			}
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.OK);
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			Result result = new Result(txId, IResult.ERROR, "조회 오류!").putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+		}	
 	}	
 }

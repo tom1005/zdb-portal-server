@@ -158,6 +158,8 @@ public interface IResult {
 	public static final String USER_PRIVILEGES_FOR_SCHEMA = "userPrivilegesForSchema";
 	
 	public static final String CREDENTIAL_CONFIRM = "credentialConfirm";
+
+	public static final String LAST_FAILOVER = "lastFailover";
 	
 	public int getCode();
 	
