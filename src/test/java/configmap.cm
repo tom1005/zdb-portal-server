@@ -19,14 +19,13 @@ character_set_server=utf8mb4
 collation-server=utf8mb4_general_ci
 optimizer_search_depth=62
 connect_timeout=10
-max_connections=200
+max_connections=700
 
 # Common Config
 back_log=200
 join_buffer_size=64k
 max_allowed_packet=16M
 max_heap_table_size=16M
-max_connection=200
 performance_schema
 read_buffer_size=1M
 read_rnd_buffer_size=1M

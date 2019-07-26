@@ -3,7 +3,6 @@ package com.zdb.core.controller;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -1651,13 +1650,18 @@ public class ZDBRestController {
 			event.setServiceType("mariadb");
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
-			event.setOperation(RequestEvent.CREATE);
+			event.setOperation(RequestEvent.UPDATE_CONFIG);
 			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
 			
 			Result result = ((MariaDBServiceImpl)mariadbService).updateConfig(txId, namespace, serviceName, config);
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
+			
+			Object history = result.getResult().get(Result.HISTORY);
+			if (history != null) {
+				event.setHistory("" + history);
+			}
 			
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
@@ -3300,10 +3304,20 @@ public class ZDBRestController {
 	@RequestMapping(value="/{namespace}/{serviceType}/{serviceName}/database/useVariables",method=RequestMethod.PUT)
 	public ResponseEntity<String> updateUseDatabaseVariables(@PathVariable String namespace,@PathVariable String serviceType,@PathVariable String serviceName 
 														     ,@RequestBody String data) throws Exception {
+		Result result = null;
 		String txId = txId();
-		Result result = Result.RESULT_OK(txId);
 		
+		RequestEvent event = new RequestEvent();
 		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType("mariadb");
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.UPDATE_CONFIG);
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());
+			
 			ZDBType dbType = ZDBType.getType(serviceType);
 			switch (dbType) {
 			case MariaDB:
@@ -3315,12 +3329,32 @@ public class ZDBRestController {
 				result = new Result(txId, IResult.ERROR, RequestEvent.UPDATE_DATABASE_VARIABLES);
 				break;
 			}
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			Object history = result.getResult().get(Result.HISTORY);
+			if (history != null) {
+				event.setHistory("" + history);
+			}
+			
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
-			result = new Result(null, IResult.ERROR, RequestEvent.UPDATE_DATABASE_VARIABLES + " 오류").putValue(IResult.EXCEPTION, e);
+			result = new Result(txId, IResult.ERROR, RequestEvent.UPDATE_CONFIG +" 오류!").putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			Object history = result.getResult().get(Result.HISTORY);
+			if (history != null) {
+				event.setHistory("" + history);
+			}
+			
 			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
-		}
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}	
 	}
 	
 
@@ -3592,4 +3626,86 @@ public class ZDBRestController {
 		} finally {
 		}	
 	}	
+	
+	@RequestMapping(value = "/namespaces/{namespace}/services/{serviceName}/config", method = RequestMethod.PUT)
+	public ResponseEntity<String> putMycnf(
+			@PathVariable("namespace") final String namespace,
+			@PathVariable("serviceName") final String serviceName,
+			@RequestBody final String mycnf) {
+//		RequestEvent event = new RequestEvent();
+//		String txId = txId();
+//		try {
+//			UserInfo userInfo = getUserInfo();
+//			event.setTxId(txId);
+//			event.setStartTime(new Date(System.currentTimeMillis()));
+//			event.setServiceType("mariadb");
+//			event.setNamespace(namespace);
+//			event.setServiceName(serviceName);
+//			event.setOperation(RequestEvent.UPDATE_CONFIG);
+//			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());		
+//			
+//			
+//			String cnf = k8sService.putConfig(namespace, serviceName, mycnf);
+//			Result result = Result.RESULT_OK.putValue(IResult.PUT_MY_CNF, cnf);
+//			result.setMessage("환경설정이 변경.");
+//			
+//			return new ResponseEntity<String>(result.toJson(), HttpStatus.OK);
+//		} catch (Exception e) {
+//			log.error(e.getMessage(), e);
+//			Result result = new Result(txId, IResult.ERROR, "조회 오류!").putValue(IResult.EXCEPTION, e);
+//			
+//			event.setStatus(result.getCode());
+//			event.setResultMessage(result.getMessage());
+//			
+//			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+//		} finally {
+//			event.setEndTime(new Date(System.currentTimeMillis()));
+//			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+//		}	
+		
+
+		Result result = null;
+		String txId = txId();
+		
+		RequestEvent event = new RequestEvent();
+		try {
+			UserInfo userInfo = getUserInfo();
+			event.setTxId(txId);
+			event.setStartTime(new Date(System.currentTimeMillis()));
+			event.setServiceType("mariadb");
+			event.setNamespace(namespace);
+			event.setServiceName(serviceName);
+			event.setOperation(RequestEvent.UPDATE_CONFIG);
+			event.setUserId(userInfo.getUserName() == null ? "SYSTEM" : userInfo.getUserName());	
+			
+			result = ((MariaDBServiceImpl) mariadbService).updateConfigV2(txId, namespace, serviceName, mycnf);
+
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			Object history = result.getResult().get(Result.HISTORY);
+			if (history != null) {
+				event.setHistory("" + history);
+			}
+			
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			result = new Result(txId, IResult.ERROR, RequestEvent.UPDATE_CONFIG +" 오류!").putValue(IResult.EXCEPTION, e);
+			
+			event.setStatus(result.getCode());
+			event.setResultMessage(result.getMessage());
+			
+			Object history = result.getResult().get(Result.HISTORY);
+			if (history != null) {
+				event.setHistory("" + history);
+			}
+			
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		} finally {
+			event.setEndTime(new Date(System.currentTimeMillis()));
+			ZDBRepositoryUtil.saveRequestEvent(zdbRepository, event);
+		}	
+	
+	}
 }

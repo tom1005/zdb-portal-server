@@ -126,6 +126,8 @@ public interface IResult {
 	public static final String WORKER_POOLS = "workerPools";
 
 	public static final String WORKER_POOL = "workerPool";
+	
+	public static final String PUT_MY_CNF = "putMycnf";
 
 	public static final String NODE_AFFINITY = "nodeAffinity";
 
