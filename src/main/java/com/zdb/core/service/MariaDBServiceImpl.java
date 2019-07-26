@@ -3255,7 +3255,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		final String container = "mariadb";
 		final String loginCmd = "mysql -uroot -p$MARIADB_ROOT_PASSWORD -e";  
 		StringBuffer cmd = new StringBuffer(); 
-		cmd.append(loginCmd).append("\" show status ; \" ");
+		cmd.append(loginCmd).append("\" show global status ; \" ");
 		
 		try {
 			ExecUtil execUtil = new ExecUtil();
