@@ -124,10 +124,6 @@ import lombok.extern.slf4j.Slf4j;
  * @author 06919
  *
  */
-/**
- * @author a06919
- *
- */
 @org.springframework.stereotype.Service("mariadbService")
 @Slf4j
 @Configuration
@@ -810,77 +806,6 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	
 	/**
 	 * 환경 설정 변경값 저장.
-	 * 
-	 * @param txId
-	 * @param namespace
-	 * @param serviceName
-	 * @param inputValue
-	 * @return
-	 * @throws Exception
-	 */
-	public Result updateConfigV2(String txId, String namespace, String serviceName, String inputValue) throws Exception {
-		Result result = null;
-		String historyValue = "";
-		try (final DefaultKubernetesClient client = K8SUtil.kubernetesClient()) {
-			
-			String[] cnf = inputValue.split("\n");
-			
-			Map<String, String> config = new HashMap<>();
-			for(String line : cnf) {
-				String temp = line.trim();
-				if(temp.isEmpty() || temp.startsWith("#") || temp.startsWith("[")) {
-					continue;
-				}
-				String[] split = temp.split("=");
-				if(split.length == 2) {
-					String key = split[0].trim().replace("-", "_");
-					config.put(key, split[1].trim());
-				}
-			}
-			
-			// 2018-10-04 추가
-			// 환경설정 변경 이력 
-			historyValue = compareVariables(namespace, serviceName, config);
-			
-			List<ConfigMap> items = client.inNamespace(namespace).configMaps().withLabel("release", serviceName).list().getItems();
-			
-			Map<String, String> beforeDataMap = new HashMap<>();
-			
-			StringBuffer myCnfBuffer = new StringBuffer();
-			String[] split = inputValue.split("\n");
-			for (String string : split) {
-				myCnfBuffer.append(string.trim()).append("\n");
-			}
-			
-			for (ConfigMap configMap : items) {
-				String configMapName = configMap.getMetadata().getName();
-				String beforeValue = configMap.getData().get("my.cnf");
-				
-				beforeDataMap.put(configMapName, beforeValue);
-				client.configMaps().inNamespace(namespace).withName(configMapName).edit().addToData("my.cnf", myCnfBuffer.toString()).done();
-			}
-			
-			// 2018-12-04 my.cnf 변경된 값 저장(master, slave)
-			saveHistory(namespace, serviceName, beforeDataMap);
-			
-			result = new Result(txId, IResult.OK, "환경설정 변경");
-			if (!historyValue.isEmpty()) {
-				result.putValue(Result.HISTORY, historyValue);
-			}
-			
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-			result = new Result(txId, IResult.ERROR, "환경설정 변경 오류 - " + e.getMessage());
-			if (!historyValue.isEmpty()) {
-				result.putValue(Result.HISTORY, historyValue);
-			}
-		}
-		
-		return result;
-	}
-	
-	/**
-	 * 환경 설정 변경값 저장.
 	 */
 	private void saveHistory(String namespace, String serviceName, Map<String, String> beforeDataMap) throws Exception {
 		try {
@@ -1120,15 +1045,8 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 	
 	private String compareVariables(String namespace, String releaseName, Map<String, String> newConfig) {
 		Map<String, String> systemConfigMap = new HashMap<>();
-		Map<String, String> newConfigMap = new HashMap<>();
 		
 		StringBuffer sb = new StringBuffer();
-		
-		for (Iterator<String> iterator = newConfig.keySet().iterator(); iterator.hasNext();) {
-			String key = iterator.next();
-			
-			newConfigMap.put(key.replace("-", "_"), newConfig.get(key));
-		}
 		
 		try {
 			List<ConfigMap> configMaps = K8SUtil.getConfigMaps(namespace, releaseName);
@@ -1148,7 +1066,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 						}
 						systemConfigMap.put(key, value);
 						
-						String newValue = newConfigMap.get(key.replace("-", "_"));
+						String newValue = newConfig.get(key);
 						
 						if(value != null && newValue != null && !value.equals(newValue)) {
 							sb.append(key).append(" : ").append(value).append(" → ").append(newValue).append("\n");
@@ -3255,7 +3173,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		final String container = "mariadb";
 		final String loginCmd = "mysql -uroot -p$MARIADB_ROOT_PASSWORD -e";  
 		StringBuffer cmd = new StringBuffer(); 
-		cmd.append(loginCmd).append("\" show status ; \" ");
+		cmd.append(loginCmd).append("\" show global status ; \" ");
 		
 		try {
 			ExecUtil execUtil = new ExecUtil();
@@ -3372,38 +3290,11 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				}
 			}
 			
-			String[] cnf = myCnfBuffer.toString().split("\n");
-			
-			Map<String, String> config = new HashMap<>();
-			for(String line : cnf) {
-				String temp = line.trim();
-				if(temp.isEmpty() || temp.startsWith("#") || temp.startsWith("[")) {
-					continue;
-				}
-				String[] split = temp.split("=");
-				if(split.length == 2) {
-					String key = split[0].trim().replace("-", "_");
-					config.put(key, split[1].trim());
-				}
-			}
-			String historyValue = compareVariables(namespace, serviceName, config);
-			Map<String, String> beforeDataMap = new HashMap<>();
-			
 			for (ConfigMap configMap : configMaps) {
 				String configMapName = configMap.getMetadata().getName();
-				String beforeValue = configMap.getData().get("my.cnf");
-				beforeDataMap.put(configMapName, beforeValue);
 				client.configMaps().inNamespace(namespace).withName(configMapName).edit().addToData("my.cnf", myCnfBuffer.toString()).done();
 			}
-		
-			// 2018-12-04 my.cnf 변경된 값 저장(master, slave)
-			saveHistory(namespace, serviceName, beforeDataMap);
-			
-			Result result = new Result(txId, IResult.OK, "환경설정 변경");
-			if (!historyValue.isEmpty()) {
-				result.putValue(Result.HISTORY, historyValue);
-			}
-			return result;
+			return new Result("", Result.OK,"정상정으로 수정 되었습니다.");
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			return new Result("", Result.ERROR, e.getMessage(), e);
