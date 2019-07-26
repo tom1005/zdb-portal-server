@@ -41,6 +41,7 @@ import com.zdb.core.domain.FailbackEntity;
 import com.zdb.core.domain.MetaData;
 import com.zdb.core.domain.PersistenceSpec;
 import com.zdb.core.domain.ReleaseMetaData;
+import com.zdb.core.domain.RequestEvent;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.ScheduleEntity;
 import com.zdb.core.domain.ServiceOverview;
@@ -62,6 +63,8 @@ import com.zdb.core.repository.SlaveStatusRepository;
 import com.zdb.core.repository.StorageUsageRepository;
 import com.zdb.core.repository.TagRepository;
 import com.zdb.core.repository.ZDBReleaseRepository;
+import com.zdb.core.repository.ZDBRepository;
+import com.zdb.core.util.DateUtil;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.MetricUtil;
 import com.zdb.core.util.NumberUtils;
@@ -133,6 +136,9 @@ public class K8SService {
 	
 	@Autowired
 	private FailbackEntityRepository failbackEntityRepository;
+	
+	@Autowired
+	protected ZDBRepository requestEventRepository;
 	
 	@Value("${iam.baseUrl}")
 	public String iamBaseUrl;
@@ -2798,5 +2804,27 @@ public class K8SService {
 			log.warn("no cluster ip.");
 			return null;
 		}
+	}
+
+	/**
+	 * 최근 failover 실행된 시간 조회
+	 * 
+	 * @param namespace
+	 * @param serviceName
+	 * @return
+	 */
+	public String getLastFailoverTime(String namespace, String serviceName) {
+		try {
+			RequestEvent requestEvent = requestEventRepository.findByServiceNameAndOperation(namespace, serviceName, RequestEvent.SERVICE_MASTER_TO_SLAVE);
+			
+			if(requestEvent != null) {
+				return DateUtil.formatDate(requestEvent.getEndTime());
+			}
+			
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+		}
+		
+		return null;
 	}
 }
