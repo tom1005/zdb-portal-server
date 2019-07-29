@@ -129,6 +129,8 @@ public interface ZDBRestService {
 	
 	// 네임스페이스별 getServices(namesapce)
 	Result getServicesWithNamespaces(final String namespaces, boolean detail) throws Exception;
+
+	Result getFailoverServicesWithNamespaces(final String namespaces, boolean detail) throws Exception;
 	
 	// 네임스페이스, 서비스타입, 서비스명 getService(namesapce, servicetype, servicename)
 	Result getService(final String namespace, final String serviceType, final String serviceName) throws Exception;

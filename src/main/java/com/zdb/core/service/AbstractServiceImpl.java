@@ -911,6 +911,11 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 
 		return new Result("", Result.OK).putValue(IResult.SERVICEOVERVIEWS, "");
 	}
+
+	@Override
+	public Result getFailoverServicesWithNamespaces(String namespaces, boolean detail) throws Exception {
+		return null;
+	}
 	
 	@Override
 	public Result getMigrationBackupServiceList(String namespace, String serviceType, String type) throws Exception {

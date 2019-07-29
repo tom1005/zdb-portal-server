@@ -61,6 +61,8 @@ public class ServiceOverview {
 	private SlaveReplicationStatus slaveStatus;
 	
 	private String serviceFailOverStatus;
+
+	private String serviceFailOverTime;
 	
 	private List<PersistentVolumeClaim> persistentVolumeClaims = new ArrayList<>();
 	

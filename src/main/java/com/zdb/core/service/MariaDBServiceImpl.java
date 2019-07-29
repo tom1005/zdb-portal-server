@@ -112,6 +112,7 @@ import io.fabric8.kubernetes.api.model.extensions.StatefulSet;
 import io.fabric8.kubernetes.api.model.extensions.StatefulSetList;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.NamespacedKubernetesClient;
 import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.PodResource;
 import io.fabric8.kubernetes.client.dsl.Resource;
@@ -2387,6 +2388,81 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		}
 
 		return result;
+	}
+	
+	@Override
+	public Result getFailoverServicesWithNamespaces(String namespaces, boolean detail) throws Exception {
+		try (DefaultKubernetesClient client = K8SUtil.kubernetesClient();) {
+			// 서비스명/서비스종류/autofailover 설정/ failover 상태/ failover 시간
+//			List<StatefulSet> failoverServices = k8sService.getAutoFailoverServices(namespaces, null);
+			List<String> autoFailoverEnabledServices = k8sService.getAutoFailoverEnabledServices(namespaces);
+			
+			List<ServiceOverview> overviews = new ArrayList<>();
+			
+			
+			// app=mariadb,chart=mariadb-4.2.3,component=master,heritage=Tiller,release=zdb-test2-mha
+			NamespacedKubernetesClient namespaceClient = null;
+			if(namespaces == null || namespaces.isEmpty() || "-".equals(namespaces)) {
+				namespaceClient = client.inAnyNamespace();
+			} else {
+				namespaceClient = client.inNamespace(namespaces);
+			}
+			
+			List<StatefulSet> stsItems = null;
+
+			// slave 가 존재하는 경우 HA 구조임. 
+			stsItems = namespaceClient.apps().statefulSets()
+					.withLabel("app", "mariadb")
+					.withLabel("component", "slave")
+					.list().getItems();
+			
+			for (StatefulSet sts : stsItems) {
+				String namespace = sts.getMetadata().getNamespace();
+				String serviceName = sts.getMetadata().getLabels().get("release");
+				String app = sts.getMetadata().getLabels().get("app");
+				
+				ServiceOverview so = new ServiceOverview();
+				so.setServiceName(serviceName);
+				so.setNamespace(sts.getMetadata().getNamespace());
+				so.setServiceType(app);
+				so.setClusterEnabled(true);
+				
+				for (String enabledService : autoFailoverEnabledServices) {
+					if(enabledService != null && enabledService.equals(serviceName)) {
+						so.setFailoverEnabled("true");
+					}
+				}
+				
+				if(!"true".equals(so.getFailoverEnabled())) {
+					so.setFailoverEnabled("false");
+				}
+				
+				String serviceFailOverStatus = k8sService.getServiceFailOverStatus(namespace, so.getServiceType(), serviceName);
+				so.setServiceFailOverStatus(serviceFailOverStatus);
+				
+				if("MasterToSlave".equals(serviceFailOverStatus)) {
+					String serviceFailOverTime = k8sService.getLastFailoverTime(namespace, serviceName);
+					so.setServiceFailOverTime(serviceFailOverTime == null ? "-" : serviceFailOverTime);
+				} else {
+					so.setServiceFailOverTime("");
+				}
+				
+				overviews.add(so);
+			}
+			
+			return new Result("", Result.OK).putValue(IResult.SERVICEOVERVIEWS, overviews);
+			
+		} catch (KubernetesClientException e) {
+			log.error(e.getMessage(), e);
+			if (e.getMessage().indexOf("Unauthorized") > -1) {
+				return new Result("", Result.UNAUTHORIZED, "클러스터에 접근이 불가하거나 인증에 실패 했습니다.", null);
+			} else {
+				return new Result("", Result.UNAUTHORIZED, e.getMessage(), e);
+			}
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			return new Result("", Result.ERROR, e.getMessage(), e);
+		}
 	}
 	
 	/**

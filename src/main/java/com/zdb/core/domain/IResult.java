@@ -27,6 +27,8 @@ public interface IResult {
 	public static final String SERVICEOVERVIEW = "serviceoverview";
 	
 	public static final String SERVICEOVERVIEWS = "serviceoverviews";
+
+	public static final String FAILOVER_SERVICEOVERVIEWS = "failoverServiceoverviews";
 	
 	public static final String SERVICELIST = "serviceLists";
 	
