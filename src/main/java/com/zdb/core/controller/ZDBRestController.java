@@ -1253,6 +1253,19 @@ public class ZDBRestController {
 		}
 	}
 
+	@RequestMapping(value = "/{namespace}/failover/services", method = RequestMethod.GET)
+	public ResponseEntity<String> getFailoverServicesWithNamespaces(@PathVariable("namespace") String namespaces) throws Exception {
+		try {
+			Result result = mariadbService.getFailoverServicesWithNamespaces(namespaces, false);
+			return new ResponseEntity<String>(result.toJson(), result.status());
+		} catch (Exception e) {
+			log.error(e.getMessage(), e);
+			
+			Result result = new Result(null, IResult.ERROR, "서비스 조회 오류!").putValue(IResult.EXCEPTION, e);
+			return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+		}
+	}
+
 	@RequestMapping(value = "/{namespace}/{serviceType}/service/services", method = RequestMethod.GET)
 	public ResponseEntity<String> getServices(@PathVariable("namespace") String namespace, @PathVariable("serviceType") String serviceType) throws Exception {
 		try {
