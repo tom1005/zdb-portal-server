@@ -165,6 +165,8 @@ public interface IResult {
 
 	public static final String LAST_FAILOVER = "lastFailover";
 	
+	public static final String MIGRATION_BACKUP_LIST = "migrationBackupList";
+	
 	public int getCode();
 	
 	public Throwable getException();

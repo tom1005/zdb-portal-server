@@ -959,7 +959,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		try {
 			List<BackupEntity> backupList  = backuRepository.findValidBackup(namespace, serviceType, serviceName);
 			if(backupList != null) {
-				return new Result("", Result.OK).putValue(IResult.BACKUP_LIST, backupList);
+				return new Result("", Result.OK).putValue(IResult.MIGRATION_BACKUP_LIST, backupList);
 			}
 		} catch (KubernetesClientException e) {
 			log.error(e.getMessage(), e);
@@ -973,7 +973,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			return new Result("", Result.ERROR, e.getMessage(), e);
 		}
 
-		return new Result("", Result.OK).putValue(IResult.BACKUP_LIST, "");
+		return new Result("", Result.OK).putValue(IResult.MIGRATION_BACKUP_LIST, "");
 	}
 	
 	
