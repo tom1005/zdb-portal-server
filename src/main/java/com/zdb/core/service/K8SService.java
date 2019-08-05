@@ -772,6 +772,8 @@ public class K8SService {
 			so.getDiskUsageOfPodMap().put(podName, disk);
 		}
 		
+		so.setBackupDiskUsed(checkBackupDiskUsed(so));
+		
 		if (detail) {
 			List<ConfigMap> configMaps = new ArrayList<>();
 			List<PersistentVolumeClaim> persistentVolumeClaims = new ArrayList<>();
@@ -2826,5 +2828,31 @@ public class K8SService {
 		}
 		
 		return null;
+	}
+	
+	/**
+	 * backupDisk 사용여부 Check
+	 * 
+	 * @param ServiceOverview
+	 * @return
+	 */
+	public boolean checkBackupDiskUsed(ServiceOverview tempSo) {
+		
+		boolean isBackUpDisk = false;
+		
+		Map<String, List<StorageUsage>> diskUsageOfPodMap = new HashMap<>();
+		diskUsageOfPodMap = tempSo.getDiskUsageOfPodMap();
+		
+		for(String key:diskUsageOfPodMap.keySet()) {
+			List<StorageUsage> diskList = diskUsageOfPodMap.get(key);
+			for(StorageUsage su :diskList) {
+				String diskPath = su.getPath();
+				if("/backup".equalsIgnoreCase(diskPath)) {
+					isBackUpDisk = true;
+				}
+			}
+		}
+		
+		return isBackUpDisk;
 	}
 }
