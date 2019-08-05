@@ -102,6 +102,8 @@ public class ServiceOverview {
 	
 	private String failbackStatus;
 	
+	private boolean backupDiskUsed;
+	
 	/**
 	 * @return
 	 */
