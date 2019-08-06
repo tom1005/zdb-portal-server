@@ -35,4 +35,7 @@ public interface StorageUsageRepository extends CrudRepository<StorageUsage, Str
 	@Query(value = "select * from zdb.storage_usage where release_name=:release_name", nativeQuery = true)
 	List<StorageUsage> findByReleaseName(@Param("release_name") String release_name);
 	
+	@Transactional
+	@Query(value = "delete from zdb.storage_usage where path = '/backup' and namespace =:namespace and release_name =:release_name", nativeQuery = true)
+	Integer deleteBackupStorageByNamespaceAndReleaseName(@Param("namespace") String namespace, @Param("release_name") String release_name);
 }
