@@ -479,9 +479,9 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 					
 					BackupDiskEntity backupDiskEntity = backupDiskRepository.findBackupByServiceName(releaseMeta.getApp(), releaseMeta.getReleaseName(), releaseMeta.getNamespace());
 					if(backupDiskEntity != null && backupDiskEntity.getStatus().equals("COMPLETE")) {
-						scheduleInfo.setBackupDiskYn("Y");
+						scheduleInfo.setBackupDiskInfo("사용(" + backupDiskEntity.getDiskSize() + "GB)");
 					}else {
-						scheduleInfo.setBackupDiskYn("N");
+						scheduleInfo.setBackupDiskInfo("미사용");
 					}
 					
 					scheduleInfolist.add(scheduleInfo);

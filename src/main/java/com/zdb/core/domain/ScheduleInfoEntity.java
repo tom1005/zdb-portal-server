@@ -42,6 +42,6 @@ public class ScheduleInfoEntity {
 	private String icosDiskUsage;
 	
 	private String backupExecType;
-	private String backupDiskYn;
+	private String backupDiskInfo;
 	private String backupStatus;
 }	
