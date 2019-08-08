@@ -31,15 +31,15 @@ public class ScheduleInfoEntity {
 	private String startTime;
 	private int storePeriod;
 	private String incrementYn = "N";
-	private int incrementPeriod = 12;
+	private String incrementPeriod;
 
-	private long fullFileSize;
+	private String fullFileSize;
 	private String fullExecutionTime;
 
-	private long incrFileSize;
+	private String incrFileSize;
 	private String incrExecutionTime;
 
-	private long icosDiskUsage;
+	private String icosDiskUsage;
 	
 	private String backupExecType;
 	private String backupDiskYn;
