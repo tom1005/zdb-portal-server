@@ -144,8 +144,7 @@ public class ZDBBackupController {
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
 			
-			Object history = result.getResult().get(Result.HISTORY);
-			if (history != null) {
+			if (oldScheduleEntity.getUseYn().equals(scheduleEntity.getUseYn())) {
 				StringBuffer sb = new StringBuffer();
 				if(oldScheduleEntity.getUseYn().equals(scheduleEntity.getUseYn())) {
 					if(oldScheduleEntity != null) {
@@ -187,9 +186,9 @@ public class ZDBBackupController {
 						
 						if(!oldScheduleEntity.getThrottleYn().equals(scheduleEntity.getThrottleYn())) {
 							if(scheduleEntity.getThrottleYn().equals("Y")) {
-								sb.append("수행 모드 : 정상모드 → 저속모드");
+								sb.append("수행 모드 : 정상모드 → 저속모드\n");
 							}else {
-								sb.append("수행 모드 : 저속모드 → 정상모드");
+								sb.append("수행 모드 : 저속모드 → 정상모드\n");
 							}
 							
 						}
@@ -696,7 +695,7 @@ public class ZDBBackupController {
 			sb.append("startTime empty or null");
 		} else if(schedule.getStorePeriod() < 1 || schedule.getStorePeriod() > 8) {
 			result = false;
-			sb.append("storePeriod more then 0 and less then 8 : "+schedule.getStorePeriod());
+			sb.append("보관기간은 최대 7일 까지만 선택이 가능합니다.(입력값 : "+schedule.getStorePeriod() + ")");
 		} else if ("".equals(schedule.getUseYn()) || schedule.getUseYn()==null) {
 			result = false;
 			sb.append("useYn is empty or null : "+schedule.getStorePeriod());
