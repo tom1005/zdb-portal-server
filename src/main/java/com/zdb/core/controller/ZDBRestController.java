@@ -3,6 +3,7 @@ package com.zdb.core.controller;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -1887,6 +1888,15 @@ public class ZDBRestController {
 		userInfo.setAccessRole(request.getHeader("accessRole"));
 		userInfo.setNamespaces(request.getHeader("namespaces"));
 		userInfo.setDefaultNamespace(request.getHeader("defaultNamespace"));
+		
+//	Request Header 조회 (2019-08-08)		
+//		Enumeration<String> params = request.getHeaderNames();
+//		System.out.println("----------------------------");
+//		while (params.hasMoreElements()){
+//		    String name = (String)params.nextElement();
+//		    System.out.println(name + " : " +request.getHeader(name));
+//		}
+//		System.out.println("----------------------------");
 
 		return userInfo;
 	}
