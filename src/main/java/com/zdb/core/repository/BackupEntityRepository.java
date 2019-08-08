@@ -235,8 +235,6 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			, @Param("serviceName") String serviceName
 			, @Param("targetDate") String targetDate);
 	
-	
-	
 	@Modifying(clearAutomatically = true)
 	@Transactional
 	@Query("UPDATE BackupEntity t SET "
@@ -244,5 +242,12 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			+ "WHERE t.backupId=:backupId")
 	int modify2OndiskYn( @Param("ondiskYn") String ondiskYn
 			, @Param("backupId") String backupId);
+	
+	@Query(value =  "SELECT * from zdb.backup_entity "
+            + " WHERE schedule_id=:scheduleId "
+            + " and type = :type "
+            + " and status = 'OK' order by complete_datetime desc limit 1", nativeQuery = true)
+	BackupEntity findValidRecentBackupByscheduleId(@Param("scheduleId") String scheduleId
+			, @Param("type") String type);
 	
 }
