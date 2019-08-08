@@ -29,7 +29,7 @@ public class ScheduleInfoEntity {
 	private String serviceType;
 	private String useYn;
 	private String startTime;
-	private int storePeriod;
+	private String storePeriod;
 	private String incrementYn = "N";
 	private String incrementPeriod;
 

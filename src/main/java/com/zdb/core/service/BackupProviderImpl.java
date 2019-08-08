@@ -380,7 +380,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 					
 					scheduleInfo.setUseYn("N");
 					scheduleInfo.setStartTime(ZDBConfigService.backupTimeValue);
-					scheduleInfo.setStorePeriod(Integer.parseInt(ZDBConfigService.backupDuratioValue));
+					scheduleInfo.setStorePeriod(ZDBConfigService.backupDuratioValue + "일");
 					scheduleInfo.setIncrementYn("N");
 					scheduleInfo.setIncrementPeriod("미사용");
 					
@@ -394,7 +394,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 					if(schedule != null) {
 						scheduleInfo.setUseYn(schedule.getUseYn());
 						scheduleInfo.setStartTime(schedule.getStartTime());
-						scheduleInfo.setStorePeriod(schedule.getStorePeriod());
+						scheduleInfo.setStorePeriod(schedule.getStorePeriod() + "일");
 						scheduleInfo.setIncrementYn(schedule.getIncrementYn());
 						if(schedule.getScheduleDay() != 0) {
 							if(schedule.getScheduleDay() == 1) {
