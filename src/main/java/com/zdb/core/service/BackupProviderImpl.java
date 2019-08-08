@@ -93,23 +93,11 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 						resultMessage = "백업이 활성화 되었습니다.";
 					}
 				}else {
-					if(oldSche.getStorePeriod() != entity.getStorePeriod()) {
-						resultMessage = "보관기간이 " + oldSche.getStorePeriod() + "일 에서 " + entity.getStorePeriod() + "일 로";
-					}
-					if(!oldSche.getStartTime().equals(entity.getStartTime())) {
-						if(resultMessage.length() != 0) {
-							resultMessage += ", ";
-						}
-						resultMessage += "백업시간이 " + oldSche.getStartTime() + " 에서 " + entity.getStartTime() + "일 로";
-						
-					}
-					if(!resultMessage.isEmpty()) {
-						resultMessage += " 변경되었습니다.";
-					}
+					resultMessage = "백업이 설정이 변경되었습니다.";
 				}
 			}
 			
-			result = new Result(txid, IResult.OK, resultMessage).putValue("backupSchedule", entity);
+			result = new Result(txid, IResult.OK, resultMessage).putValue("backupSchedule", oldSche);
 			
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -387,6 +375,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 					scheduleInfo.setFullFileSize("-");
 					scheduleInfo.setFullExecutionTime("-");
 					scheduleInfo.setIncrFileSize("-");
+					scheduleInfo.setIcosDiskUsage("-");
 					
 					scheduleInfo.setBackupExecType("매일 수행");
 					
@@ -429,7 +418,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 						}
 						
 						if(objectStorageUsage != 0l) {
-							scheduleInfo.setIcosDiskUsage(getFileSizeConvertion(objectStorageUsage));
+							scheduleInfo.setIcosDiskUsage(getFileSizeConvertion(objectStorageUsage) + "Gi");
 						}else {
 							scheduleInfo.setIcosDiskUsage("-");
 						}

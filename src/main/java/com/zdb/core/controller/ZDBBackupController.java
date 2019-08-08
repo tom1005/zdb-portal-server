@@ -1,5 +1,6 @@
 package com.zdb.core.controller;
 
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.UUID;
@@ -138,13 +139,64 @@ public class ZDBBackupController {
 			verifyService(scheduleEntity.getNamespace(), serviceType, scheduleEntity.getServiceName());
 			
 			result = backupProvider.saveSchedule(txId, scheduleEntity);
+			ScheduleEntity oldScheduleEntity = (ScheduleEntity)result.getResult().get("backupSchedule");
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
 			
 			Object history = result.getResult().get(Result.HISTORY);
 			if (history != null) {
-				event.setHistory("" + history);
+				StringBuffer sb = new StringBuffer();
+				if(oldScheduleEntity.getUseYn().equals(scheduleEntity.getUseYn())) {
+					if(oldScheduleEntity != null) {
+						if(oldScheduleEntity.getStorePeriod() != scheduleEntity.getStorePeriod()) {
+							sb.append("보관기간 : ")
+								.append(oldScheduleEntity.getStorePeriod() + "일")
+								.append(" → ")
+								.append(scheduleEntity.getStorePeriod() + "일\n");
+						}
+						
+						if(!oldScheduleEntity.getScheduleType().equals(scheduleEntity.getScheduleType())) {
+							if(scheduleEntity.getScheduleType().equals("Y")) {
+								sb.append("전체백업 수행주기 : 매일수행 → ")
+									.append(getScheduleDayConvertion(scheduleEntity.getScheduleDay()) + "\n");
+							}else {
+								sb.append("전체백업 수행주기 : ")
+									.append(getScheduleDayConvertion(oldScheduleEntity.getScheduleDay()))
+									.append(" → 매일수행\n");
+							}
+						}
+						
+						if(!oldScheduleEntity.getStartTime().equals(scheduleEntity.getStartTime())) {
+							sb.append("전체 백업 시간 : ")
+								.append(oldScheduleEntity.getStartTime())
+								.append(" → ")
+								.append(scheduleEntity.getStartTime() + "\n");
+						}
+						
+						if(!oldScheduleEntity.getIncrementYn().equals(scheduleEntity.getIncrementYn())) {
+							if(scheduleEntity.getIncrementYn().equals("Y")) {
+								sb.append("증분 백업 : 미사용 → ")
+									.append(getScheduleDayConvertion(scheduleEntity.getIncrementPeriod()) + "\n");
+							}else {
+								sb.append("증분 백업 : ")
+									.append(getScheduleDayConvertion(oldScheduleEntity.getIncrementPeriod()))
+									.append(" → 미사용\n");
+							}
+						}
+						
+						if(!oldScheduleEntity.getThrottleYn().equals(scheduleEntity.getThrottleYn())) {
+							if(scheduleEntity.getThrottleYn().equals("Y")) {
+								sb.append("수행 모드 : 정상모드 → 저속모드");
+							}else {
+								sb.append("수행 모드 : 저속모드 → 정상모드");
+							}
+							
+						}
+					}
+				
+				}
+				event.setHistory(sb.toString().substring(0, sb.toString().length()-1));
 			}
 			
 		} catch (Exception e) {
@@ -672,6 +724,26 @@ public class ZDBBackupController {
 		}
 		if (result == false) {
 			throw new BackupException(sb.toString(), BackupException.BAD_REQUEST);
+		}
+	}
+	
+	private String getScheduleDayConvertion(int scheduleDay) {
+		if(scheduleDay == 1) {
+			return "매주 일요일";
+		}else if(scheduleDay == 2) {
+			return "매주 월요일";
+		}else if(scheduleDay == 3) {
+			return "매주 화요일";
+		}else if(scheduleDay == 4) {
+			return "매주 수요일";
+		}else if(scheduleDay == 5) {
+			return "매주 목요일";
+		}else if(scheduleDay == 6) {
+			return "매주 금요일";
+		}else if(scheduleDay == 7) {
+			return "매주 토요일";
+		}else {
+			return "매일 수행";
 		}
 	}
 }
