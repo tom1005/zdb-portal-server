@@ -413,12 +413,12 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 						
 						BackupEntity backup = backupRepository.findValidRecentBackupByscheduleId(schedule.getScheduleId(), "FULL");
 						if(backup != null) {
-							scheduleInfo.setFullFileSize(getFileSizeConvertion(backup.getFileSize()));
+							scheduleInfo.setFullFileSize(getFileSizeConvertion(backup.getFileSize()) + "Gi");
 							scheduleInfo.setFullExecutionTime(getExecutionTimeConvertion(backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime()));
 						}
 						backup = backupRepository.findValidRecentBackupByscheduleId(schedule.getScheduleId(), "INCR");
 						if(backup != null) {
-							scheduleInfo.setIncrFileSize(getFileSizeConvertion(backup.getFileSize()));
+							scheduleInfo.setIncrFileSize(getFileSizeConvertion(backup.getFileSize()) + "Gi");
 							scheduleInfo.setIncrExecutionTime(getExecutionTimeConvertion(backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime()));
 						}
 						
