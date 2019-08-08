@@ -1,5 +1,6 @@
 package com.zdb.core.service;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -371,15 +372,6 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 			releaseMetaList.forEach(releaseMeta -> {
 				
 				if(releaseMeta.getApp().equals("mariadb") || tagRepository.findByNamespaceAndReleaseNameAndTag(releaseMeta.getNamespace(), releaseMeta.getReleaseName(), "data") != null ) {
-					long fullFileSize = 0l;
-					long fullExecutionMilSec = 0l;
-					String fullExecutionTime = "";
-					long incrFileSize = 0l;
-					long incrExecutionMilSec = 0l;
-					String incrExecutionTime = "";
-					int fullBackupCnt = 0;
-					int incrtBackupCnt = 0;
-					long icosDiskUsage = 0l;
 					
 					ScheduleInfoEntity scheduleInfo = new ScheduleInfoEntity();
 					scheduleInfo.setNamespace(releaseMeta.getNamespace());
@@ -388,57 +380,78 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 					
 					scheduleInfo.setUseYn("N");
 					scheduleInfo.setStartTime(ZDBConfigService.backupTimeValue);
-					scheduleInfo.setStorePeriod(Integer.parseInt(ZDBConfigService.backupDuratioValue));
+					scheduleInfo.setStorePeriod(ZDBConfigService.backupDuratioValue + "일");
 					scheduleInfo.setIncrementYn("N");
-					scheduleInfo.setIncrementPeriod(0);
+					scheduleInfo.setIncrementPeriod("미사용");
 					
-					scheduleInfo.setFullFileSize(fullFileSize);
-					scheduleInfo.setFullExecutionTime(fullExecutionTime);
-					scheduleInfo.setIncrFileSize(incrFileSize);
+					scheduleInfo.setFullFileSize("-");
+					scheduleInfo.setFullExecutionTime("-");
+					scheduleInfo.setIncrFileSize("-");
 					
-					scheduleInfo.setBackupExecType("DAILY");
+					scheduleInfo.setBackupExecType("매일 수행");
 					
 					ScheduleEntity schedule = scheduleRepository.findScheduleByName(releaseMeta.getNamespace(), releaseMeta.getApp(), releaseMeta.getReleaseName());
 					if(schedule != null) {
 						scheduleInfo.setUseYn(schedule.getUseYn());
 						scheduleInfo.setStartTime(schedule.getStartTime());
-						scheduleInfo.setStorePeriod(schedule.getStorePeriod());
+						scheduleInfo.setStorePeriod(schedule.getStorePeriod() + "일");
 						scheduleInfo.setIncrementYn(schedule.getIncrementYn());
-						scheduleInfo.setIncrementPeriod(schedule.getIncrementPeriod());
-						
-						List<BackupEntity> backuplist = backupRepository.findBackupListByScheduleId(schedule.getScheduleId());
-						for(int i=0; i<backuplist.size(); i++) {
-							BackupEntity backup = backuplist.get(i);
-							if(backup.getType().equals("FULL")) {
-								fullFileSize += backup.getFileSize();
-								fullExecutionMilSec += backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime();
-								fullBackupCnt++;
-							}else if(backup.getType().equals("INCR")) {
-								incrFileSize += backup.getFileSize();
-								incrExecutionMilSec += backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime();
-								incrtBackupCnt++;
+						if(schedule.getScheduleDay() != 0) {
+							if(schedule.getScheduleDay() == 1) {
+								scheduleInfo.setIncrementPeriod("1시간");
+							}else if(schedule.getScheduleDay() == 2) {
+								scheduleInfo.setIncrementPeriod("2시간");
+							}else if(schedule.getScheduleDay() == 6) {
+								scheduleInfo.setIncrementPeriod("6시간");
+							}else if(schedule.getScheduleDay() == 12) {
+								scheduleInfo.setIncrementPeriod("12시간");
+							}else if(schedule.getScheduleDay() == 24) {
+								scheduleInfo.setIncrementPeriod("24시간");
 							}
-							icosDiskUsage += backup.getArchiveFileSize();
-							
 						}
 						
-						if(fullBackupCnt != 0) {
-							fullFileSize = fullFileSize/fullBackupCnt/1024/1024;
-							fullExecutionTime = getExecutionTimeConvertion(fullExecutionMilSec/fullBackupCnt);
-						}
-						if(incrtBackupCnt != 0) {
-							incrFileSize = incrFileSize/incrtBackupCnt/1024/1024;
-							incrExecutionTime = getExecutionTimeConvertion(incrExecutionMilSec/incrtBackupCnt);
-						}
-						scheduleInfo.setFullFileSize(fullFileSize);
-						scheduleInfo.setFullExecutionTime(fullExecutionTime);
-						scheduleInfo.setIncrFileSize(incrFileSize);
-						scheduleInfo.setIncrExecutionTime(incrExecutionTime);
 						
-						scheduleInfo.setIcosDiskUsage(icosDiskUsage/1024);
+						BackupEntity backup = backupRepository.findValidRecentBackupByscheduleId(schedule.getScheduleId(), "FULL");
+						if(backup != null) {
+							scheduleInfo.setFullFileSize(getFileSizeConvertion(backup.getFileSize()) + "Gi");
+							scheduleInfo.setFullExecutionTime(getExecutionTimeConvertion(backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime()));
+						}
+						backup = backupRepository.findValidRecentBackupByscheduleId(schedule.getScheduleId(), "INCR");
+						if(backup != null) {
+							scheduleInfo.setIncrFileSize(getFileSizeConvertion(backup.getFileSize()) + "Gi");
+							scheduleInfo.setIncrExecutionTime(getExecutionTimeConvertion(backup.getCompleteDatetime().getTime()-backup.getAcceptedDatetime().getTime()));
+						}
+						
+						long objectStorageUsage = 0l;
+						List<BackupEntity> backupList = backupRepository.findBackupListByScheduleId(schedule.getScheduleId());
+						for(int i=0; i<backupList.size(); i++) {
+							objectStorageUsage += backupList.get(i).getArchiveFileSize();
+						}
+						
+						if(objectStorageUsage != 0l) {
+							scheduleInfo.setIcosDiskUsage(getFileSizeConvertion(objectStorageUsage));
+						}else {
+							scheduleInfo.setIcosDiskUsage("-");
+						}
 						
 						if(schedule.getScheduleType() != null && !schedule.getScheduleType().equals("")) {
-							scheduleInfo.setBackupExecType(schedule.getScheduleType());
+							if(schedule.getScheduleType().equals("WEEKLY")) {
+								if(schedule.getScheduleDay() == 1) {
+									scheduleInfo.setBackupExecType("매주 일요일");
+								}else if(schedule.getScheduleDay() == 2) {
+									scheduleInfo.setBackupExecType("매주 월요일");
+								}else if(schedule.getScheduleDay() == 3) {
+									scheduleInfo.setBackupExecType("매주 화요일");
+								}else if(schedule.getScheduleDay() == 4) {
+									scheduleInfo.setBackupExecType("매주 수요일");
+								}else if(schedule.getScheduleDay() == 5) {
+									scheduleInfo.setBackupExecType("매주 목요일");
+								}else if(schedule.getScheduleDay() == 6) {
+									scheduleInfo.setBackupExecType("매주 금요일");
+								}else if(schedule.getScheduleDay() == 7) {
+									scheduleInfo.setBackupExecType("매주 토요일");
+								}
+							}
 						}
 					}
 					
@@ -466,9 +479,9 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 					
 					BackupDiskEntity backupDiskEntity = backupDiskRepository.findBackupByServiceName(releaseMeta.getApp(), releaseMeta.getReleaseName(), releaseMeta.getNamespace());
 					if(backupDiskEntity != null && backupDiskEntity.getStatus().equals("COMPLETE")) {
-						scheduleInfo.setBackupDiskYn("Y");
+						scheduleInfo.setBackupDiskInfo("사용(" + backupDiskEntity.getDiskSize() + "GB)");
 					}else {
-						scheduleInfo.setBackupDiskYn("N");
+						scheduleInfo.setBackupDiskInfo("미사용");
 					}
 					
 					scheduleInfolist.add(scheduleInfo);
@@ -495,16 +508,10 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 			return Long.toString(milsec/1000) + "초";
 		}
 	}
-
-	private Date getGmt9Date(Date dt) {
-		if (dt != null) {
-			Calendar cal = Calendar.getInstance();
-			cal.setTime(dt);
-			cal.add(Calendar.HOUR_OF_DAY, 9);
-			return cal.getTime();
-		} else {
-			return null;
-		}
+	
+	private String getFileSizeConvertion(long fileSize) {
+		return new DecimalFormat("###,###.##").format(Double.parseDouble(Long.toString(fileSize))/1024/1024/1024);
 	}
+	
 }
 

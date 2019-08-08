@@ -656,7 +656,7 @@ public class ZDBBackupController {
 					log.info("Schedule requested to change to startTime("+date+")");
 				}
 				//업무 외 시간으로 백업 설정이 가능하도록 설정 
-				if( !(Integer.parseInt(schedule.getStartTime().substring(0, 2)) > 18 
+				if( !(Integer.parseInt(schedule.getStartTime().substring(0, 2)) > 17 
 						|| Integer.parseInt(schedule.getStartTime().substring(0, 2)) < 8) ) {
 					if (log.isInfoEnabled()) {
 						log.info("Availble schedule startTime : 18:00 ~ 07:00 / input time(" + schedule.getStartTime() + ")");
