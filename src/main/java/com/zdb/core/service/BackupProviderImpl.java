@@ -68,14 +68,9 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 								, entity.getServiceName());
 			if (oldSche != null) {
 				log.debug("update : "+entity);
-				String scheduleType = "DAILY";
-				if(entity.getScheduleDay() != 0) {
-					scheduleType = "WEEKLY";
-				}
-				
 				scheduleRepository.modify(entity.getStartTime(), entity.getStorePeriod()
 						, entity.getUseYn(), entity.getIncrementYn(), entity.getIncrementPeriod()
-						, scheduleType, entity.getScheduleDay(), entity.getNotiYn(), entity.getThrottleYn(), oldSche.getScheduleId()
+						, entity.getScheduleType(), entity.getScheduleDay(), entity.getNotiYn(), entity.getThrottleYn(), oldSche.getScheduleId()
 						);
 				entity.setScheduleId(oldSche.getScheduleId());
 			} else {
