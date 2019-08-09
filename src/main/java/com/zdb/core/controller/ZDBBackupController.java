@@ -1,6 +1,5 @@
 package com.zdb.core.controller;
 
-import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.UUID;
@@ -125,7 +124,12 @@ public class ZDBBackupController {
 			event.setServiceName(scheduleEntity.getServiceName());
 			event.setOperation(RequestEvent.SET_BACKUP_SCHEDULE);
 			event.setUserId(userInfo.getUserName());
-			
+
+			if(scheduleEntity.getScheduleDay() != 0) {
+				scheduleEntity.setScheduleType("WEEKLY");
+			} else {
+				scheduleEntity.setScheduleType("DAILY");
+			}
 			/*
 			1) verifyParameters
 			아규먼트로 전달받은 scheduleEntity의 namespace, serviceType, serviceName은 null이거나 공백이면 안되므로 verify를 수행합니다.
@@ -144,57 +148,57 @@ public class ZDBBackupController {
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
 			
-			if (oldScheduleEntity.getUseYn().equals(scheduleEntity.getUseYn())) {
-				StringBuffer sb = new StringBuffer();
-				if(oldScheduleEntity.getUseYn().equals(scheduleEntity.getUseYn())) {
-					if(oldScheduleEntity != null) {
-						if(oldScheduleEntity.getStorePeriod() != scheduleEntity.getStorePeriod()) {
-							sb.append("보관기간 : ")
-								.append(oldScheduleEntity.getStorePeriod() + "일")
-								.append(" → ")
-								.append(scheduleEntity.getStorePeriod() + "일\n");
-						}
-						
-						if(!oldScheduleEntity.getScheduleType().equals(scheduleEntity.getScheduleType())) {
-							if(scheduleEntity.getScheduleType().equals("Y")) {
-								sb.append("전체백업 수행주기 : 매일수행 → ")
-									.append(getScheduleDayConvertion(scheduleEntity.getScheduleDay()) + "\n");
-							}else {
-								sb.append("전체백업 수행주기 : ")
-									.append(getScheduleDayConvertion(oldScheduleEntity.getScheduleDay()))
-									.append(" → 매일수행\n");
-							}
-						}
-						
-						if(!oldScheduleEntity.getStartTime().equals(scheduleEntity.getStartTime())) {
-							sb.append("전체 백업 시간 : ")
-								.append(oldScheduleEntity.getStartTime())
-								.append(" → ")
-								.append(scheduleEntity.getStartTime() + "\n");
-						}
-						
-						if(!oldScheduleEntity.getIncrementYn().equals(scheduleEntity.getIncrementYn())) {
-							if(scheduleEntity.getIncrementYn().equals("Y")) {
-								sb.append("증분 백업 : 미사용 → ")
-									.append(getScheduleDayConvertion(scheduleEntity.getIncrementPeriod()) + "\n");
-							}else {
-								sb.append("증분 백업 : ")
-									.append(getScheduleDayConvertion(oldScheduleEntity.getIncrementPeriod()))
-									.append(" → 미사용\n");
-							}
-						}
-						
-						if(!oldScheduleEntity.getThrottleYn().equals(scheduleEntity.getThrottleYn())) {
-							if(scheduleEntity.getThrottleYn().equals("Y")) {
-								sb.append("수행 모드 : 정상모드 → 저속모드\n");
-							}else {
-								sb.append("수행 모드 : 저속모드 → 정상모드\n");
-							}
-							
-						}
-					}
-				
+			StringBuffer sb = new StringBuffer();
+			if(oldScheduleEntity.getUseYn().equals(scheduleEntity.getUseYn()) && oldScheduleEntity != null) {
+				if(oldScheduleEntity.getStorePeriod() != scheduleEntity.getStorePeriod()) {
+					sb.append("보관기간 : ")
+						.append(oldScheduleEntity.getStorePeriod() + "일")
+						.append(" → ")
+						.append(scheduleEntity.getStorePeriod() + "일\n");
 				}
+				
+				if( oldScheduleEntity.getScheduleDay() != scheduleEntity.getScheduleDay()) {
+					if(oldScheduleEntity.getScheduleType().equals("WEEKLY") && scheduleEntity.getScheduleType().equals("WEEKLY")) {
+						sb.append("전체백업 수행주기 : ")
+							.append(getScheduleDayConvertion(oldScheduleEntity.getScheduleDay()))
+							.append(" → " + getScheduleDayConvertion(scheduleEntity.getScheduleDay()) + "\n");
+					}else if(oldScheduleEntity.getScheduleType().equals("DAILY") && scheduleEntity.getScheduleType().equals("WEEKLY")) {
+						sb.append("전체백업 수행주기 : 매일수행 → ")
+						.append(getScheduleDayConvertion(scheduleEntity.getScheduleDay()) + "\n");
+					}else if(oldScheduleEntity.getScheduleType().equals("WEEKLY") && scheduleEntity.getScheduleType().equals("DAILY")) {
+						sb.append("전체백업 수행주기 : ")
+							.append(getScheduleDayConvertion(oldScheduleEntity.getScheduleDay()))
+							.append(" → 매일수행\n");
+					}
+				}
+				
+				if(!oldScheduleEntity.getStartTime().equals(scheduleEntity.getStartTime())) {
+					sb.append("전체 백업 시간 : ")
+						.append(oldScheduleEntity.getStartTime())
+						.append(" → ")
+						.append(scheduleEntity.getStartTime() + "\n");
+				}
+				
+				if(!oldScheduleEntity.getIncrementYn().equals(scheduleEntity.getIncrementYn())) {
+					if(scheduleEntity.getIncrementYn().equals("Y")) {
+						sb.append("증분 백업 : 미사용 → ")
+							.append(getScheduleDayConvertion(scheduleEntity.getIncrementPeriod()) + "\n");
+					}else {
+						sb.append("증분 백업 : ")
+							.append(getScheduleDayConvertion(oldScheduleEntity.getIncrementPeriod()))
+							.append(" → 미사용\n");
+					}
+				}
+				
+				if(!oldScheduleEntity.getThrottleYn().equals(scheduleEntity.getThrottleYn())) {
+					if(scheduleEntity.getThrottleYn().equals("Y")) {
+						sb.append("수행 모드 : 정상모드 → 저속모드\n");
+					}else {
+						sb.append("수행 모드 : 저속모드 → 정상모드\n");
+					}
+				}
+			}
+			if(sb.toString().length() > 0) {
 				event.setHistory(sb.toString().substring(0, sb.toString().length()-1));
 			}
 			
