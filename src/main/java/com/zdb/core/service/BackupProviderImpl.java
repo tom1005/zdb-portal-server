@@ -68,14 +68,9 @@ public class BackupProviderImpl implements ZDBBackupProvider {
 								, entity.getServiceName());
 			if (oldSche != null) {
 				log.debug("update : "+entity);
-				String scheduleType = "DAILY";
-				if(entity.getScheduleDay() != 0) {
-					scheduleType = "WEEKLY";
-				}
-				
 				scheduleRepository.modify(entity.getStartTime(), entity.getStorePeriod()
 						, entity.getUseYn(), entity.getIncrementYn(), entity.getIncrementPeriod()
-						, scheduleType, entity.getScheduleDay(), entity.getNotiYn(), entity.getThrottleYn(), oldSche.getScheduleId()
+						, entity.getScheduleType(), entity.getScheduleDay(), entity.getNotiYn(), entity.getThrottleYn(), oldSche.getScheduleId()
 						);
 				entity.setScheduleId(oldSche.getScheduleId());
 			} else {
@@ -187,7 +182,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 		try {
 			log.debug("namespace : "+namespace+", serviceName : "+serviceName+", serviceType : "+serviceType);
 			
-			List<BackupEntity> backupList = backupRepository.findBackupByService(serviceType, serviceName);
+			List<BackupEntity> backupList = backupRepository.findBackupByService(namespace, serviceType, serviceName);
 			List<BackupEntity> list = new ArrayList<BackupEntity>();
 			backupList.forEach(backup->{
 				if(!backup.getStatus().equals("DELETED")) {
