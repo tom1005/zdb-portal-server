@@ -182,7 +182,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 		try {
 			log.debug("namespace : "+namespace+", serviceName : "+serviceName+", serviceType : "+serviceType);
 			
-			List<BackupEntity> backupList = backupRepository.findBackupByService(serviceType, serviceName);
+			List<BackupEntity> backupList = backupRepository.findBackupByService(namespace, serviceType, serviceName);
 			List<BackupEntity> list = new ArrayList<BackupEntity>();
 			backupList.forEach(backup->{
 				if(!backup.getStatus().equals("DELETED")) {
