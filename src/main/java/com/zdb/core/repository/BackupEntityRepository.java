@@ -27,12 +27,24 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 	BackupEntity findBackup(@Param("backupId") String backupId);
 
 	@Query("SELECT t FROM BackupEntity t "
-			+ " WHERE serviceType=:serviceType"
+			+ " WHERE namespace=:namespace "
+			+ " and serviceType=:serviceType"
 			+ " and serviceName=:serviceName"
 			+ " and startDatetime is not null"
 			+ " order by startDatetime desc" )
-	List<BackupEntity> findBackupByService(@Param("serviceType") String serviceType
+	List<BackupEntity> findBackupByService(@Param("namespace") String namespace
+			, @Param("serviceType") String serviceType
 			, @Param("serviceName") String serviceName);
+	
+	@Query("SELECT t FROM BackupEntity t "
+			+ " WHERE namespace=:namespace "
+			+ " and serviceType=:serviceType"
+			+ " and serviceName=:serviceName"
+			+ " and status=:status")
+	List<BackupEntity> findBackupByServiceAndStatus(@Param("namespace") String namespace
+			, @Param("serviceType") String serviceType
+			, @Param("serviceName") String serviceName
+			, @Param("status") String status);
 	
 	@Query(value =  "SELECT * FROM zdb.backup_entity "
             + " WHERE namespace=:namespace "
@@ -235,8 +247,6 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			, @Param("serviceName") String serviceName
 			, @Param("targetDate") String targetDate);
 	
-	
-	
 	@Modifying(clearAutomatically = true)
 	@Transactional
 	@Query("UPDATE BackupEntity t SET "
@@ -244,5 +254,12 @@ public interface BackupEntityRepository extends CrudRepository<BackupEntity, Str
 			+ "WHERE t.backupId=:backupId")
 	int modify2OndiskYn( @Param("ondiskYn") String ondiskYn
 			, @Param("backupId") String backupId);
+	
+	@Query(value =  "SELECT * from zdb.backup_entity "
+            + " WHERE schedule_id=:scheduleId "
+            + " and type = :type "
+            + " and status = 'OK' order by complete_datetime desc limit 1", nativeQuery = true)
+	BackupEntity findValidRecentBackupByscheduleId(@Param("scheduleId") String scheduleId
+			, @Param("type") String type);
 	
 }

@@ -4,7 +4,7 @@ import java.util.Arrays;
 
 public enum BackupStatus {
 
-	ACCEPTED("ACCEPTED"), DOING("DOING"), OK("OK"), DELETED("DELETED"), FAILED("FAILED");
+	ACCEPTED("ACCEPTED"), DOING("DOING"), OK("OK"), DELETED("DELETED"), FAILED("FAILED"), ABORTED("ABORTED");
 	
 	private String name;
 	BackupStatus(String name) {

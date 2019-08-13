@@ -43,7 +43,7 @@ public class RequestEvent {
 	public static final String SLOWLOG_ROTATION = "Slowlog Rotation";
 	public static final String SCALE_OUT = "스케일 아웃";
 	public static final String UPDATE_CONFIG = "환경설정 변경";
-	public static final String MODIFY_PASSWORD = "비빌번호 변경";
+	public static final String MODIFY_PASSWORD = "비밀번호 변경";
 	public static final String SET_BACKUP_SCHEDULE = "스케줄 설정";
 	public static final String EXEC_BACKUP = "백업 실행";
 	public static final String REQ_BACKUP = "백업 요청";
@@ -52,6 +52,7 @@ public class RequestEvent {
 	public static final String DELETE_BACKUP_DATA = "백업 데이터 삭제";
 	public static final String RESTORE_BACKUP = "백업 데이터 복원";
 	public static final String MIGRATION_BACKUP = "백업 데이터 기반 마이그레이션";
+	public static final String ABRORT_BACKUP = "백업 수행중지";
 	public static final String RESTORE_SLAVE = "Slave DB 복원";
 	public static final String CREATE_PUBLIC_SVC = "Public Network 생성";
 	public static final String DELETE_PUBLIC_SVC = "Public Network 삭제";

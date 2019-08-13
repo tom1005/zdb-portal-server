@@ -124,7 +124,12 @@ public class ZDBBackupController {
 			event.setServiceName(scheduleEntity.getServiceName());
 			event.setOperation(RequestEvent.SET_BACKUP_SCHEDULE);
 			event.setUserId(userInfo.getUserName());
-			
+
+			if(scheduleEntity.getScheduleDay() != 0) {
+				scheduleEntity.setScheduleType("WEEKLY");
+			} else {
+				scheduleEntity.setScheduleType("DAILY");
+			}
 			/*
 			1) verifyParameters
 			아규먼트로 전달받은 scheduleEntity의 namespace, serviceType, serviceName은 null이거나 공백이면 안되므로 verify를 수행합니다.
@@ -138,13 +143,63 @@ public class ZDBBackupController {
 			verifyService(scheduleEntity.getNamespace(), serviceType, scheduleEntity.getServiceName());
 			
 			result = backupProvider.saveSchedule(txId, scheduleEntity);
+			ScheduleEntity oldScheduleEntity = (ScheduleEntity)result.getResult().get("backupSchedule");
 			
 			event.setStatus(result.getCode());
 			event.setResultMessage(result.getMessage());
 			
-			Object history = result.getResult().get(Result.HISTORY);
-			if (history != null) {
-				event.setHistory("" + history);
+			StringBuffer sb = new StringBuffer();
+			if(oldScheduleEntity.getUseYn().equals(scheduleEntity.getUseYn()) && oldScheduleEntity != null) {
+				if(oldScheduleEntity.getStorePeriod() != scheduleEntity.getStorePeriod()) {
+					sb.append("보관기간 : ")
+						.append(oldScheduleEntity.getStorePeriod() + "일")
+						.append(" → ")
+						.append(scheduleEntity.getStorePeriod() + "일\n");
+				}
+				
+				if( oldScheduleEntity.getScheduleDay() != scheduleEntity.getScheduleDay()) {
+					if(oldScheduleEntity.getScheduleType().equals("WEEKLY") && scheduleEntity.getScheduleType().equals("WEEKLY")) {
+						sb.append("전체백업 수행주기 : ")
+							.append(getScheduleDayConvertion(oldScheduleEntity.getScheduleDay()))
+							.append(" → " + getScheduleDayConvertion(scheduleEntity.getScheduleDay()) + "\n");
+					}else if(oldScheduleEntity.getScheduleType().equals("DAILY") && scheduleEntity.getScheduleType().equals("WEEKLY")) {
+						sb.append("전체백업 수행주기 : 매일수행 → ")
+						.append(getScheduleDayConvertion(scheduleEntity.getScheduleDay()) + "\n");
+					}else if(oldScheduleEntity.getScheduleType().equals("WEEKLY") && scheduleEntity.getScheduleType().equals("DAILY")) {
+						sb.append("전체백업 수행주기 : ")
+							.append(getScheduleDayConvertion(oldScheduleEntity.getScheduleDay()))
+							.append(" → 매일수행\n");
+					}
+				}
+				
+				if(!oldScheduleEntity.getStartTime().equals(scheduleEntity.getStartTime())) {
+					sb.append("전체 백업 시간 : ")
+						.append(oldScheduleEntity.getStartTime())
+						.append(" → ")
+						.append(scheduleEntity.getStartTime() + "\n");
+				}
+				
+				if(!oldScheduleEntity.getIncrementYn().equals(scheduleEntity.getIncrementYn())) {
+					if(scheduleEntity.getIncrementYn().equals("Y")) {
+						sb.append("증분 백업 : 미사용 → ")
+							.append(getScheduleDayConvertion(scheduleEntity.getIncrementPeriod()) + "\n");
+					}else {
+						sb.append("증분 백업 : ")
+							.append(getScheduleDayConvertion(oldScheduleEntity.getIncrementPeriod()))
+							.append(" → 미사용\n");
+					}
+				}
+				
+				if(!oldScheduleEntity.getThrottleYn().equals(scheduleEntity.getThrottleYn())) {
+					if(scheduleEntity.getThrottleYn().equals("Y")) {
+						sb.append("수행 모드 : 정상모드 → 저속모드\n");
+					}else {
+						sb.append("수행 모드 : 저속모드 → 정상모드\n");
+					}
+				}
+			}
+			if(sb.toString().length() > 0) {
+				event.setHistory(sb.toString().substring(0, sb.toString().length()-1));
 			}
 			
 		} catch (Exception e) {
@@ -644,7 +699,7 @@ public class ZDBBackupController {
 			sb.append("startTime empty or null");
 		} else if(schedule.getStorePeriod() < 1 || schedule.getStorePeriod() > 8) {
 			result = false;
-			sb.append("storePeriod more then 0 and less then 8 : "+schedule.getStorePeriod());
+			sb.append("보관기간은 최대 7일 까지만 선택이 가능합니다.(입력값 : "+schedule.getStorePeriod() + ")");
 		} else if ("".equals(schedule.getUseYn()) || schedule.getUseYn()==null) {
 			result = false;
 			sb.append("useYn is empty or null : "+schedule.getStorePeriod());
@@ -656,7 +711,7 @@ public class ZDBBackupController {
 					log.info("Schedule requested to change to startTime("+date+")");
 				}
 				//업무 외 시간으로 백업 설정이 가능하도록 설정 
-				if( !(Integer.parseInt(schedule.getStartTime().substring(0, 2)) > 18 
+				if( !(Integer.parseInt(schedule.getStartTime().substring(0, 2)) > 17 
 						|| Integer.parseInt(schedule.getStartTime().substring(0, 2)) < 8) ) {
 					if (log.isInfoEnabled()) {
 						log.info("Availble schedule startTime : 18:00 ~ 07:00 / input time(" + schedule.getStartTime() + ")");
@@ -672,6 +727,26 @@ public class ZDBBackupController {
 		}
 		if (result == false) {
 			throw new BackupException(sb.toString(), BackupException.BAD_REQUEST);
+		}
+	}
+	
+	private String getScheduleDayConvertion(int scheduleDay) {
+		if(scheduleDay == 1) {
+			return "매주 일요일";
+		}else if(scheduleDay == 2) {
+			return "매주 월요일";
+		}else if(scheduleDay == 3) {
+			return "매주 화요일";
+		}else if(scheduleDay == 4) {
+			return "매주 수요일";
+		}else if(scheduleDay == 5) {
+			return "매주 목요일";
+		}else if(scheduleDay == 6) {
+			return "매주 금요일";
+		}else if(scheduleDay == 7) {
+			return "매주 토요일";
+		}else {
+			return "매일 수행";
 		}
 	}
 }

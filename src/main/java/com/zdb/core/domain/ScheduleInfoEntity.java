@@ -29,19 +29,19 @@ public class ScheduleInfoEntity {
 	private String serviceType;
 	private String useYn;
 	private String startTime;
-	private int storePeriod;
+	private String storePeriod;
 	private String incrementYn = "N";
-	private int incrementPeriod = 12;
+	private String incrementPeriod;
 
-	private long fullFileSize;
+	private String fullFileSize;
 	private String fullExecutionTime;
 
-	private long incrFileSize;
+	private String incrFileSize;
 	private String incrExecutionTime;
 
-	private long icosDiskUsage;
+	private String icosDiskUsage;
 	
 	private String backupExecType;
-	private String backupDiskYn;
+	private String backupDiskInfo;
 	private String backupStatus;
 }	
