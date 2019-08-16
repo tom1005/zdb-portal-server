@@ -2433,12 +2433,15 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 					}
 				}
 				
-				if(!"true".equals(so.getFailoverEnabled())) {
-					so.setFailoverEnabled("false");
-				}
+//				if(!"true".equals(so.getFailoverEnabled())) {
+//					so.setFailoverEnabled("false");
+//				}
 				
 				String serviceFailOverStatus = k8sService.getServiceFailOverStatus(namespace, so.getServiceType(), serviceName);
 				so.setServiceFailOverStatus(serviceFailOverStatus);
+				
+				// failover 사용 여부
+				so.setFailoverEnabled(k8sService.isFailoverEnabled(so));
 				
 				if("MasterToSlave".equals(serviceFailOverStatus)) {
 					String serviceFailOverTime = k8sService.getLastFailoverTime(namespace, serviceName);

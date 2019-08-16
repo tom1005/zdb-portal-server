@@ -1677,7 +1677,7 @@ public class K8SService {
 		}
 	}
 	
-	private String isFailoverEnabled(ServiceOverview so) {
+	public String isFailoverEnabled(ServiceOverview so) {
 		String eventKey = "service_"+so.getNamespace()+"_"+so.getServiceName();
 		
 		// 상태 조회..
