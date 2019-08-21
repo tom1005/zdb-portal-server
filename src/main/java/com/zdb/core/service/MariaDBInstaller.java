@@ -32,6 +32,7 @@ import com.zdb.core.domain.PersistentVolumeClaimEntity;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
+import com.zdb.core.domain.RequestEventCode;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ScheduleEntity;
@@ -102,7 +103,8 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 		ZDBRepository metaRepository = exchange.getProperty(Exchange.META_REPOSITORY, ZDBRepository.class);
 		
 		RequestEvent event = getRequestEvent(exchange);
-		event.setOperation(RequestEvent.CREATE);
+		event.setOperation(RequestEventCode.SERVICE_CREATE.getDesc());
+		event.setType(RequestEventCode.SERVICE_CREATE.getType());
 		
 		try {
 			// 동일이름으로 생성된 이벤트 정보 삭제 
@@ -547,7 +549,8 @@ public class MariaDBInstaller extends ZDBInstallerAdapter {
 		event.setServiceType(ZDBType.MariaDB.getName());
 		event.setNamespace(namespace);
 		event.setStartTime(new Date(System.currentTimeMillis()));
-		event.setOperation(RequestEvent.DELETE);
+		event.setOperation(RequestEventCode.SERVICE_DELETE.getDesc());
+		event.setType(RequestEventCode.SERVICE_DELETE.getType());
 
 		// 알람 룰 설정 삭제 
 		try {

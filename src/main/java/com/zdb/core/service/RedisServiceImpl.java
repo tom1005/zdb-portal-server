@@ -42,6 +42,7 @@ import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
+import com.zdb.core.domain.RequestEventCode;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ServiceOverview;
@@ -981,7 +982,8 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 							event.setServiceType(serviceType);
 							event.setNamespace(namespace);
 							event.setServiceName(serviceName);
-							event.setOperation(RequestEvent.SERVICE_OFF);
+							event.setOperation(RequestEventCode.SERVICE_OFF.getDesc());
+							event.setType(RequestEventCode.SERVICE_OFF.getType());
 							event.setUserId("SYSTEM");
 							try {
 								if (code == JobResult.ERROR) {
@@ -1121,7 +1123,8 @@ public class RedisServiceImpl extends AbstractServiceImpl {
 							event.setServiceType(serviceType);
 							event.setNamespace(namespace);
 							event.setServiceName(serviceName);
-							event.setOperation(RequestEvent.SERVICE_ON);
+							event.setOperation(RequestEventCode.SERVICE_ON.getDesc());
+							event.setType(RequestEventCode.SERVICE_ON.getType());
 							event.setUserId("SYSTEM");
 							try {
 								if (code == JobResult.ERROR) {

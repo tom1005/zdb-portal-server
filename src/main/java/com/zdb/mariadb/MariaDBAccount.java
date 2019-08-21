@@ -20,6 +20,7 @@ import com.zdb.core.domain.Database;
 import com.zdb.core.domain.MariadbUserPrivileges;
 import com.zdb.core.domain.MariadbUserPrivileges.MariadbPrivileges;
 import com.zdb.core.domain.RequestEvent;
+import com.zdb.core.domain.RequestEventCode;
 import com.zdb.core.domain.UserPrivileges;
 import com.zdb.core.domain.UserPrivilegesForSchema;
 import com.zdb.core.domain.ZDBMariaDBAccount;
@@ -895,16 +896,16 @@ public class MariaDBAccount {
 					query = String.format("CREATE DATABASE %s ",database.getName());
 					logger.info("query: {}", query);
 					statement.executeUpdate(query);
-					resultMessage.append(String.format("[%s] %s ", database.getName(),RequestEvent.CREATE_DATABASE));
+					resultMessage.append(String.format("[%s] %s ", database.getName(),RequestEventCode.DATABASE_CREATE.getDesc()));
 				}catch (Exception e) {
-					resultMessage.append(String.format("[%s] %s 실패 : %s",database.getName(),RequestEvent.CREATE_DATABASE,e.getMessage()));
+					resultMessage.append(String.format("[%s] %s 실패 : %s",database.getName(),RequestEventCode.DATABASE_CREATE.getDesc(),e.getMessage()));
 				}
 			} else {
 				throw new Exception("cannot create connection.");
 			}
 		} catch (Exception e) {
 			logger.error("Exception.", e);
-			resultMessage.append(String.format(" [%s] %s 오류 :%s ",database.getName(),RequestEvent.CREATE_DATABASE,e.getMessage()));
+			resultMessage.append(String.format(" [%s] %s 오류 :%s ",database.getName(),RequestEventCode.DATABASE_CREATE.getDesc(),e.getMessage()));
 		} finally {
 			if(statement != null) {
 				statement.close();
@@ -927,10 +928,10 @@ public class MariaDBAccount {
 			statement = connection.getStatement();
 			query = String.format("DROP DATABASE IF EXISTS %s;", database.getName());
 			statement.executeQuery(query);
-			resultMessage.append(String.format("[%s] %s", database.getName(),RequestEvent.DELETE_DATABASE));
+			resultMessage.append(String.format("[%s] %s", database.getName(),RequestEventCode.DATABASE_DELETE.getDesc()));
 		} catch (Exception e) {
 			logger.error("Exception.", e);
-			resultMessage.append(String.format("[%s] %s 실패 : %s", database.getName(),RequestEvent.DELETE_DATABASE,e.getMessage()));
+			resultMessage.append(String.format("[%s] %s 실패 : %s", database.getName(),RequestEventCode.DATABASE_DELETE.getDesc(),e.getMessage()));
 		} finally {
 			if (statement != null) {
 				statement.close();

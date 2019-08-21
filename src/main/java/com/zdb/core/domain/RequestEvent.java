@@ -17,6 +17,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Data
 public class RequestEvent {
+	/*
 	public static final String CREATE = "서비스 생성";
 	public static final String CREATE_PVC = "스토리지 생성";
 	public static final String UPDATE = "업데이트";
@@ -80,7 +81,7 @@ public class RequestEvent {
 	public static final String SELECT_DATABASE_SCHEMAS = "DB Schema 조회";
 	public static final String SELECT_USER_PRIVILEGES = "DB Privileges 조회";
 	public static final String UPDATE_DATABASE_VARIABLES = "DB Variables 수정";
-	
+*/	
 	private String operation;
 
 	@Id
@@ -89,6 +90,9 @@ public class RequestEvent {
 	
 	@Column(name = "txId")
 	private String txId;
+	
+	@Column(name = "type")
+	private String type;
 	
 	private String namespace;
 
