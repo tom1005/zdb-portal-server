@@ -110,11 +110,13 @@ public interface ZDBRestService {
 		
 	/**
 	 * @param namespace
+	 * @param backupEventYn 
+	 * @param type 
 	 * @param kind
 	 * @return
 	 * @throws Exception
 	 */
-	Result getOperationEvents(String namespace, String servceName, String startTime, String endTime, String keyword) throws Exception;
+	Result getOperationEvents(String namespace, String servceName, String startTime, String endTime, String keyword, String type, String backupEventYn) throws Exception;
 	
 	Result getEvents(String namespace, String servceName, String kind, String startTime, String endTime, String keyword) throws Exception;
 	

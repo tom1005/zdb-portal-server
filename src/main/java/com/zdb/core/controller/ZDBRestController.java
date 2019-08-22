@@ -1124,9 +1124,12 @@ public class ZDBRestController {
 			@RequestParam("serviceName") final String serviceName,
 			@RequestParam("startTime") final String startTime,
 			@RequestParam("endTime") final String endTime,
-			@RequestParam("keyword") final String keyword) {
+			@RequestParam("keyword") final String keyword,
+			@RequestParam("type") final String type,
+			@RequestParam("backupEventYn") final String backupEventYn
+			) {
 		try {
-			Result result = commonService.getOperationEvents(namespace, serviceName, startTime, endTime, keyword);
+			Result result = commonService.getOperationEvents(namespace, serviceName, startTime, endTime, keyword, type, backupEventYn);
 			return new ResponseEntity<String>(result.toJson(), result.status());
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);

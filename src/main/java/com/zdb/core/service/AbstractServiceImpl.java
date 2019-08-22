@@ -725,7 +725,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	}
 	
 	@Override
-	public Result getOperationEvents(String namespace, String servceName, String start, String end, String keyword) throws Exception {
+	public Result getOperationEvents(String namespace, String servceName, String start, String end, String keyword, String type, String backupEventYn) throws Exception {
 
 		try {
 			CriteriaBuilder builder = entityManager.getCriteriaBuilder();
@@ -762,6 +762,14 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				Date changeEndDate = gc2.getTime();
 				
 				predicates.add(builder.between(endTime, changeStartDate, changeEndDate));
+			}
+			
+			if (type != null && !type.isEmpty() && !type.equals("-")) {
+				predicates.add(builder.equal(root.get("type"), type));
+			}
+			
+			if (backupEventYn != null && !backupEventYn.isEmpty() && backupEventYn.equals("Y")) {
+				predicates.add(builder.notEqual(root.get("type"), "BACKUP"));
 			}
 
 			// 옵션 목록을 where절에 추가
