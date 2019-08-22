@@ -725,7 +725,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	}
 	
 	@Override
-	public Result getOperationEvents(String namespace, String servceName, String start, String end, String keyword, String type, String backupEventYn) throws Exception {
+	public Result getOperationEvents(String namespace, String servceName, String start, String end, String keyword, String type, String backupEventExceptYn) throws Exception {
 
 		try {
 			CriteriaBuilder builder = entityManager.getCriteriaBuilder();
@@ -768,7 +768,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				predicates.add(builder.equal(root.get("type"), type));
 			}
 			
-			if (backupEventYn != null && !backupEventYn.isEmpty() && backupEventYn.equals("Y")) {
+			if (backupEventExceptYn != null && !backupEventExceptYn.isEmpty() && backupEventExceptYn.equals("Y")) {
 				predicates.add(builder.notEqual(root.get("type"), "BACKUP"));
 			}
 
