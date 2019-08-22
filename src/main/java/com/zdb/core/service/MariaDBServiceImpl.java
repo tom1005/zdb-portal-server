@@ -3051,7 +3051,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		sb.append("\"CHANGE MASTER TO").append(" ");
 		sb.append("MASTER_HOST='"+masterServiceName+"',").append(" ");
 		sb.append("MASTER_USER='replicator',").append(" ");
-		sb.append("MASTER_PASSWORD='zdbadmin12#$',").append(" ");
+		sb.append("MASTER_PASSWORD='$MARIADB_REPLICATION_PASSWORD',").append(" ");
 		sb.append("MASTER_PORT="+port+",").append(" ");
 		sb.append("MASTER_LOG_FILE='"+binFile+"',").append(" ");
 		sb.append("MASTER_LOG_POS="+position+",").append(" ");
