@@ -42,6 +42,7 @@ import com.zdb.core.domain.MetaData;
 import com.zdb.core.domain.PersistenceSpec;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
+import com.zdb.core.domain.RequestEventCode;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.ScheduleEntity;
 import com.zdb.core.domain.ServiceOverview;
@@ -1677,7 +1678,7 @@ public class K8SService {
 		}
 	}
 	
-	private String isFailoverEnabled(ServiceOverview so) {
+	public String isFailoverEnabled(ServiceOverview so) {
 		String eventKey = "service_"+so.getNamespace()+"_"+so.getServiceName();
 		
 		// 상태 조회..
@@ -2817,7 +2818,7 @@ public class K8SService {
 	 */
 	public String getLastFailoverTime(String namespace, String serviceName) {
 		try {
-			RequestEvent requestEvent = requestEventRepository.findByServiceNameAndOperation(namespace, serviceName, RequestEvent.SERVICE_MASTER_TO_SLAVE);
+			RequestEvent requestEvent = requestEventRepository.findByServiceNameAndOperation(namespace, serviceName, RequestEventCode.CHANGEOVER_MASTER_TO_SLAVE.getDesc());
 			
 			if(requestEvent != null) {
 				return DateUtil.formatDate(requestEvent.getEndTime());

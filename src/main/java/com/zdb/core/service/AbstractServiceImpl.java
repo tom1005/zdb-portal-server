@@ -59,6 +59,7 @@ import com.zdb.core.domain.PersistentVolumeClaimEntity;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
+import com.zdb.core.domain.RequestEventCode;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ServiceOverview;
@@ -724,7 +725,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 	}
 	
 	@Override
-	public Result getOperationEvents(String namespace, String servceName, String start, String end, String keyword) throws Exception {
+	public Result getOperationEvents(String namespace, String servceName, String start, String end, String keyword, String type, String backupEventExceptYn) throws Exception {
 
 		try {
 			CriteriaBuilder builder = entityManager.getCriteriaBuilder();
@@ -761,6 +762,14 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				Date changeEndDate = gc2.getTime();
 				
 				predicates.add(builder.between(endTime, changeStartDate, changeEndDate));
+			}
+			
+			if (type != null && !type.isEmpty() && !type.equals("-")) {
+				predicates.add(builder.equal(root.get("type"), type));
+			}
+			
+			if (backupEventExceptYn != null && !backupEventExceptYn.isEmpty() && backupEventExceptYn.equals("Y")) {
+				predicates.add(builder.notEqual(root.get("type"), "BACKUP"));
 			}
 
 			// 옵션 목록을 where절에 추가
@@ -959,7 +968,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		try {
 			List<BackupEntity> backupList  = backuRepository.findValidBackup(namespace, serviceType, serviceName);
 			if(backupList != null) {
-				return new Result("", Result.OK).putValue(IResult.BACKUP_LIST, backupList);
+				return new Result("", Result.OK).putValue(IResult.MIGRATION_BACKUP_LIST, backupList);
 			}
 		} catch (KubernetesClientException e) {
 			log.error(e.getMessage(), e);
@@ -973,7 +982,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 			return new Result("", Result.ERROR, e.getMessage(), e);
 		}
 
-		return new Result("", Result.OK).putValue(IResult.BACKUP_LIST, "");
+		return new Result("", Result.OK).putValue(IResult.MIGRATION_BACKUP_LIST, "");
 	}
 	
 	
@@ -1307,7 +1316,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 				//        # Pod 가 재시작 되지 않음을 의미.
 				//        RequestEvent.UPDATE_CONFIG (환경설정 변경) 의 등록된 시간 > Pod 의 시작 시간) ? "YELLOW" : "GREEN";
 				//        메세지 : 환경설정이 변경되었습니다. Pod 재시작이 필요합니다.
-				RequestEvent requestEvent = zdbRepository.findByServiceNameAndOperation(overview.getNamespace(), serviceName, RequestEvent.UPDATE_CONFIG);
+				RequestEvent requestEvent = zdbRepository.findByServiceNameAndOperation(overview.getNamespace(), serviceName, RequestEventCode.CONFIG_UPDATE.getDesc());
 				if (requestEvent != null) {
 					
 					

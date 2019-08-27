@@ -31,6 +31,7 @@ import com.zdb.core.domain.PersistentVolumeClaimEntity;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
+import com.zdb.core.domain.RequestEventCode;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ScheduleEntity;
@@ -534,7 +535,8 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 		requestEvent.setServiceName(service.getServiceName());
 		requestEvent.setServiceType(service.getServiceType());
 		requestEvent.setStartTime(new Date(System.currentTimeMillis()));
-		requestEvent.setOperation(RequestEvent.CREATE);
+		requestEvent.setOperation(RequestEventCode.SERVICE_CREATE.getDesc());
+		requestEvent.setType(RequestEventCode.SERVICE_CREATE.getType());
 
 		return requestEvent;
 	}
@@ -558,7 +560,8 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 		event.setServiceType(ZDBType.Redis.getName());
 		event.setNamespace(namespace);
 		event.setStartTime(new Date(System.currentTimeMillis()));
-		event.setOperation(RequestEvent.DELETE);
+		event.setOperation(RequestEventCode.SERVICE_DELETE.getDesc());
+		event.setType(RequestEventCode.SERVICE_DELETE.getType());
 		
 		// 알람 룰 설정 삭제 
 		try {

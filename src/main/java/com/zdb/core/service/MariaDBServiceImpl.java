@@ -53,6 +53,7 @@ import com.zdb.core.domain.Mycnf;
 import com.zdb.core.domain.PodSpec;
 import com.zdb.core.domain.ReleaseMetaData;
 import com.zdb.core.domain.RequestEvent;
+import com.zdb.core.domain.RequestEventCode;
 import com.zdb.core.domain.ResourceSpec;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ServiceOverview;
@@ -288,7 +289,8 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 					event.setServiceType(service.getServiceType());
 					event.setNamespace(service.getNamespace());
 					event.setServiceName(service.getServiceName());
-					event.setOperation(RequestEvent.SCALE_UP);
+					event.setOperation(RequestEventCode.SCALE_UP.getDesc());
+					event.setType(RequestEventCode.SCALE_UP.getType());
 					event.setUserId("SYSTEM");	
 					if(code == JobResult.ERROR) {
 						event.setStatus(IResult.ERROR);
@@ -1287,7 +1289,8 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 						event.setServiceType(serviceType);
 						event.setNamespace(namespace);
 						event.setServiceName(serviceName);
-						event.setOperation(RequestEvent.STORAGE_SCALE_UP);
+						event.setOperation(RequestEventCode.SCALE_UP.getDesc());
+						event.setType(RequestEventCode.SCALE_UP.getType());
 						event.setUserId("SYSTEM");
 						if (code == JobResult.ERROR) {
 							event.setStatus(IResult.ERROR);
@@ -1601,7 +1604,8 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 							event.setServiceType(serviceType);
 							event.setNamespace(namespace);
 							event.setServiceName(serviceName);
-							event.setOperation(RequestEvent.SERVICE_ON);
+							event.setOperation(RequestEventCode.SERVICE_ON.getDesc());
+							event.setType(RequestEventCode.SERVICE_ON.getType());
 							event.setUserId("SYSTEM");
 							try {
 								if (code == JobResult.ERROR) {
@@ -1732,7 +1736,8 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 							event.setServiceType(serviceType);
 							event.setNamespace(namespace);
 							event.setServiceName(serviceName);
-							event.setOperation(RequestEvent.SERVICE_OFF);
+							event.setOperation(RequestEventCode.SERVICE_OFF.getDesc());
+							event.setType(RequestEventCode.SERVICE_OFF.getType());
 							event.setUserId("SYSTEM");
 							try {
 								if (code == JobResult.ERROR) {
@@ -2262,7 +2267,8 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 								event.setServiceType(serviceType);
 								event.setNamespace(namespace);
 								event.setServiceName(serviceName);
-								event.setOperation(RequestEvent.SET_AUTO_FAILOVER_USABLE);
+								event.setOperation(RequestEventCode.AUTOFAILOVER_SET.getDesc());
+								event.setType(RequestEventCode.AUTOFAILOVER_SET.getType());
 								event.setUserId("SYSTEM");
 								try {
 									if (code == JobResult.ERROR) {
@@ -2433,12 +2439,15 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 					}
 				}
 				
-				if(!"true".equals(so.getFailoverEnabled())) {
-					so.setFailoverEnabled("false");
-				}
+//				if(!"true".equals(so.getFailoverEnabled())) {
+//					so.setFailoverEnabled("false");
+//				}
 				
 				String serviceFailOverStatus = k8sService.getServiceFailOverStatus(namespace, so.getServiceType(), serviceName);
 				so.setServiceFailOverStatus(serviceFailOverStatus);
+				
+				// failover 사용 여부
+				so.setFailoverEnabled(k8sService.isFailoverEnabled(so));
 				
 				if("MasterToSlave".equals(serviceFailOverStatus)) {
 					String serviceFailOverTime = k8sService.getLastFailoverTime(namespace, serviceName);
@@ -3042,7 +3051,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 		sb.append("\"CHANGE MASTER TO").append(" ");
 		sb.append("MASTER_HOST='"+masterServiceName+"',").append(" ");
 		sb.append("MASTER_USER='replicator',").append(" ");
-		sb.append("MASTER_PASSWORD='zdbadmin12#$',").append(" ");
+		sb.append("MASTER_PASSWORD='$MARIADB_REPLICATION_PASSWORD',").append(" ");
 		sb.append("MASTER_PORT="+port+",").append(" ");
 		sb.append("MASTER_LOG_FILE='"+binFile+"',").append(" ");
 		sb.append("MASTER_LOG_POS="+position+",").append(" ");

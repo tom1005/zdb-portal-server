@@ -22,6 +22,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import com.zdb.core.domain.BackupEntity;
 import com.zdb.core.domain.IResult;
 import com.zdb.core.domain.RequestEvent;
+import com.zdb.core.domain.RequestEventCode;
 import com.zdb.core.domain.Result;
 import com.zdb.core.domain.ScheduleEntity;
 import com.zdb.core.domain.ServiceOverview;
@@ -122,7 +123,8 @@ public class ZDBBackupController {
 			event.setServiceType(serviceType);
 			event.setNamespace(namespace);
 			event.setServiceName(scheduleEntity.getServiceName());
-			event.setOperation(RequestEvent.SET_BACKUP_SCHEDULE);
+			event.setOperation(RequestEventCode.BACKUPSCHEDULE_SET.getDesc());
+			event.setType(RequestEventCode.BACKUPSCHEDULE_SET.getType());
 			event.setUserId(userInfo.getUserName());
 
 			if(scheduleEntity.getScheduleDay() != 0) {
@@ -306,7 +308,8 @@ public class ZDBBackupController {
 			event.setServiceType(serviceType);
 			event.setNamespace(namespace);
 			event.setServiceName(backupEntity.getServiceName());
-			event.setOperation(RequestEvent.REQ_BACKUP);
+			event.setOperation(RequestEventCode.BACKUP_REQ.getDesc());
+			event.setType(RequestEventCode.BACKUP_REQ.getType());
 			event.setUserId(userInfo.getUserName());
 			
 			/*
@@ -427,7 +430,8 @@ public class ZDBBackupController {
 			event.setServiceType(serviceType);
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
-			event.setOperation(RequestEvent.DELETE_BACKUP_DATA);
+			event.setOperation(RequestEventCode.BACKUP_DELETE.getDesc());
+			event.setType(RequestEventCode.BACKUP_DELETE.getType());
 			event.setUserId(userInfo.getUserName());
 			
 			/*
@@ -494,7 +498,8 @@ public class ZDBBackupController {
 			event.setServiceType(serviceType);
 			event.setNamespace(namespace);
 			event.setServiceName(serviceName);
-			event.setOperation(RequestEvent.RESTORE_BACKUP);
+			event.setOperation(RequestEventCode.RESTORE_BACKUP.getDesc());
+			event.setType(RequestEventCode.RESTORE_BACKUP.getType());
 			event.setUserId(userInfo.getUserName());
 			
 			/*

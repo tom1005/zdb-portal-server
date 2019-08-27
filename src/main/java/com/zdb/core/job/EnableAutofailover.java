@@ -17,7 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
-import com.zdb.core.domain.RequestEvent;
+import com.zdb.core.domain.RequestEventCode;
 import com.zdb.core.domain.Result;
 import com.zdb.core.util.K8SUtil;
 import com.zdb.core.util.PodManager;
@@ -50,7 +50,7 @@ public class EnableAutofailover extends JobAdapter {
 
 	@Override
 	public String getJobName() {
-		return RequestEvent.SET_AUTO_FAILOVER_USABLE;
+		return RequestEventCode.AUTOFAILOVER_SET.getDesc();
 	}
 
 	@Override
