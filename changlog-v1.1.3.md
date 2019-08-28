@@ -125,6 +125,9 @@ ADD COLUMN `iops` VARCHAR(45) NULL DEFAULT NULL AFTER `zone`;
 
 drop table disk_usage;
 
+mariadbvariable 테이블 데이터 백업 
+mysqldump -uroot -p$MARIADB_ROOT_PASSWORD zdb mariadbvariable > /bitnami/mariadb/logs/mariadbvariable.sql
+
 데이터 입력 
 k -n zdb-system cp <<zdb-portal-server>>/src/main/resources/mariadb/mariadbvariable.sql zdb-portal-db-mariadb-0:bitnami/mariadb/logs/mv.sql
 k -n zdb-system exec -it zdb-portal-db-mariadb-0 bash
