@@ -2433,11 +2433,15 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				so.setServiceType(app);
 				so.setClusterEnabled(true);
 				
-				for (String enabledService : autoFailoverEnabledServices) {
-					if(enabledService != null && enabledService.equals(serviceName)) {
-						so.setFailoverEnabled("true");
-					}
-				}
+				List<StatefulSet> statefulSets = client.inNamespace(sts.getMetadata().getNamespace()).apps().statefulSets().withLabel("release", serviceName).list().getItems();
+				
+				so.setStatefulSets(statefulSets);
+				
+//				for (String enabledService : autoFailoverEnabledServices) {
+//					if(enabledService != null && enabledService.equals(serviceName)) {
+//						so.setFailoverEnabled("true");
+//					}
+//				}
 				
 //				if(!"true".equals(so.getFailoverEnabled())) {
 //					so.setFailoverEnabled("false");
@@ -2447,7 +2451,9 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				so.setServiceFailOverStatus(serviceFailOverStatus);
 				
 				// failover 사용 여부
-				so.setFailoverEnabled(k8sService.isFailoverEnabled(so));
+				String failoverEnabled = k8sService.isFailoverEnabled(so);
+				failoverEnabled = failoverEnabled == null ? "off" : failoverEnabled;
+				so.setFailoverEnabled(failoverEnabled.equals("on") ? "true" : failoverEnabled);
 				
 				if("MasterToSlave".equals(serviceFailOverStatus)) {
 					String serviceFailOverTime = k8sService.getLastFailoverTime(namespace, serviceName);
