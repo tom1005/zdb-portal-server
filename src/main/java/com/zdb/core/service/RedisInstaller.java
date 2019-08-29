@@ -367,6 +367,7 @@ public class RedisInstaller  extends ZDBInstallerAdapter {
 					releaseMeta.setPurpose(service.getPurpose());   // SESSION or DATA
 					releaseMeta.setUpdateTime(new Date(System.currentTimeMillis()));
 					releaseMeta.setUserId(service.getRequestUserId());
+					releaseMeta.setClusterEnabled(service.isClusterEnabled());
 					
 					log.info(new Gson().toJson(releaseMeta));
 					

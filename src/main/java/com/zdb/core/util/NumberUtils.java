@@ -160,7 +160,7 @@ public class NumberUtils {
 	public static Double cpuByM(String amountCpu) {
 		if (amountCpu.endsWith("m")) {
 			amountCpu = amountCpu.substring(0, amountCpu.length() - 1);
-		} else if (amountCpu.endsWith("n")) {
+		} else if (amountCpu.endsWith("n") || amountCpu.endsWith("u")) {
 			// 38706716n
 			amountCpu = amountCpu.substring(0, amountCpu.length() - 1);
 			
