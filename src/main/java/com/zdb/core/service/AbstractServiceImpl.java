@@ -1569,21 +1569,22 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
 		return result;
 	}
 	
+	@Deprecated
 	public Result getPodMetrics(String namespace, String podName) throws Exception {
 		Result result = new Result("", Result.OK);
-		
-		MetricUtil metricUtil = new MetricUtil();
-		try {
-			Object cpuUsage = metricUtil.getCPUUsage(namespace, podName);
-			result.putValue(IResult.METRICS_CPU_USAGE, cpuUsage);
-			Object memoryUsage = metricUtil.getMemoryUsage(namespace, podName);
-			result.putValue(IResult.METRICS_MEM_USAGE, memoryUsage);
-		} catch (Exception e) {
-			log.error(e.getMessage(), e);
-			result.putValue(IResult.METRICS_CPU_USAGE, "");
-			result.putValue(IResult.METRICS_MEM_USAGE, "");
-		}
-		
+//		
+//		MetricUtil metricUtil = new MetricUtil();
+//		try {
+//			Object cpuUsage = metricUtil.getCPUUsage(namespace, podName);
+//			result.putValue(IResult.METRICS_CPU_USAGE, cpuUsage);
+//			Object memoryUsage = metricUtil.getMemoryUsage(namespace, podName);
+//			result.putValue(IResult.METRICS_MEM_USAGE, memoryUsage);
+//		} catch (Exception e) {
+//			log.error(e.getMessage(), e);
+//			result.putValue(IResult.METRICS_CPU_USAGE, "");
+//			result.putValue(IResult.METRICS_MEM_USAGE, "");
+//		}
+//		
 		return result;
 	}
 	
