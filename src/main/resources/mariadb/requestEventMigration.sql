@@ -62,4 +62,5 @@ update request_event set type='CREADENTIAL' where type is null and operation = '
  
 update schedule_entity set throttle_yn = 'N', noti_yn = 'N';
 
+update schedule_entity set schedule_type = 'DAILY', schedule_day = 0 where schedule_type is null;
 commit;
