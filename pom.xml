@@ -5,7 +5,7 @@
 
 	<groupId>com.skcc.cloudz.zdb</groupId>
 	<artifactId>${artifact.id}</artifactId>
-	<version>1.2.0</version>
+	<version>1.2.1</version>
 	<packaging>jar</packaging>
 
 	<name>zdb-portal-server</name>
