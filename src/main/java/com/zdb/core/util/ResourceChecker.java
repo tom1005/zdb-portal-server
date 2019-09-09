@@ -204,7 +204,7 @@ public class ResourceChecker {
 				String nodeRole = nodeResource.getNodeRoles();
 				String status = nodeResource.getStatus();
 				
-				if(!"zdb".equals(nodeRole)) {
+				if(nodeRole.indexOf("zdb") < 0) {
 					continue;
 				}
 				if(!"Ready".equals(status)) {

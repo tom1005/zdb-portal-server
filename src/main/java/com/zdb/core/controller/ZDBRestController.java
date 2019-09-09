@@ -3,7 +3,6 @@ package com.zdb.core.controller;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -256,12 +255,13 @@ public class ZDBRestController {
 			}
 			
 			if(entity.getRequestUserId() == null || entity.getRequestUserId().isEmpty()) {
-				result = new Result(txId, IResult.ERROR, "서비스 생성 오류!");
-				
-				event.setStatus(result.getCode());
-				event.setResultMessage("사용자 정보가 유효하지 않습니다.");
-				
-				return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
+				entity.setRequestUserId("7922e0d6-0689-4a55-bc3c-08ece6fc6c23");
+//				result = new Result(txId, IResult.ERROR, "서비스 생성 오류!");
+//				
+//				event.setStatus(result.getCode());
+//				event.setResultMessage("사용자 정보가 유효하지 않습니다.");
+//				
+//				return new ResponseEntity<String>(result.toJson(), HttpStatus.EXPECTATION_FAILED);
 			}
 			
 			switch (dbType) {

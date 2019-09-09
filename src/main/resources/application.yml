@@ -6,7 +6,7 @@ info:
 
 spring:
   profiles:
-    active: local
+    active: aks
 
 server:
   port: 8080
@@ -48,9 +48,9 @@ endpoints:
 spring:
   banner:
     location: classpath:bannername.txt
-  profiles: local
+  profiles: aks
   datasource:
-    url: jdbc:mariadb://169.56.87.74:3306/zdb
+    url: jdbc:mariadb://169.56.87.74:3306/zdb_aks
     username: zdb
     password: 24cmdshvek!
     driverClassName: org.mariadb.jdbc.Driver
@@ -68,7 +68,7 @@ logging:
   config: classpath:logback-local.xml
 
 k8s:
-  masterUrl: "https://c4.seo01.containers.cloud.ibm.com:26245"    
+  masterUrl: "https://zcp-three-c27c1d4b.hcp.koreacentral.azmk8s.io:443"    
   daemonUrl: "http://localhost:8090" 
   
 chart:
@@ -82,10 +82,10 @@ zdb:
     v4_0: "https://github.com/cnpst/zdb-chart-repo/raw/master/stable/charts/redis-3.6.6.tgz"
   
 iam:
-  baseUrl: https://pog-dev-internal-iam.cloudzcp.io:443
+  baseUrl: https://zcp-three-internal-iam.cloudzcp.io:443
 
 prometheus:
-  baseUrl: https://pog-dev-prometheus.cloudzcp.io/
+  baseUrl: https://zcp-three-prometheus.cloudzcp.io/
           
 storage:
   storageType: AWS_S3
@@ -108,6 +108,7 @@ backup:
   type: "public"
   redisDumpPath: "bitnami/redis/data"
   redisDumpFile: "dump.rdb"
+
 ---
 spring:
   profiles: cbt

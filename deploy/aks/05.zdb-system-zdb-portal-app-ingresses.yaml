@@ -1,0 +1,90 @@
+cat <<EOF | kubectl apply -f -
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  labels:
+    app: zdb-portal-ui
+  name: zdb-portal-ui-ingress
+  namespace: zdb-system
+spec:
+  rules:
+  - host: zcp-three-zdb.cloudzcp.io
+    http:
+      paths:
+      - backend:
+          serviceName: zdb-portal-ui-loadbalancer
+          servicePort: 8080
+  tls:
+  - hosts:
+    - zcp-three-zdb.cloudzcp.io
+    secretName: tls-cert
+EOF
+cat <<EOF | kubectl apply -f -
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  labels:
+    app: zdb-portal-server
+  name: zdb-portal-server-ingress
+  namespace: zdb-system
+spec:
+  rules:
+  - host: zcp-three-zdb-api.cloudzcp.io
+    http:
+      paths:
+      - backend:
+          serviceName: zdb-portal-server-loadbalancer
+          servicePort: 8080
+  tls:
+  - hosts:
+    - zcp-three-zdb-api.cloudzcp.io
+    secretName: tls-cert
+EOF
+
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Service
+metadata:
+  name: zdb-portal-ui-loadbalancer
+  namespace: zdb-system
+spec:
+  type: ClusterIP
+  selector:
+     app: zdb-portal-ui
+  ports:
+   - protocol: TCP
+     port: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zdb-portal-server-loadbalancer
+  namespace: zdb-system
+spec:
+  selector:
+     app: zdb-portal-server
+  ports:
+   - protocol: TCP
+     port: 8080
+  type: ClusterIP
+EOF
+
+cat <<EOF | kubectl apply -f -
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: zcp-iam-ing
+  namespace: zcp-system
+spec:
+  rules:
+  - host: zcp-three-internal-iam.cloudzcp.io  # 52.231.11.193
+    http:
+      paths:
+      - backend:
+          serviceName: zcp-iam
+          servicePort: 80
+  tls:
+  - hosts:
+    - zcp-three-internal-iam.cloudzcp.io
+    secretName: cloudzcp-io-cert
+EOF

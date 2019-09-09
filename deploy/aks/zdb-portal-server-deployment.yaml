@@ -1,0 +1,131 @@
+cat <<EOF | kubectl apply -f -
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: zdb-portal-server
+  name: zdb-portal-server-deployment
+  namespace: zdb-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zdb-portal-server
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: zdb-portal-server
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+              - key: role
+                operator: In
+                values:
+                - management
+      automountServiceAccountToken: true
+      containers:
+      - env:
+        - name: JAVA_OPTS
+          value: -Xms512m -Xmx1536m
+        - name: cluster.master
+          valueFrom:
+            configMapKeyRef:
+              key: cluster.master
+              name: zdb-portal-server-config
+        - name: zdb.mariadb.v10_2
+          valueFrom:
+            configMapKeyRef:
+              key: zdb.mariadb.v10_2
+              name: zdb-portal-server-config
+        - name: zdb.mariadb.v10_3
+          valueFrom:
+            configMapKeyRef:
+              key: zdb.mariadb.v10_3
+              name: zdb-portal-server-config
+        - name: zdb.redis.v4_0
+          valueFrom:
+            configMapKeyRef:
+              key: zdb.redis.v4_0
+              name: zdb-portal-server-config
+        - name: SPRING_ACTIVE_PROFILE
+          valueFrom:
+            configMapKeyRef:
+              key: SPRING_ACTIVE_PROFILE
+              name: zdb-portal-server-config
+        - name: domain.custom
+          valueFrom:
+            configMapKeyRef:
+              key: domain.custom
+              name: zdb-portal-server-config
+        - name: chart.antiAffinity
+          valueFrom:
+            configMapKeyRef:
+              key: chart.antiAffinity
+              name: zdb-portal-server-config
+        - name: storage.class
+          valueFrom:
+            configMapKeyRef:
+              key: storage.class
+              name: zdb-portal-server-config
+        - name: storage.accessKey
+          valueFrom:
+            configMapKeyRef:
+              key: storage.accessKey
+              name: zdb-portal-server-config
+        - name: storage.secretKey
+          valueFrom:
+            configMapKeyRef:
+              key: storage.secretKey
+              name: zdb-portal-server-config
+        image: registry.au-syd.bluemix.net/cloudzdb/dev/zdb-portal-server:1.2.1-aks
+        imagePullPolicy: Always
+        name: zdb-portal-server
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1536Mi
+          requests:
+            cpu: 100m
+            memory: 512Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /app
+          name: share-storage
+      dnsPolicy: ClusterFirst
+      imagePullSecrets:
+      - name: zdb-system-secret
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: zdb-system-account
+      serviceAccountName: zdb-system-account
+      terminationGracePeriodSeconds: 30
+      tolerations:
+      - effect: NoSchedule
+        key: management
+        operator: Equal
+        value: "true"
+      volumes:
+      - name: share-storage
+        emptyDir: {}
+EOF
+#        persistentVolumeClaim:
+#          claimName: zdb-data
+

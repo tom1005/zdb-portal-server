@@ -1,0 +1,40 @@
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+data:
+  SPRING_ACTIVE_PROFILE: prod
+  api.server: https://zcp-three-zdb-api.cloudzcp.io
+  backup.throttle: "5"
+  chart.antiAffinity: soft
+  cloudzcp.url: https://zcp-three-console.cloudzcp.io
+  cluster: cloudzcp-azure-dev
+  cluster.master: https://zcp-three-c27c1d4b.hcp.koreacentral.azmk8s.io:443
+  domain.custom: cloudzcp.io
+  grafana.domain: zcp-three-zdb-monitoring
+  iam.domain: zcp-three-iam
+  iam.secret: 71ad1e42-d239-4a7d-99f9-e1e50ad7ca93
+  storage.accessKey: 6bf48d42eb304e1292f178bf69034f12
+  storage.apiKey: 6Bgic-PfY2KGxskG024OpkJW3HgMoS7-H6sHF88uX2Fa
+  storage.class: managed-premium
+  storage.endpointUrl: https://s3.seo.ap.cloud-object-storage.appdomain.cloud
+  storage.location: ap-geo
+  storage.secretKey: 0c61052e1bd30002a96cc57c8589d7521efef440f0471873
+  storage.storageClass: ap-standard
+  zcp.domain: zcp-three-console
+  zdb.domain: zcp-three-zdb
+  zdb.mariadb.v10_2: file:///tmp/mariadb-4.2.6.tgz
+  zdb.mariadb.v10_3: file:///tmp/mariadb-6.5.2.tgz
+  zdb.mariadb.version: 10.3.16, 10.2.21, 10.2.14
+  zdb.redis.v4_0: file:///tmp/redis-3.6.5.tgz
+  zdb.redis.version: 4.0.9
+kind: ConfigMap
+metadata:
+  name: zdb-portal-server-config
+  namespace: zdb-system
+EOF
+#https://cloudzcp-azure-dev-dns-538add9d.hcp.eastus2.azmk8s.io:443
+#  name: cloudzcp-azure-dev
+  #https://zcp-three-console.cloudzcp.io/login
+  
+#monitoring-ingress            zcp-three-monitoring.cloudzcp.io,zcp-three-prometheus.cloudzcp.io,zcp-three-alertmanager.cloudzcp.io             80, 443   21d
+#zcp-oidc-keycloak             zcp-three-iam.cloudzcp.io                                                                                        80, 443   21d
+#zcp-portal-ui-ingress         zcp-three-console.cloudzcp.io                                                                                    80, 443   21d

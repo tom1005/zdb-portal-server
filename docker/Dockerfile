@@ -2,6 +2,9 @@ FROM java:8
 ENV SPRING_ACTIVE_PROFILE prod
 ENV APP_VERSION 1.2.1
 ENV JAVA_OPTS "-Xms2048m -Xmx2048m"
+ADD dist/mariadb-10.2-aks/ /zdb-repo/mariadb-10.2-aks/
+ADD dist/mariadb-10.3-aks/ /zdb-repo/mariadb-10.3-aks/
+ADD dist/redis-4.0-aks/ /zdb-repo/redis-4.0-aks/
 ADD dist/zdb-portal-server-1.2.1.jar zdb-portal-server-1.2.1.jar
 VOLUME /tmp
 VOLUME /target

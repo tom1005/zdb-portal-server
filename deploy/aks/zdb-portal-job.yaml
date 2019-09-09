@@ -1,0 +1,81 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"batch/v1beta1","kind":"CronJob","metadata":{"annotations":{},"name":"zdb-portal-job","namespace":"zdb-system"},"spec":{"jobTemplate":{"spec":{"template":{"metadata":{"annotations":{"prometheus.io/path":"/prometheus","prometheus.io/port":"8090","prometheus.io/scrape":"true"},"labels":{"app":"zdb-portal-job"}},"spec":{"affinity":{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"role","operator":"In","values":["management"]}]}]}}},"containers":[{"args":["/bin/sh","-c","echo 'CloudZ DB 메트릭 수집기 ' \u0026\u0026 java -jar app.jar"],"envFrom":[{"configMapRef":{"name":"zdb-portal-server-config"}},{"secretRef":{"name":"zdb-portal-db-mariadb"}}],"image":"registry.au-syd.bluemix.net/cloudzdb/zdb-portal-job:1.1.4","imagePullPolicy":"Always","name":"zdb-portal-job"}],"imagePullSecrets":[{"name":"zdb-system-secret"}],"restartPolicy":"Never","serviceAccountName":"zdb-system-account","tolerations":[{"effect":"NoSchedule","key":"management","operator":"Equal","value":"true"}]}}}},"schedule":"*/1 * * * *","suspend":false}}
+  creationTimestamp: "2019-07-24T04:51:06Z"
+  name: zdb-portal-job
+  namespace: zdb-system
+  resourceVersion: "54493488"
+  selfLink: /apis/batch/v1beta1/namespaces/zdb-system/cronjobs/zdb-portal-job
+  uid: a55f1d67-adce-11e9-8dd4-eaabab8d103f
+spec:
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    metadata:
+      creationTimestamp: null
+    spec:
+      template:
+        metadata:
+          annotations:
+            prometheus.io/path: /prometheus
+            prometheus.io/port: "8090"
+            prometheus.io/scrape: "true"
+          creationTimestamp: null
+          labels:
+            app: zdb-portal-job
+        spec:
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: role
+                    operator: In
+                    values:
+                    - management
+          containers:
+          - args:
+            - /bin/sh
+            - -c
+            - echo 'CloudZ DB 메트릭 수집기 ' && java -jar app.jar
+            envFrom:
+            - configMapRef:
+                name: zdb-portal-server-config
+            - secretRef:
+                name: zdb-portal-db-mariadb
+            image: registry.au-syd.bluemix.net/cloudzdb/zdb-portal-job:1.2.0b
+            imagePullPolicy: Always
+            name: zdb-portal-job
+            resources: {}
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+          dnsPolicy: ClusterFirst
+          imagePullSecrets:
+          - name: zdb-system-secret
+          restartPolicy: Never
+          schedulerName: default-scheduler
+          securityContext: {}
+          serviceAccount: zdb-system-account
+          serviceAccountName: zdb-system-account
+          terminationGracePeriodSeconds: 30
+          tolerations:
+          - effect: NoSchedule
+            key: management
+            operator: Equal
+            value: "true"
+  schedule: '*/1 * * * *'
+  startingDeadlineSeconds: 10
+  successfulJobsHistoryLimit: 2
+  suspend: false
+status:
+  active:
+  - apiVersion: batch/v1
+    kind: Job
+    name: zdb-portal-job-1567578900
+    namespace: zdb-system
+    resourceVersion: "54493487"
+    uid: 1e6f6ec8-cede-11e9-a9ff-b679e02d137f
+  lastScheduleTime: "2019-09-04T06:35:00Z"
