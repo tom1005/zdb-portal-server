@@ -363,7 +363,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 					
 					scheduleInfo.setUseYn("N");
 					scheduleInfo.setStartTime(ZDBConfigService.backupTimeValue);
-					scheduleInfo.setStorePeriod(ZDBConfigService.backupDuratioValue + "일");
+					scheduleInfo.setStorePeriod(ZDBConfigService.backupDuratioValue);
 					scheduleInfo.setIncrementYn("N");
 					scheduleInfo.setIncrementPeriod("미사용");
 					
