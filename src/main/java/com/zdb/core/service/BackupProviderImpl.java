@@ -378,7 +378,7 @@ backupService 요청시, serviceType 구분없이 zdb-backup-agent로 요청을 
 					if(schedule != null) {
 						scheduleInfo.setUseYn(schedule.getUseYn());
 						scheduleInfo.setStartTime(schedule.getStartTime());
-						scheduleInfo.setStorePeriod(schedule.getStorePeriod() + "일");
+						scheduleInfo.setStorePeriod(Integer.toString(schedule.getStorePeriod()));
 						scheduleInfo.setIncrementYn(schedule.getIncrementYn());
 						if(schedule.getScheduleDay() != 0) {
 							if(schedule.getScheduleDay() == 1) {
