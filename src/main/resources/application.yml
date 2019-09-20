@@ -1,7 +1,7 @@
 info:
   app:
     name: zdb-portal-server
-    version: 1.2.0
+    version: 1.2.1
     description: zdb-portal-server
 
 spring:
