@@ -2646,7 +2646,7 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
         		zn.setWorkerPool(m.getLabels().get("worker-pool") == null ?  "-" :m.getLabels().get("worker-pool"));
         		zn.setMemory(NumberUtils.formatMemory(NumberUtils.memoryByMi((n.getStatus().getAllocatable().get("memory").getAmount()))*1024*1024));
         		zn.setCpu(n.getStatus().getAllocatable().get("cpu").getAmount());
-        		zn.setMachineType(m.getLabels().get("ibm-cloud.kubernetes.io/machine-type"));
+        		zn.setMachineType(m.getLabels().get("beta.kubernetes.io/instance-type"));
         		
         		nodeData.put(name, zn);        		
         	}
@@ -2657,7 +2657,10 @@ public abstract class AbstractServiceImpl implements ZDBRestService {
         		o.setMemory(zn.getMemory());
         		o.setCpu(zn.getCpu());
         		o.setMachineType(zn.getMachineType());
-        	}
+        		if(o.getNodeType() == null) {
+        			o.setNodeType(zn.getMachineType());
+        		}
+        	} 
         }
 		try {
 			return new Result("", Result.OK).putValue(IResult.NODE_LIST, nodes);

@@ -50,7 +50,7 @@ spring:
     location: classpath:bannername.txt
   profiles: aks
   datasource:
-    url: jdbc:mariadb://169.56.87.74:3306/zdb_aks
+    url: jdbc:mariadb://52.231.89.95:3306/zdb
     username: zdb
     password: 24cmdshvek!
     driverClassName: org.mariadb.jdbc.Driver

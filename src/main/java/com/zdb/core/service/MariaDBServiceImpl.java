@@ -654,8 +654,20 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 				
 				connection.setRole(role);
 				connection.setServiceName(service.getMetadata().getName());
-				String connectionType = service.getMetadata().getAnnotations().get("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type");
-				connection.setConnectionType(connectionType);
+//				String connectionType = service.getMetadata().getAnnotations().get("service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type");
+				String connectionType = null;
+				if( service.getMetadata().getAnnotations() == null) {
+					connection.setConnectionType("public");
+				} else {
+					connectionType = service.getMetadata().getAnnotations().get("service.beta.kubernetes.io/azure-load-balancer-internal");
+					if(connectionType == null || "public".equals(connectionType)) {
+						connection.setConnectionType("public");
+					} else if("private".equals(connectionType) || "true".equals(connectionType)) {
+						connection.setConnectionType("private");
+					} else {
+						connection.setConnectionType(connectionType);
+					}
+				}
 				
 				String ip = new String();
 				
@@ -664,7 +676,7 @@ public class MariaDBServiceImpl extends AbstractServiceImpl {
 					if(ingress != null && ingress.size() > 0) {
 						ip = ingress.get(0).getIp();
 					} else {
-						if("private".equals(connectionType)) {
+						if("private".equals(connectionType) || "true".equals(connectionType)) {
 							ip = service.getMetadata().getName()+"."+service.getMetadata().getNamespace();
 						} else {
 							ip = "unknown";

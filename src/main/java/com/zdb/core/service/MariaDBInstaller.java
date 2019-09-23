@@ -69,7 +69,7 @@ import lombok.extern.slf4j.Slf4j;
 public class MariaDBInstaller extends ZDBInstallerAdapter {
 	private static String storageClass;
 
-	@Value("${chart.mariadb.storageClass:managed-premium}")
+	@Value("${chart.mariadb.storageClass:managed-nfs-storage}")
 	public void setStorageClass(String storageType) {
 		storageClass = storageType;
 	}

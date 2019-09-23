@@ -1852,6 +1852,7 @@ public class ZDBRestController {
 		}
 	}
 	
+	@Deprecated
 	@RequestMapping(value = "/nodes", method = RequestMethod.GET)
 	public ResponseEntity<String> getNodes() throws Exception {
 		try {
@@ -2616,6 +2617,7 @@ public class ZDBRestController {
 	 * @return
 	 * @throws Exception
 	 */
+	@Deprecated
 	@RequestMapping(value = "/failover/{namespace}/services", method = RequestMethod.GET)
 	public ResponseEntity<String> getAutoFailoverServices(
 			@PathVariable("namespace") final String namespace,
@@ -2648,6 +2650,7 @@ public class ZDBRestController {
 	 * @return
 	 * @throws Exception
 	 */
+	@Deprecated
 	@RequestMapping(value = "/failover/{namespace}/{serviceName}/service", method = RequestMethod.GET)
 	public ResponseEntity<String> getAutoFailoverService(
 			@PathVariable("namespace") final String namespace,
